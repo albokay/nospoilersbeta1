@@ -2049,7 +2049,7 @@ export default function DashboardPage() {
                     title="invite another friend"
                     style={{ width: 36, height: 36, borderRadius: "50%", border: "none", background: C.cream, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
                   ><Plus size={18} strokeWidth={2.5} color={CANON.friend} /></button>
-                  <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 400, fontSize: 13, color: C.cream }}>add more friends</span>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: C.cream }}>Add another friend</span>
                 </div>
                 {/* CP2 create-a-group: pair the invite with ≥1 proposed show. */}
                 {creating && (
@@ -2403,7 +2403,9 @@ export default function DashboardPage() {
             <div style={{ position: "fixed", inset: 0, zIndex: 69 }} onClick={() => setChatGroupId(null)} />
           <div style={chatPanel}>
             <div style={chatHeader}>
-              <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}><span style={{ color: C.blue }}>You're connected with:</span><br /><span style={{ color: C.green }}>{connected}</span></div>
+              {/* "not spoiler-gated" rides the header (mobile-polish mirror
+                  2026-09-14) — it used to live in the input placeholder. */}
+              <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}><span style={{ color: C.blue }}>You're connected with:</span><br /><span style={{ color: C.green }}>{connected}</span><span style={{ color: C.blue }}> &middot; not spoiler-gated</span></div>
               <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
             </div>
             <div style={chatBody} ref={chatBodyRef}>
@@ -2420,14 +2422,16 @@ export default function DashboardPage() {
             <div style={chatInputRow}>
               {/* Component-level rule: index.css never loads (index.tsx is
                   the live entry, main.tsx the dead one), so the placeholder
-                  style lives here. Sky (Alborz 2026-08-14 — the theme.ts
-                  default painted it grey). */}
-              <style>{`.chat-ph::placeholder { font-style: italic; color: var(--canon-friend,#ADC8D7) !important; opacity: 1 !important; }`}</style>
+                  style lives here. Standard 45% dark on the cream field
+                  (mobile-polish mirror 2026-09-14 — the not-gated warning
+                  moved into the chat header's caption on /m; !important
+                  because theme.ts's default paints placeholders grey). */}
+              <style>{`.chat-ph::placeholder { color: rgba(26,58,74,0.45) !important; opacity: 1 !important; }`}</style>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
-                placeholder="(remember, chat isn't spoiler-gated)"
+                placeholder="Message the group"
                 className="chat-ph"
                 style={chatInputBox}
               />

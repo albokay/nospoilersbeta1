@@ -200,29 +200,25 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           const mine = m.authorId === selfUserId;
           return (
             <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-              {!mine && <div style={{ fontSize: 11, color: C.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
+              {!mine && <div style={{ fontSize: 13, color: C.cream, opacity: 0.9, marginBottom: 4 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
               <div style={mine ? bubbleMine : bubbleOther}>{linkifyText(m.body)}</div>
             </div>
           );
         })}
       </div>
 
-      {/* ── Input row (pinned) ── */}
+      {/* ── Input row (pinned) — standard placeholder (polish pass
+             2026-09-14: the not-gated warning lives in the header caption
+             now, so the field asks for a message like a normal chat). ── */}
       <div style={inputRow}>
-        {/* index.css never loads (dead entry), so the placeholder style
-            lives here. Sky + !important (Alborz 2026-08-14): the mobile-wide
-            .m-input::placeholder is translucent CREAM — invisible on this
-            cream field, which is why the warning "wasn't there". */}
-        <style>{`.chat-ph::placeholder { font-style: italic; color: var(--canon-friend,#ADC8D7) !important; opacity: 1 !important; }`}</style>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") sendChat(); }}
-          placeholder="(remember, chat isn't spoiler-gated)"
+          placeholder="Message the group"
           style={inputBox}
-          className="m-input chat-ph"
         />
-        <button style={sendBtn} onClick={sendChat}><ArrowUp size={18} color={C.cream} /></button>
+        <button style={sendBtn} onClick={sendChat}><ArrowUp size={20} color={C.cream} /></button>
       </div>
     </div>
   );
@@ -248,19 +244,19 @@ const body: React.CSSProperties = {
 };
 const bubbleOther: React.CSSProperties = {
   background: C.sky, color: C.midnight, padding: "10px 14px", borderRadius: 16,
-  maxWidth: "78%", fontSize: 14, lineHeight: 1.4, overflowWrap: "break-word",
+  maxWidth: "78%", fontSize: 15, lineHeight: 1.4, overflowWrap: "break-word",
 };
 const bubbleMine: React.CSSProperties = {
   background: C.cream, color: C.midnight, padding: "10px 14px", borderRadius: 16,
-  maxWidth: "78%", fontSize: 14, lineHeight: 1.4, overflowWrap: "break-word",
+  maxWidth: "78%", fontSize: 15, lineHeight: 1.4, overflowWrap: "break-word",
 };
 const inputRow: React.CSSProperties = {
   display: "flex", gap: 8, alignItems: "center",
-  padding: "12px 14px calc(env(safe-area-inset-bottom, 0px) + 12px)",
+  padding: "12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px)",
   background: C.cream, flexShrink: 0,
 };
 const inputBox: React.CSSProperties = {
-  flex: 1, border: "none", borderRadius: 65, padding: "12px 18px",
+  flex: 1, border: "none", borderRadius: 9999, padding: "12px 18px",
   fontFamily: '"Inter", sans-serif', fontSize: 16, color: C.midnight,
   background: CANON.cream, outline: "none", minHeight: 44, boxSizing: "border-box",
   boxShadow: `inset 0 0 0 2px ${C.sky}`,

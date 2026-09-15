@@ -449,9 +449,10 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
               >
                 <Plus size={18} strokeWidth={2.5} color={CANON.friend} />
               </button>
-              {/* Quiet Info-weight invitation (Alborz 2026-09-01) — every
-                  invite surface pairs the "+" with this line. */}
-              <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 400, fontSize: 13, color: CANON.cream }}>add more friends</span>
+              {/* Plain caption (mobile-polish mirror 2026-09-14; was italic
+                  "add more friends") — every invite surface pairs the "+"
+                  with this line. */}
+              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream }}>Add another friend</span>
             </div>
           )}
           <div style={{ textAlign: "center", marginTop: 20 }}>

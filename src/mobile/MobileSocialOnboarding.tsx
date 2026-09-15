@@ -292,10 +292,10 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           </div>
           <div style={{ textAlign: "center", maxWidth: 420, padding: "0 24px" }}>
             <h1 style={onbHeading}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</h1>
-            <div style={onbSubline}>(You can add more later.)</div>
+            <div style={onbSubline}>You can add more later.</div>
           </div>
           {!show && (
-            <button style={{ ...accentPill, marginTop: 32 }} onClick={() => setSearchOpen(true)}>search</button>
+            <button style={{ ...accentPill, marginTop: 32 }} onClick={() => setSearchOpen(true)}>Search</button>
           )}
           {/* Browse rows (2026-08-18): the group room's poster strips, below
               the search until a show is picked. A tap selects the show and
@@ -326,10 +326,10 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
                 />
               </div>
               <div style={{ marginTop: 24 }}>
-                <button style={bluePill} onClick={() => setStep(2)}>next</button>
+                <button style={bluePill} onClick={() => setStep(2)}>Next</button>
               </div>
               <div style={{ marginTop: 16 }}>
-                <button style={quietLink} onClick={() => { setShow(null); setSearchOpen(true); }}>pick a different show</button>
+                <button style={quietLink} onClick={() => { setShow(null); setSearchOpen(true); }}>Pick a different show</button>
               </div>
             </div>
           )}
@@ -338,7 +338,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           <MobileSearchSheet
             shows={shows}
             progress={{}}
-            addLabel="next"
+            addLabel="Next"
             onClose={() => setSearchOpen(false)}
             onAdd={(s, v) => { setShow(s); setProg(v); setSearchOpen(false); setStep(2); }}
             onCatalogAdd={(s) => setShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]))}
@@ -362,11 +362,11 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           <span style={onbStepCaption}>2 of 3</span>
         </div>
         <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, letterSpacing: 0, color: C.cream, margin: "0 0 8px" }}>
-            Who&rsquo;s at least one friend<br />you always text about TV?
+          <h1 style={{ ...M.type.display, color: C.cream, margin: "0 0 8px" }}>
+            Who&rsquo;s at least one friend you always text about TV?
           </h1>
-          <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", color: C.cream, margin: "0 0 20px" }}>
-            (You can invite more later.)
+          <p style={{ ...M.type.caption, color: C.cream, margin: "0 0 24px" }}>
+            You can invite more later.
           </p>
           {/* The standard invite-sheet row (name + email SIDE BY SIDE,
               0.8/1.2) × up to MAX_FRIENDS; the cream "+" circle appends a
@@ -378,7 +378,6 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
                 onChange={(e) => setFriendField(i, "name", e.target.value)}
                 placeholder="their name"
                 maxLength={40}
-                className="m-onb-input"
                 style={{ ...creamInput, marginBottom: 0, flex: 0.8, minWidth: 0 }}
               />
               <input
@@ -389,13 +388,12 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
                 inputMode="email"
                 autoCapitalize="none"
                 autoCorrect="off"
-                className="m-onb-input"
                 style={{ ...creamInput, marginBottom: 0, flex: 1.2, minWidth: 0 }}
               />
             </div>
           ))}
           {friends.length < MAX_FRIENDS && (
-            <div style={{ textAlign: "left", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
               <button
                 title="invite another friend"
                 onClick={() => setFriends((prev) => [...prev, { name: "", email: "" }])}
@@ -403,6 +401,9 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
               >
                 <Plus size={18} strokeWidth={2.5} color={CANON.friend} />
               </button>
+              {/* The invite sheet's caption — both screens teach the same
+                  gesture (polish pass 2026-09-14). */}
+              <span style={{ ...M.type.caption, color: C.cream }}>Add another friend</span>
             </div>
           )}
           <button
@@ -413,7 +414,6 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
             {advancing ? <>one moment<LoadingDots /></> : "Invite"}
           </button>
         </div>
-        <style>{`.m-onb-input::placeholder { color: rgba(26,58,74,0.45); }`}</style>
       </div>
     );
   }
@@ -439,7 +439,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           onSubmitted={() => {}}
           initialTitle="Let's do this!"
           headingOverride={
-            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, letterSpacing: 0, color: C.blue, margin: "40px 0 10px" }}>
+            <h1 style={{ ...M.type.title, color: C.blue, margin: "40px 0 10px" }}>
               Tell your friend why you&rsquo;re excited about <b>{show.name}</b>:
             </h1>
           }
@@ -476,7 +476,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
     return (
       <div style={{ ...fullScreen, background: C.yellow }}>
         <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 24, color: C.cream, marginBottom: 12 }}>Your writing is published!</div>
+          <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Your writing is published!</div>
           <div style={{ color: C.cream, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
             But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
             Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
@@ -485,10 +485,10 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
             <div key={f.link} style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10, background: "rgba(253,248,236,0.15)", borderRadius: 12, padding: "10px 12px" }}>
               <div style={{ width: 72, fontSize: 12, fontWeight: 700, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{f.name}</div>
               <div style={{ flex: 1, fontSize: 12, color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.link}</div>
-              <button style={{ ...bluePill, padding: "8px 20px", minHeight: 36 }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "copied!" : "copy"}</button>
+              <button style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream }} onClick={() => copyLink(f.link, i)}>{copiedIdx === i ? "Copied!" : "Copy"}</button>
             </div>
           ))}
-          <button style={{ ...bluePill, marginTop: 10 }} onClick={() => setFallbackAcked(true)}>continue →</button>
+          <button style={{ ...M.pill.M, background: CANON.identity, color: CANON.cream, marginTop: 10 }} onClick={() => setFallbackAcked(true)}>Continue</button>
         </div>
       </div>
     );
@@ -525,10 +525,10 @@ const fullScreen: React.CSSProperties = {
   boxSizing: "border-box",
 };
 const onbHeading: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 28, lineHeight: 1.2, letterSpacing: 0, color: CANON.cream, margin: 0,
+  ...M.type.display, color: CANON.cream, margin: 0,
 };
 const onbSubline: React.CSSProperties = {
-  fontFamily: "Inter, sans-serif", fontSize: 13, color: CANON.cream, marginTop: 10,
+  ...M.type.caption, color: CANON.cream, marginTop: 10,
 };
 const backLink: React.CSSProperties = {
   position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", left: 18,
@@ -547,29 +547,23 @@ const onbStepCaption: React.CSSProperties = {
   opacity: 0.8, padding: "0 8px",
 };
 const accentPill: React.CSSProperties = {
-  border: "none", background: CANON.accent, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "16px 48px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+  ...M.pill.L, background: CANON.accent, color: CANON.cream,
 };
 const bluePill: React.CSSProperties = {
-  border: "none", background: CANON.identity, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "14px 40px", borderRadius: 65, cursor: "pointer", minHeight: 44,
+  ...M.pill.L, background: CANON.identity, color: CANON.cream,
 };
 // The "+" add-a-friend circle: cream (site-white) with a Sky plus,
-// left-justified under the rows.
+// left-justified under the rows. 44 (was 40) — the standard hit size.
 const plusBtn: React.CSSProperties = {
-  width: 40, height: 40, borderRadius: "50%", border: "none", background: CANON.cream,
+  width: 44, height: 44, borderRadius: "50%", border: "none", background: CANON.cream,
   display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-  padding: 0,
+  padding: 0, flexShrink: 0,
 };
 const quietLink: React.CSSProperties = {
   border: "none", background: "transparent", color: CANON.cream, fontSize: 13, fontWeight: 700,
   cursor: "pointer", padding: 8, opacity: 0.85,
 };
-const creamInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: "none", borderRadius: 65,
-  padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 16,
-  color: CANON.dark, background: CANON.cream, outline: "none", minHeight: 44,
-};
+const creamInput: React.CSSProperties = { ...M.input };
 // The show room's full-screen compose shell (mobile idiom of the desktop
 // compose card).
 const composeShell: React.CSSProperties = {

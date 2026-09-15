@@ -46,7 +46,7 @@ export default function MobileAddToHomeScreen() {
           <img src="/icons/icon-192.png" alt="" draggable={false} style={iconImg} />
           <span style={plusBadge}><Plus size={18} strokeWidth={1.6} color={CANON.personal} /></span>
         </button>
-        <div style={caption}>add Sidebar to<br />your home screen</div>
+        <div style={caption}>Add Sidebar to<br />your home screen</div>
       </div>
 
       {guide && (

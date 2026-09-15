@@ -1010,7 +1010,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <div style={dim} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
           <div style={{ ...bottomSheet, background: C.yellow, textAlign: "center", ...digestSwipe.style }} {...digestSwipe.handlers} onClick={(e) => e.stopPropagation()}>
             {digestOptOut === null ? (
-              <div style={{ color: C.cream, fontSize: 15, padding: "6px 0" }}>Loading…</div>
+              <div style={{ color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, padding: "6px 0" }}>loading<LoadingDots /></div>
             ) : digestOptOut ? (
               <>
                 <div style={digestTitle}>Resubscribe to email updates for this room?</div>

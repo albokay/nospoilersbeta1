@@ -117,18 +117,20 @@ export default function MobileAuth() {
     navigate(returnTo, { replace: true });
   }
 
+  // Cream pill fields like every other input on /m (polish pass 2026-09-14;
+  // auth was the one translucent-square exception).
   const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "14px 16px",
-    fontSize: 16,
-    fontFamily: "inherit",
-    border: "2px solid rgba(253,248,236,0.4)",
-    borderRadius: 10,
-    background: "rgba(253,248,236,0.08)",
-    color: CANON.cream,
-    outline: "none",
-    boxSizing: "border-box",
+    ...M.input,
     WebkitAppearance: "none",
+  };
+  // Inline error (polish pass): cream text under the field, no box — the red
+  // block was the app's only box-styled error.
+  const errorStyle: React.CSSProperties = {
+    color: CANON.cream,
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "0 24px",
+    marginTop: -2,
   };
 
   // ── RECOVERY MODE — separate render path, mirrors AuthModal's. ──────────
@@ -144,7 +146,7 @@ export default function MobileAuth() {
         flexDirection: "column",
       }}>
         <div style={{ width: "100%", maxWidth: 420, margin: "0 auto", display: "flex", flexDirection: "column", flex: 1 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 6px", textAlign: "center" }}>
+          <h1 style={{ ...M.type.display, margin: "16px 0 8px", textAlign: "center" }}>
             Reset your password
           </h1>
 
@@ -180,41 +182,23 @@ export default function MobileAuth() {
                   autoComplete="email"
                   autoCapitalize="none"
                   autoCorrect="off"
-                  className="m-input"
                   style={inputStyle}
                 />
 
-                {error && (
-                  <div style={{
-                    color: CANON.cream,
-                    background: "rgba(244,80,40,0.9)",
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    marginTop: 4,
-                  }}>
-                    {error}
-                  </div>
-                )}
+                {error && <div style={errorStyle}>{error}</div>}
 
                 <button
                   type="submit"
                   disabled={loading}
                   style={{
+                    ...M.pill.L,
+                    fontSize: 16,
                     marginTop: 8,
                     width: "100%",
-                    padding: "16px 0",
-                    fontSize: 18,
-                    fontWeight: 800,
-                    fontFamily: "inherit",
                     background: CANON.cream,
                     color: "var(--dos-bg)",
-                    border: "none",
-                    borderRadius: 9999,
                     cursor: loading ? "default" : "pointer",
                     opacity: loading ? 0.85 : 1,
-                    letterSpacing: "0.02em",
                   }}
                 >
                   {loading ? <LoadingDots /> : "Send recovery email"}
@@ -254,7 +238,7 @@ export default function MobileAuth() {
         textAlign: "center",
       }}>
         <div style={{ width: "100%", maxWidth: 420 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 14px" }}>Check your email</h1>
+          <h1 style={{ ...M.type.display, margin: "0 0 14px" }}>Check your email</h1>
           <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "0 0 12px" }}>
             We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap it to finish setting up your account — it'll sign you in automatically.
           </p>
@@ -299,15 +283,15 @@ export default function MobileAuth() {
             {hint}
           </p>
         )}
-        <h1 style={{ fontSize: 26, fontWeight: 800, margin: "16px 0 6px", textAlign: "center" }}>
+        <h1 style={{ ...M.type.display, margin: "16px 0 8px", textAlign: "center" }}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h1>
         {mode === "signin" ? (
-          <p style={{ fontSize: 14, opacity: 0.85, margin: "0 0 28px", textAlign: "center" }}>
+          <p style={{ ...M.type.body, opacity: 0.9, margin: "0 0 32px", textAlign: "center" }}>
             Welcome back.
           </p>
         ) : (
-          <div style={{ height: 28 }} />
+          <div style={{ height: 32 }} />
         )}
 
         {/* ── Form ── */}
@@ -321,7 +305,6 @@ export default function MobileAuth() {
                 autoFocus
                 autoComplete="given-name"
                 autoCorrect="off"
-                className="m-input"
                 style={inputStyle}
               />
               <p style={{ margin: "0 0 2px", fontSize: 13, lineHeight: 1.5, color: CANON.cream, opacity: 0.9 }}>
@@ -340,7 +323,6 @@ export default function MobileAuth() {
             autoComplete="email"
             autoCapitalize="none"
             autoCorrect="off"
-            className="m-input"
             style={{ ...inputStyle, ...(lockEmail ? { opacity: 0.7 } : null) }}
           />
           <input
@@ -349,37 +331,36 @@ export default function MobileAuth() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            className="m-input"
             style={inputStyle}
           />
 
+          {error && <div style={errorStyle}>{error}</div>}
+
           {/* Directly under the password field (Alborz 2026-08-01) — at the
               old bottom-of-screen spot the keyboard hid it, so a first-time
-              invitee couldn't see how to create an account. */}
-          {mode === "signin" && (
-            <div style={{ marginTop: 2, textAlign: "center", fontSize: 14, color: CANON.cream }}>
+              invitee couldn't see how to create an account. Sign-up mode's
+              "Already have an account?" takes the same slot. */}
+          {mode === "signin" ? (
+            <div style={{ padding: 12, textAlign: "center", fontSize: 14, color: CANON.cream }}>
               No account?{" "}
               <button
                 type="button"
                 onClick={() => { setMode("signup"); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", padding: 12, margin: -12 }}
               >
                 Create one
               </button>
             </div>
-          )}
-
-          {error && (
-            <div style={{
-              color: CANON.cream,
-              background: "rgba(244,80,40,0.9)",
-              padding: "10px 14px",
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 600,
-              marginTop: 4,
-            }}>
-              {error}
+          ) : (
+            <div style={{ padding: 12, textAlign: "center", fontSize: 14, color: CANON.cream }}>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("signin"); setError(null); }}
+                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", padding: 12, margin: -12 }}
+              >
+                Sign in
+              </button>
             </div>
           )}
 
@@ -387,19 +368,13 @@ export default function MobileAuth() {
             type="submit"
             disabled={loading}
             style={{
-              marginTop: 8,
+              ...M.pill.L,
+              fontSize: 16,
               width: "100%",
-              padding: "16px 0",
-              fontSize: 18,
-              fontWeight: 800,
-              fontFamily: "inherit",
               background: CANON.cream,
               color: "var(--dos-bg)",
-              border: "none",
-              borderRadius: 9999,
               cursor: loading ? "default" : "pointer",
               opacity: loading ? 0.85 : 1,
-              letterSpacing: "0.02em",
             }}
           >
             {loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}
@@ -407,36 +382,20 @@ export default function MobileAuth() {
         </form>
 
         {mode === "signup" && (
-          <p style={{ marginTop: 14, fontSize: 12, lineHeight: 1.5, opacity: 0.8, textAlign: "center" }}>
+          <p style={{ marginTop: 14, fontSize: 13, lineHeight: 1.5, opacity: 0.8, textAlign: "center" }}>
             Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
           </p>
         )}
 
         {mode === "signin" && (
-          <div style={{ marginTop: 16, textAlign: "center", fontSize: 14 }}>
+          <div style={{ marginTop: 8, textAlign: "center", fontSize: 14 }}>
             <button
               type="button"
               onClick={() => switchMode("recovery")}
-              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: 0.9 }}
+              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit", opacity: 0.9, padding: 12 }}
             >
               Forgot password?
             </button>
-          </div>
-        )}
-
-        {/* ── Mode toggle (sign-in's "No account?" line moved under the
-            password field, 2026-08-01) ── */}
-        {mode !== "signin" && (
-          <div style={{ marginTop: 20, textAlign: "center", fontSize: 14 }}>
-            <>Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => { setMode("signin"); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: CANON.cream, fontSize: 14, fontWeight: 700, fontFamily: "inherit" }}
-              >
-                Sign in
-              </button>
-            </>
           </div>
         )}
 

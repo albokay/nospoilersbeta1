@@ -174,10 +174,10 @@ export default function MobileSearchSheet({
         </div>
       ) : (
         <div style={{ ...sheetInner, textAlign: "center" }}>
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.green }}>
+          <div style={{ ...M.type.display, color: C.green }}>
             {pickShow.name}
           </div>
-          <div style={{ marginTop: 24, color: C.green, fontWeight: 600, fontSize: 13, letterSpacing: -1 }}>
+          <div style={{ marginTop: 24, color: C.green, fontWeight: 400, fontSize: 13, lineHeight: 1.45 }}>
             How much have you watched?
           </div>
           <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
@@ -191,7 +191,7 @@ export default function MobileSearchSheet({
             />
           </div>
           <button style={addBtn} onClick={() => onAdd(pickShow, pickProgress)}>
-            {addLabel ?? (groupContext ? "propose show" : "add to my shows")}
+            {addLabel ?? (groupContext ? "Propose show" : "Add to my shows")}
           </button>
         </div>
       )}
@@ -217,6 +217,5 @@ const resultRow: React.CSSProperties = {
   fontSize: 15, fontWeight: 600, color: C.green, minHeight: 44, boxSizing: "border-box",
 };
 const addBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "14px 40px", borderRadius: 65, cursor: "pointer", minHeight: 44, marginTop: 24,
+  ...M.pill.L, background: C.blue, color: C.cream, marginTop: 24,
 };

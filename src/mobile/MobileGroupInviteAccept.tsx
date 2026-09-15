@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "../components/SidebarLogo";
+import LoadingDots from "../components/LoadingDots";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { claimInvitePicks } from "../lib/invitePicks";
 import InviteShowSuggest from "../components/InviteShowSuggest";
@@ -322,7 +323,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         <SidebarLogo scale={0.5} blocksOpacity={1} />
       </div>
       <div style={card}>
-        {status === "loading" && <p style={muted}>Loading…</p>}
+        {/* Standard loading line, in the card's ink (polish pass 2026-09-14). */}
+        {status === "loading" && <p style={{ ...muted, fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></p>}
 
         {/* (Signed-in ready/joining renders the "You're in!" card above.) */}
         {/* Session still resolving after returning from /m/auth. */}

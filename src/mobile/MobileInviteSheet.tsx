@@ -204,16 +204,18 @@ export default function MobileInviteSheet({
         {!links ? (
           <>
             <h1 style={title}>
-              {targetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
+              {targetGroupId ? <>Connect more friends<br />to this group</> : <>Email friends to<br />start a watch group</>}
             </h1>
+            <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, textAlign: "center", margin: "0 0 24px" }}>
+              Their name is how they&rsquo;ll show up for you.
+            </p>
             {rows.map((row, i) => (
-              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <div key={i} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <input
                   value={row.name}
                   onChange={(e) => setRows((prev) => prev.map((v, j) => (j === i ? { ...v, name: e.target.value } : v)))}
                   placeholder="their name"
                   maxLength={40}
-                  className="m-invite-input"
                   style={{ ...emailInput, marginBottom: 0, flex: 0.8, minWidth: 0 }}
                 />
                 <input
@@ -224,26 +226,26 @@ export default function MobileInviteSheet({
                   inputMode="email"
                   autoCapitalize="none"
                   autoCorrect="off"
-                  className="m-invite-input"
                   style={{ ...emailInput, marginBottom: 0, flex: 1.2, minWidth: 0 }}
                 />
               </div>
             ))}
-            {/* Onboarding's "+" look + the quiet Info-weight invitation
-                (Alborz 2026-09-01, desktop parity). */}
+            {/* Onboarding's "+" look; the hint is a plain caption (polish
+                pass 2026-09-14 — was italic "add more friends"; desktop
+                mirrored the same day). */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button
                 onClick={() => setRows((prev) => [...prev, { name: "", email: "" }])}
                 aria-label="Add another friend"
                 style={plusBtn}
               ><Plus size={20} strokeWidth={2.5} color={CANON.friend} /></button>
-              <span style={{ fontFamily: "Inter, sans-serif", fontStyle: "italic", fontWeight: 400, fontSize: 13, color: C.cream }}>add more friends</span>
+              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: C.cream }}>Add another friend</span>
             </div>
             {/* CP2 create-a-group: pair the invite with ≥1 proposed show. */}
             {creating && (
               <>
                 <p style={explainer}>
-                  And propose at least one show to watch together:
+                  And propose at least one show
                 </p>
                 {inviteShows.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -252,9 +254,9 @@ export default function MobileInviteSheet({
                         {s.name}
                         <button
                           onClick={() => setInviteShows((prev) => prev.filter((x) => x.id !== s.id))}
-                          style={{ border: "none", background: "transparent", color: C.midnight, cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0 }}
+                          style={{ border: "none", background: "transparent", color: C.midnight, cursor: "pointer", padding: 5, margin: -5, display: "inline-flex", lineHeight: 1 }}
                           aria-label="remove"
-                        >×</button>
+                        ><X size={14} /></button>
                       </span>
                     ))}
                   </div>
@@ -263,7 +265,6 @@ export default function MobileInviteSheet({
                   value={showQuery}
                   onChange={(e) => setShowQuery(e.target.value)}
                   placeholder="find your show"
-                  className="m-invite-input"
                   style={{ ...emailInput, marginBottom: 0 }}
                 />
                 {(catalogMatches.length > 0 || tvToAdd.length > 0) && (
@@ -282,11 +283,11 @@ export default function MobileInviteSheet({
             )}
             {/* "hi, it's…" removed (first-name identity CP4): the invite
                 email introduces the inviter by their first name. */}
-            <div style={{ textAlign: "center", marginTop: 20 }}>
+            <div style={{ textAlign: "center", marginTop: 32 }}>
               {/* In-flight label matches the act (Alborz 2026-08-20, desktop
                   parity): animated dots like the site's other waits. */}
               <button style={{ ...sendBtn, opacity: sending || !ready ? 0.6 : 1 }} disabled={sending || !ready} onClick={sendInvites}>
-                {sending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "create group" : "send invite"}
+                {sending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "Create group" : "Send invite"}
               </button>
             </div>
           </>
@@ -329,14 +330,11 @@ export default function MobileInviteSheet({
               </>
             )}
             <div style={{ textAlign: "center", marginTop: 12 }}>
-              <button style={sendBtn} onClick={close}>done</button>
+              <button style={sendBtn} onClick={close}>Done</button>
             </div>
           </>
         )}
       </div>
-      {/* Cream placeholders on the sky sheet (the shared .m-input rule is
-          scoped to green surfaces; these inputs are cream-filled). */}
-      <style>{`.m-invite-input::placeholder { color: rgba(26,58,74,0.45); }`}</style>
     </div>
   );
 }
@@ -347,13 +345,13 @@ function CopyLinkRow({ email, link }: { email: string; link: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div style={{ background: C.cream, borderRadius: 12, padding: 12, marginBottom: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.midnight }}>{email || "—"}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.midnight }}>{email || "—"}</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-        <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue, wordBreak: "break-all", flex: 1, textDecoration: "none" }}>{link}</a>
+        <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: C.blue, wordBreak: "break-all", flex: 1, textDecoration: "none" }}>{link}</a>
         <button
           onClick={() => { try { navigator.clipboard?.writeText(link); } catch { /* ignore */ } setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-          style={{ border: "none", background: C.blue, color: C.cream, fontSize: 11, fontWeight: 700, padding: "8px 14px", borderRadius: 65, cursor: "pointer", whiteSpace: "nowrap", minHeight: 32 }}
-        >{copied ? "copied!" : "copy"}</button>
+          style={{ ...M.pill.S, background: C.blue, color: C.cream, whiteSpace: "nowrap" }}
+        >{copied ? "Copied!" : "Copy"}</button>
       </div>
     </div>
   );
@@ -367,14 +365,11 @@ const sheet: React.CSSProperties = {
 };
 const inner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "8px 20px 0" };
 const title: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 26, letterSpacing: 0, color: C.cream,
-  textAlign: "center", margin: "8px 0 24px",
+  ...M.type.display, color: C.cream,
+  textAlign: "center", margin: "0 0 8px",
 };
 const emailInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: "none", borderRadius: 65,
-  padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 16,
-  color: C.midnight, background: C.cream, outline: "none", marginBottom: 10,
-  minHeight: 44,
+  ...M.input, marginBottom: 12,
 };
 const plusBtn: React.CSSProperties = {
   // Onboarding's cream-circle/Sky-plus look (2026-09-01; was a midnight
@@ -383,13 +378,15 @@ const plusBtn: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
   cursor: "pointer", marginTop: 2,
 };
+// Title-weight section head (polish pass 2026-09-14) — the show step used to
+// be a 13px explainer, giving the sheet's two halves unequal weight.
 const explainer: React.CSSProperties = {
-  fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal",
-  lineHeight: 1.5, color: C.cream, margin: "28px 0 12px",
+  ...M.type.title, color: C.cream, margin: "32px 0 12px",
 };
 const showChip: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, background: C.cream,
-  color: C.midnight, fontWeight: 700, fontSize: 13, padding: "8px 14px", borderRadius: 65,
+  ...M.pill.S, cursor: "default",
+  display: "inline-flex", alignItems: "center", gap: 8,
+  background: C.cream, color: C.midnight,
 };
 const resultRow: React.CSSProperties = {
   display: "block", width: "100%", textAlign: "left", border: "none", background: "transparent",
@@ -397,7 +394,6 @@ const resultRow: React.CSSProperties = {
   fontSize: 15, fontWeight: 600, color: C.cream, minHeight: 44, boxSizing: "border-box",
 };
 const sendBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "14px 40px", borderRadius: 65, cursor: "pointer", minHeight: 44,
+  ...M.pill.L, background: C.blue, color: C.cream,
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };

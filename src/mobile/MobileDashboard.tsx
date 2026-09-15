@@ -407,7 +407,7 @@ export default function MobileDashboard() {
         <>
           {/* Page headlines ("Your shows" arc CP1, 2026-09-07). */}
           {!showSocialOnb && !postAccept && (
-            <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: C.cream, textAlign: "center", margin: "18px 0 8px" }}>
+            <h1 style={{ ...M.type.display, color: C.cream, textAlign: "center", margin: "16px 0 0" }}>
               Your dashboard
             </h1>
           )}
@@ -456,16 +456,23 @@ export default function MobileDashboard() {
                 const names = pendingInviteMemberNames(inv, contactNames);
                 const label = inv.groupName || names.join(", ");
                 return (
-                  <button key={inv.token} style={groupRow} onClick={() => { setInvitePrompt(inv); setAcceptError(null); }}>
-                    <span style={avatarStrip}>
-                      {names.map((n, i) => (
-                        <span key={i} style={{ ...avatarCircle, background: C.red, color: C.cream }}>
-                          {(n[0] ?? "?").toUpperCase()}
-                        </span>
-                      ))}
-                    </span>
-                    <span style={groupRowName}>{label}</span>
-                  </button>
+                  // Same pressable plate as the group rows (polish pass
+                  // 2026-09-14) + an "invited you" caption so the row doesn't
+                  // rely on the red avatar alone to read as an invite.
+                  <span key={inv.token} className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+                    <span className="sb-plate" />
+                    <button style={groupRow} onClick={() => { setInvitePrompt(inv); setAcceptError(null); }}>
+                      <span style={avatarStrip}>
+                        {names.map((n, i) => (
+                          <span key={i} style={{ ...avatarCircle, background: C.red, color: C.cream }}>
+                            {(n[0] ?? "?").toUpperCase()}
+                          </span>
+                        ))}
+                      </span>
+                      <span style={groupRowName}>{label}</span>
+                      <span style={{ fontWeight: 400, fontSize: 13, color: C.cream, opacity: 0.85, flexShrink: 0 }}>invited you</span>
+                    </button>
+                  </span>
                 );
               })}
             </div>
@@ -476,7 +483,7 @@ export default function MobileDashboard() {
                  while onboarding is up — its screens own the page and this
                  reads as a competing action. ── */}
           {!showSocialOnb && (
-            <div style={{ textAlign: "center", padding: "16px 16px 24px" }}>
+            <div style={{ textAlign: "center", padding: "8px 16px 24px" }}>
               <button style={invitePill} onClick={() => setInviteOpen(true)}>Create another watch group?</button>
             </div>
           )}
@@ -494,19 +501,22 @@ export default function MobileDashboard() {
                 reference tab's world color; bottom room clears the docked
                 deck card. ── */}
           {!showSocialOnb && (
-            <div style={{ background: C.yellow, marginTop: 36, padding: "44px 16px 120px", position: "relative" }}>
-              {/* Border signposts (Alborz 2026-09-07) — centered on mobile
-                  (no side slack): green-side label above the border, the
-                  collect/log/remember copy just below it. */}
-              <div style={{ position: "absolute", top: -24, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap" }}>
-                Your friend groups <CornerRightUp size={18} strokeWidth={1} style={{ transform: "translateY(-6px)" }} />
+            <>
+              {/* Border signposts (Alborz 2026-09-07; polish pass 2026-09-14:
+                  normal flow — the absolute/negative-margin positioning was
+                  fragile if the copy ever wraps on small phones). Green-side
+                  label above the border, the collect/log copy just inside. */}
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap", margin: "32px 0 12px" }}>
+                Your friend groups <CornerRightUp size={18} strokeWidth={1} />
               </div>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.4, textAlign: "left", whiteSpace: "nowrap", margin: "-36px 0 32px" }}>
-                <CornerLeftDown size={18} strokeWidth={1} style={{ marginTop: 5, flexShrink: 0 }} />
-                <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+              <div style={{ background: C.yellow, padding: "20px 16px 120px" }}>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, textAlign: "left", whiteSpace: "nowrap", margin: "0 0 24px" }}>
+                  <CornerLeftDown size={18} strokeWidth={1} style={{ marginTop: 5, flexShrink: 0 }} />
+                  <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+                </div>
+                <ReferenceLookupBand mobile />
               </div>
-              <ReferenceLookupBand mobile />
-            </div>
+            </>
           )}
         </>
       )}
@@ -598,10 +608,10 @@ const topCircleBtn: React.CSSProperties = {
 };
 // gap 16 (was 12; Alborz 2026-08-18) — the rows felt crowded once they
 // gained their pressable plates.
-// Top 40 (was 8; Alborz 2026-08-18): the first row sat too close to the top
-// chrome — dropped by ~half a row (32px); everything below flows down.
+// Top 24 (polish pass 2026-09-14): the old 40 was set in August when there
+// was no headline; with the September h1 above, the two added to ~66px.
 const groupsWrap: React.CSSProperties = {
-  display: "flex", flexDirection: "column", gap: 16, padding: "40px 16px 24px",
+  display: "flex", flexDirection: "column", gap: 16, padding: "24px 16px 24px",
 };
 const groupRow: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 12,
@@ -621,19 +631,18 @@ const avatarCircle: React.CSSProperties = {
   marginRight: -8, border: `2px solid ${CANON.personal}`, boxSizing: "border-box",
 };
 const groupRowName: React.CSSProperties = {
-  flex: 1, marginLeft: 8, fontWeight: 700, fontSize: 15, letterSpacing: -0.5,
+  flex: 1, marginLeft: 8, fontWeight: 700, fontSize: 15,
   color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 const writingDot: React.CSSProperties = {
   width: 14, height: 14, borderRadius: "50%", background: C.blue, display: "inline-block", flexShrink: 0,
 };
 const invitePill: React.CSSProperties = {
-  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "16px 40px", borderRadius: 65, cursor: "pointer", minHeight: 48,
+  ...M.pill.L, background: C.blue, color: C.cream,
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };
 const sheetTitle: React.CSSProperties = {
-  color: C.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, textAlign: "center",
+  color: C.cream, fontSize: 15, fontWeight: 600, textAlign: "center",
 };
 // Bottom sheet (mobile idiom for small confirm cards).
 const dim: React.CSSProperties = {

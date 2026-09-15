@@ -920,7 +920,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <div style={contentWrap}>
           {groupShelves.watching.length > 0 && (
             <>
-              <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
+              <h1 style={shelfHeader}>Open show rooms</h1>
               <div style={shelfCol}>
                 {groupShelves.watching.map((r) => (
                   <ShowRow
@@ -941,8 +941,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               {/* Vertical rhythm tightened from here down (Alborz 2026-08-18)
                   so the first browse row peeks clearly above the docked deck
                   card — an invitation to scroll, not a covered-up glitch. */}
-              <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 28 : 0 }}>
-                Proposed shows:
+              <h1 style={{ ...shelfHeader, marginTop: groupShelves.watching.length ? 32 : 0 }}>
+                Proposed shows
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
@@ -967,7 +967,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               the stretch column (both sized to the wider "Add friends" label). */}
           <div style={{ display: "flex", justifyContent: "center", marginTop: empty ? 24 : 28 }}>
             <div style={actionCol}>
-              <button style={{ ...searchPill, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }} onClick={() => setSearchOpen(true)}><Search size={26} color={C.cream} strokeWidth={2} />Propose more shows?</button>
+              <button style={{ ...searchPill, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10 }} onClick={() => setSearchOpen(true)}><Search size={20} color={C.cream} strokeWidth={2} />Propose more shows?</button>
               <button style={addFriendsPill} onClick={() => setInviteOpen(true)}>Add more friends to this group?</button>
             </div>
           </div>
@@ -1320,11 +1320,11 @@ function ShowRow({ row, dot, line2, onClick, onLongPress }: {
     >
       {dot && <span style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <span style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {row.name}
         </span>
         {line2 && (
-          <span style={{ fontWeight: 500, fontSize: 12, opacity: 0.9 }}>{line2}</span>
+          <span style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.45, opacity: 0.9 }}>{line2}</span>
         )}
       </span>
       {row.opted.length > 0 && (
@@ -1418,9 +1418,11 @@ const notifDotChatInline: React.CSSProperties = {
 };
 // Bottom 16 (was 40; Alborz 2026-08-18) — the browse rows follow directly.
 const contentWrap: React.CSSProperties = { padding: "8px 16px 16px" };
+// Title grammar (polish pass 2026-09-14): Lora 22, sentence case, no colon —
+// matches every other section head on /m.
 const shelfHeader: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 24, letterSpacing: 0, color: C.cream,
-  textAlign: "center", textTransform: "uppercase", margin: "0 0 16px",
+  ...M.type.title, color: C.cream,
+  textAlign: "center", margin: "0 0 16px",
 };
 const heroH1: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 28, lineHeight: 1.2, letterSpacing: 0, color: C.cream, margin: 0,
@@ -1453,15 +1455,13 @@ const optInAvatar: React.CSSProperties = {
 // makes "Propose" match it. "Propose" = accent fill; "Add friends" =
 // Identity fill, cream text.
 const actionPillBase: React.CSSProperties = {
-  border: "none", color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "14px 32px", borderRadius: 65, cursor: "pointer", minHeight: 48,
-  boxSizing: "border-box",
+  ...M.pill.M, color: C.cream,
 };
 const searchPill: React.CSSProperties = { ...actionPillBase, background: C.yellow };
 const addFriendsPill: React.CSSProperties = { ...actionPillBase, background: C.blue };
 // Centered column; align-items:stretch makes both buttons the width of the
 // widest label ("Add more friends…"), so they match without spanning the row.
-const actionCol: React.CSSProperties = { display: "inline-flex", flexDirection: "column", gap: 16 };
+const actionCol: React.CSSProperties = { display: "inline-flex", flexDirection: "column", gap: 12 };
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",
   WebkitOverflowScrolling: "touch",

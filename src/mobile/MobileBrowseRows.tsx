@@ -38,7 +38,7 @@ export default function MobileBrowseRows({
   const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
   return (
-    <div style={{ padding: "8px 0 24px" }}>
+    <div style={{ padding: "16px 0 24px" }}>
       {rows.map((r) => (
         <div key={r.key} style={{ marginBottom: 26 }}>
           <div style={{ ...(subLabels ? { ...rowTitle, fontWeight: 600, fontStyle: "italic", fontSize: 13 } : rowTitle), ...(flush ? { paddingLeft: 0, paddingRight: 0 } : {}) }}>{r.title}</div>
@@ -57,7 +57,7 @@ export default function MobileBrowseRows({
 }
 
 const rowTitle: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, color: CANON.cream,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.cream,
   padding: `0 ${EDGE}px`, marginBottom: 10,
 };
 // Full-bleed strip: the first poster sits on the content edge, the last one
@@ -70,7 +70,7 @@ const strip: React.CSSProperties = {
 };
 const card: React.CSSProperties = {
   flex: "0 0 auto", width: CARD_W, height: CARD_H, padding: 0, border: "none",
-  borderRadius: 4, overflow: "hidden", cursor: "pointer", background: "rgba(253,248,236,0.12)",
+  borderRadius: 12, overflow: "hidden", cursor: "pointer", background: "rgba(253,248,236,0.12)",
   scrollSnapAlign: "start", WebkitTapHighlightColor: "transparent",
 };
 const poster: React.CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block" };

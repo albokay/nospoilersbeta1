@@ -677,8 +677,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // V2InlineThread.
                 cursor: isExpanded ? "default" : "pointer",
                 position: "relative",
-                paddingTop: 12,
+                paddingTop: mobileIdiom ? 16 : 12,
                 paddingBottom: 36,
+                // Mobile polish 2026-09-14: 16px ticket sides on the phone
+                // (the .card class default is 12).
+                ...(mobileIdiom ? { paddingLeft: 16, paddingRight: 16 } : null),
                 // Map-cell-click highlight: the OUTLINE stays its normal color
                 // (cream in rooms); the attention pulse is a midnight-blue
                 // flashing dropshadow (`flash-glow`, box-shadow) so the lines
@@ -770,7 +773,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 className="muted"
                 style={{
                   marginTop: 4,
-                  fontSize: 14,
+                  // Mobile polish 2026-09-14: caption 13, cream on the sky —
+                  // the darker muted byline read as a different component.
+                  fontSize: mobileIdiom ? 13 : 14,
+                  ...(mobileIdiom ? { color: CANON.cream } : null),
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
