@@ -1,4 +1,5 @@
 import { CANON } from "../styles/canon";
+import { M } from "./m";
 import React, { useState, Suspense } from "react";
 import lazyWithReload from "../lib/lazyWithReload";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -64,21 +65,13 @@ export default function MobileNarrative() {
       <button
         onClick={() => navigate(signInTarget)}
         style={{
+          ...M.pill.M,
           position: "fixed",
-          top: "calc(env(safe-area-inset-top, 0px) + 14px)",
-          right: 14,
+          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+          right: 12,
           zIndex: 100,
           background: "var(--canon-accent,#dea838)",
           color: CANON.cream,
-          border: "none",
-          borderRadius: 9999,
-          padding: "8px 18px",
-          minHeight: 44,
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: "pointer",
-          fontFamily: "inherit",
-          letterSpacing: "0.02em",
         }}
       >
         Sign in
@@ -89,20 +82,23 @@ export default function MobileNarrative() {
 
       {/* ── Hero headline (shared copy; desktop's isMobile line-break shape) ── */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 0, paddingBottom: 24 }}>
+        {/* Hero + section title join the Lora display/title pair every
+            signed-in screen uses (polish pass 2026-09-14 — these were the
+            last Inter-800 headlines on /m). */}
         <p style={{
+          ...M.type.display,
           maxWidth: 560, textAlign: "center",
-          margin: "80px 16px 40px",
-          fontSize: 20, fontWeight: 800,
-          color: CANON.cream, lineHeight: 1.3,
+          margin: "80px 24px 40px",
+          color: CANON.cream,
         }}>
           {HERO_LINES[0]}<br />
           {HERO_LINES[1]}<br />
-          <em>{HERO_EMPHASIS}</em>
+          <em style={{ fontWeight: 400 }}>{HERO_EMPHASIS}</em>
         </p>
 
         <p style={{
-          fontSize: 20, fontWeight: 800,
-          color: CANON.cream, margin: "8px 16px 40px", textAlign: "center",
+          ...M.type.title,
+          color: CANON.cream, margin: "0 16px 24px", textAlign: "center",
         }}>
           {HOW_IT_WORKS_TITLE}
         </p>
@@ -113,7 +109,7 @@ export default function MobileNarrative() {
           display: "grid",
           gridTemplateColumns: "1fr",
           gap: 8,
-          width: "min(288px, 90vw)",
+          width: "min(320px, 90vw)",
           margin: "0 0 0",
           padding: 0,
           boxSizing: "border-box",
@@ -121,22 +117,22 @@ export default function MobileNarrative() {
           {HOW_IT_WORKS_STEPS.map(({ Icon, text }, idx) => (
             <div key={idx} style={{
               borderRadius: 16,
-              padding: "12px 14px",
+              padding: "12px 16px",
               display: "flex",
               flexDirection: "row",
               alignItems: "center",
               gap: 14,
-              background: "rgba(253,248,236,0.92)",
+              background: CANON.cream,
             }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                <span style={{ fontSize: 16, fontWeight: 800, color: "var(--dos-bg)", lineHeight: 1 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "var(--dos-bg)", lineHeight: 1 }}>
                   {idx + 1}.
                 </span>
                 <Icon size={18} color="var(--dos-bg)" strokeWidth={1.5} />
               </div>
               <span style={{
                 width: "auto",
-                fontSize: 12,
+                fontSize: 14,
                 color: "var(--dos-bg)",
                 fontWeight: 600,
                 lineHeight: 1.4,
@@ -147,15 +143,13 @@ export default function MobileNarrative() {
         </div>
 
         {/* ── CTAs: join + details (desktop parity, mobile targets) ── */}
-        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "min(288px, 90vw)" }}>
+        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, width: "min(320px, 90vw)" }}>
           <button
             onClick={() => navigate(joinTarget)}
             style={{
+              ...M.pill.L, fontSize: 16,
               width: "100%", maxWidth: 420,
-              background: CANON.cream, color: "var(--dos-bg)", border: "none",
-              borderRadius: 9999, padding: "14px 0",
-              fontSize: 18, fontWeight: 800, cursor: "pointer",
-              letterSpacing: "0.02em",
+              background: CANON.cream, color: "var(--dos-bg)",
             }}
           >
             {CTA_JOIN_LABEL}
@@ -163,12 +157,10 @@ export default function MobileNarrative() {
           <button
             onClick={() => setShowDetails(true)}
             style={{
+              ...M.pill.L, fontSize: 16,
               width: "100%", maxWidth: 420,
               background: "transparent", color: CANON.cream,
               border: "2px solid var(--canon-cream,#fef8ea)",
-              borderRadius: 9999, padding: "12px 0",
-              fontSize: 18, fontWeight: 800, cursor: "pointer",
-              letterSpacing: "0.02em",
             }}
           >
             {CTA_DETAILS_LABEL}
@@ -198,8 +190,8 @@ export default function MobileNarrative() {
             <span style={{
               display: "inline-flex",
               alignItems: "center",
-              padding: "4px 12px",
-              fontSize: 12,
+              padding: "8px 16px",
+              fontSize: 13,
               fontWeight: !betaOpen ? 700 : 400,
               background: !betaOpen ? "var(--dos-border)" : "transparent",
               color: !betaOpen ? "var(--dos-bg)" : "transparent",
@@ -210,8 +202,8 @@ export default function MobileNarrative() {
             <span style={{
               display: "inline-flex",
               alignItems: "center",
-              padding: "4px 12px",
-              fontSize: 12,
+              padding: "8px 16px",
+              fontSize: 13,
               fontWeight: betaOpen ? 700 : 400,
               background: betaOpen ? "var(--dos-border)" : "transparent",
               color: betaOpen ? "var(--dos-bg)" : "transparent",
