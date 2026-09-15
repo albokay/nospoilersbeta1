@@ -6,6 +6,8 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import { deleteAccount, setOwnDisplayName } from "../lib/db";
 import { CANON } from "../styles/canon";
+import { M, OVERLAY, LORA } from "../mobile/m";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
 // flow (ANONYMIZE model): personal info + private notes are erased, shared-room
@@ -17,7 +19,11 @@ const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue
 // section with a Sign out button renders between the name and delete
 // sections — /m's dashboard dropped its sign-out circle and routes the
 // action here. Desktop callers pass nothing and are unchanged.
-export default function AccountModal({ onClose, onSignOut }: { onClose: () => void; onSignOut?: () => void | Promise<void> }) {
+// mobile (Part-2 overlay 9): renders the /m idiom instead of the desktop
+// Modal — a cream bottom sheet (grabber + swipe + tap-out), with the
+// type-DELETE step as a centered cream DIALOG (Cancel is the exit; it's one
+// of the two truly irreversible confirms on /m). Desktop path byte-identical.
+export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: () => void; onSignOut?: () => void | Promise<void>; mobile?: boolean }) {
   const { user, profile, refreshProfile } = useAuth() as any;
   const [phase, setPhase] = useState<"main" | "confirm">("main");
   const [confirmText, setConfirmText] = useState("");
@@ -51,6 +57,9 @@ export default function AccountModal({ onClose, onSignOut }: { onClose: () => vo
 
   const canDelete = confirmText.trim().toUpperCase() === "DELETE";
 
+  // Mobile sheet swipe-down (hook must run unconditionally; inert on desktop).
+  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: mobile && !busy && phase === "main" });
+
   async function doDelete() {
     setBusy(true);
     setError(null);
@@ -78,6 +87,103 @@ export default function AccountModal({ onClose, onSignOut }: { onClose: () => vo
       }
     } catch { /* ignore */ }
     window.location.replace("/");
+  }
+
+  if (mobile) {
+    // ── /m idiom (polish pass 2026-09-14) ──────────────────────────────────
+    if (phase === "confirm") {
+      return (
+        <div style={{ ...OVERLAY.dialogWrap, zIndex: 1300 }}>
+          <div style={{ ...OVERLAY.dialog, background: CANON.cream }}>
+            <p style={{ margin: "0 0 12px", fontSize: 15, lineHeight: 1.5, color: C.midnight }}>
+              This is permanent. Type <strong>DELETE</strong> to confirm.
+            </p>
+            <input
+              value={confirmText}
+              onChange={(e) => { setConfirmText(e.target.value); setError(null); }}
+              placeholder="DELETE"
+              autoFocus
+              disabled={busy}
+              autoComplete="off"
+              style={{ ...M.input, boxShadow: `inset 0 0 0 2px ${CANON.friend}`, marginBottom: 12 }}
+            />
+            {error && <p style={{ margin: "0 0 12px", fontSize: 14, color: C.red, fontWeight: 600 }}>{error}</p>}
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={doDelete}
+                disabled={busy || !canDelete}
+                style={{ ...M.pill.M, flex: 1, background: C.red, color: CANON.cream, whiteSpace: "nowrap", opacity: (busy || !canDelete) ? M.disabledOpacity : 1 }}
+              >
+                {busy ? <LoadingDots /> : "Permanently delete"}
+              </button>
+              <button
+                onClick={() => { setPhase("main"); setConfirmText(""); setError(null); }}
+                disabled={busy}
+                style={{ ...M.pill.M, flex: 1, background: "transparent", color: C.midnight, border: `2px solid ${C.midnight}` }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)", display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "mDimIn 180ms ease-out" }}
+        onPointerDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}
+      >
+        <div {...sheetSwipe.handlers} style={{ ...OVERLAY.sheet, background: CANON.cream, ...sheetSwipe.style }}>
+          <div style={OVERLAY.grabber(C.midnight)} />
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.25, color: C.midnight }}>Account</div>
+          {user?.email && <div style={{ ...mCaption, marginTop: 2 }}>{user.email}</div>}
+
+          <div style={{ ...mLabel, marginTop: 20 }}>Your name</div>
+          <div style={{ ...mCaption, marginBottom: 12 }}>
+            How you show up for your friends, unless they&rsquo;ve saved their own name for you.
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              value={nameDraft}
+              onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
+              placeholder="your first name"
+              maxLength={40}
+              disabled={nameSaving}
+              autoComplete="given-name"
+              style={{ ...M.input, flex: 1, width: "auto", boxShadow: `inset 0 0 0 2px ${CANON.friend}` }}
+            />
+            <button
+              onClick={saveName}
+              disabled={nameSaving || !nameDirty}
+              style={{ ...M.pill.M, flexShrink: 0, background: CANON.identity, color: CANON.cream, opacity: nameSaving || !nameDirty ? M.disabledOpacity : 1 }}
+            >
+              {nameSaving ? <LoadingDots /> : nameSaved ? "Saved!" : "Save"}
+            </button>
+          </div>
+          {nameError && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.red, fontWeight: 600 }}>{nameError}</p>}
+
+          {onSignOut && (
+            <>
+              <div style={mDivider} />
+              <div style={{ ...mLabel, marginBottom: 12 }}>Signed in</div>
+              <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
+                <LogOut size={16} /> Sign out
+              </button>
+            </>
+          )}
+
+          <div style={mDivider} />
+          <div style={{ ...mLabel, color: C.red }}>Delete account</div>
+          <div style={{ ...mCaption, marginBottom: 12 }}>
+            Permanently deletes your account, personal info and private notes. Posts in shared rooms
+            stay, shown as &ldquo;(deleted user)&rdquo;. This can&rsquo;t be undone.
+          </div>
+          <button onClick={() => setPhase("confirm")} style={{ ...M.pill.M, background: "transparent", color: C.red, border: `2px solid ${C.red}` }}>
+            Delete my account&hellip;
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -190,3 +296,11 @@ const signOutBtn: React.CSSProperties = {
   border: `2px solid ${C.midnight}`, background: "transparent", color: C.midnight,
   fontSize: 14, fontWeight: 700, cursor: "pointer",
 };
+// /m sheet grammar (polish pass 2026-09-14).
+const mLabel: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.midnight, marginBottom: 8,
+};
+const mCaption: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.midnight, opacity: 0.7,
+};
+const mDivider: React.CSSProperties = { height: 1, background: "rgba(26,58,74,0.12)", margin: "24px 0" };

@@ -391,6 +391,7 @@ export default function MobileDashboard() {
 
       {showAccount && (
         <AccountModal
+          mobile
           onClose={() => setShowAccount(false)}
           onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
         />

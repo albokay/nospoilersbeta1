@@ -1018,6 +1018,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {/* ── Rate the episode you just finished (forward progress pick) ── */}
       {pendingRating && (
         <RatingCaptureModal
+          mobile
+          showName={show?.name}
           season={pendingRating.s}
           episode={pendingRating.e}
           onCommit={commitRating}

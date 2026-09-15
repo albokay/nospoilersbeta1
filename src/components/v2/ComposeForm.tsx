@@ -1028,6 +1028,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
 
       {pendingRating && (
         <RatingCaptureModal
+          mobile={mobileIdiom}
           season={pendingRating.s}
           episode={pendingRating.e}
           onCommit={handleRatingCommit}

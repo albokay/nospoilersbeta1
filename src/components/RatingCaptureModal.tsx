@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Modal from "./Modal";
 import StarFace from "./v2/StarFace";
 import { CANON } from "../styles/canon";
+import { M, OVERLAY, LORA } from "../mobile/m";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
 // forward progress advancement in V2/V3 surfaces only. Spec:
@@ -55,6 +56,8 @@ export default function RatingCaptureModal({
   onCommit,
   onCancel,
   onSkip,
+  mobile = false,
+  showName,
 }: {
   season: number;
   episode: number;
@@ -62,6 +65,11 @@ export default function RatingCaptureModal({
   onCancel: () => void;
   /** Confirm the progress advance but skip rating this episode for now. */
   onSkip?: () => void;
+  /** /m idiom (polish pass 2026-09-14): a yellow bottom sheet — it's a
+   *  decision about a show. Desktop Modal path untouched. */
+  mobile?: boolean;
+  /** Caption context for the mobile sheet ("{show} · season {s}"). */
+  showName?: string;
 }) {
   // null until the user taps a rating. Once set, the other pills go
   // label-empty and all controls are disabled to prevent a second tap
@@ -75,6 +83,41 @@ export default function RatingCaptureModal({
   }
 
   const locked = selected !== null;
+
+  if (mobile) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.35)", display: "flex", alignItems: "flex-end", justifyContent: "center", animation: "mDimIn 180ms ease-out" }}>
+        <div style={{ ...OVERLAY.sheet, background: CANON.accent }}>
+          <div style={OVERLAY.grabber(CREAM)} />
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.25, color: CREAM }}>
+            How was episode {episode}?
+          </div>
+          <div style={{ fontFamily: INTER, fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CREAM, opacity: 0.85, margin: "2px 0 16px" }}>
+            {showName ? `${showName} · ` : ""}season {season}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[6, 5, 4, 3, 2, 1].map((r) => {
+              const showLabel = !locked || selected === r;
+              return (
+                <button key={r} onClick={() => pick(r)} disabled={locked} style={mPill}>
+                  <span style={{ visibility: showLabel ? "visible" : "hidden", display: "inline-flex", alignItems: "center", gap: 12 }}>
+                    <RatingStars rating={r} size={28} />
+                    {RATING_LABELS[r]}
+                  </span>
+                </button>
+              );
+            })}
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 12, marginTop: 12 }}>
+              <button onClick={onCancel} disabled={locked} style={{ ...M.pill.M, background: "transparent", color: CREAM, border: `2px solid ${CREAM}` }}>Cancel</button>
+              {onSkip && (
+                <button onClick={onSkip} disabled={locked} style={{ ...M.pill.M, background: "transparent", color: CANON.alert, border: `2px solid ${CANON.alert}` }}>Skip</button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     // Backdrop dismiss disabled per spec. onClose is a no-op; cancel goes
@@ -115,6 +158,26 @@ export default function RatingCaptureModal({
     </Modal>
   );
 }
+
+// /m sheet option pill (polish pass 2026-09-14): 48px, Inter 15/600 dark.
+const mPill: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  width: "100%",
+  minHeight: 48,
+  padding: "10px 16px",
+  borderRadius: 9999,
+  background: CREAM,
+  color: MIDNIGHT,
+  border: "none",
+  fontFamily: INTER,
+  fontSize: 15,
+  fontWeight: 600,
+  textAlign: "left",
+  cursor: "pointer",
+  lineHeight: 1.3,
+  boxSizing: "border-box",
+};
 
 const pillStyle: React.CSSProperties = {
   display: "flex",

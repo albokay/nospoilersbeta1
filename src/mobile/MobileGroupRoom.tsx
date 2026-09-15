@@ -119,15 +119,17 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
     <button
       onClick={() => onChange(!value)}
       style={{
-        border: "none", cursor: "pointer", borderRadius: 65, padding: 3, width: 84, height: 32,
+        // 96×40 (polish pass 2026-09-14; was 84×32) so the knob is a real
+        // touch target.
+        border: "none", cursor: "pointer", borderRadius: 9999, padding: 4, width: 96, height: 40,
         background: C.cream, position: "relative", display: "flex", alignItems: "center",
       }}
     >
       <span style={{
-        position: "absolute", left: value ? 46 : 3, top: 3, width: 35, height: 26, borderRadius: 65,
+        position: "absolute", left: value ? 50 : 4, top: 4, width: 42, height: 32, borderRadius: 9999,
         background: value ? C.green : C.yellow, transition: "left 120ms, background 120ms",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 12, fontWeight: 700, color: C.cream,
+        fontSize: 13, fontWeight: 700, color: C.cream,
       }}>{value ? "yes" : "no"}</span>
     </button>
   );
@@ -1021,9 +1023,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           .map((m) => memberNameById[m.userId] ?? "someone");
         return (
           <div style={{ ...sheet, background: C.yellow }}>
-            <button style={sheetClose} onClick={() => setClicked(null)}><X size={20} color={C.cream} /></button>
+            {/* The × lives in a real top bar (polish pass 2026-09-14) —
+                content starts under it instead of a fixed 64px paddingTop. */}
+            <div style={{ ...M.topBar, justifyContent: "flex-end" }}>
+              <button style={M.iconBtn} onClick={() => setClicked(null)} aria-label="Close"><X size={20} color={C.cream} /></button>
+            </div>
+            {/* Progress pill fit (polish pass): 44px min-height, 10×18 pad,
+                16px chevron — scoped to this sheet's cell class. */}
+            <style>{`
+              .m-vote-progress select { min-height: 44px !important; padding: 10px 28px 10px 18px !important; }
+              .m-vote-progress svg { width: 16px; height: 16px; }
+            `}</style>
             <div style={sheetInner}>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: C.cream, textAlign: "center", marginBottom: 20 }}>
+              <div style={{ ...M.type.display, color: C.cream, textAlign: "center", marginBottom: 24 }}>
                 {preventLastWordOrphan(clicked.name)}
               </div>
 
@@ -1046,7 +1058,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                             when someone else is actually interested. */}
                         <div style={sheetTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
                         {interestedNames.length > 0 && (
-                          <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
+                          <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
                             {preventLastWordOrphan(interestedLine(interestedNames) ?? "")}
                           </div>
                         )}
@@ -1059,7 +1071,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                       <>
                         {withToggle && <div style={sheetDivider} />}
                         <div style={sheetTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
-                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                        <div className="m-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           <OneSelectProgress
                             show={showsById[clicked.showId] ?? { seasons: [] }}
                             value={curVal}
@@ -1079,9 +1091,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         <div style={sheetBtnCol}>
                           <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
                           {!gs?.roomId && optedCount <= 1 && (
-                            <div style={joinNote}>{preventLastWordOrphan("(Your friends can join in when they're ready.)")}</div>
+                            <div style={joinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
-                          <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                          <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                         </div>
                       </>
                     )}
@@ -1094,7 +1106,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   {/* No show name here either (Alborz 2026-08-12) — the
                       title above carries it. */}
                   <div style={sheetTitle}>Are you also watching?</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                  <div className="m-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
                       value={{ s: 0, e: 0 }}
@@ -1109,7 +1121,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                   <div style={sheetBtnCol}>
                     <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
-                    <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                    <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -1120,7 +1132,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   actions, same vertical order as desktop. Renders nothing on
                   a miss. */}
               {curVal.s === 0 && curVal.e === 0 && (
-                <div style={{ marginTop: 20, display: "flex", justifyContent: "center" }}>
+                <div style={{ marginTop: 24, display: "flex", justifyContent: "center" }}>
                   <TrailerCard showId={clicked.showId} tvmazeId={showsById[clicked.showId]?.tvmazeId} />
                 </div>
               )}
@@ -1486,18 +1498,12 @@ const actionCol: React.CSSProperties = { display: "inline-flex", flexDirection: 
 const sheet: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, overflowY: "auto",
   WebkitOverflowScrolling: "touch",
-  paddingTop: "calc(env(safe-area-inset-top, 0px) + 64px)",
   paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)",
   boxSizing: "border-box",
 };
-const sheetClose: React.CSSProperties = {
-  position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
-  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1001,
-};
-const sheetInner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "0 20px" };
+const sheetInner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", padding: "8px 20px 0" };
 const sheetTitle: React.CSSProperties = {
-  color: C.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, textAlign: "center",
+  color: C.cream, fontSize: 15, fontWeight: 600, textAlign: "center",
 };
 const sheetDivider: React.CSSProperties = { ...OVERLAY.divider(CANON.cream) };
 // Gear-sheet section grammar (polish pass): Label 14/700, caption 13.
@@ -1513,20 +1519,16 @@ const sheetCaptionDark: React.CSSProperties = {
 const sheetActionBtn: React.CSSProperties = {
   ...M.pill.M, background: CANON.identity, color: CANON.cream,
 };
-const startBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "11px 38px", borderRadius: 65, cursor: "pointer", minHeight: 44,
-};
-// Stacked room/confirm pair (Alborz 2026-08-12): blue action on top, both
-// the same size; the old side-by-side row + question copy retired.
+// Stacked room/confirm pair (Alborz 2026-08-12; polish pass 2026-09-14:
+// identity L primary + cream-outline M secondary, both 280 wide).
 const sheetBtnCol: React.CSSProperties = {
-  display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 12,
+  display: "flex", flexDirection: "column", gap: 12, alignItems: "center", marginTop: 12,
 };
 const sheetRoomBtn: React.CSSProperties = {
-  ...startBtn, width: 270, padding: "11px 24px", boxSizing: "border-box", whiteSpace: "nowrap",
+  ...M.pill.L, background: C.blue, color: C.cream, width: 280, whiteSpace: "nowrap",
 };
 const sheetConfirmBtn: React.CSSProperties = {
-  ...sheetRoomBtn, background: "transparent", color: C.cream, border: `2px solid ${C.cream}`,
+  ...M.pill.M, background: "transparent", color: C.cream, border: `2px solid ${C.cream}`, width: 280, whiteSpace: "nowrap",
 };
 // The first-opter reassurance, Body styling (Alborz 2026-08-12 — replaces
 // the old "Your friends can join in…" second line of the room question).
