@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Settings, SquarePen, X } from "lucide-react";
+import { ArrowLeft, Minus, Settings, SquarePen, UserPen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -25,7 +25,8 @@ import {
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
 import { joinNames } from "../lib/groupNames";
-import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
+import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
+import AccountModal from "./AccountModal";
 import { ensureShowReference } from "../lib/reference";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
@@ -48,7 +49,7 @@ import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
 const LORA = '"Lora", Georgia, serif';
-const HEADER_H = 104;
+// (HEADER_H retired 2026-09-15 — the page shares the 96px D.header.bar.)
 // "reference" = the spoiler-gated reference (2026-09-05); its tab exists
 // only once the viewer's dial reaches S1E1 — no 0-state reference page.
 type Tab = "friend" | "private" | "reference";
@@ -57,7 +58,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // Private-only standalone (dashboard "write by yourself"): no group/room,
   // just the viewer's private writing for a show. Group-independent.
   const privateOnly = !!privateShowId && !roomId;
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth() as any;
+  // Account circle in the header bar (polish pass 2026-09-15 — this page
+  // had no account chrome before).
+  const [showAccount, setShowAccount] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   // CP7: digest-email deep-links arrive as /show-room/<id>?entry=<threadId>
@@ -777,50 +781,76 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <ArrowLeft size={24} color={C.green} />
       </button>
 
-      {/* ── Header strip: logo left · centered name · tabs on the boundary.
-            Header + body colors swap by mode: friend = green header / sky body,
-            private = sky header / green body (the inactive tab shows through). ── */}
-      <div style={{ position: "relative", background: tab === "private" ? C.sky : C.green, height: HEADER_H }}>
-        <div
-          style={{ position: "absolute", left: 20, top: 12, cursor: "pointer" }}
-          onClick={() => navigate("/dashboard")}
-          role="button"
-          aria-label="Home"
-          title="Home"
-        ><SidebarLogo scale={0.45} blocksOpacity={1} betaBadge /></div>
-
-        <div style={{ position: "absolute", left: "50%", top: 18, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: C.cream, margin: 0 }}>
-            {show?.name ?? "Show"}
-          </h1>
-          {/* Naming arc (2026-07-07): the "with …" line matches the group
-              room's members line — same font, same greyblue "with", given
-              names (cluster rule: given-names until a custom group name). */}
-          {tab === "reference" && refCreatedBy.length > 0 ? (
-            <span style={groupHeadingMembers}>created by {refCreatedBy.join(" & ")}</span>
-          ) : groupName ? (
-            <span style={groupHeadingMembers}>with {groupName}</span>
-          ) : null}
-          {!privateOnly && roomId && (
-            <button
-              onClick={openDigestModal}
-              aria-label="Email updates for this room"
-              title="Email updates for this room"
-              style={{ background: "transparent", border: "none", cursor: "pointer", color: C.cream, display: "inline-flex", alignItems: "center", padding: 4, opacity: 0.85 }}
-            >
-              <Settings size={22} />
+      {/* ── Header band: the shared 96px bar (logo · name + gear + caption ·
+            account circle) with the tab row under it, left-aligned to the
+            feed column (polish pass 2026-09-15 — replaces the absolutely
+            positioned 104px strip). Header + body colors still swap by mode:
+            friend = green header / sky body, private = sky header / green
+            body (the inactive tab shows through). ── */}
+      <div style={{ background: tab === "private" ? C.sky : C.green }}>
+        <div style={D.header.bar}>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <div
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/dashboard")}
+              role="button"
+              aria-label="Home"
+              title="Home"
+            ><SidebarLogo scale={0.5} blocksOpacity={1} betaBadge /></div>
+          </div>
+          <div style={D.header.center}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+              <h1 style={{ ...D.type.display, color: C.cream, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {show?.name ?? "Show"}
+              </h1>
+              {!privateOnly && roomId && (
+                <button
+                  onClick={openDigestModal}
+                  aria-label="Email updates for this room"
+                  title="Email updates for this room"
+                  style={{ ...D.iconBtn, color: C.cream, opacity: 0.85 }}
+                >
+                  <Settings size={20} />
+                </button>
+              )}
+            </div>
+            {/* Naming arc (2026-07-07): the "with …" line matches the group
+                room's members caption — same style, given names. */}
+            {tab === "reference" && refCreatedBy.length > 0 ? (
+              <span style={groupHeadingMembers}>created by {refCreatedBy.join(" & ")}</span>
+            ) : groupName ? (
+              <span style={groupHeadingMembers}>with {groupName}</span>
+            ) : null}
+          </div>
+          <div style={D.header.right}>
+            <button style={D.circleBtn(C.cream)} title="account" onClick={() => setShowAccount(true)}>
+              <UserPen size={20} color={C.cream} />
             </button>
-          )}
+          </div>
         </div>
 
-        <div style={{ position: "absolute", left: 160, bottom: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
-          {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
-          {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
-          {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
-              author-only space; sharing is manual copy/paste, no convert. */}
-          <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+        {/* Tab row: mirrors the body grid ([672 feed | 64 | map]) so the
+            tabs line up with the content they switch. */}
+        <div style={{ padding: "0 24px" }}>
+          <div style={{ display: "flex", gap: 64, alignItems: "flex-end", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
+            <div style={{ flex: "0 1 672px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
+              {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
+              {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
+              {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
+                  author-only space; sharing is manual copy/paste, no convert. */}
+              <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+            </div>
+            <div style={{ flex: "0 0 300px" }} aria-hidden />
+          </div>
         </div>
       </div>
+
+      {showAccount && (
+        <AccountModal
+          onClose={() => setShowAccount(false)}
+          onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}
+        />
+      )}
 
       {/* ── Two-pane body — mirrors the live room (V2FriendRoomPage): a 672px
             feed column + season map, the pair centered within a 1400 max width.
@@ -1093,16 +1123,15 @@ function RoomTab({ label, active, bg, onClick }: { label: string; active: boolea
     <button
       onClick={onClick}
       style={{
-        cursor: "pointer", padding: "6px 22px",
-        borderTopLeftRadius: 14, borderTopRightRadius: 14,
+        cursor: "pointer", padding: "10px 22px", minHeight: 44,
+        borderTopLeftRadius: 12, borderTopRightRadius: 12,
         // Cream outline lives only on the deselected tab; the selected tab is
         // a clean fill that bleeds into the panel below.
         borderTop: active ? "none" : `2px solid ${C.cream}`,
         borderLeft: active ? "none" : `2px solid ${C.cream}`,
         borderRight: active ? "none" : `2px solid ${C.cream}`,
         borderBottom: "none",
-        // Header 2 spec: Inter, 17px, semibold. Cream in both tab states.
-        fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 600, fontSize: 17, letterSpacing: "0.005em",
+        fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 600, fontSize: 15,
         background: active ? bg : "transparent",
         color: C.cream,
         position: "relative", bottom: -2, // bleed into the panel below

@@ -81,15 +81,17 @@ export const overlay: React.CSSProperties = {
   alignItems: "center", justifyContent: "center", zIndex: 50,
 };
 
-// Edge-tab top (2026-08-20): the room edge tabs (back left · chat right) sit
-// at ONE shared height, the tab's center on the group room's first open-show
-// pill row at rest. Layout sum there: top bar (16+74+16, the 0.5-scale logo)
-// + group heading (4+~41+28) + content paddingTop 24 + shelf header (~41+24)
-// + half a pill (~23) ≈ 291 → the 88px-tall tab tops out at 291 − 44 ≈ 248.
-// Fixed px (not %) — the content above is px-anchored, so the alignment holds
-// at any window height. The show room's back tab shares this value so the tab
-// doesn't jump between pages.
-export const EDGE_TAB_TOP = 248;
+// Edge-tab top (2026-08-20 rule, re-derived 2026-09-15 for the 96px header):
+// the room edge tabs (back left · chat right) sit at ONE shared height, the
+// tab's center on the group room's first open-show pill row at rest (Alborz's
+// August call — the anchor is the pill row, not the header). Layout sum:
+// header bar 96 + content paddingTop 24 + shelf header (Title 28 × 1.2 ≈ 34
+// + 24 margin) + half a pill (48/2 = 24) ≈ 202 → the 88px-tall tab tops out
+// at 202 − 44 = 158. Fixed px (not %) — the content above is px-anchored, so
+// the alignment holds at any window height. The show room's back tab and the
+// friend drawer share this value so the tab doesn't jump between pages; the
+// poll sticky derives from it too.
+export const EDGE_TAB_TOP = 158;
 
 export const searchCard: React.CSSProperties = { background: CANON.cream, borderRadius: 24, padding: 32, width: "min(560px, 86vw)" };
 
@@ -133,9 +135,10 @@ export const searchPill: React.CSSProperties = {
 };
 
 // The group heading's "with …" members line (naming arc 2026-07-07): shared
-// by the group room AND the show room header so the two never drift.
+// by the group room AND the show room header so the two never drift. Caption
+// under the Display title since the 2026-09-15 polish (was inline bold 14).
 export const groupHeadingMembers: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, letterSpacing: 0, color: CANON.cream,
+  fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, letterSpacing: 0, color: CANON.cream,
 };
 
 // The show room's compose shell (ShowRoomPage) — the "regular compose modal".

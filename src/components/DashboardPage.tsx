@@ -26,7 +26,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, LogOut, ArrowLeft, MessageCircle, MonitorCheck, Plus, Search, UserPen, CornerRightUp, CornerLeftDown } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, ArrowDown, ArrowLeft, MessageCircle, MonitorCheck, Plus, Search, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -87,7 +87,7 @@ import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
-import { groupHeadingMembers, EDGE_TAB_TOP } from "./dashboardChrome";
+import { groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
@@ -1672,59 +1672,64 @@ export default function DashboardPage() {
     <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green, ...(inGroup ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
 
-      {/* Top bar: logo left · INVITE FRIENDS + sign-out + admin right */}
-      {/* QA round 7: while onboarding overlays are up, the top bar rides
-          ABOVE them (account gear + sign out stay clickable — the escape
-          for someone who made a mistake mid-flow; AccountModal portals at
-          max z, so it still opens on top). */}
+      {/* ── The 96px header bar (polish pass 2026-09-15): logo · centered
+             page title · circles — one architecture on every desktop page.
+             QA round 7: while onboarding overlays are up, the bar rides
+             ABOVE them (the account gear stays clickable — the escape for
+             someone who made a mistake mid-flow; AccountModal portals at
+             max z, so it still opens on top). ── */}
       <div style={{ ...topBar, ...(socialOnbActive ? { position: "relative" as const, zIndex: 1001 } : {}) }}>
-        <div
-          onClick={() => navigate("/dashboard")}
-          style={{ cursor: "pointer" }}
-          role="button"
-          aria-label="Home"
-          title="Home"
-        >
-          <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} betaBadge />
+        <div style={{ display: "flex", justifyContent: "flex-start" }}>
+          <div
+            onClick={() => navigate("/dashboard")}
+            style={{ cursor: "pointer" }}
+            role="button"
+            aria-label="Home"
+            title="Home"
+          >
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg={activeGroupId ? "sky" : "green"} betaBadge />
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* CP2: the invite affordances moved into the body — dashboard gets
-              the centered "Create another watch group?", the group room gets
-              the centered "Add more friends to this group?". */}
-          {/* QA round 3: notes OFF → cream fill + cream outline + sky/friend
-              "?" (an invitation); notes ON → the row's standard style. */}
+        <div style={D.header.center}>
+          {/* Center: the page title — group name + gear + members caption in
+              a room; "Your dashboard" on the green. */}
+          {inGroup ? clustersEl : (!socialOnbActive && !postAccept ? (
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your dashboard</h1>
+          ) : null)}
+        </div>
+        <div style={D.header.right}>
+          {/* Cream outlines/glyphs on BOTH page colors (polish pass — the
+              group room's midnight circles were its only dark chrome).
+              QA round 3: notes OFF → cream fill + sky/green "?" (an
+              invitation); notes ON → the row's standard style. Sign-out
+              lives in the Account card now (mobile parity). */}
           <button
-            style={{ ...topCircleBtn(inGroup), ...(tipsOpen ? {} : { background: CANON.cream, border: `2px solid ${CANON.cream}` }) }}
+            style={{ ...topCircleBtn, ...(tipsOpen ? {} : { background: CANON.cream, border: `2px solid ${CANON.cream}` }) }}
             title="tips"
             onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}
           >
-            {/* Off-state mark: sky in the group room, PERSONAL green on the
-                dashboard (QA round 4). */}
-            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 18, lineHeight: 1, color: tipsOpen ? (inGroup ? C.midnight : CANON.cream) : (inGroup ? C.sky : C.green) }}>?</span>
+            <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: tipsOpen ? CANON.cream : (inGroup ? C.sky : C.green) }}>?</span>
           </button>
-          <button style={topCircleBtn(inGroup)} title="account" onClick={() => setShowAccount(true)}>
-            <UserPen size={18} color={inGroup ? C.midnight : CANON.cream} />
-          </button>
-          <button style={topCircleBtn(inGroup)} title="sign out" onClick={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}>
-            <LogOut size={18} color={inGroup ? C.midnight : CANON.cream} />
+          <button style={topCircleBtn} title="account" onClick={() => setShowAccount(true)}>
+            <UserPen size={20} color={CANON.cream} />
           </button>
           {profile?.is_admin && (
-            <button style={topCircleBtn(inGroup)} title="admin" onClick={() => navigate("/?admin")}>
-              <Settings size={18} color={inGroup ? C.midnight : CANON.cream} />
+            <button style={topCircleBtn} title="admin" onClick={() => navigate("/?admin")}>
+              <Settings size={20} color={CANON.cream} />
             </button>
           )}
         </div>
       </div>
 
-      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
+      {showAccount && (
+        <AccountModal
+          onClose={() => setShowAccount(false)}
+          onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}
+        />
+      )}
 
       {/* Help-system arc CP4: the pointer-tips sticky ("?" toggles). */}
       {tipsOpen && <TipsNote page={tipsPage} onDismiss={closeTips} />}
-
-      {/* Group heading (group context only) — the clusters component returns
-          the room heading there; the dashboard renders its clusters inside
-          the centered body below. */}
-      {inGroup && clustersEl}
 
       {/* Edge tabs (group context only): back-to-dashboard left · chat right.
           Position-fixed, so DOM order relative to the heading is irrelevant.
@@ -1774,7 +1779,7 @@ export default function DashboardPage() {
           <>
           {groupShelves.watching.length > 0 && (
             <>
-              <h1 style={shelfHeader}>OPEN SHOW ROOMS:</h1>
+              <h1 style={shelfHeader}>Open show rooms</h1>
               <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
@@ -1799,8 +1804,8 @@ export default function DashboardPage() {
           {/* CP2: the group room's second shelf — proposed-but-not-started
               shows (votes live here per CP1; starting a room promotes off). */}
           {groupShelves.notStarted.length > 0 && (
-            <h1 style={{ ...shelfHeader, textTransform: "none", marginTop: groupShelves.watching.length ? 56 : 0 }}>
-              Proposed shows:
+            <h1 style={{ ...shelfHeader, marginTop: groupShelves.watching.length ? 56 : 0 }}>
+              Proposed shows
             </h1>
           )}
           {groupShelves.notStarted.length > 0 && (
@@ -1856,13 +1861,8 @@ export default function DashboardPage() {
         // the top of the page (flex:1 fills the remaining height; content taller
         // than the space grows naturally and the page scrolls).
         <>
-        {/* Page headlines ("Your shows" arc CP1, 2026-09-07): H1 + the
-            watch-groups section label, above the centered cluster block. */}
-        {!socialOnbActive && !postAccept && (
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: -1, color: CANON.cream, textAlign: "center", margin: "26px 0 6px" }}>
-            Your dashboard
-          </h1>
-        )}
+        {/* (The "Your dashboard" H1 moved into the header bar — polish
+            pass 2026-09-15.) */}
         <div style={dashboardCenter}>
           {/* 1:2 spacer ratio → content rests ~⅓ down (split between top-pinned
               and dead-center). Empty spacers shrink to 0 if content overflows,
@@ -1891,36 +1891,36 @@ export default function DashboardPage() {
             the yellow zone — visually part of the green/group world, and it
             naturally pushes the reference further down. ── */}
       {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
-        <div style={{ marginTop: 140, marginBottom: -24, display: "flex", justifyContent: "center" }}>
+        <div style={{ marginTop: 140, marginBottom: -24, display: "flex", justifyContent: "center", alignItems: "flex-end", gap: 24 }}>
           {/* NO position/zIndex on this wrapper — a stacking context would
               trap the open grid's fixed overlay below the yellow band (z 2);
               the tuck-behind works purely off the band being positioned
-              later in the DOM. */}
+              later in the DOM. Border signposts (Alborz 2026-09-07; polish
+              pass 2026-09-15: flanking flex columns replace the absolute
+              calc(50% ± 370px) divs, so nothing clips at narrow widths). */}
+          <div style={{ ...D.type.caption, width: 220, color: CANON.cream, opacity: 0.85, paddingBottom: 40, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+            Your friend groups <ArrowUp size={16} strokeWidth={1.5} />
+          </div>
           <DeckGridCard mode="personal" viewerId={user.id} dockInFlow />
+          <div style={{ width: 220 }} />
         </div>
       )}
       {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its OWN
             Accent-yellow zone below the fold — clearly separated from the
             group world, matching the reference tab's world color. ── */}
       {!inGroup && !socialOnbActive && (
-        <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "72px 24px 140px" }}>
-          {/* Border signposts (Alborz 2026-09-07): Body copy + 1px corner
-              arrows hugging the green/yellow border, LEFT of the centered
-              deck card. left:24 keeps them on-screen at narrow widths. */}
-          {/* Arrow tails align with the text line's middle: the up-corner's
-              tail sits at the icon's bottom (shift up ~7px from center); the
-              down-corner's tail at its top (drop ~6px to the first line's
-              middle). 60% opacity (Alborz rev). */}
-          {/* Signpost handling reverted to the 1266837 deployment (Alborz
-              2026-09-08) — anchored beside the deck card, both sides. */}
-          <div style={{ position: "absolute", top: -26, left: 24, right: "calc(50% + 370px)", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, whiteSpace: "nowrap" }}>
-            Your friend groups <CornerRightUp size={20} strokeWidth={1} style={{ transform: "translateY(-7px)" }} />
-          </div>
-          {/* Mirrored to the RIGHT of the deck card (equidistant from center),
-              left-justified, corner-LEFT-down arrow leading (Alborz rev). */}
-          <div style={{ position: "absolute", top: 6, left: "calc(50% + 370px)", display: "flex", justifyContent: "flex-start", alignItems: "flex-start", gap: 8, color: CANON.cream, opacity: 0.7, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.4, textAlign: "left", whiteSpace: "nowrap" }}>
-            <CornerLeftDown size={20} strokeWidth={1} style={{ marginTop: 6, flexShrink: 0 }} />
-            <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+        <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "24px 24px 140px" }}>
+          {/* The yellow-side signpost (polish pass 2026-09-15): a matching
+              [220 | 640 | 220] row at the band's top — the right slot holds
+              the collect/log caption, mirroring the green-side column
+              beside the deck card above. Natural wrap, no clipping. */}
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 24, marginBottom: 24 }}>
+            <div style={{ width: 220 }} />
+            <div style={{ width: 640 }} />
+            <div style={{ ...D.type.caption, width: 220, color: CANON.cream, opacity: 0.85, display: "flex", alignItems: "flex-start", gap: 6, textAlign: "left" }}>
+              <ArrowDown size={16} strokeWidth={1.5} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>Your space to collect and log. This becomes the profile your friends see.</span>
+            </div>
           </div>
           <ReferenceLookupBand />
         </div>
@@ -2871,25 +2871,29 @@ function GroupClusters({
       )),
       ...active.pendingInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
     ];
+    // Header-bar center (polish pass 2026-09-15): Display-40 name with the
+    // gear in a 44px hit beside it, the members line a caption underneath.
     return (
       <div style={groupHeadingRow}>
-        <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+          <h1 style={groupHeadingTitle}>{groupGenericName(active.group, groupNumberById[active.group.id])}</h1>
+          <button
+            style={{ ...headingIconBtn, position: "relative" }}
+            title="group options"
+            onClick={(e) => { onTip(null); onGearClick(active.group.id, e.currentTarget.getBoundingClientRect()); }}
+            onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
+            onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
+            onMouseLeave={() => onTip(null)}
+          >
+            <Settings size={20} color={CANON.cream} />
+            {staleInviteCount > 0 && <span style={gearStaleDot} />}
+          </button>
+        </div>
         {nameNodes.length > 0 && (
-          <span style={groupHeadingMembers}>
+          <span style={{ ...groupHeadingMembers, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
             <span style={{ color: C.greyblue }}>with</span> {nameNodes.flatMap((n, i) => (i > 0 ? [", ", n] : [n]))}
           </span>
         )}
-        <button
-          style={{ ...headingIconBtn, position: "relative" }}
-          title="group options"
-          onClick={(e) => { onTip(null); onGearClick(active.group.id, e.currentTarget.getBoundingClientRect()); }}
-          onMouseEnter={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
-          onMouseMove={(e) => { if (staleInviteCount > 0) onTip({ key: "gear-stale", text: preventLastWordOrphan(staleInviteLine(staleInviteCount)), wrap: true, ...tipAnchor(e, -8) }); }}
-          onMouseLeave={() => onTip(null)}
-        >
-          <Settings size={22} color={CANON.cream} />
-          {staleInviteCount > 0 && <span style={gearStaleDot} />}
-        </button>
       </div>
     );
   }
@@ -2968,9 +2972,9 @@ function GroupClusters({
 
 // ── Styles ──────────────────────────────────────────────────────────────────────
 const pageStyle: React.CSSProperties = {
-  // overflowX hidden (2026-09-08): the border signposts hold their fixed
-  // two-line shape and simply run off the page edge on narrow windows.
-  position: "fixed", inset: 0, fontFamily: '"Inter", system-ui, sans-serif', overflowY: "auto", overflowX: "hidden",
+  // overflowX clip dropped (polish pass 2026-09-15) — the signposts sit in
+  // normal flow now, so nothing runs off the page edge.
+  position: "fixed", inset: 0, fontFamily: '"Inter", system-ui, sans-serif', overflowY: "auto",
 };
 const heroH1: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: 0, color: C.cream, margin: 0,
@@ -2978,9 +2982,11 @@ const heroH1: React.CSSProperties = {
 const contentWrap: React.CSSProperties = {
   maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px",
 };
+// Title grammar (polish pass 2026-09-15): Lora 28, sentence case, no colon —
+// also the term in the EDGE_TAB_TOP derivation (dashboardChrome).
 const shelfHeader: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.cream,
-  textAlign: "center", textTransform: "uppercase", margin: "0 0 24px",
+  ...D.type.title, color: C.cream,
+  textAlign: "center", margin: "0 0 24px",
 };
 const shelfGrid: React.CSSProperties = {
   // 24px vertical separation (row) leaves room for the opt-in avatars that
@@ -2999,18 +3005,14 @@ function shelfLayout(count: number): React.CSSProperties {
     gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
   };
 }
-const topBar: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px",
-};
+const topBar: React.CSSProperties = { ...D.header.bar };
 // Gear-popover column: a 360px stack of yellow cards (QA round 4).
 const gearCol: React.CSSProperties = {
   width: 360, display: "flex", flexDirection: "column", gap: 16,
 };
-const topCircleBtn = (inGroup: boolean): React.CSSProperties => ({
-  width: 44, height: 44, borderRadius: "50%", background: "transparent",
-  border: `2px solid ${inGroup ? C.midnight : CANON.cream}`, cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-});
+// Cream on both page colors since the 2026-09-15 polish (the inGroup
+// midnight switch is retired).
+const topCircleBtn: React.CSSProperties = D.circleBtn(CANON.cream);
 const clustersRow: React.CSSProperties = {
   display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap",
   gap: 56, padding: "16px 80px 36px",
@@ -3083,21 +3085,20 @@ const clusterName: React.CSSProperties = {
   color: CANON.cream, maxWidth: 168, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
+// Lives in the header bar's center slot (polish pass 2026-09-15).
 const groupHeadingRow: React.CSSProperties = {
-  maxWidth: 880, margin: "0 auto", padding: "4px 0 28px", position: "relative",
-  display: "flex", alignItems: "center", gap: 14,
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 0,
 };
-const headingIconBtn: React.CSSProperties = {
-  border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0, display: "inline-flex", alignItems: "center",
-};
+const headingIconBtn: React.CSSProperties = { ...D.iconBtn };
 // Pending-invites changeset: the blue stale-invite dot on the group gear
 // (one dot regardless of how many invites are stale; sky ring = the page bg).
 const gearStaleDot: React.CSSProperties = {
-  position: "absolute", top: -2, right: -2, width: 11, height: 11, borderRadius: "50%",
+  position: "absolute", top: 6, right: 6, width: 11, height: 11, borderRadius: "50%",
   background: CANON.identity, border: `2px solid ${CANON.friend}`, boxSizing: "border-box",
 };
 const groupHeadingTitle: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.cream, margin: 0,
+  ...D.type.display, color: CANON.cream, margin: 0,
+  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
 const backTab: React.CSSProperties = {
   // ~50% larger tab; padding/radius on the 8px grid (spec §16). Icon unchanged.
