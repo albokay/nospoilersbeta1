@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search, ChevronRight } from "lucide-react";
 import { CANON } from "../styles/canon";
-import { M } from "./m";
+import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -207,6 +207,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
   // scrolls, so the drag only engages when it's scrolled to the top.
   const gearSwipe = useSheetSwipeDown(() => setGearOpen(false));
+  const lpSheetSwipe = useSheetSwipeDown(() => setSheetFor(null));
+  const drawerSwipe = useSheetSwipeDown(() => setFinishedDrawerOpen(false));
   const [renameValue, setRenameValue] = useState("");
   const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
   const [contactsSaving, setContactsSaving] = useState(false);
@@ -1127,24 +1129,26 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         );
       })()}
 
-      {/* ── Gear: rename + leave (bottom sheet; desktop copy) ── */}
+      {/* ── Gear: group settings (yellow sheet; polish pass 2026-09-14 —
+             grabber + sheet title, group name leads, then friends' names
+             with the pending panel inside, then leave; captions 13). ── */}
       {gearOpen && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setGearOpen(false); }}>
           <div
             {...gearSwipe.handlers}
-            style={{ ...bottomSheet, background: C.yellow, maxHeight: "80dvh", overflowY: "auto", overscrollBehavior: "none", ...gearSwipe.style }}
+            style={{ ...sheetShell, background: C.yellow, ...gearSwipe.style }}
           >
-            {/* Bottom-sheet rule (Alborz 2026-07-03): bottom-of-screen panels
-                LEFT-justify their elements; full-screen panels center. */}
-            {/* CP-C: the contacts card comes FIRST (desktop round-2 order +
-                copy) — the viewer's own names for the people here. QA
-                round 3: pending friends live IN the contact list (field
-                rows; the separate "Pending invites:" section is gone). */}
+            <div style={OVERLAY.grabber(CANON.cream)} />
+            <div style={{ ...M.type.title, color: C.cream, marginBottom: 20 }}>Group settings</div>
+            <div style={sheetLabel}>Group name</div>
+            <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} />
+            <button style={{ ...sheetActionBtn, marginTop: 12 }} onClick={doRename}>Save name</button>
             {(others.length > 0 || myInvites.length > 0 || othersPending.length > 0) && (
               <>
-                <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 4 }}>Update your contact list:</div>
-                <div style={{ color: C.cream, fontSize: 11, opacity: 0.85, marginBottom: 12, lineHeight: 1.5 }}>
-                  Your friends&rsquo; names default to their log-in info. You can enter your own names for them &mdash; just like you would on your phone&rsquo;s contacts.
+                <div style={sheetDivider} />
+                <div style={sheetLabel}>Your names for your friends</div>
+                <div style={{ ...sheetCaption, marginBottom: 12 }}>
+                  Names default to their log-in info. Enter your own, like your phone&rsquo;s contacts.
                 </div>
                 {others.map((m) => (
                   <input
@@ -1154,25 +1158,20 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     placeholder={m.displayName ?? m.username}
                     maxLength={40}
                     style={{ ...renameInput, marginBottom: 8 }}
-                    className="m-input"
                   />
                 ))}
                 <PendingInvitesPanel invites={myInvites} others={othersPending} onRefresh={reloadMyInvites} />
                 {others.length > 0 && (
-                  <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={saveContactNames}>
-                    {contactsSaving ? "saving…" : "save names"}
+                  <button style={{ ...sheetActionBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={saveContactNames}>
+                    {contactsSaving ? "saving…" : "Save names"}
                   </button>
                 )}
-                <div style={sheetDivider} />
               </>
             )}
-            <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Rename group:</div>
-            <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={renameInput} className="m-input" />
-            <button style={{ ...startBtn, marginTop: 12 }} onClick={doRename}>confirm name</button>
             <div style={sheetDivider} />
-            <div style={{ ...sheetTitle, textAlign: "left", marginBottom: 12 }}>Leave this group?</div>
-            <button style={dangerBtn} onClick={doLeave}>yes, leave</button>
-            <div style={{ color: C.cream, fontSize: 12, opacity: 0.9, marginTop: 14 }}>You can join again if someone sends you another invite.</div>
+            <div style={sheetLabel}>Leave this group</div>
+            <div style={{ ...sheetCaption, marginBottom: 12 }}>You can join again if someone sends you another invite.</div>
+            <button style={dangerBtn} onClick={doLeave}>Leave group</button>
           </div>
         </div>
       )}
@@ -1208,33 +1207,42 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         />
       )}
 
-      {/* ── Long-press action sheet (2026-09-13; copy locked by Alborz) ── */}
+      {/* ── Long-press action sheet (2026-09-13; polish pass 2026-09-14:
+             grabber, title 22 + "with {group}" caption, 56px rows, chevron
+             on the navigation row only, swipe-down). ── */}
       {sheetFor && (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setSheetFor(null); }}>
-          <div style={sheetPanel}>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, letterSpacing: -0.5, color: C.midnight, marginBottom: 14 }}>{sheetFor.name}</div>
+          <div {...lpSheetSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...lpSheetSwipe.style }}>
+            <div style={OVERLAY.grabber(C.midnight)} />
+            <div style={{ ...M.type.title, color: C.midnight }}>{sheetFor.name}</div>
+            <div style={{ ...sheetCaptionDark, marginBottom: 8 }}>with {groupName}</div>
             <button style={sheetRow} onClick={() => { const rid = sheetFor.roomId; setSheetFor(null); navigate(`/m/show-room/${rid}`); }}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: C.midnight }}>open the room</span>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: C.midnight }}>Open the room</span>
+                <ChevronRight size={20} color={C.midnight} style={{ opacity: 0.5, flexShrink: 0 }} />
+              </span>
             </button>
             <button style={sheetRow} onClick={() => doLeaveRoom(sheetFor.roomId, sheetFor.showId)}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>leave this room (just you)</span>
-              <span style={sheetSub}>Your writing stays &mdash; everyone else keeps going.</span>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Leave this room (just you)</span>
+              <span style={sheetSub}>Your writing stays. Everyone else keeps going.</span>
             </button>
             <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doDnfRoom(sheetFor.roomId)}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: C.blue }}>we&rsquo;re done with this one</span>
-              <span style={sheetSub}>Parks the show for the whole group &mdash; anyone can bring it back later.</span>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.blue }}>We&rsquo;re done with this one</span>
+              <span style={sheetSub}>Parks the show for the whole group. Anyone can bring it back later.</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Finished-together drawer (2026-09-13) — bottom sheet ── */}
+      {/* ── Finished-together drawer (2026-09-13) — same sheet shell:
+             grabber, Lora title, no ×, swipe-down. ── */}
       {finishedDrawerOpen && (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setFinishedDrawerOpen(false); }}>
-          <div style={{ ...sheetPanel, maxHeight: "72dvh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div {...drawerSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...drawerSwipe.style }}>
+            <div style={OVERLAY.grabber(C.midnight)} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <MonitorCheck size={20} color={C.green} />
-              <button style={{ border: "none", background: "transparent", cursor: "pointer", padding: 6, lineHeight: 0 }} onClick={() => setFinishedDrawerOpen(false)}><X size={18} color={C.midnight} /></button>
+              <div style={{ ...M.type.title, color: C.midnight }}>Finished together</div>
             </div>
             {drawerItems.finished.length > 0 && (
               <>
@@ -1256,18 +1264,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
       )}
 
-      {/* Revive a DNF'd show — from the drawer's x. */}
+      {/* Revive a DNF'd show — from the drawer's x. The ONE overlay that
+          earns a centered dialog (irreversible for the whole group);
+          Cancel is the exit — no ×, no tap-out shortcut lost (kept). */}
       {reviveConfirm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1300, background: "rgba(26,58,74,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
-          <div style={{ background: C.yellow, borderRadius: 24, padding: "26px 24px", width: "min(360px, 92vw)", boxSizing: "border-box", position: "relative", textAlign: "center" }}>
-            <button style={{ position: "absolute", top: 14, right: 14, border: "none", background: "transparent", cursor: "pointer", padding: 4, lineHeight: 0 }} onClick={() => setReviveConfirm(null)}><X size={16} color={CANON.cream} /></button>
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, color: CANON.cream, marginBottom: 10 }}>Start watching again?</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              This puts <b>{reviveConfirm.name}</b> back on the group&rsquo;s shelf &mdash; right where you all left off.
+        <div style={{ ...OVERLAY.dialogWrap, zIndex: 1300 }} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
+          <div style={{ ...OVERLAY.dialog, background: C.yellow }}>
+            <div style={{ ...M.type.title, color: CANON.cream, marginBottom: 10 }}>Start watching again?</div>
+            <div style={{ color: CANON.cream, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
+              This brings <b>{reviveConfirm.name}</b> back to the group&rsquo;s open show rooms for everyone.
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-              <button style={{ border: "2px solid var(--canon-cream,#fef8ea)", background: "transparent", color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer" }} onClick={() => setReviveConfirm(null)}>cancel</button>
-              <button style={{ border: `2px solid ${C.blue}`, background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14, padding: "10px 28px", borderRadius: 65, cursor: "pointer" }} onClick={() => doReviveRoom(reviveConfirm.roomId)}>bring it back</button>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button style={{ ...M.pill.M, flex: 1, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doReviveRoom(reviveConfirm.roomId)}>Bring it back</button>
+              <button style={{ ...M.pill.M, flex: 1, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} onClick={() => setReviveConfirm(null)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -1402,20 +1411,21 @@ const chatTab: React.CSSProperties = {
 const sheetBackdrop: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.35)",
   display: "flex", flexDirection: "column", justifyContent: "flex-end",
+  animation: "mDimIn 180ms ease-out",
 };
-const sheetPanel: React.CSSProperties = {
-  // Bottom-sheet grammar: cream, rounded top, left-justified content.
-  width: "100%", boxSizing: "border-box", background: C.cream,
-  borderRadius: "24px 24px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)",
-  textAlign: "left",
+// The shared sheet shell (polish pass 2026-09-14): grabber + 180ms rise +
+// swipe-down; add background per sheet.
+const sheetShell: React.CSSProperties = {
+  ...OVERLAY.sheet, overscrollBehavior: "none",
 };
 const sheetRow: React.CSSProperties = {
   display: "flex", flexDirection: "column", gap: 3, width: "100%", textAlign: "left",
   background: "transparent", border: "none", cursor: "pointer", padding: "13px 0",
+  minHeight: 56, boxSizing: "border-box", justifyContent: "center",
   borderBottom: `1px solid rgba(26,58,74,0.12)`, fontFamily: '"Inter", sans-serif',
 };
 const sheetSub: React.CSSProperties = {
-  fontWeight: 400, fontSize: 12, color: C.midnight, opacity: 0.75, lineHeight: 1.4,
+  fontWeight: 400, fontSize: 13, color: C.midnight, opacity: 0.7, lineHeight: 1.45,
 };
 const drawerHeading: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.midnight, marginBottom: 12,
@@ -1489,7 +1499,20 @@ const sheetInner: React.CSSProperties = { maxWidth: 420, margin: "0 auto", paddi
 const sheetTitle: React.CSSProperties = {
   color: C.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, textAlign: "center",
 };
-const sheetDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "24px 0 16px" };
+const sheetDivider: React.CSSProperties = { ...OVERLAY.divider(CANON.cream) };
+// Gear-sheet section grammar (polish pass): Label 14/700, caption 13.
+const sheetLabel: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: C.cream, marginBottom: 8,
+};
+const sheetCaption: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, opacity: 0.85,
+};
+const sheetCaptionDark: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.midnight, opacity: 0.7,
+};
+const sheetActionBtn: React.CSSProperties = {
+  ...M.pill.M, background: CANON.identity, color: CANON.cream,
+};
 const startBtn: React.CSSProperties = {
   border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
   padding: "11px 38px", borderRadius: 65, cursor: "pointer", minHeight: 44,
@@ -1511,8 +1534,7 @@ const joinNote: React.CSSProperties = {
   color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, textAlign: "center",
 };
 const dangerBtn: React.CSSProperties = {
-  border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontWeight: 700, fontSize: 14,
-  padding: "10px 32px", borderRadius: 65, cursor: "pointer", minHeight: 44,
+  ...M.pill.M, border: `2px solid ${C.red}`, background: "transparent", color: C.red,
 };
 const renameInput: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", border: "none", borderRadius: 65,
@@ -1522,9 +1544,5 @@ const renameInput: React.CSSProperties = {
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
   display: "flex", alignItems: "flex-end", justifyContent: "center",
-};
-const bottomSheet: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", background: C.sky,
-  borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  padding: "26px 24px calc(env(safe-area-inset-bottom, 0px) + 26px)",
+  animation: "mDimIn 180ms ease-out",
 };

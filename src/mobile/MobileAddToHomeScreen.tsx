@@ -16,8 +16,9 @@
  * Mobile only for now (Alborz 2026-08-18; desktop later).
  */
 import React, { useEffect, useState } from "react";
-import { Plus, Share, X } from "lucide-react";
+import { Plus, Share } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { OVERLAY } from "./m";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { canPromptInstall, promptInstall, onInstallPromptChange, isStandalone, installPath, type InstallPath } from "../lib/installPrompt";
 
@@ -52,9 +53,8 @@ export default function MobileAddToHomeScreen() {
       {guide && (
         <div style={dim} onClick={() => setGuide(null)}>
           <div {...swipe.handlers} style={{ ...sheet, ...swipe.style }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setGuide(null)} aria-label="Close" style={closeX}>
-              <X size={18} color={CANON.dark} />
-            </button>
+            {/* Grabber + swipe/tap-out are the exits (polish pass 2026-09-14). */}
+            <div style={OVERLAY.grabber(CANON.dark)} />
             <div style={title}>Add Sidebar to your home screen</div>
             <GuideBody path={guide} />
           </div>
@@ -73,7 +73,7 @@ function GuideBody({ path }: { path: InstallPath }) {
       <>
         <Step n={1}>Open your browser&rsquo;s menu.</Step>
         <Step n={2}>Choose <b>Install app</b> or <b>Add to Home screen</b>.</Step>
-        <p style={foot}>(You&rsquo;ll sign in once inside the app.)</p>
+        <p style={foot}>You&rsquo;ll sign in once inside the app.</p>
       </>
     );
   }
@@ -92,14 +92,14 @@ function GuideBody({ path }: { path: InstallPath }) {
           Trade-off, eyes open: the Safari-flavored viewer some apps embed
           (Twitter/Slack/Reddit) is UA-indistinguishable from real Safari and
           lacks Add to Home Screen — those users get no hint. */}
-      <p style={foot}>(You&rsquo;ll sign in once inside the app.)</p>
+      <p style={foot}>You&rsquo;ll sign in once inside the app.</p>
     </>
   );
 }
 
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 10 }}>
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 12 }}>
       <span style={num}>{n}</span>
       <span style={stepText}>{children}</span>
     </div>
@@ -128,27 +128,21 @@ const caption: React.CSSProperties = {
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
   display: "flex", alignItems: "flex-end", justifyContent: "center",
+  animation: "mDimIn 180ms ease-out",
 };
-// Left-justified cream bottom sheet (the mobile bottom-sheet rule).
+// Left-justified cream bottom sheet (the shared shell; polish 2026-09-14).
 const sheet: React.CSSProperties = {
-  position: "relative", width: "100%", boxSizing: "border-box", background: CANON.cream,
-  borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  padding: "22px 24px calc(env(safe-area-inset-bottom, 0px) + 26px)",
-  boxShadow: "0 -8px 28px rgba(0,0,0,0.28)",
-};
-const closeX: React.CSSProperties = {
-  position: "absolute", top: 8, right: 8, width: 44, height: 44, border: "none", background: "transparent",
-  cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center",
+  ...OVERLAY.sheet, position: "relative", background: CANON.cream,
 };
 const title: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: CANON.identity, margin: "0 36px 6px 0",
+  fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: CANON.identity, margin: "0 0 6px",
 };
 const stepText: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontSize: 14, lineHeight: 1.5, color: CANON.dark,
+  fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1.5, color: CANON.dark,
 };
 const num: React.CSSProperties = {
-  flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: CANON.identity, color: CANON.cream,
-  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", marginTop: 1,
+  flexShrink: 0, width: 24, height: 24, borderRadius: "50%", background: CANON.identity, color: CANON.cream,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center", justifyContent: "center", marginTop: 1,
 };
 const glyph: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20,
@@ -159,6 +153,6 @@ const callout: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif', fontSize: 14, lineHeight: 1.45, color: CANON.dark, fontWeight: 600,
 };
 const foot: React.CSSProperties = {
-  fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, color: CANON.dark, opacity: 0.7,
+  fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7,
   fontStyle: "italic", margin: "12px 0 0",
 };

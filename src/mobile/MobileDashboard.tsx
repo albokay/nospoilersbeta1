@@ -660,20 +660,6 @@ const invitePill: React.CSSProperties = {
   ...M.pill.L, background: C.blue, color: C.cream,
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };
-const sheetTitle: React.CSSProperties = {
-  color: C.cream, fontSize: 15, fontWeight: 600, textAlign: "center",
-};
-// Bottom sheet (mobile idiom for small confirm cards).
-const dim: React.CSSProperties = {
-  position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
-  display: "flex", alignItems: "flex-end", justifyContent: "center",
-};
-const bottomSheet: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", background: C.sky,
-  borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  padding: "26px 24px calc(env(safe-area-inset-bottom, 0px) + 26px)",
-};
-const startBtn: React.CSSProperties = {
-  border: "none", background: C.blue, color: C.cream, fontWeight: 700, fontSize: 14,
-  padding: "11px 38px", borderRadius: 65, cursor: "pointer", minHeight: 44,
-};
+// (The old yes/no invite bottom sheet's consts — sheetTitle/dim/bottomSheet/
+// startBtn — were dead since the You're-in card took over 2026-07-18;
+// removed in the 2026-09-14 polish pass. Sky is not an overlay color on /m.)

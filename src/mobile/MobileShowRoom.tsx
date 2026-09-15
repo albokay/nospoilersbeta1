@@ -12,7 +12,7 @@ import {
   type Show,
 } from "../lib/db";
 import { joinNames } from "../lib/groupNames";
-import { M } from "./m";
+import { M, OVERLAY } from "./m";
 import { effectiveProgress } from "../lib/utils";
 import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
@@ -1026,60 +1026,57 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         />
       )}
 
-      {/* ── Digest gear (bottom sheet; desktop copy) ── */}
+      {/* ── Room settings (digest gear) — yellow sheet, left-justified
+             (polish pass 2026-09-14): grabber, room title, labelled Email
+             updates section with the explanation BEFORE the button, then the
+             two-path leave/done section with a caption under each exit. ── */}
       {digestModalOpen && roomId && (
         <div style={dim} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow, textAlign: "center", ...digestSwipe.style }} {...digestSwipe.handlers} onClick={(e) => e.stopPropagation()}>
+          <div style={{ ...sheetShell, background: C.yellow, ...digestSwipe.style }} {...digestSwipe.handlers} onClick={(e) => e.stopPropagation()}>
+            <div style={OVERLAY.grabber(CANON.cream)} />
+            <div style={{ ...M.type.title, color: C.cream }}>{show?.name ?? "Show"} room</div>
+            {groupName && <div style={{ ...digestSub, marginTop: 2 }}>with {groupName}</div>}
+            <div style={{ ...digestLabel, marginTop: 20 }}>Email updates</div>
             {digestOptOut === null ? (
               <div style={{ color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, padding: "6px 0" }}>loading<LoadingDots /></div>
             ) : digestOptOut ? (
               <>
-                <div style={digestTitle}>Resubscribe to email updates for this room?</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>resubscribe</button>
-                <div style={digestDivider} />
-                <div style={digestSub}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+                <div style={{ ...digestSub, marginBottom: 12 }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
               </>
             ) : (
               <>
-                <div style={digestTitle}>Unsubscribe from email updates for this room?</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>unsubscribe</button>
-                {/* QA round 8: no divider before the explainer; one sentence
-                    per line. (The divider before "Leave…" below stays.) */}
-                <div style={{ ...digestSub, marginTop: 14 }}>
-                  You'll stop getting the daily email digest for this room.<br />
-                  You can resubscribe here anytime.
-                </div>
+                <div style={{ ...digestSub, marginBottom: 12 }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
               </>
             )}
             {/* CP5 + DNF (2026-09-13): per-room leave AND "we're done with
                 this one" both live here (alongside the shelf long-press) —
-                the two-path grammar, locked copy. */}
+                the two-path grammar; each exit explained in place. */}
             <div style={digestDivider} />
-            <div style={digestTitle}>Leaving, or done watching?</div>
-            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>leave (just you)</button>
-            <div style={{ ...digestSub, marginTop: 10 }}>Your writing stays &mdash; everyone else keeps going.</div>
-            <div style={digestDivider} />
-            <button style={identityBtnM} disabled={dnfBusy} onClick={doDnfRoom}>{dnfBusy ? "one moment…" : "we’re done with this one"}</button>
-            <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group &mdash; anyone can bring it back later.</div>
+            <div style={digestLabel}>Leaving, or done watching?</div>
+            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>Leave (just you)</button>
+            <div style={{ ...digestSub, margin: "10px 0 16px" }}>Your writing stays. Re-propose the show to rejoin.</div>
+            <button style={identityBtnM} disabled={dnfBusy} onClick={doDnfRoom}>{dnfBusy ? "one moment…" : "We’re done with this one"}</button>
+            <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group. Anyone can bring it back later.</div>
           </div>
         </div>
       )}
 
-      {/* ── CP5: leave-room confirm (bottom sheet; desktop copy; left-justified
-             per the bottom-sheet rule) ── */}
+      {/* ── CP5: leave-room confirm (yellow sheet; polish pass 2026-09-14:
+             Lora title, one body paragraph, alert-FILL Leave + outlined
+             Cancel — a bare text "cancel" had no target). ── */}
       {leaveConfirmOpen && roomId && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && !leaveBusy) setLeaveConfirmOpen(false); }}>
-          <div style={{ ...bottomSheet, background: C.yellow, ...leaveSwipe.style }} {...leaveSwipe.handlers}>
-            <div style={{ color: C.cream, fontWeight: 700, fontSize: 15, marginBottom: 12, letterSpacing: -0.3 }}>Leave this show room?</div>
-            <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
-              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list.
+          <div style={{ ...sheetShell, background: C.yellow, ...leaveSwipe.style }} {...leaveSwipe.handlers}>
+            <div style={OVERLAY.grabber(CANON.cream)} />
+            <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Leave this show room?</div>
+            <div style={{ color: C.cream, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
+              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list. Your writing stays intact; re-propose the show to rejoin.
             </div>
-            <div style={{ color: C.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              If you have writing in the room, it will stay intact. Simply re-propose the show to rejoin the room.
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, alignItems: "center" }}>
-              <button style={{ ...alertBtn, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>leave</button>
-              <button style={{ border: "none", background: "transparent", color: C.cream, fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 44 }} disabled={leaveBusy} onClick={() => setLeaveConfirmOpen(false)}>cancel</button>
+            <div style={{ display: "flex", justifyContent: "flex-start", gap: 12, alignItems: "center" }}>
+              <button style={{ ...M.pill.M, background: CANON.alert, color: CANON.cream, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>Leave</button>
+              <button style={{ ...M.pill.M, background: "transparent", color: C.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} disabled={leaveBusy} onClick={() => setLeaveConfirmOpen(false)}>Cancel</button>
             </div>
           </div>
         </div>
@@ -1186,23 +1183,22 @@ const composeCloseX: React.CSSProperties = {
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
   display: "flex", alignItems: "flex-end", justifyContent: "center",
+  animation: "mDimIn 180ms ease-out",
 };
-const bottomSheet: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box",
-  borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  padding: "26px 24px calc(env(safe-area-inset-bottom, 0px) + 26px)",
+// The shared sheet shell (polish pass 2026-09-14): grabber + 180ms rise +
+// swipe-down; add background per sheet.
+const sheetShell: React.CSSProperties = {
+  ...OVERLAY.sheet, overscrollBehavior: "none",
 };
-const digestTitle: React.CSSProperties = {
-  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, marginBottom: 16,
+const digestLabel: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', color: CANON.cream, fontSize: 14, fontWeight: 700, marginBottom: 8,
 };
 const alertBtn: React.CSSProperties = {
-  border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
-  fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer", minHeight: 44,
+  ...M.pill.M, border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
 };
 const identityBtnM: React.CSSProperties = {
   // DNF / revive grammar (Alborz): Identity fill AND outline, cream text.
-  border: `2px solid ${CANON.identity}`, background: CANON.identity, color: CANON.cream,
-  fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer", minHeight: 44,
+  ...M.pill.M, border: `2px solid ${CANON.identity}`, background: CANON.identity, color: CANON.cream,
 };
-const digestDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px" };
-const digestSub: React.CSSProperties = { color: CANON.cream, fontSize: 12, opacity: 0.9, lineHeight: 1.45 };
+const digestDivider: React.CSSProperties = { ...OVERLAY.divider(CANON.cream) };
+const digestSub: React.CSSProperties = { color: CANON.cream, fontSize: 13, opacity: 0.85, lineHeight: 1.45 };

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { X } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { M, OVERLAY, LORA } from "./m";
 import { useAuth } from "../lib/auth";
 import { insertFeedback } from "../lib/db";
 import LoadingDots from "../components/LoadingDots";
@@ -72,19 +72,19 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
     // keyboard, which is why tap-outside used to need a scroll-to-top first.
     <div style={dim} onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={{ ...sheet, ...swipe.style }} {...swipe.handlers}>
-        <button style={closeX} aria-label="Close" onClick={onClose}>
-          <X size={18} color={C.midnight} />
-        </button>
-        <div style={{ fontWeight: 700, fontSize: 16, color: C.midnight, marginBottom: 10 }}>
-          Send Sidebar feedback.
+        {/* Grabber + swipe/tap-out are the exits (polish pass 2026-09-14 —
+            the × sat in the title's line and forced a right pad). */}
+        <div style={OVERLAY.grabber(C.midnight)} />
+        <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.25, color: C.midnight, marginBottom: 10 }}>
+          Send Sidebar feedback
         </div>
-        <div style={{ fontSize: 13, lineHeight: 1.5, color: C.midnight, opacity: 0.8, marginBottom: 14 }}>
+        <div style={{ fontSize: 15, lineHeight: 1.5, color: C.midnight, opacity: 0.8, marginBottom: 14 }}>
           {PROMPT_LINES.join(" ")}
         </div>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value.slice(0, MAX_CHARS))}
-          placeholder="your thoughts…"
+          placeholder="Your thoughts…"
           autoFocus
           style={textarea}
         />
@@ -100,7 +100,7 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
         <button
           onClick={handleSend}
           disabled={!message.trim() || phase === "sending"}
-          style={{ ...sendBtn, opacity: (!message.trim() || phase === "sending") ? 0.5 : 1 }}
+          style={{ ...sendBtn, opacity: (!message.trim() || phase === "sending") ? M.disabledOpacity : 1 }}
         >
           {phase === "sending" ? <>Sending<LoadingDots /></> : "Send"}
         </button>
@@ -112,28 +112,21 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",
   display: "flex", alignItems: "flex-end", justifyContent: "center",
+  animation: "mDimIn 180ms ease-out",
 };
 const sheet: React.CSSProperties = {
-  position: "relative",
-  width: "100%", boxSizing: "border-box", background: C.cream,
-  borderTopLeftRadius: 24, borderTopRightRadius: 24,
-  padding: "24px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)",
-};
-const closeX: React.CSSProperties = {
-  position: "absolute", top: 8, right: 8,
-  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  ...OVERLAY.sheet, position: "relative", background: C.cream,
 };
 const textarea: React.CSSProperties = {
+  // Sky ring as an inset shadow (the on-cream input convention) so the edge
+  // can't shift on focus.
   width: "100%", boxSizing: "border-box", minHeight: 120, resize: "vertical",
-  border: `2px solid ${C.sky}`, borderRadius: 12, padding: "12px 14px",
+  border: "none", boxShadow: `inset 0 0 0 2px ${C.sky}`, borderRadius: 12, padding: "12px 16px",
   fontFamily: '"Inter", system-ui, sans-serif', fontSize: 16, color: C.midnight,
   outline: "none", marginBottom: 12,
 };
 const note: React.CSSProperties = { fontSize: 13, fontWeight: 700, marginBottom: 10 };
 const sendBtn: React.CSSProperties = {
-  width: "100%", border: "none", background: C.blue, color: C.cream,
-  fontWeight: 700, fontSize: 15, padding: "13px 0", borderRadius: 65,
-  cursor: "pointer", minHeight: 48,
+  ...M.pill.L, width: "100%", background: C.blue, color: C.cream,
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
 };
