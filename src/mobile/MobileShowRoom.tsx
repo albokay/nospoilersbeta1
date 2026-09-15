@@ -27,7 +27,7 @@ import RatingCaptureModal from "../components/RatingCaptureModal";
 import MobilePool from "./MobilePool";
 import ShowReference from "../components/reference/ShowReference";
 import { ensureShowReference } from "../lib/reference";
-import { CANON } from "../styles/canon";
+import { CANON, withAlpha } from "../styles/canon";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 /**
@@ -749,6 +749,19 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         .m-progress-cell { min-width: 0; flex: 0 1 auto; }
         .m-progress-cell > span { max-width: 100%; }
         .m-progress-cell select { max-width: 100%; text-overflow: ellipsis; }
+        /* Control card (polish pass 2026-09-14): the shared progress pill
+           renders as text-with-chevron in the card's dark ink — the select
+           stays, only the chrome goes. !important beats the component's
+           inline pill styling; the drafts tab's cream border-color rule
+           can't resurface because border-style goes to none. */
+        .m-progress-cell select {
+          -webkit-appearance: none !important; appearance: none !important;
+          background: transparent !important; border: none !important; border-radius: 0 !important;
+          color: ${C.midnight} !important; font-weight: 700 !important; font-size: 14px !important;
+          padding: 0 22px 0 0 !important; min-height: 44px;
+          text-align: right; text-align-last: right;
+        }
+        .m-progress-cell svg { stroke: ${C.midnight}; width: 16px; height: 16px; right: 0 !important; }
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div style={{ background: tab === "private" ? C.sky : C.green }}>
@@ -786,9 +799,20 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       </div>
 
       <div style={{ padding: "16px 16px 120px" }}>
-        {/* ── Roster dropdown (friend tab) — replaces the season map ── */}
-        {tab === "friend" && !privateOnly && mapMembers.length > 0 && (
-          <div style={rosterShell}>
+        {/* Help-system QA round 8: the progress-picker pointer sits ABOVE
+            the control card, its ↓ pointing at the picker row inside it;
+            first-entrance, X-able, any progress. */}
+        {tab === "friend" && user && <RoomProgressTip idiom="mobile" userId={user.id} />}
+
+        {/* ── Control card (polish pass 2026-09-14): roster · sort +
+               progress · Write in ONE cream card, dark ink — replaces the
+               separate roster shell + the controls floating on the sky.
+               Friend tab = all rows; drafts = picker + Write; guide =
+               picker only. ── */}
+        <div style={controlCard}>
+          {/* Row 1 — roster head (friend tab), unchanged behavior. */}
+          {tab === "friend" && !privateOnly && mapMembers.length > 0 && (
+          <div>
             <button style={rosterHead} onClick={() => setRosterOpen((o) => !o)}>
               <span style={{ display: "inline-flex" }}>
                 {rosterRows.slice(0, 6).map((m) => (
@@ -798,7 +822,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   </span>
                 ))}
               </span>
-              <span style={{ flex: 1, textAlign: "left", marginLeft: 10, fontWeight: 700, fontSize: 13, color: C.midnight }}>
+              <span style={{ flex: 1, textAlign: "left", marginLeft: 10, fontWeight: 700, fontSize: 14, color: C.midnight }}>
                 {mapMembers.length} {mapMembers.length === 1 ? "member" : "members"}
               </span>
               {rosterOpen ? <ChevronUp size={18} color={C.midnight} /> : <ChevronDown size={18} color={C.midnight} />}
@@ -834,40 +858,37 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </div>
         )}
 
-        {/* Help-system QA round 8: the progress-picker pointer sits ABOVE
-            the picker row (below the roster), its ↓ pointing at the picker
-            beneath; first-entrance, X-able, any progress. */}
-        {tab === "friend" && user && <RoomProgressTip idiom="mobile" userId={user.id} />}
-
-        {/* ── Toolbar: write · sort/filter · progress picker ── */}
-        {/* Toolbar — two fixed rows so nothing wraps to a third:
-            row 1: order dropdown (left) + progress (right) · row 2: write. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          {/* Row 2 — sort/filter as text-with-chevron · "you've watched"
+              picker (the <select>s stay; only the chrome changed). The
+              divider only draws when the roster row sits above it. */}
+          <div style={{ ...controlRow, ...(tab === "friend" && !privateOnly && mapMembers.length > 0 ? { borderTop: `1px solid ${withAlpha(CANON.dark, 0.1)}` } : null) }}>
             {tab === "friend" && !privateOnly && feedEntries.length > 0 ? (
-              <select
-                value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
-                  else if (v.startsWith("user:")) setUserFilter(v.slice(5));
-                }}
-                style={sortSelect}
-              >
-                <optgroup label="Sort">
-                  <option value="sort:desc">episode order</option>
-                </optgroup>
-                {mapMembers.length > 0 && (
-                  <optgroup label="Filter by member">
-                    {mapMembers.map((m) => (
-                      <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
-                    ))}
+              <span style={{ position: "relative", display: "inline-flex", alignItems: "center", minHeight: 44 }}>
+                <select
+                  value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                    else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+                  }}
+                  style={sortSelect}
+                >
+                  <optgroup label="Sort">
+                    <option value="sort:desc">episode order</option>
                   </optgroup>
-                )}
-              </select>
+                  {mapMembers.length > 0 && (
+                    <optgroup label="Filter by member">
+                      {mapMembers.map((m) => (
+                        <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              </span>
             ) : <span />}
             {show && progressForShow && (
-              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`}>
+              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
                   value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -879,13 +900,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
             )}
           </div>
-          <div style={{ textAlign: "center" }}>
-            {/* No write on the reference tab (Alborz 2026-09-05) — it's a
-                    lookup surface; the dial stays. */}
-                {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
-                )}
-          </div>
+          {/* Row 3 — Write, full width inside the card. No write on the
+              reference tab (Alborz 2026-09-05) — it's a lookup surface. */}
+          {tab !== "reference" && (
+            <div style={{ padding: "4px 12px 12px" }}>
+              <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+            </div>
+          )}
         </div>
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
@@ -1104,8 +1125,14 @@ const headerTitle: React.CSSProperties = {
   flex: 1, minWidth: 0, fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0,
   color: C.cream, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
 };
-const rosterShell: React.CSSProperties = {
-  background: C.cream, borderRadius: 16, marginBottom: 16, overflow: "hidden",
+// The control card (polish pass 2026-09-14): roster + sort/progress + Write
+// as one cream card, dark ink.
+const controlCard: React.CSSProperties = {
+  background: C.cream, borderRadius: 12, marginBottom: 24, overflow: "hidden",
+};
+const controlRow: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+  minHeight: 48, padding: "0 14px", boxSizing: "border-box",
 };
 const rosterHead: React.CSSProperties = {
   display: "flex", alignItems: "center", width: "100%", minHeight: 52,
@@ -1120,15 +1147,17 @@ const rosterRow: React.CSSProperties = {
   display: "flex", alignItems: "center", minHeight: 44, borderTop: "1px solid rgba(26,58,74,0.08)",
 };
 const writeBtn: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: CANON.cream,
-  fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer", minHeight: 44,
+  ...M.pill.M, display: "flex", width: "100%", alignItems: "center", justifyContent: "center", gap: 8,
+  background: C.yellow, color: CANON.cream,
 };
+// Text-with-chevron inside the control card (the chevron is a lucide sibling
+// painted over the reserved right padding).
 const sortSelect: React.CSSProperties = {
   appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
-  borderRadius: 65, padding: "8px 18px", fontSize: 12, fontWeight: 700, minHeight: 44,
+  background: "transparent", border: "none", color: C.midnight,
+  padding: "0 22px 0 0", fontSize: 14, fontWeight: 600, minHeight: 44,
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
-  // Shares a row with the progress pill — cap width so the pair always fits.
+  // Shares a row with the progress picker — cap width so the pair always fits.
   maxWidth: "42vw", textOverflow: "ellipsis",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };
