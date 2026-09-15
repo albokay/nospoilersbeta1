@@ -9,12 +9,14 @@ import React, {
   type ReactNode,
 } from "react";
 import { CANON } from "../../styles/canon";
-import { ChevronDown, ChevronUp, Mail, Users, Sparkles, Flag } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Mail, Users, Sparkles, Flag } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
 import Tooltip from "../Tooltip";
 import { timeAgo } from "../../lib/utils";
+import { linearIndex } from "../../lib/groupPills";
+import { D } from "../dashboardChrome";
 import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread from "./V2InlineThread";
 import type { PendingReference } from "../ResponseComposer";
@@ -108,6 +110,10 @@ export type V2RoomFeedProps = {
    *  from how many OTHER people are currently in the room: exactly one →
    *  "you", two or more → "the room". Default "the room". */
   gatedStubAudience?: "you" | "the room";
+  /** Season episode counts — lets the gated entry stub say "from N episodes
+   *  ahead" instead of the raw tag (polish pass 2026-09-15). Optional; the
+   *  stub falls back to the s/e tag without it. */
+  seasons?: number[];
   viewerProgress: ProgressEntry | null;
   /** Caller's user id. May be null for logged-out visitors viewing
    *  public threads; interactive controls route through onAuthRequired. */
@@ -245,6 +251,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     sortOrder = "asc",
     groupId,
     gatedStubAudience = "the room",
+    seasons,
     viewerProgress,
     userId,
     onAuthRequired,
@@ -616,6 +623,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // catching up replaces it with the real ticket on the next load.
         // No signals/outlines/expansion apply.
         if (entry.gatedStub) {
+          // Gated-writing idiom (polish pass 2026-09-15): dashed cream, no
+          // fill, lock glyph — "not yet" reads through the outline. The old
+          // grey .redacted box retires here (solid identity stays reserved
+          // for NEW visible entries, solid cream for read ones).
+          const aheadBy = seasons
+            ? linearIndex(entry.s, entry.e, seasons) - linearIndex(viewerProgress?.s ?? 0, viewerProgress?.e ?? 0, seasons)
+            : null;
           return (
             <div
               key={entry.threadId}
@@ -623,13 +637,17 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               data-thread-id={entry.threadId}
               style={{ position: "relative", margin: "0 0 12px 0", scrollMarginTop: 72 }}
             >
-              <div
-                className="card redacted"
-                style={{ margin: 0, border: "none", display: "flex", alignItems: "center", minHeight: 40, padding: "8px 16px", cursor: "default" }}
-              >
-                <div style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.4 }}>
-                  <b>{dn(entry.authorUsername)}</b> has watched <b>S{entry.s} E{entry.e}</b> and
-                  written to {gatedStubAudience}. You can read this once you catch up.
+              <div style={{ ...D.gatedStub(24), padding: "16px 20px", cursor: "default" }}>
+                <Lock size={20} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.45 }}>
+                    {dn(entry.authorUsername)} &middot; s{entry.s} e{entry.e}
+                  </div>
+                  <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9, marginTop: 2 }}>
+                    {aheadBy != null && aheadBy > 0
+                      ? <>Written to {gatedStubAudience} from {aheadBy} episode{aheadBy === 1 ? "" : "s"} ahead. You can read it once you catch up.</>
+                      : <>Written to {gatedStubAudience} from s{entry.s} e{entry.e}. You can read it once you catch up.</>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -823,9 +841,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           if (r.episode > (viewerProgress?.e ?? 0)) {
                             // Ahead-of-progress stub — same copy as the live site.
                             return (
-                              <div key={r.id} className="card redacted" style={{ marginLeft: 8, border: "none", display: "flex", alignItems: "center", minHeight: 32, padding: "4px 14px", cursor: "default" }}>
-                                <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-                                  {r.author} responded from episode S{r.season} E{r.episode}.
+                              <div key={r.id} style={{ ...D.gatedStub(16), padding: "12px 16px", cursor: "default" }}>
+                                <Lock size={18} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                                <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
+                                  <b>{r.author}</b> responded from s{r.season} e{r.episode}. You&rsquo;ll see it when you catch up.
                                 </div>
                               </div>
                             );

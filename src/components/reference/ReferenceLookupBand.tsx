@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -451,10 +451,13 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           placeholder slots as the invitation. Curated here AND on reference
           pages; cards carry edit + essentials + the graduate X. */}
       <div ref={canonAnchorRef} style={{ scrollMarginTop: 24 }}>
-        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 34, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
+        {/* Display-40 opener + Body subhead (polish pass 2026-09-15 — the
+            bold 14 paragraph read as a warning; a section opener on the same
+            footing as "Look something up"). */}
+        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 40, lineHeight: 1.15, letterSpacing: -0.5, color: CREAM, margin: 0, textAlign: "center" }}>
           Your canon
         </h2>
-        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center", margin: "10px auto 44px", maxWidth: 560, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 15, color: CREAM, textAlign: "center", margin: "12px auto 40px", maxWidth: 520, lineHeight: 1.6 }}>
           The shows you&rsquo;d put your name behind. The shows that mean something to you. The ones you think about regularly.
         </div>
         {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
@@ -567,9 +570,9 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     <button
                       onClick={openCanonSearch}
                       title="Add a show to your canon"
-                      style={{ flexShrink: 0, width: 96, height: 136, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 30, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ flexShrink: 0, width: 96, height: 136, borderRadius: 12, border: "2px dashed rgba(254,248,234,0.8)", background: "transparent", color: CREAM, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     >
-                      +
+                      <Plus size={28} color={CREAM} strokeWidth={2} />
                     </button>
                   )}
                 </div>
@@ -613,14 +616,21 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     // The placeholder spans its whole [thumb + text] section
                     // and centers, so empty/part-filled states stay symmetric
                     // instead of leaning left (Alborz 2026-09-08).
+                    // First EMPTY slot speaks the invitation once ("Add a
+                    // show"); later slots stay glyph-only at 0.8 (polish
+                    // pass 2026-09-15).
+                    const isFirstEmpty = slotIdx === canonList.length;
                     return (
                       <button
                         key={`ph-${i}`}
                         onClick={openCanonSearch}
                         title="Add a show to your canon"
-                        style={{ gridColumn: "span 2", justifySelf: "center", width: TW, height: TH, borderRadius: 12, border: `2px dashed ${CREAM}`, background: "transparent", color: CREAM, fontSize: 34, fontWeight: 400, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        style={{ gridColumn: "span 2", justifySelf: "center", width: TW, height: TH, borderRadius: 12, border: "2px dashed rgba(254,248,234,0.8)", background: "transparent", color: CREAM, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, opacity: isFirstEmpty ? 1 : 0.8 }}
                       >
-                        +
+                        <Plus size={28} color={CREAM} strokeWidth={2} />
+                        {isFirstEmpty && (
+                          <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14 }}>Add a show</span>
+                        )}
                       </button>
                     );
                   }

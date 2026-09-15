@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Minus, Settings, SquarePen, UserPen, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Minus, Settings, SquarePen, UserPen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -861,40 +861,52 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {/* No write on the reference tab (Alborz 2026-09-05) — it's a
-                    lookup surface; the dial stays. */}
-                {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> write</button>
-                )}
-                {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
-                  <select
-                    value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
-                      else if (v.startsWith("user:")) setUserFilter(v.slice(5));
-                    }}
-                    style={sortSelect}
-                  >
-                    <optgroup label="Sort">
-                      <option value="sort:desc">episode order</option>
-                    </optgroup>
-                    {mapMembers.length > 0 && (
-                      <optgroup label="Filter by member">
-                        {mapMembers.map((m) => (
-                          <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
-                        ))}
+            {/* ── Control card (polish pass 2026-09-15, mobile parity):
+                   sort · "you've watched" picker · Write in ONE cream card,
+                   dark ink — replaces the loose toolbar row. The shared
+                   progress select stays native; scoped CSS restyles it as
+                   text-with-chevron (border-style none also neutralizes the
+                   private-progress cream border-color rule). ── */}
+            <style>{`
+              .d-room-progress select {
+                -webkit-appearance: none !important; appearance: none !important;
+                background: transparent !important; border: none !important; border-radius: 0 !important;
+                color: ${C.midnight} !important; font-weight: 700 !important; font-size: 14px !important;
+                padding: 0 22px 0 0 !important; min-height: 44px; text-align: left;
+              }
+              .d-room-progress svg { stroke: ${C.midnight}; width: 16px; height: 16px; right: 0 !important; }
+            `}</style>
+            <div style={controlCard}>
+              {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
+                <>
+                  <span style={{ position: "relative", display: "inline-flex", alignItems: "center", minHeight: 44, flexShrink: 0 }}>
+                    <select
+                      value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                        else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+                      }}
+                      style={sortSelect}
+                    >
+                      <optgroup label="Sort">
+                        <option value="sort:desc">episode order</option>
                       </optgroup>
-                    )}
-                  </select>
-                )}
-              </div>
-              {show && progressForShow && (
-                // On the private tab (green body) the default green picker
-                // outline is invisible — switch it to cream there.
-                <div className={tab === "private" ? "private-progress" : undefined}>
+                      {mapMembers.length > 0 && (
+                        <optgroup label="Filter by member">
+                          {mapMembers.map((m) => (
+                            <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                    <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                  </span>
+                  <span style={controlDivider} />
+                </>
+              )}
+              {show && progressForShow ? (
+                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", minHeight: 44, minWidth: 0 }}>
                   <OneSelectProgress
                     show={show}
                     value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -904,6 +916,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     allowZero
                   />
                 </div>
+              ) : <span style={{ flex: 1 }} />}
+              {/* No write on the reference tab (Alborz 2026-09-05) — it's a
+                  lookup surface; the dial stays. */}
+              {tab !== "reference" && (
+                <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
               )}
             </div>
 
@@ -933,6 +950,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   // CP4 stub audience — decided at display time: exactly one
                   // OTHER current member → "you"; two or more → "the room".
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
+                  seasons={show?.seasons}
                   viewerProgress={progressForShow}
                   userId={user?.id ?? ""}
                   onVisibleEntriesChange={setVisibleEntryIds}
@@ -1159,14 +1177,25 @@ const backTab: React.CSSProperties = {
   borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
-const writeBtn: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: C.yellow, color: CANON.cream,
-  fontWeight: 700, fontSize: 14, padding: "12px 24px", borderRadius: 65, cursor: "pointer",
+// The control card (polish pass 2026-09-15): cream, dark ink, one row.
+const controlCard: React.CSSProperties = {
+  background: C.cream, borderRadius: 12, minHeight: 60, padding: "8px 8px 8px 16px",
+  display: "flex", alignItems: "center", gap: 12, color: C.midnight,
+  marginBottom: 24, boxSizing: "border-box",
 };
+const controlDivider: React.CSSProperties = {
+  width: 1, height: 24, background: "rgba(26,58,74,0.12)", flexShrink: 0,
+};
+const writeBtn: React.CSSProperties = {
+  ...D.pill.M, background: C.yellow, color: CANON.cream,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexShrink: 0,
+};
+// Text-with-chevron inside the control card (the chevron is a lucide sibling
+// painted over the reserved right padding).
 const sortSelect: React.CSSProperties = {
   appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
-  borderRadius: 65, padding: "8px 18px", fontSize: 12, fontWeight: 700,
+  background: "transparent", border: "none", color: C.midnight,
+  padding: "0 22px 0 0", fontSize: 14, fontWeight: 600, minHeight: 44,
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };

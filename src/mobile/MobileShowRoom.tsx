@@ -949,6 +949,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               // current room member → "you", 2+ → "the room" (departed members
               // don't count; desktop parity).
               gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
+              seasons={show?.seasons}
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
           )}

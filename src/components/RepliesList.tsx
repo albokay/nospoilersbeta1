@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { MessageSquare, Link2, X, Heart } from "lucide-react";
+import { MessageSquare, Link2, X, Heart, Lock } from "lucide-react";
 
 /** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
 function afterScroll(): Promise<void> {
@@ -990,19 +990,23 @@ export default function RepliesList({
               <div
                 key={r.id}
                 id={`reply-${r.id}`}
-                className="card redacted"
                 style={{
-                  marginLeft: 8,
-                  border: "none",
+                  // Gated-writing idiom (polish pass 2026-09-15): dashed
+                  // cream + lock, replacing the grey .redacted pill.
+                  border: "2px dashed rgba(254,248,234,0.8)",
+                  borderRadius: 16,
+                  background: "transparent",
+                  color: "var(--canon-cream,#fef8ea)",
                   display: "flex",
                   alignItems: "center",
-                  minHeight: 32,
-                  padding: "4px 14px",
+                  gap: 12,
+                  padding: "12px 16px",
                   cursor: "default",
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>
-                  {dn(r.author)} responded from episode {tag}.
+                <Lock size={18} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
+                  <b>{dn(r.author)}</b> responded from {tag.toLowerCase()}. You&rsquo;ll see it when you catch up.
                 </div>
               </div>
             );

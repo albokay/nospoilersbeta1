@@ -23,7 +23,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Lock, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -534,22 +534,28 @@ export default function FriendProfile({
                     )}
                   </>
                 ) : (
-                  // The spoiler stub — the map's hidden-writing Business fill.
-                  <div style={{ background: CANON.business, borderRadius: 12, padding: "12px 14px", marginTop: 2 }}>
-                    <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, color: CANON.dark }}>
-                      Finish {show.name} to read this.
+                  // The spoiler stub — the gated-writing idiom (polish pass
+                  // 2026-09-15): dashed cream + lock replaces the Business
+                  // fill; the chat link goes cream-underlined (identity blue
+                  // on yellow was ≈2.4:1).
+                  <div style={{ border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 12, background: "transparent", color: CANON.cream, display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px", marginTop: 2 }}>
+                    <Lock size={18} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13 }}>
+                        Finish {show.name} to read this.
+                      </div>
+                      <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, opacity: 0.9, marginTop: 4, lineHeight: 1.45 }}>
+                        {ownerName}&rsquo;s take could spoil what&rsquo;s ahead.
+                      </div>
+                      {sharedGroups.length > 0 && (
+                        <button
+                          onClick={openChat}
+                          style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 3, textAlign: "left" }}
+                        >
+                          Chat with {ownerName} about it instead
+                        </button>
+                      )}
                     </div>
-                    <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, color: CANON.dark, opacity: 0.9, marginTop: 4, lineHeight: 1.45 }}>
-                      {ownerName}&rsquo;s take could spoil what&rsquo;s ahead.
-                    </div>
-                    {sharedGroups.length > 0 && (
-                      <button
-                        onClick={openChat}
-                        style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 8, cursor: "pointer", color: CANON.identity, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
-                      >
-                        chat with {ownerName} about it instead
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
