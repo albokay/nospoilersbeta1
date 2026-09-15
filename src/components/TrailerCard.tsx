@@ -40,7 +40,7 @@ export default function TrailerCard({
 
   return (
     <div style={card}>
-      <div style={header}>Watch the trailer:</div>
+      <div style={header}>Watch the trailer</div>
       <div style={frame}>
         {playing ? (
           <iframe
@@ -67,17 +67,19 @@ export default function TrailerCard({
       {/* TMDB attribution — required by the (free, personal-use) TMDB API
           license. Trailer data is sourced from TMDB. */}
       <div style={attribution}>
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
+        Trailer data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
       </div>
     </div>
   );
 }
 
-// Fixed to the wider modal's width in BOTH contexts (spec §4).
+// Fixed to the modal's width in BOTH contexts (spec §4); radius/padding
+// share the show modal's card grammar (polish pass 2026-09-15) so the pair
+// reads as one stack.
 const card: React.CSSProperties = {
   background: YELLOW,
-  borderRadius: 15,
-  padding: "20px 24px",
+  borderRadius: 24,
+  padding: "24px 32px 20px",
   width: "min(460px, 92vw)",
   boxSizing: "border-box",
   textAlign: "center",
@@ -95,7 +97,7 @@ const frame: React.CSSProperties = {
   position: "relative",
   width: "100%",
   aspectRatio: "16 / 9",
-  borderRadius: 10,
+  borderRadius: 12,
   overflow: "hidden",
   background: "rgba(26,58,74,0.25)",
 };
@@ -126,15 +128,17 @@ const playOverlay: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
 };
-// Info = Inter regular 10 (canon_typography), muted, left-aligned under the frame.
+// 11px cream at 0.85 (polish pass 2026-09-15; the 10px dark line was ≈2.6:1
+// on yellow), and it says what the data is for.
 const attribution: React.CSSProperties = {
   fontFamily: '"Inter", sans-serif',
   fontWeight: 400,
-  fontSize: 10,
-  lineHeight: 1.3,
-  color: "rgba(26,58,74,0.7)",
+  fontSize: 11,
+  lineHeight: 1.4,
+  color: CREAM,
+  opacity: 0.85,
   textAlign: "left",
-  marginTop: 8,
+  marginTop: 10,
 };
 const playTriangle: React.CSSProperties = {
   width: 0,

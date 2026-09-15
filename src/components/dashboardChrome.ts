@@ -76,10 +76,8 @@ export const D = {
   disabledOpacity: 0.6,
 };
 
-export const overlay: React.CSSProperties = {
-  position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
-  alignItems: "center", justifyContent: "center", zIndex: 50,
-};
+// The one dim (polish pass 2026-09-15): fade-in, padded, scrollable.
+export const overlay: React.CSSProperties = { ...D.dim };
 
 // Edge-tab top (2026-08-20 rule, re-derived 2026-09-15 for the 96px header):
 // the room edge tabs (back left · chat right) sit at ONE shared height, the
@@ -93,30 +91,27 @@ export const overlay: React.CSSProperties = {
 // poll sticky derives from it too.
 export const EDGE_TAB_TOP = 158;
 
-export const searchCard: React.CSSProperties = { background: CANON.cream, borderRadius: 24, padding: 32, width: "min(560px, 86vw)" };
+export const searchCard: React.CSSProperties = { ...D.card.form, background: CANON.cream };
 
 export const pickerCard: React.CSSProperties = {
-  background: CANON.cream, borderRadius: 24, padding: "40px 48px", width: "min(640px, 88vw)",
+  ...D.card.picker, background: CANON.cream,
   display: "flex", flexDirection: "column", alignItems: "center",
 };
 
-export const searchInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", border: `2px solid ${CANON.personal}`, borderRadius: 65,
-  padding: "14px 24px", fontFamily: '"Inter", sans-serif', fontSize: 14, color: CANON.personal,
-  background: "transparent", outline: "none",
-};
+// Cream field with the sky ring + dark ink (polish pass 2026-09-15; the
+// green-outline / green-text version was ≈2.2:1 on cream).
+export const searchInput: React.CSSProperties = { ...D.input, ...D.inputOnCream };
 
-export const modalClose: React.CSSProperties = {
-  position: "absolute", top: 16, right: 16, border: "none", background: "transparent", cursor: "pointer",
-};
+export const modalClose: React.CSSProperties = { ...D.closeX };
 
+// The show modal's card — 460 for EVERY mode (polish pass 2026-09-15; the
+// width no longer flips between shelf and browse/search entry).
 export const yellowCard: React.CSSProperties = {
-  background: CANON.accent, borderRadius: 15, padding: "28px 32px", width: "min(360px, 88vw)",
-  position: "relative", textAlign: "center",
+  ...D.card.showModal, background: CANON.accent,
 };
 
 export const yellowTitle: React.CSSProperties = {
-  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5,
+  color: CANON.cream, fontSize: 15, fontWeight: 600,
 };
 
 export const startBtn: React.CSSProperties = {

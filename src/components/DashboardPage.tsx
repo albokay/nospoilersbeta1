@@ -1934,6 +1934,8 @@ export default function DashboardPage() {
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeSearch(); }}>
           {!pickShow ? (
             <div style={searchCard}>
+              <button style={modalClose} onClick={closeSearch}><X size={20} color={C.midnight} /></button>
+              <div style={{ ...D.type.title, color: C.green, marginBottom: 16 }}>Find a show</div>
               <input
                 autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
                 placeholder="find your show" style={searchInput}
@@ -1977,7 +1979,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={pickerCard}>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.green }}>
+              <div style={{ ...D.type.title, color: C.green, textAlign: "center" }}>
                 {pickShow.name}
               </div>
               <div style={{ ...D.type.bodyStrong, marginTop: 24, color: C.midnight, textAlign: "center" }}>
@@ -2017,7 +2019,7 @@ export default function DashboardPage() {
         return (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeInviteModal(); }}>
           <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
-            <button style={modalClose} onClick={closeInviteModal}><X size={18} color={CANON.cream} /></button>
+            <button style={modalClose} onClick={closeInviteModal}><X size={20} color={CANON.cream} /></button>
             {!inviteLinks && (
               <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                 {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
@@ -2194,12 +2196,15 @@ export default function DashboardPage() {
           // trailer renders nothing, so the modal centers alone exactly as today.
           <div style={trailerScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
            <div style={trailerCenterColumn} onClick={(e) => { if (e.target === e.currentTarget) setClicked(null); }}>
-            {/* solo + watchq are wider to fit the "Yes" + "just confirm my progress" row. */}
-            <div style={{ ...yellowCard, ...(clicked.mode === "watchq" || clicked.mode === "solo" ? { width: "min(460px, 92vw)" } : {}) }}>
-              <button style={modalClose} onClick={() => setClicked(null)}><X size={16} color={CANON.cream} /></button>
+            <div style={yellowCard}>
+              <style>{`
+                .d-vote-progress select { min-height: 44px !important; padding: 10px 28px 10px 18px !important; }
+                .d-vote-progress svg { width: 16px; height: 16px; }
+              `}</style>
+              <button style={modalClose} onClick={() => setClicked(null)}><X size={20} color={CANON.cream} /></button>
               {/* Show-name title (2026-08-12, mobile parity) — the questions
                   below no longer restate the name. */}
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CANON.cream, textAlign: "center", marginBottom: 18 }}>
+              <div style={{ ...D.type.title, color: CANON.cream, textAlign: "center", marginBottom: 24 }}>
                 {preventLastWordOrphan(clicked.name)}
               </div>
 
@@ -2221,7 +2226,7 @@ export default function DashboardPage() {
                             actually interested. */}
                         <div style={yellowTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
                         {interestedNames.length > 0 && (
-                          <div style={{ marginTop: 10, color: CANON.cream, fontSize: 13, fontWeight: 600, textAlign: "center", opacity: 0.9 }}>
+                          <div style={{ marginTop: 10, color: CANON.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
                             {preventLastWordOrphan(interestedNode(interestedNames) ?? "")}
                           </div>
                         )}
@@ -2234,7 +2239,7 @@ export default function DashboardPage() {
                       <>
                         {withToggle && <div style={yellowDivider} />}
                         <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
-                        <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                        <div className="d-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           <OneSelectProgress
                             show={showsById[clicked.showId] ?? { seasons: [] }}
                             value={curVal}
@@ -2254,9 +2259,9 @@ export default function DashboardPage() {
                         <div style={modalBtnCol}>
                           <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
                           {!gs?.roomId && optedCount <= 1 && (
-                            <div style={modalJoinNote}>{preventLastWordOrphan("(Your friends can join in when they're ready.)")}</div>
+                            <div style={modalJoinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
-                          <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                          <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                         </div>
                       </>
                     )}
@@ -2269,7 +2274,7 @@ export default function DashboardPage() {
                   {/* No show name here either (Alborz 2026-08-12) — the
                       title above carries it. */}
                   <div style={yellowTitle}>Are you also watching?</div>
-                  <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                  <div className="d-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
                       value={{ s: 0, e: 0 }}
@@ -2284,7 +2289,7 @@ export default function DashboardPage() {
                   {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                   <div style={modalBtnCol}>
                     <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
-                    <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>just confirm my progress</button>
+                    <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                   </div>
                 </>
               )}
@@ -2319,22 +2324,18 @@ export default function DashboardPage() {
 
       {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
       {optionsFor && (
-        // zIndex above the tip stickies (60) — the gear is clickable while a
-        // note is up, and its panel must open ON TOP of it (QA round 4).
-        <div style={{ position: "fixed", inset: 0, zIndex: 70, background: "rgba(26,58,74,0.25)" }} onClick={() => setOptionsFor(null)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            // QA rounds 1+4: two independent 360px columns (contacts left;
-            // rename with leave pressed right under it on the right) — a
-            // grid tied leave's row to the tall contacts card, so flex.
-            style={{
-              position: "fixed",
-              top: optionsAnchor?.y ?? 80,
-              left: Math.min(optionsAnchor?.x ?? 28, (typeof window !== "undefined" ? window.innerWidth : 1024) - 760),
-              display: "flex", gap: 16, alignItems: "flex-start",
-            }}
-          >
-            <div style={gearCol}>
+        // One centered yellow Form card (polish pass 2026-09-15) — replaces
+        // the two 360px cards anchored off the gear's rect. zIndex above the
+        // tip stickies (60) so it opens ON TOP of an open note (QA round 4).
+        <div style={{ ...D.dim, zIndex: 70 }} onClick={() => setOptionsFor(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ ...D.card.form, background: C.yellow, textAlign: "left", color: CANON.cream }}>
+            <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={20} color={CANON.cream} /></button>
+            <div style={{ ...D.type.title, color: CANON.cream, marginBottom: 24 }}>Group settings</div>
+            <div style={gearLabel}>Group name</div>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...D.input, flex: 1, width: "auto" }} />
+              <button style={gearSaveBtn} onClick={() => doRename(optionsFor)}>Save</button>
+            </div>
             {(() => {
               const others = (railGroups.find((r) => r.group.id === optionsFor)?.members ?? []).filter((m) => m.userId !== selfUserId);
               // QA round 3: pending friends live IN the contact list (the
@@ -2345,47 +2346,40 @@ export default function DashboardPage() {
                 .map((p) => ({ name: p.name, createdAt: p.createdAt, inviteId: p.inviteId }));
               if (!others.length && myGroupInvites.length === 0 && othersPending.length === 0) return null;
               return (
-                <div style={yellowCard}>
-                  <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
-                  <div style={{ ...yellowTitle, marginBottom: 4 }}>Update your contact list:</div>
-                  <div style={{ color: CANON.cream, fontSize: 11, opacity: 0.85, marginBottom: 12, lineHeight: 1.5 }}>
-                    Your friends&rsquo; names default to their log-in info. You can enter your own names for them &mdash; just like you would on your phone&rsquo;s contacts.
-                  </div>
-                  {others.map((m) => (
-                    <input
-                      key={m.userId}
-                      value={contactEdits[m.userId] ?? ""}
-                      onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
-                      placeholder={m.displayName ?? m.username}
-                      maxLength={40}
-                      style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight, marginBottom: 8 }}
-                    />
-                  ))}
+                <>
+                  <div style={gearDivider} />
+                  <div style={gearLabel}>Your names for your friends</div>
+                  <div style={gearCaption}>Names default to their log-in info. Enter your own, like your phone&rsquo;s contacts.</div>
+                  {others.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                      {others.map((m) => (
+                        <input
+                          key={m.userId}
+                          value={contactEdits[m.userId] ?? ""}
+                          onChange={(e) => setContactEdits((prev) => ({ ...prev, [m.userId]: e.target.value }))}
+                          placeholder={m.displayName ?? m.username}
+                          maxLength={40}
+                          style={D.input}
+                        />
+                      ))}
+                    </div>
+                  )}
                   <PendingInvitesPanel invites={myGroupInvites} others={othersPending} onRefresh={reloadMyGroupInvites} />
                   {others.length > 0 && (
-                    <button style={{ ...startBtn, marginTop: 4, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={() => saveContactNames(optionsFor)}>
-                      {contactsSaving ? "saving…" : "save names"}
+                    <button style={{ ...gearSaveBtn, marginTop: 12, opacity: contactsSaving ? 0.6 : 1 }} disabled={contactsSaving} onClick={() => saveContactNames(optionsFor)}>
+                      {contactsSaving ? "saving…" : "Save names"}
                     </button>
                   )}
-                </div>
+                </>
               );
             })()}
-            </div>
-            {/* Right column: rename with leave pressed right under it
-                (QA round 4). */}
-            <div style={gearCol}>
-            <div style={yellowCard}>
-              <button style={modalClose} onClick={() => setOptionsFor(null)}><X size={16} color={CANON.cream} /></button>
-              <div style={{ ...yellowTitle, marginBottom: 12 }}>Rename group:</div>
-              <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} placeholder="group name" style={{ ...searchInput, border: "none", background: C.cream, color: C.midnight }} />
-              <button style={{ ...startBtn, marginTop: 12 }} onClick={() => doRename(optionsFor)}>confirm name</button>
-            </div>
-            <div style={yellowCard}>
-              <div style={{ ...yellowTitle, marginBottom: 12 }}>Leave this group?</div>
-              <button style={dangerBtn} onClick={() => doLeave(optionsFor)}>yes, leave</button>
-              <div style={yellowDivider} />
-              <div style={{ color: CANON.cream, fontSize: 12, opacity: 0.9 }}>You can join again if someone sends you another invite.</div>
-            </div>
+            <div style={gearDivider} />
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <div style={gearLabel}>Leave this group</div>
+                <div style={gearCaption}>You can join again if someone sends you another invite.</div>
+              </div>
+              <button style={{ ...D.pill.M, border: `2px solid ${C.red}`, background: "transparent", color: C.red, flexShrink: 0 }} onClick={() => doLeave(optionsFor)}>Leave group</button>
             </div>
           </div>
         </div>
@@ -2646,15 +2640,16 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
     <button
       onClick={() => onChange(!value)}
       style={{
-        border: "none", cursor: "pointer", borderRadius: 65, padding: 3, width: 84, height: 32,
+        // 96×40 (polish pass 2026-09-15; was 84×32) — the knob is a target.
+        border: "none", cursor: "pointer", borderRadius: 9999, padding: 4, width: 96, height: 40,
         background: C.cream, position: "relative", display: "flex", alignItems: "center",
       }}
     >
       <span style={{
-        position: "absolute", left: value ? 46 : 3, top: 3, width: 35, height: 26, borderRadius: 65,
+        position: "absolute", left: value ? 50 : 4, top: 4, width: 42, height: 32, borderRadius: 9999,
         background: value ? C.green : C.yellow, transition: "left 120ms, background 120ms",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 12, fontWeight: 700, color: C.cream,
+        fontSize: 13, fontWeight: 700, color: C.cream,
       }}>{value ? "yes" : "no"}</span>
     </button>
   );
@@ -2735,17 +2730,16 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
   return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
-/** Parenthetical interest list (Alborz 2026-08-12): first names only, viewer
- *  excluded, no show name — the pill/headline already names the show.
- *  "(A is interested.)" / "(A and B are interested.)" / "(A, B, and C are
- *  interested.)" Serves both the pill tooltip and the vote modal's inline
- *  line. */
+/** Interest list (Alborz 2026-08-12; parentheses dropped in the 2026-09-15
+ *  polish): first names only, viewer excluded, no show name — the
+ *  pill/headline already names the show. "A is interested." / "A and B are
+ *  interested." Serves both the pill tooltip and the vote modal's line. */
 function interestedNode(names: string[]): string | null {
   if (!names.length) return null;
   const list = names.length === 1 ? names[0]
     : names.length === 2 ? `${names[0]} and ${names[1]}`
     : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-  return `(${list} ${names.length === 1 ? "is" : "are"} interested.)`;
+  return `${list} ${names.length === 1 ? "is" : "are"} interested.`;
 }
 
 /** Per-count icon arrangement (rows, top→bottom), matching the spec's pyramid:
@@ -3013,9 +3007,16 @@ function shelfLayout(count: number): React.CSSProperties {
   };
 }
 const topBar: React.CSSProperties = { ...D.header.bar };
-// Gear-popover column: a 360px stack of yellow cards (QA round 4).
-const gearCol: React.CSSProperties = {
-  width: 360, display: "flex", flexDirection: "column", gap: 16,
+// Group-settings Form card sections (polish pass 2026-09-15).
+const gearLabel: React.CSSProperties = {
+  ...D.type.label, color: CANON.cream, marginBottom: 8,
+};
+const gearCaption: React.CSSProperties = {
+  ...D.type.caption, color: CANON.cream, opacity: 0.85,
+};
+const gearDivider: React.CSSProperties = { ...D.divider(CANON.cream) };
+const gearSaveBtn: React.CSSProperties = {
+  ...D.pill.M, background: CANON.identity, color: CANON.cream, flexShrink: 0,
 };
 // Cream on both page colors since the 2026-09-15 polish (the inGroup
 // midnight switch is retired).
@@ -3162,26 +3163,25 @@ const chatSend: React.CSSProperties = {
 // and lets it scroll on short viewports. A lone modal (miss) centers identically.
 const trailerScrollOverlay: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", zIndex: 50, overflowY: "auto",
+  animation: "dDimIn 180ms ease-out",
 };
 const trailerCenterColumn: React.CSSProperties = {
   minHeight: "100%", display: "flex", flexDirection: "column",
-  alignItems: "center", justifyContent: "center", gap: 8,
+  alignItems: "center", justifyContent: "center", gap: 16,
   padding: "24px 16px", boxSizing: "border-box",
 };
-const yellowDivider: React.CSSProperties = {
-  height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px",
-};
+const yellowDivider: React.CSSProperties = { ...D.divider(CANON.cream) };
 // Stacked room/confirm pair in the yellow show modal (Alborz 2026-08-12):
 // blue action on top, both the same size; the side-by-side row + question
 // copy retired. Mirrors the mobile sheet.
 const modalBtnCol: React.CSSProperties = {
-  display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginTop: 12,
+  display: "flex", flexDirection: "column", gap: 12, alignItems: "center", marginTop: 12,
 };
 const modalRoomBtn: React.CSSProperties = {
-  ...startBtn, width: 270, padding: "11px 24px", boxSizing: "border-box", whiteSpace: "nowrap",
+  ...D.pill.L, background: CANON.identity, color: CANON.cream, width: 280, whiteSpace: "nowrap",
 };
 const modalConfirmBtn: React.CSSProperties = {
-  ...modalRoomBtn, background: "transparent", color: CANON.cream, border: `2px solid ${CANON.cream}`,
+  ...D.pill.M, background: "transparent", color: CANON.cream, border: `2px solid ${CANON.cream}`, width: 280, whiteSpace: "nowrap",
 };
 // The first-opter reassurance, Body styling (replaces the old "Your friends
 // can join in…" second line of the room question).
@@ -3229,8 +3229,9 @@ function DashboardStyles() {
       .dash-pill__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .dash-result {
         display: block; width: 100%; text-align: left; border: none; background: transparent;
-        padding: 12px 16px; border-radius: 12px; cursor: pointer; font-family: "Inter", sans-serif;
-        font-size: 14px; font-weight: 600; color: ${C.green};
+        padding: 12px 16px; min-height: 44px; box-sizing: border-box; border-radius: 12px;
+        cursor: pointer; font-family: "Inter", sans-serif;
+        font-size: 15px; font-weight: 600; color: ${C.midnight};
       }
       .dash-result:hover { background: rgba(122,189,142,0.14); }
       .dash-result--onsky { color: ${C.cream}; }
