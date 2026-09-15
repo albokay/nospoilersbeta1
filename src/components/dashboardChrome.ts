@@ -124,14 +124,14 @@ export const startBtn: React.CSSProperties = {
   padding: "11px 38px", borderRadius: 65, cursor: "pointer",
 };
 
+// L pill + identity + shadow (polish pass 2026-09-15; was 18×64 radius 65).
 export const invitePill: React.CSSProperties = {
-  border: "none", background: CANON.identity, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "18px 64px", borderRadius: 65, cursor: "pointer", boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+  ...D.pill.L, background: CANON.identity, color: CANON.cream,
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
 };
 
 export const searchPill: React.CSSProperties = {
-  border: "none", background: CANON.accent, color: CANON.cream, fontWeight: 700, fontSize: 14,
-  padding: "16px 56px", borderRadius: 65, cursor: "pointer",
+  ...D.pill.L, background: CANON.accent, color: CANON.cream,
 };
 
 // The group heading's "with …" members line (naming arc 2026-07-07): shared

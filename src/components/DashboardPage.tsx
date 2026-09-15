@@ -1827,14 +1827,17 @@ export default function DashboardPage() {
               What shows are you watching<br />or thinking about starting?
             </h1>
           )}
-          {/* CP2: the group room's two centered actions — equal width, set a
-              little apart from the show buttons above. */}
-          <div style={{ textAlign: "center", marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 80 : 32 }}>
-            <button style={{ ...searchPill, width: 384, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }} onClick={openSearch}><Search size={26} color={CANON.cream} strokeWidth={2} />Propose more shows?</button>
-          </div>
-          <div style={{ textAlign: "center", marginTop: 20 }}>
+          {/* The group room's two actions, side by side and sized to their
+              labels (polish pass 2026-09-15; was two stacked 384px pills).
+              The shadow rides "Propose more shows?" — proposing is the
+              room's one act. */}
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 72 : 32 }}>
             <button
-              style={{ ...invitePill, width: 384, padding: "16px 0" }}
+              style={{ ...D.pill.L, background: C.yellow, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}
+              onClick={openSearch}
+            ><Search size={20} color={CANON.cream} strokeWidth={2} />Propose more shows?</button>
+            <button
+              style={{ ...D.pill.L, background: C.blue, color: CANON.cream }}
               onClick={() => activeGroupId && openInvite(activeGroupId)}
             >Add more friends to this group?</button>
           </div>
@@ -1977,7 +1980,7 @@ export default function DashboardPage() {
               <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.green }}>
                 {pickShow.name}
               </div>
-              <div style={{ marginTop: 24, color: C.green, fontWeight: 600, fontSize: 13, letterSpacing: -1, textAlign: "center" }}>
+              <div style={{ ...D.type.bodyStrong, marginTop: 24, color: C.midnight, textAlign: "center" }}>
                 How much have you watched?
               </div>
               <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
@@ -1995,7 +1998,7 @@ export default function DashboardPage() {
               {/* The dashboard search only opens inside a group (CP2), so
                   this is always a proposal (Alborz 2026-09-13). */}
               <button style={{ ...invitePill, marginTop: 24 }} onClick={() => addShow(pickShow, pickProgress)}>
-                propose show
+                Propose show
               </button>
             </div>
           )}
@@ -2098,7 +2101,7 @@ export default function DashboardPage() {
                       "creating…" while ADDING a friend read as confusing):
                       animated dots like the site's other waits. */}
                   <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1 }} disabled={inviteSending || !ready} onClick={sendInvites}>
-                    {inviteSending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "create group" : "send invite"}
+                    {inviteSending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "Create group" : "Send invite"}
                   </button>
                 </div>
               </>
@@ -2145,7 +2148,7 @@ export default function DashboardPage() {
                   </>
                 )}
                 <div style={{ textAlign: "center", marginTop: 12 }}>
-                  <button style={invitePill} onClick={closeInviteModal}>done</button>
+                  <button style={invitePill} onClick={closeInviteModal}>Done</button>
                 </div>
               </>
             )}
@@ -2666,9 +2669,9 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
   const isGreen = pill.fill === "green";
   const isCream = pill.fill === "cream";
   const base: React.CSSProperties = {
-    display: "flex", alignItems: "center", gap: 10, padding: "12px 18px",
-    borderRadius: 65, fontFamily: '"Inter", sans-serif', fontWeight: 700,
-    fontSize: 14, letterSpacing: -1, width: "100%", boxSizing: "border-box",
+    display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", minHeight: 48,
+    borderRadius: 9999, fontFamily: '"Inter", sans-serif', fontWeight: 700,
+    fontSize: 14, width: "100%", boxSizing: "border-box",
     // Outlined tier is filled with the page's sky (was transparent) so the
     // pressable plate behind it can't show through (2026-08-18).
     background: isGreen ? C.green : isCream ? C.cream : C.sky,
@@ -2690,7 +2693,7 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
       {/* Proposed shelf: a friend already watching → surface how far the
           furthest one has gotten (takes the right slot; else the ▲/▼ gap). */}
       {furthestFriend ? (
-        <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", opacity: 0.9 }}>
+        <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", opacity: 0.9 }}>
           furthest progress: S{furthestFriend.s} E{furthestFriend.e}
         </span>
       ) : (
@@ -2945,7 +2948,7 @@ function GroupClusters({
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
             <div style={clusterName} data-cluster-label>
               {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
-              {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
+              <span>{groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}</span>
             </div>
           </button>
         );
@@ -2962,7 +2965,11 @@ function GroupClusters({
             onMouseLeave={() => onTip(null)}
           >
             <AvatarPile avatars={names.map((n, i) => <Avatar key={i} letter={n[0]} state="invited" />)} minHeight={pileMinHeight} />
-            <div style={clusterName} data-cluster-label>{label}</div>
+            <div style={clusterName} data-cluster-label><span>{label}</span></div>
+            {/* Caption under the name (polish pass 2026-09-15) — the red
+                avatars no longer carry the invite meaning alone; the hover
+                tooltip still explains it. */}
+            <div style={{ ...D.type.caption, color: CANON.cream, opacity: 0.85, marginTop: 2, textAlign: "center" }}>invited you</div>
           </button>
         );
       })}
@@ -2977,7 +2984,7 @@ const pageStyle: React.CSSProperties = {
   position: "fixed", inset: 0, fontFamily: '"Inter", system-ui, sans-serif', overflowY: "auto",
 };
 const heroH1: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, fontSize: 44, lineHeight: 1.15, letterSpacing: 0, color: C.cream, margin: 0,
+  ...D.type.display, color: C.cream, margin: 0,
 };
 const contentWrap: React.CSSProperties = {
   maxWidth: 1040, margin: "0 auto", padding: "8px 64px 80px",
@@ -2991,7 +2998,7 @@ const shelfHeader: React.CSSProperties = {
 const shelfGrid: React.CSSProperties = {
   // 24px vertical separation (row) leaves room for the opt-in avatars that
   // overlap each pill's bottom edge in the group view; 16px between columns.
-  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: "0 auto",
+  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "28px 16px", maxWidth: 880, margin: "0 auto",
 };
 // ≈ the 3-column width at maxWidth 880 with 16px gaps: (880 - 2*16) / 3.
 const SHELF_COL = 283;
@@ -3022,7 +3029,9 @@ const clustersRow: React.CSSProperties = {
 // auto, so taller-than-viewport content grows and the page scrolls instead of
 // clipping.
 const dashboardCenter: React.CSSProperties = {
-  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "24px",
+  // paddingTop 56 (Alborz 2026-09-15): the clusters sat too close under the
+  // new 96px header bar.
+  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 24px 24px",
 };
 const clusterBtn: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 0 };
 const avatarPile: React.CSSProperties = {
@@ -3062,8 +3071,7 @@ const notifDotChat: React.CSSProperties = {
   background: C.blue, zIndex: 1,
 };
 const notifDotCluster: React.CSSProperties = {
-  display: "inline-block", width: 16, height: 16, borderRadius: "50%",
-  background: C.blue, verticalAlign: "middle", marginRight: 8,
+  width: 16, height: 16, borderRadius: "50%", background: C.blue, flexShrink: 0,
 };
 const tipBubble: React.CSSProperties = {
   // The highlight-hover bubble's grammar, element-anchored (approved mockup
@@ -3080,9 +3088,13 @@ const tipBubble: React.CSSProperties = {
 const tipDivider: React.CSSProperties = {
   height: 1, background: "rgba(26,58,74,0.2)", margin: "7px 0",
 };
+// Label 15/700, no tracking (polish pass 2026-09-15; was 17/700 at −1). The
+// notification dot sits in a flex row with the text (gap 8) instead of the
+// old inline-block + marginRight hack.
 const clusterName: React.CSSProperties = {
-  marginTop: 10, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 17, letterSpacing: -1,
+  marginTop: 12, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15,
   color: CANON.cream, maxWidth: 168, lineHeight: 1.25, marginLeft: "auto", marginRight: "auto",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
 };
 const clusterIcon: React.CSSProperties = { border: "none", background: "transparent", cursor: "pointer", padding: 2, lineHeight: 0 };
 // Lives in the header bar's center slot (polish pass 2026-09-15).

@@ -343,7 +343,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
           <div style={onbSubline}>(You can add more later.)</div>
         </div>
         {!show && !searchOpen && (
-          <button style={searchPill} onClick={() => setSearchOpen(true)}>search</button>
+          <button style={searchPill} onClick={() => setSearchOpen(true)}>Search</button>
         )}
         {!show && searchOpen && (
           <div style={searchCard}>
@@ -401,7 +401,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
                 onConfirm={() => {}}
               />
             </div>
-            <button style={{ ...invitePill, marginTop: 24 }} onClick={() => setStep(2)}>next</button>
+            <button style={{ ...invitePill, marginTop: 24 }} onClick={() => setStep(2)}>Next</button>
           </div>
         )}
       </div>
