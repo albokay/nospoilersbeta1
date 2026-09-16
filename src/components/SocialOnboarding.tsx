@@ -346,32 +346,40 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
           <button style={searchPill} onClick={() => setSearchOpen(true)}>Search</button>
         )}
         {!show && searchOpen && (
-          <div style={searchCard}>
-            <input
-              autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="find your show" style={searchInput}
-            />
-            {catalogMatches.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                {catalogMatches.map((s) => (
-                  <button key={s.id} className="dash-result" onClick={() => pickShow(s)}>{s.name}</button>
-                ))}
+          /* The wrapper reserves ONLY the collapsed card's height and the
+             card floats inside it (Alborz 2026-09-16): results used to grow
+             the card in flow, shoving the browse rows down the page as you
+             typed. Now they open OVER the rows and the page holds still. */
+          <div style={onbSearchWrap}>
+            <div style={onbSearchCard}>
+              <input
+                autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="find your show" style={searchInput}
+              />
+              <div style={onbSearchResults}>
+                {catalogMatches.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {catalogMatches.map((s) => (
+                      <button key={s.id} className="dash-result" onClick={() => pickShow(s)}>{s.name}</button>
+                    ))}
+                  </div>
+                )}
+                {tvToAdd.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {tvToAdd.map(({ tv, id }) => (
+                      <button key={id} className="dash-result" disabled={creatingShow} onClick={() => pickTvShow(tv)}>
+                        {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {query.trim().length >= 2 && catalogMatches.length === 0 && tvToAdd.length === 0 && (
+                  <div style={{ padding: "12px 16px", fontSize: 13, color: CANON.dark, opacity: 0.6 }}>
+                    {creatingShow ? "adding…" : "searching…"}
+                  </div>
+                )}
               </div>
-            )}
-            {tvToAdd.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                {tvToAdd.map(({ tv, id }) => (
-                  <button key={id} className="dash-result" disabled={creatingShow} onClick={() => pickTvShow(tv)}>
-                    {tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}
-                  </button>
-                ))}
-              </div>
-            )}
-            {query.trim().length >= 2 && catalogMatches.length === 0 && tvToAdd.length === 0 && (
-              <div style={{ padding: "12px 16px", fontSize: 13, color: CANON.dark, opacity: 0.6 }}>
-                {creatingShow ? "adding…" : "searching…"}
-              </div>
-            )}
+            </div>
           </div>
         )}
         {/* Browse rows (2026-08-18): the group room's poster shelves, here for
@@ -584,6 +592,19 @@ const onbHeading: React.CSSProperties = {
 const onbSubline: React.CSSProperties = {
   fontFamily: "Inter, sans-serif", fontSize: 13, color: CANON.cream, marginTop: 10,
 };
+// Onboarding search (2026-09-16): a fixed-height slot + a floating card, so
+// results never move the browse rows below. 112 = the card's 32px padding
+// twice plus the 48px field — its collapsed height.
+const onbSearchWrap: React.CSSProperties = {
+  position: "relative", width: "min(560px, 92vw)", height: 112, flexShrink: 0, zIndex: 20,
+};
+const onbSearchCard: React.CSSProperties = {
+  ...searchCard, position: "absolute", top: 0, left: 0, width: "100%",
+};
+// Long lists scroll inside the card rather than running off the page (both
+// sources cap at 8, so 16 rows is the worst case).
+const onbSearchResults: React.CSSProperties = { maxHeight: 320, overflowY: "auto" };
+
 const backLink: React.CSSProperties = {
   position: "absolute", top: 14, left: 18, border: "none", background: "transparent",
   color: CANON.cream, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 4,

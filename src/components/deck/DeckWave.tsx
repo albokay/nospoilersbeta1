@@ -247,8 +247,18 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       // Pass 3: welcome top padding 128 → 72 — the dim covers the page and
       // /m has no top bar under the wave, so nothing to clear anymore.
       ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 72 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
+      // Desktop welcome (Alborz 2026-09-16): the Display-40 heading block is
+      // tall enough that vertical centering rode it up UNDER the page's logo
+      // (the dashboard's 96px bar sits above this dim during onboarding; the
+      // invite pre-wall has its own top-left logo). Anchor below both and
+      // scroll if the heading + card outrun a short window. Other waves
+      // (drip / "a few more") have no heading block and stay centered.
+      ...(!mobile && heading === "welcome" ? { alignItems: "flex-start" as const, paddingTop: 120, overflowY: "auto" as const } : {}),
     }}>
-      <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", display: "flex", flexDirection: "column", justifyContent: "center", ...(mobile ? {} : { maxHeight: "100%" }) }}>
+      {/* The desktop welcome column is top-anchored and may outrun a short
+            window — no maxHeight there, so the dim scrolls instead of
+            capping (and clipping) the block. */}
+        <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", display: "flex", flexDirection: "column", justifyContent: "center", ...(mobile || heading === "welcome" ? {} : { maxHeight: "100%" }) }}>
         {/* Welcome copy (pass 3, 2026-09-15): Display heading (dash dropped),
             Body tagline wrapping naturally, setup note 13 at 0.85 with the
             parentheses gone. Both platforms via the token scales. */}
