@@ -7,7 +7,6 @@
 // the dial reaches it — "no 0-state reference page").
 
 import React, { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
@@ -16,7 +15,7 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setCanonPin, setEssentialEps, upsertRewatchStatus, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames } from "../../lib/db";
 import { groupDisplayName, joinNames } from "../../lib/groupNames";
 import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
@@ -26,7 +25,7 @@ const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, canonSlot = null,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false,
 }: {
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
@@ -38,9 +37,6 @@ export default function ShowReference({
   /** Standalone (dashboard-route) guide: link out to the viewer's open show
    *  rooms for this show (one pill per friend-group room). */
   showRoomLinks?: boolean;
-  /** Pass 3: the host control card's slot element — the canon pill
-   *  portals into it ("In your canon" / "Add to canon"). */
-  canonSlot?: HTMLElement | null;
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -65,10 +61,6 @@ export default function ShowReference({
   // HERE — the dashboard's canon shelf only displays. Reuses the old
   // profile's columns, so pre-restructure canon picks resurface.
   const [canonOn, setCanonOn] = useState<boolean | null>(null); // null = loading
-  const [canonBusy, setCanonBusy] = useState(false);
-  // The canon is capped at FOUR shows (Alborz 2026-09-07) — the add pill
-  // gives way to a note once the cap is reached elsewhere.
-  const [canonCount, setCanonCount] = useState<number | null>(null);
   // The essentials sticky (Alborz 2026-09-07 — the star feature read as
   // plain reference to new users): dismissible per show; the dashboard's
   // "pick its essential episodes" prompt always re-summons it.
@@ -151,32 +143,9 @@ export default function ShowReference({
         setCanonOn(!!data?.canon_pin);
         setEssentials(new Set(Array.isArray(data?.essential_eps) ? data.essential_eps : []));
       });
-    supabase
-      .from("progress")
-      .select("show_id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("canon_pin", true)
-      .then(({ count }) => { if (!cancelled) setCanonCount(count ?? 0); });
     return () => { cancelled = true; };
   }, [showId, user?.id]);
 
-  async function addToCanon() {
-    if (!user || canonBusy) return;
-    setCanonBusy(true);
-    try {
-      await setCanonPin(user.id, showId, true);
-      // Canon ⇒ progress at the latest episode (never lowers — only jumps
-      // forward). The reference ungates fully right away via the override.
-      const lastSeason = ref?.seasons[ref.seasons.length - 1];
-      const lastEp = lastSeason?.episodes[lastSeason.episodes.length - 1];
-      if (lastEp && idx(lastEp.s, lastEp.e) > vIdx) {
-        await upsertRewatchStatus(user.id, showId, { s: lastEp.s, e: lastEp.e, highestS: lastEp.s, highestE: lastEp.e });
-        setProgressOverride({ s: lastEp.s, e: lastEp.e });
-      }
-      setCanonOn(true);
-    } catch (e) { console.error("[reference] add-to-canon failed", e); }
-    finally { setCanonBusy(false); }
-  }
   function toggleEssential(s: number, e: number) {
     if (!user || !canonOn) return;
     const key = idx(s, e);
@@ -299,38 +268,22 @@ export default function ShowReference({
           name (rev 3 — swaps with the "with …" members line per tab);
           attribution moved to the page bottom. */}
 
-      {/* ── Canon controls (pass 3): the pill lives in the host control
-            card's right/left slot (portal); under the card sit the
-            non-canon caption + the room-link pills. Canon full (12) →
-            no pill, no caption; room pills still render. ── */}
-      {user && canonSlot && canonOn !== null && createPortal(
-        !canonOn ? (
-          (canonCount ?? 0) >= 12 ? null : (
-            <button
-              onClick={addToCanon}
-              disabled={canonBusy}
-              style={{ ...(mobile ? M.pill.S : D.pill.M), background: CANON.accent, color: CREAM, display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap", opacity: canonBusy ? 0.6 : 1 }}
-            >
-              <Star size={16} color={CREAM} strokeWidth={2.2} /> Add to canon
-            </button>
-          )
-        ) : (
-          <button
-            onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })}
-            title="See your canon on the dashboard"
-            style={{ ...(mobile ? M.pill.S : D.pill.M), background: CANON.accent, color: CREAM, display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
-          >
-            <Star size={16} color={CREAM} fill={CREAM} strokeWidth={2.2} /> In your canon
-          </button>
-        ),
-        canonSlot,
-      )}
-      {user && ((canonOn === false && (canonCount ?? 0) < 12) || roomLinks.length > 0) && (
+      {/* ── Canon status + room links (Alborz 2026-09-16): the ADD-to-canon
+            pill and its "Adds it at the latest episode" caption are gone from
+            the guide — adding lives on the dashboard's canon card now. What
+            stays is the status pill (→ the dashboard's canon) and the open-room
+            links. Cream fill / accent text: an accent pill would vanish into
+            the guide's yellow page. ── */}
+      {user && (canonOn || roomLinks.length > 0) && (
         <div style={{ marginBottom: 28, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-          {canonOn === false && (canonCount ?? 0) < 12 && (
-            <div style={{ fontSize: 13, opacity: 0.85, flexBasis: "100%" }}>
-              Adds it at the latest episode
-            </div>
+          {canonOn && (
+            <button
+              onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })}
+              title="See your canon on the dashboard"
+              style={{ ...(mobile ? M.pill.M : D.pill.M), background: CREAM, color: CANON.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+            >
+              <Star size={16} color={CANON.accent} fill={CANON.accent} strokeWidth={2.2} /> In your canon
+            </button>
           )}
           {roomLinks.map((r) => (
             <button

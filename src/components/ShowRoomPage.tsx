@@ -133,9 +133,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [location.pathname]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
-  // Pass 3 (flows polish): the guide tab's canon pill portals into this
-  // slot in the control card (ShowReference owns the canon state).
-  const [canonSlotEl, setCanonSlotEl] = useState<HTMLSpanElement | null>(null);
   // The progress-picker sticky, now header-"?"-toggleable (2026-09-15 —
   // dashboard tips parity; it used to be gone forever once X'd). null =
   // auth not resolved yet; first resolution honors the per-account flag.
@@ -895,38 +892,30 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
-            {/* ── Control card (polish pass 2026-09-15, mobile parity):
-                   Write · sort · "you've watched" picker in ONE cream card,
-                   dark ink — replaces the loose toolbar row. The shared
-                   progress select stays native; scoped CSS restyles it as
-                   text-with-chevron (border-style none also neutralizes the
-                   private-progress cream border-color rule). ── */}
+            {/* ── Toolbar row (Alborz 2026-09-16): the cream control card is
+                   RETIRED on desktop — the controls sit on the page again, as
+                   before, at the CURRENT scale (M pills, radius 9999, 14/700,
+                   44px hits). Order holds: Write leads, sort beside it, the
+                   progress picker ENDS the row (so the room sticky's ← lands
+                   on the picker). The shared progress select keeps its own
+                   green-pill grammar; scoped CSS only sizes it. ── */}
             <style>{`
-              .d-room-progress select {
-                -webkit-appearance: none !important; appearance: none !important;
-                background: transparent !important; border: none !important; border-radius: 0 !important;
-                color: ${C.midnight} !important; font-weight: 700 !important; font-size: 14px !important;
-                padding: 0 22px 0 0 !important; min-height: 44px; text-align: left;
+              .d-room-progress .progress-control {
+                height: auto !important; min-height: 44px;
+                font-size: 14px !important; font-weight: 700 !important;
+                padding: 10px 34px 10px 20px !important;
               }
-              .d-room-progress svg { stroke: ${C.midnight}; width: 16px; height: 16px; right: 0 !important; }
+              .d-room-progress svg { width: 16px; height: 16px; right: 12px !important; }
             `}</style>
-            <div style={controlCard}>
-              {/* Order (Alborz 2026-09-15): Write · divider · sort · picker,
-                  picker RIGHT-ALIGNED at the card's end — the progress
-                  sticky's ← must land on the picker, not Write, so the
-                  picker is the control nearest the note (and the map its
-                  progress drives). No write on the reference tab (Alborz
-                  2026-09-05) — it's a lookup surface; the dial stays. */}
-              {tab !== "reference" && (
-                <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
-              )}
-              {/* Guide tab (pass 3): the canon pill leads the row (Alborz —
-                  action left, dials follow, picker ends the row). */}
-              {tab === "reference" && <span ref={setCanonSlotEl} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }} />}
-              {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
-                <>
-                  <span style={controlDivider} />
-                  <span style={{ position: "relative", display: "inline-flex", alignItems: "center", minHeight: 44, flexShrink: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                {/* No write on the reference tab (Alborz 2026-09-05) — it's a
+                    lookup surface; the dial stays. */}
+                {tab !== "reference" && (
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+                )}
+                {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
+                  <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
                     <select
                       value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
                       onChange={(e) => {
@@ -947,12 +936,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                         </optgroup>
                       )}
                     </select>
-                    <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                    <ChevronDown size={16} color={C.cream} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                   </span>
-                </>
-              )}
-              {show && progressForShow ? (
-                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "flex-end", minHeight: 44, minWidth: 0 }}>
+                )}
+              </div>
+              {show && progressForShow && (
+                // The drafts tab's green body swallows the green picker
+                // outline — private-progress swaps it to cream there.
+                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flexShrink: 0 }}>
                   <OneSelectProgress
                     show={show}
                     value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -962,11 +953,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     allowZero
                   />
                 </div>
-              ) : <span style={{ flex: 1 }} />}
+              )}
             </div>
 
             {tab === "reference" && show && refEff && (
-              <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} canonSlot={canonSlotEl} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+              <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
             )}
             {/* Friend + drafts columns stay MOUNTED (display:none) on the
                 other tabs, so in-progress replies/drafts survive a guide
@@ -1235,27 +1226,18 @@ const backTab: React.CSSProperties = {
   borderTopRightRadius: 48, borderBottomRightRadius: 48, padding: "32px 40px 32px 24px",
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
-// The control card (polish pass 2026-09-15): cream, dark ink, one row.
-// Padding right 16 / left 8: the Write pill leads the row now and the
-// picker TEXT ends it, so the text side gets the breathing room.
-const controlCard: React.CSSProperties = {
-  background: C.cream, borderRadius: 12, minHeight: 60, padding: "8px 16px 8px 8px",
-  display: "flex", alignItems: "center", gap: 12, color: C.midnight,
-  marginBottom: 24, boxSizing: "border-box",
-};
-const controlDivider: React.CSSProperties = {
-  width: 1, height: 24, background: "rgba(26,58,74,0.12)", flexShrink: 0,
-};
 const writeBtn: React.CSSProperties = {
   ...D.pill.M, background: C.yellow, color: CANON.cream,
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexShrink: 0,
 };
-// Text-with-chevron inside the control card (the chevron is a lucide sibling
-// painted over the reserved right padding).
+// Sort/filter — a cream-outline pill on the page again (Alborz 2026-09-16),
+// at the current scale; the chevron is a lucide sibling painted over the
+// reserved right padding (appearance:none strips the native one).
 const sortSelect: React.CSSProperties = {
   appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-  background: "transparent", border: "none", color: C.midnight,
-  padding: "0 22px 0 0", fontSize: 14, fontWeight: 600, minHeight: 44,
+  background: "transparent", border: `2px solid ${C.cream}`, color: C.cream,
+  borderRadius: 9999, minHeight: 44, boxSizing: "border-box",
+  padding: "10px 36px 10px 20px", fontSize: 14, fontWeight: 700,
   fontFamily: '"Inter", system-ui, sans-serif', cursor: "pointer", outline: "none",
 };
 const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize: 14, lineHeight: 1.5 };

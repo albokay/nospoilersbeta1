@@ -117,9 +117,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [composeMinimized, setComposeMinimized] = useState(false);
   useEffect(() => { if (!composeOpen) setComposeMinimized(false); }, [composeOpen]);
   const [rosterOpen, setRosterOpen] = useState(false);
-  // Pass 3 (flows polish): the guide tab's canon pill portals into this
-  // slot in the control card (ShowReference owns the canon state).
-  const [canonSlotEl, setCanonSlotEl] = useState<HTMLSpanElement | null>(null);
   // Byline tap → the member's pool as an OVERLAY on the still-mounted room
   // (stable back swipe): opening pushes a same-path history entry, so the
   // iOS edge-swipe / back button pops it → popstate → overlay closes and
@@ -765,6 +762,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           text-align: right; text-align-last: right;
         }
         .m-progress-cell svg { stroke: ${C.midnight}; width: 16px; height: 16px; right: 0 !important; }
+        /* Guide + drafts (Alborz 2026-09-16): the picker LEADS those rows,
+           so it reads from the left and takes the width it's given (on the
+           guide tab that's the whole row — nothing sits opposite it). */
+        .m-progress-cell--left { flex: 1 1 auto; }
+        .m-progress-cell--left select { text-align: left; text-align-last: left; }
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div style={{ background: tab === "private" ? C.sky : C.green }}>
@@ -890,11 +892,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               </span>
             ) : (tab === "reference" || tab === "private") && show && progressForShow ? (
-              /* Guide + drafts tabs (pass 3): picker takes the LEFT slot;
-                 the right slot holds the canon pill (guide, portaled by
-                 ShowReference) or the Write pill (drafts — one 60px row
-                 replaces the stacked full-width Write). */
-              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
+              /* Guide + drafts tabs: the picker LEADS the row — alone on
+                 the guide (the canon pill was retired from this card,
+                 Alborz 2026-09-16), opposite Write on drafts. */
+              <div className={`m-progress-cell m-progress-cell--left${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
                   value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -902,14 +903,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   onForwardPick={onForwardPick}
                   requireConfirm
                   allowZero
+                  shortLabel
                 />
               </div>
             ) : <span />}
-            {tab === "reference" ? (
-              <span ref={setCanonSlotEl} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }} />
-            ) : tab === "private" ? (
-              <button style={{ ...writeBtn, width: "auto", flexShrink: 0 }} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
-            ) : show && progressForShow && (
+            {tab === "private" ? (
+              /* S pill (Alborz 2026-09-16): the M pill read too thick
+                 inside the 60px band — this matches the retired canon
+                 pill's weight. */
+              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+            ) : tab === "friend" && show && progressForShow ? (
               <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
@@ -918,9 +921,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   onForwardPick={onForwardPick}
                   requireConfirm
                   allowZero
+                  shortLabel
                 />
               </div>
-            )}
+            ) : null}
           </div>
           {/* Row 3 — Write, full width inside the card (friend tab; the
               drafts tab's Write sits in its one-row card above, pass 3).
@@ -934,7 +938,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
-          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} canonSlot={canonSlotEl} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
         )}
         {/* Friend + drafts columns stay MOUNTED (display:none) on the other
             tabs, so in-progress replies/drafts survive a guide check
@@ -1179,6 +1183,11 @@ const rosterRow: React.CSSProperties = {
 const writeBtn: React.CSSProperties = {
   ...M.pill.M, display: "flex", width: "100%", alignItems: "center", justifyContent: "center", gap: 8,
   background: C.yellow, color: CANON.cream,
+};
+// Drafts tab: the same pill one size down, sitting IN the control row.
+const writeBtnInline: React.CSSProperties = {
+  ...M.pill.S, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+  background: C.yellow, color: CANON.cream, flexShrink: 0,
 };
 // Text-with-chevron inside the control card (the chevron is a lucide sibling
 // painted over the reserved right padding).

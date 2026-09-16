@@ -55,9 +55,10 @@ export default function RoomProgressTip({ idiom, userId, open, onDismiss }: {
         // scroll container so the note travels with the picker it points at
         // instead of staying glued to the viewport. top = note CENTER
         // (`centered`): header 96 + tab row 44 + body pad 24 + half the
-        // 60px control card = picker center 194; +70 puts the first-line ←
+        // 44px toolbar row = picker center 186; +70 puts the first-line ←
         // level with it (the note is ~185 tall, arrow ~23 below its top).
-        style={{ position: "absolute", top: 264, left: "min(calc(50% + 330px), calc(100vw - 175px))" }}
+        // Re-derive if that row's height changes again.
+        style={{ position: "absolute", top: 256, left: "min(calc(50% + 330px), calc(100vw - 175px))" }}
       >
         <p style={{ margin: 0 }}>
           <ArrowLeft size={15} style={{ display: "inline", verticalAlign: "-3px", marginRight: 4 }} />

@@ -42,7 +42,7 @@ function isWithinPreviousHighest(s: number, e: number, highest?: { s: number; e:
 }
 
 export default function OneSelectProgress({
-  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, onForwardPick, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg, forceZeroOption = false
+  show, value, onConfirm, onPendingChange, requireConfirm = true, onChangeSelected, onForwardPick, compactLabel, allowZero = false, rewatchHighest, plain = false, pillBg, forceZeroOption = false, shortLabel = false
 }: {
   show: any;
   value: any;
@@ -84,6 +84,11 @@ export default function OneSelectProgress({
   // user moves past episode 0, so the demo's free up/down picking (spec §5) can
   // return to it. Off for every live caller (zero stays monotonic in real rooms).
   forceZeroOption?: boolean;
+  // Drop the "you've" from the option/label prefix — "watched: S01 E04"
+  // (Alborz 2026-09-16, the /m show-room control card: the row is tight and
+  // the "you" is already implied by the card it sits in). Desktop and every
+  // other caller keep the long form.
+  shortLabel?: boolean;
 }) {
   const effectivePillBg = pillBg ?? CANON.personal;
   const opts = buildProgressOptions(show);
@@ -108,9 +113,9 @@ export default function OneSelectProgress({
   // for options within their previous highest, and "you've watched: " past it.
   function optionPrefix(s: number, e: number) {
     if (rewatchHighest && isWithinPreviousHighest(s, e, rewatchHighest)) {
-      return "you REwatched: ";
+      return shortLabel ? "rewatched: " : "you REwatched: ";
     }
-    return "you've watched: ";
+    return shortLabel ? "watched: " : "you've watched: ";
   }
 
   function onSelect(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -162,7 +167,9 @@ export default function OneSelectProgress({
   const groups = buildGroupedOptions(show);
   const shortEp = epLabel(curS, curE);
   const currentIsRewatch = !!rewatchHighest && isWithinPreviousHighest(curS, curE, rewatchHighest);
-  const selectedLabelPrefix = currentIsRewatch ? "you REwatched: " : "you've watched: ";
+  const selectedLabelPrefix = currentIsRewatch
+    ? (shortLabel ? "rewatched: " : "you REwatched: ")
+    : (shortLabel ? "watched: " : "you've watched: ");
 
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
