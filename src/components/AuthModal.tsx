@@ -1,12 +1,34 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import Modal from "./Modal";
+import { CANON } from "../styles/canon";
+import { D } from "./dashboardChrome";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import { maskEmailEnds } from "../lib/utils";
 
 type Mode = "signin" | "signup" | "recovery";
+
+// Cream Form card (polish pass 2026-09-15): dark ink, cream fields with the
+// sky ring, identity L submit — the auth card joins the site's card system.
+const authCard: React.CSSProperties = {
+  ...D.card.form, background: CANON.cream, color: CANON.dark, textAlign: "left",
+};
+const authTitle: React.CSSProperties = { ...D.type.title, color: CANON.personal, margin: 0 };
+const authField: React.CSSProperties = { ...D.input, ...D.inputOnCream };
+const authLink: React.CSSProperties = {
+  background: "none", border: 0, textDecoration: "underline", cursor: "pointer",
+  color: CANON.identity, fontSize: 14, fontWeight: 700, fontFamily: "inherit", padding: 12, margin: -12,
+};
+const authSubmit: React.CSSProperties = {
+  ...D.pill.L, width: "100%", background: CANON.identity, color: CANON.cream, marginTop: 4,
+};
+const authX: React.CSSProperties = {
+  width: 44, height: 44, border: "none", background: "transparent", cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  color: CANON.dark, margin: "-10px -10px 0 0", borderRadius: "50%",
+};
 
 export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false, signupRedirectTo }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean; signupRedirectTo?: string }) {
   const { signIn, signUp } = useAuth();
@@ -85,12 +107,12 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
   // ── CONFIRM-EMAIL SENT — shown after sign-up when "Confirm email" is on.
   if (confirmSent) {
     return (
-      <Modal onClose={onClose} topContent={hint ? hint : undefined}>
+      <Modal onClose={onClose} topContent={hint ? hint : undefined} cardStyle={authCard}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <h3 className="title" style={{ margin: 0, fontSize: 20 }}>Check your email</h3>
-          <button className="close-x" onClick={onClose}><X size={14} /></button>
+          <h3 style={authTitle}>Check your email</h3>
+          <button style={authX} onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
-        <p style={{ fontSize: 14, lineHeight: 1.5, margin: "0 0 12px" }}>
+        <p style={{ fontSize: 15, lineHeight: 1.6, margin: "0 0 12px" }}>
           We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Click it to finish setting up your account — it'll sign you in automatically.
         </p>
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
@@ -104,12 +126,12 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
   //    "is this signin/signup or recovery?" through every input. ────────────
   if (mode === "recovery") {
     return (
-      <Modal onClose={onClose} topContent={hint ? hint : undefined}>
+      <Modal onClose={onClose} topContent={hint ? hint : undefined} cardStyle={authCard}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <h3 className="title" style={{ margin: 0, fontSize: 20 }}>
+          <h3 style={authTitle}>
             Reset your password
           </h3>
-          <button className="close-x" onClick={onClose}><X size={14} /></button>
+          <button style={authX} onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
 
         {recoverySent ? (
@@ -123,14 +145,13 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <button
                 onClick={() => { setRecoverySent(false); setError(null); }}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "var(--dos-fg)", fontSize: 13 }}
+                style={authLink}
               >
                 Send again
               </button>
               <button
                 onClick={() => switchMode("signin")}
-                className="btn"
-                style={{ height: 36, fontSize: 13 }}
+                style={{ ...D.pill.S, background: "transparent", border: `2px solid ${CANON.dark}`, color: CANON.dark }}
               >
                 Back to sign in
               </button>
@@ -143,12 +164,11 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
             </p>
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>
               <input
-                className="badge"
                 placeholder="Email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                style={{ height: 40, width: "100%" }}
+                style={authField}
                 autoFocus
                 autoComplete="email"
               />
@@ -158,10 +178,9 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
               )}
 
               <button
-                className="btn btn-danger"
                 type="submit"
                 disabled={loading}
-                style={{ height: 40, marginTop: 4 }}
+                style={{ ...authSubmit, opacity: loading ? 0.85 : 1 }}
               >
                 {loading ? <LoadingDots /> : "Send recovery email"}
               </button>
@@ -171,7 +190,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
               Remembered it?{" "}
               <button
                 onClick={() => switchMode("signin")}
-                style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "var(--dos-fg)", fontSize: 13 }}
+                style={authLink}
               >
                 Back to sign in
               </button>
@@ -184,104 +203,97 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
 
   // ── SIGNIN / SIGNUP — original render path ─────────────────────────────
   return (
-    <Modal onClose={onClose} topContent={hint ? hint : undefined}>
+    <Modal onClose={onClose} topContent={hint ? hint : undefined} cardStyle={authCard}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-        <h3 className="title" style={{ margin: 0, fontSize: 20 }}>
+        <h3 style={authTitle}>
           {mode === "signin" ? "Sign in" : "Create account"}
         </h3>
-        <button className="close-x" onClick={onClose}><X size={14} /></button>
+        <button style={authX} onClick={onClose} aria-label="Close"><X size={20} /></button>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10 }}>
         {mode === "signup" && (
           <>
             <input
-              className="badge"
               placeholder="your first name"
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
-              style={{ height: 40, width: "100%" }}
+              style={authField}
               autoFocus
               autoComplete="given-name"
             />
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: "var(--canon-cream,#FEF8EA)" }}>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: CANON.dark, opacity: 0.8 }}>
               This is how you'll show up for your friends. Think of it like saving a name in their contact list — no need for a complicated handle.
             </p>
           </>
         )}
         <input
-          className="badge"
           placeholder="Email"
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           readOnly={lockEmail}
-          style={{ height: 40, width: "100%", ...(lockEmail ? { opacity: 0.7, cursor: "not-allowed" } : null) }}
+          style={{ ...authField, ...(lockEmail ? { opacity: 0.7, cursor: "not-allowed" } : null) }}
           autoFocus={mode === "signin" && !lockEmail}
           autoComplete="email"
         />
         <input
-          className="badge"
           placeholder="Password"
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          style={{ height: 40, width: "100%" }}
+          style={authField}
           autoComplete={mode === "signin" ? "current-password" : "new-password"}
         />
 
         {error && (
-          <div style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{error}</div>
+          <div style={{ color: "var(--danger)", fontSize: 14, fontWeight: 600 }}>{error}</div>
         )}
 
+        {/* Mode toggle ABOVE the submit (polish pass 2026-09-15, mobile
+            parity — a first-time invitee must see the create path without
+            scrolling past the button). */}
+        <div style={{ textAlign: "center", fontSize: 14, color: CANON.dark }}>
+          {mode === "signin" ? (
+            <>No account?{" "}
+              <button type="button" onClick={() => switchMode("signup")} style={authLink}>
+                Create one
+              </button>
+            </>
+          ) : (
+            <>Already have an account?{" "}
+              <button type="button" onClick={() => switchMode("signin")} style={authLink}>
+                Sign in
+              </button>
+            </>
+          )}
+        </div>
+
         <button
-          className="btn btn-danger"
           type="submit"
           disabled={loading}
-          style={{ height: 40, marginTop: 4 }}
+          style={{ ...authSubmit, opacity: loading ? 0.85 : 1 }}
         >
           {loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}
         </button>
       </form>
 
       {mode === "signup" && (
-        <p className="muted" style={{ marginTop: 12, fontSize: 12, lineHeight: 1.5 }}>
+        <p style={{ marginTop: 12, fontSize: 13, lineHeight: 1.5, color: CANON.dark, opacity: 0.7 }}>
           Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
         </p>
       )}
 
       {mode === "signin" && (
-        <div style={{ marginTop: 10, textAlign: "right", fontSize: 13 }}>
+        <div style={{ marginTop: 16, textAlign: "center", fontSize: 14 }}>
           <button
             onClick={() => switchMode("recovery")}
-            style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "var(--dos-fg)", fontSize: 13 }}
+            style={authLink}
           >
             Forgot password?
           </button>
         </div>
       )}
-
-      <div style={{ marginTop: 14, textAlign: "center", fontSize: 13 }} className="muted">
-        {mode === "signin" ? (
-          <>No account?{" "}
-            <button
-              onClick={() => switchMode("signup")}
-              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "var(--dos-fg)", fontSize: 13 }}
-            >
-              Create one
-            </button>
-          </>
-        ) : (
-          <>Already have an account?{" "}
-            <button
-              onClick={() => switchMode("signin")}
-              style={{ background: "none", border: 0, textDecoration: "underline", cursor: "pointer", color: "var(--dos-fg)", fontSize: 13 }}
-            >
-              Sign in
-            </button>
-          </>
-        )}
-      </div>
     </Modal>
   );
 }

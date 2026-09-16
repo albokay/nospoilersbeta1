@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabaseClient";
 import { deleteAccount, setOwnDisplayName } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY, LORA } from "../mobile/m";
+import { D } from "./dashboardChrome";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
@@ -187,30 +188,42 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
   }
 
   return (
-    <Modal onClose={busy ? () => {} : onClose} cardStyle={{ position: "relative" }}>
+    <Modal
+      onClose={busy ? () => {} : onClose}
+      width={phase === "confirm" ? "min(360px, 92vw)" : undefined}
+      cardStyle={{ ...(phase === "confirm" ? D.card.dialog : D.card.form), background: CANON.cream, color: C.midnight }}
+    >
       {/* "×" close (Alborz 2026-08-12) — in addition to tap-outside; same
-          busy guard so a mid-flight save/delete can't be interrupted. */}
-      <button
-        aria-label="close"
-        onClick={busy ? undefined : onClose}
-        style={{ position: "absolute", top: 10, right: 10, border: "none", background: "transparent", color: C.midnight, opacity: 0.6, cursor: "pointer", padding: 6, display: "flex" }}
-      >
-        <X size={18} />
-      </button>
-      <h3 style={{ margin: "0 0 16px", fontSize: 20, color: C.midnight, fontWeight: 700 }}>Account</h3>
-      {user?.email && (
-        <p style={{ margin: "0 0 20px", fontSize: 14, color: C.midnight }}>
-          Signed in as <strong>{user.email}</strong>
-        </p>
+          busy guard so a mid-flight save/delete can't be interrupted. Hidden
+          on the type-DELETE dialog (Cancel is the exit). */}
+      {phase === "main" && (
+        <button
+          aria-label="close"
+          onClick={busy ? undefined : onClose}
+          style={{ ...D.closeX, color: C.midnight, opacity: 0.6 }}
+        >
+          <X size={20} />
+        </button>
+      )}
+      {phase === "main" && (
+        <>
+          <h3 style={{ ...D.type.title, margin: 0, color: C.midnight }}>Account</h3>
+          {user?.email && (
+            <p style={{ ...D.type.caption, margin: "2px 0 0", color: C.midnight, opacity: 0.7 }}>
+              {user.email}
+            </p>
+          )}
+          <div style={{ height: 20 }} />
+        </>
       )}
 
       {phase === "main" && (
-        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16, marginBottom: 20 }}>
-          <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.midnight }}>Your name</p>
-          <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55, color: C.midnight }}>
-            This is how you show up for your friends (unless they&rsquo;ve saved their own name for you).
+        <div>
+          <p style={{ ...D.type.label, margin: "0 0 6px", color: C.midnight }}>Your name</p>
+          <p style={{ ...D.type.caption, margin: "0 0 12px", color: C.midnight, opacity: 0.7 }}>
+            How you show up for your friends, unless they&rsquo;ve saved their own name for you.
           </p>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <input
               value={nameDraft}
               onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
@@ -218,23 +231,24 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
               maxLength={40}
               disabled={nameSaving}
               autoComplete="given-name"
-              style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: `2px solid ${C.greyblue}`, fontSize: 14, color: C.midnight, boxSizing: "border-box" }}
+              style={{ ...D.input, ...D.inputOnCream, flex: 1, width: "auto" }}
             />
             <button
               onClick={saveName}
               disabled={nameSaving || !nameDirty}
-              style={{ ...saveBtn, opacity: nameSaving || !nameDirty ? 0.5 : 1, cursor: nameSaving || !nameDirty ? "default" : "pointer" }}
+              style={{ ...D.pill.M, flexShrink: 0, background: CANON.identity, color: CANON.cream, opacity: nameSaving || !nameDirty ? D.disabledOpacity : 1, cursor: nameSaving || !nameDirty ? "default" : "pointer" }}
             >
-              {nameSaving ? <LoadingDots /> : nameSaved ? "saved!" : "save"}
+              {nameSaving ? <LoadingDots /> : nameSaved ? "Saved!" : "Save"}
             </button>
           </div>
-          {nameError && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.red, fontWeight: 600 }}>{nameError}</p>}
+          {nameError && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.red, fontWeight: 600 }}>{nameError}</p>}
         </div>
       )}
 
       {phase === "main" && onSignOut && (
-        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16, marginBottom: 20 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: C.midnight }}>Signed in</p>
+        <div>
+          <div style={D.divider(C.midnight)} />
+          <p style={{ ...D.type.label, margin: "0 0 12px", color: C.midnight }}>Signed in</p>
           <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
             <LogOut size={16} /> Sign out
           </button>
@@ -242,20 +256,20 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
       )}
 
       {phase === "main" && (
-        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16 }}>
-          <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: C.red }}>Delete account</p>
-          <p style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55, color: C.midnight }}>
-            Permanently deletes your account and personal info, and erases your private notes.
-            Your posts in shared rooms stay so your friends’ conversations aren’t broken — but they’ll
-            show as “(deleted user)” and you’ll disappear from every room, map, and chat. This can’t be undone.
+        <div>
+          <div style={D.divider(C.midnight)} />
+          <p style={{ ...D.type.label, margin: "0 0 6px", color: C.red }}>Delete account</p>
+          <p style={{ ...D.type.caption, margin: "0 0 14px", color: C.midnight, opacity: 0.7 }}>
+            Permanently deletes your account, personal info and private notes. Posts in shared rooms
+            stay, shown as &ldquo;(deleted user)&rdquo;. This can&rsquo;t be undone.
           </p>
-          <button onClick={() => setPhase("confirm")} style={dangerOutline}>Delete my account</button>
+          <button onClick={() => setPhase("confirm")} style={dangerOutline}>Delete my account&hellip;</button>
         </div>
       )}
 
       {phase === "confirm" && (
-        <div style={{ borderTop: `1px solid ${C.cream}`, paddingTop: 16 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 14, color: C.midnight, lineHeight: 1.5 }}>
+        <div>
+          <p style={{ margin: "0 0 12px", fontSize: 15, color: C.midnight, lineHeight: 1.5 }}>
             This is permanent. Type <strong>DELETE</strong> to confirm.
           </p>
           <input
@@ -265,18 +279,18 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
             autoFocus
             disabled={busy}
             autoComplete="off"
-            style={{ width: "100%", height: 40, padding: "0 12px", borderRadius: 8, border: `2px solid ${C.greyblue}`, fontSize: 14, color: C.midnight, boxSizing: "border-box", marginBottom: 12 }}
+            style={{ ...D.input, ...D.inputOnCream, marginBottom: 12 }}
           />
-          {error && <p style={{ margin: "0 0 12px", fontSize: 13, color: C.red, fontWeight: 600 }}>{error}</p>}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => { setPhase("main"); setConfirmText(""); setError(null); }} disabled={busy} style={cancelBtn}>Cancel</button>
+          {error && <p style={{ margin: "0 0 12px", fontSize: 14, color: C.red, fontWeight: 600 }}>{error}</p>}
+          <div style={{ display: "flex", gap: 12 }}>
             <button
               onClick={doDelete}
               disabled={busy || !canDelete}
-              style={{ ...dangerSolid, opacity: (busy || !canDelete) ? 0.5 : 1, cursor: (busy || !canDelete) ? "not-allowed" : "pointer" }}
+              style={{ ...D.pill.M, flex: 1, background: C.red, color: CANON.cream, whiteSpace: "nowrap", opacity: (busy || !canDelete) ? D.disabledOpacity : 1, cursor: (busy || !canDelete) ? "not-allowed" : "pointer" }}
             >
               {busy ? <LoadingDots /> : "Permanently delete"}
             </button>
+            <button onClick={() => { setPhase("main"); setConfirmText(""); setError(null); }} disabled={busy} style={{ ...D.pill.M, flex: 1, background: "transparent", color: C.midnight, border: `2px solid ${C.midnight}` }}>Cancel</button>
           </div>
         </div>
       )}
@@ -284,10 +298,7 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
   );
 }
 
-const dangerOutline: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.red}`, background: "transparent", color: C.red, fontSize: 14, fontWeight: 700, cursor: "pointer" };
-const dangerSolid: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.red, color: CANON.cream, fontSize: 14, fontWeight: 700 };
-const cancelBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: `2px solid ${C.cream}`, background: "transparent", color: C.cream, fontSize: 14, fontWeight: 700, cursor: "pointer" };
-const saveBtn: React.CSSProperties = { padding: "10px 18px", borderRadius: 999, border: "none", background: C.midnight, color: CANON.cream, fontSize: 14, fontWeight: 700, flexShrink: 0 };
+const dangerOutline: React.CSSProperties = { ...D.pill.M, border: `2px solid ${C.red}`, background: "transparent", color: C.red };
 // M-size dark-outline pill (the mobile polish's overlay grammar) — the same
 // shape the Part-2 account sheet keeps, so this row won't need a restyle.
 const signOutBtn: React.CSSProperties = {

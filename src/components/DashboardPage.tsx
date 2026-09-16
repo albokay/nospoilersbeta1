@@ -2507,21 +2507,22 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* Revive a DNF'd show (2026-09-13) — from the drawer's hover x. */}
+      {/* Revive a DNF'd show (2026-09-13) — from the drawer's hover x.
+          Yellow dialog (polish pass 2026-09-15): Subtitle + Body, primary
+          first, Cancel exits — no ×. */}
       {reviveConfirm && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
-          <div style={yellowCard}>
-            <button style={modalClose} onClick={() => setReviveConfirm(null)}><X size={16} color={CANON.cream} /></button>
-            <div style={{ ...yellowTitle, marginBottom: 12 }}>Start watching again?</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
-              This puts <b>{reviveConfirm.name}</b> back on the group&rsquo;s shelf &mdash; right where you all left off.
+          <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
+            <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Start watching again?</div>
+            <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
+              This brings <b>{reviveConfirm.name}</b> back to the group&rsquo;s open show rooms for everyone.
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button style={{ ...D.pill.M, flex: 1, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doReviveRoom(reviveConfirm.roomId)}>Bring it back</button>
               <button
-                style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                style={{ ...D.pill.M, flex: 1, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
                 onClick={() => setReviveConfirm(null)}
-              >cancel</button>
-              <button style={identityBtn} onClick={() => doReviveRoom(reviveConfirm.roomId)}>bring it back</button>
+              >Cancel</button>
             </div>
           </div>
         </div>
@@ -2529,24 +2530,24 @@ export default function DashboardPage() {
 
       {leaveConfirm && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(null); }}>
-          <div style={yellowCard}>
-            <button style={modalClose} onClick={() => setLeaveConfirm(null)}><X size={16} color={CANON.cream} /></button>
+          <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
             {/* Two paths since 2026-09-13: leaving (just you) vs DNF (the
-                whole group parks the show — copy locked by Alborz). */}
-            <div style={{ ...yellowTitle, marginBottom: 12 }}>Leaving, or done watching?</div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>
+                whole group parks the show — copy locked by Alborz). Dialog
+                grammar (polish pass 2026-09-15): Subtitle + Body, no ×. */}
+            <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Leaving, or done watching?</div>
+            <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 10 }}>
               Leaving takes you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your writing stays, and everyone else keeps going.
             </div>
-            <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 18 }}>
+            <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
               Or call it for the whole group: the show moves to the finished drawer under &ldquo;Didn&rsquo;t finish:&rdquo;, and anyone can bring it back later.
             </div>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button style={{ ...D.pill.M, background: C.red, color: CANON.cream }} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>Leave</button>
+              <button style={{ ...D.pill.M, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doDnfRoom(leaveConfirm.roomId)}>We&rsquo;re done with it</button>
               <button
-                style={{ ...startBtn, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                style={{ ...D.pill.M, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
                 onClick={() => setLeaveConfirm(null)}
-              >cancel</button>
-              <button style={dangerBtn} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>leave</button>
-              <button style={identityBtn} onClick={() => doDnfRoom(leaveConfirm.roomId)}>we&rsquo;re done with it</button>
+              >Cancel</button>
             </div>
           </div>
         </div>

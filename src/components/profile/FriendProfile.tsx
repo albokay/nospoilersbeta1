@@ -463,7 +463,7 @@ export default function FriendProfile({
   return (
     <div style={{ width: "100%", maxWidth: slim ? undefined : 1178, margin: "0 auto" }}>
       {/* ── {Name}'s canon — the featured block, view-only ── */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 26 : 32, letterSpacing: -1, color: CREAM, margin: 0, textAlign: "center" }}>
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 28 : 28, letterSpacing: 0, lineHeight: 1.2, color: CREAM, margin: 0, textAlign: "center" }}>
         {ownerName}&rsquo;s canon
       </h2>
       {canonList.length === 0 ? (

@@ -120,17 +120,24 @@ export default function RatingCaptureModal({
   }
 
   return (
-    // Backdrop dismiss disabled per spec. onClose is a no-op; cancel goes
-    // through the explicit cancel button below.
-    <Modal onClose={() => {}} width="min(420px, 92vw)">
+    // Yellow dialog (polish pass 2026-09-15): Subtitle title + show caption,
+    // 48px option pills, M Cancel/Skip. Tap-out now cancels (it aborts the
+    // progress advance, same as the Cancel button — recoverable).
+    <Modal
+      onClose={locked ? () => {} : onCancel}
+      width="min(360px, 92vw)"
+      cardStyle={{ borderRadius: 24, padding: 24, background: CANON.accent, animation: "dCardRise 180ms ease-out" }}
+    >
       <div style={{ marginBottom: 16 }}>
-        {/* Header 2 — Inter bold 14 (restructure spec §16; −2 letter-spacing dropped). */}
-        <h3 style={{ fontFamily: INTER, fontWeight: 700, fontSize: 14, color: MIDNIGHT, margin: 0 }}>
-          How was episode {episode} (season {season})?
+        <h3 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: CREAM, margin: 0 }}>
+          How was episode {episode}?
         </h3>
+        <div style={{ fontFamily: INTER, fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CREAM, opacity: 0.85, marginTop: 2 }}>
+          {showName ? `${showName} · ` : ""}season {season}
+        </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Render top-to-bottom: best (6 = Woah!) → worst (1 = Nope.). */}
         {[6, 5, 4, 3, 2, 1].map((r) => {
           const showLabel = !locked || selected === r;
@@ -139,19 +146,19 @@ export default function RatingCaptureModal({
               {/* Keep label slot rendered (visibility:hidden) so the pill
                   height doesn't change when labels collapse. */}
               <span style={{ visibility: showLabel ? "visible" : "hidden", display: "inline-flex", alignItems: "center", gap: 12 }}>
-                <RatingStars rating={r} />
+                <RatingStars rating={r} size={28} />
                 {RATING_LABELS[r]}
               </span>
             </button>
           );
         })}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 12 }}>
-          <button onClick={onCancel} disabled={locked} style={outlineStyle}>cancel</button>
+        <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 12, marginTop: 12 }}>
+          <button onClick={onCancel} disabled={locked} style={outlineStyle}>Cancel</button>
           {onSkip && (
             /* Alert outline + text (Alborz 2026-08-11) — skipping is the
                "no rating" path, visually apart from the cream cancel. */
-            <button onClick={onSkip} disabled={locked} style={skipStyle}>skip rating</button>
+            <button onClick={onSkip} disabled={locked} style={skipStyle}>Skip</button>
           )}
         </div>
       </div>
@@ -183,29 +190,33 @@ const pillStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   width: "100%",
-  padding: "11px 18px",
-  borderRadius: 65,
+  minHeight: 48,
+  padding: "10px 16px",
+  borderRadius: 9999,
   background: CREAM,
   color: MIDNIGHT,
   border: "none",
   fontFamily: INTER,
-  fontSize: 13, // Body — Inter regular 13 (spec §16; −2 letter-spacing dropped)
-  fontWeight: 400,
+  fontSize: 15,
+  fontWeight: 600,
   textAlign: "left",
   cursor: "pointer",
   lineHeight: 1.3,
+  boxSizing: "border-box",
 };
 
 const outlineStyle: React.CSSProperties = {
-  padding: "9px 22px",
-  borderRadius: 65,
+  padding: "12px 28px",
+  minHeight: 44,
+  borderRadius: 9999,
   background: "transparent",
   color: CREAM,
   border: `2px solid ${CREAM}`,
   fontFamily: INTER,
-  fontSize: 13, // Body — Inter regular 13 (spec §16; −2 letter-spacing dropped)
-  fontWeight: 400,
+  fontSize: 14,
+  fontWeight: 700,
   cursor: "pointer",
+  boxSizing: "border-box",
 };
 
 const skipStyle: React.CSSProperties = {

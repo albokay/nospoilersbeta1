@@ -1067,6 +1067,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* CP4b: rate the episode you just finished (forward progress pick) */}
       {pendingRating && (
         <RatingCaptureModal
+          showName={show?.name}
           season={pendingRating.s}
           episode={pendingRating.e}
           onCommit={commitRating}
@@ -1089,26 +1090,31 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* Email-digest subscription gear modal (friend room only). Mirrors the
           dashboard "Leave this group?" modal. Backend: get/set_room_digest_opt_out. */}
       {digestModalOpen && roomId && (
+        // Yellow dialog (polish pass 2026-09-15): labelled section with the
+        // explanation BEFORE the button (mobile room-settings parity).
         <div style={digestOverlay} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
           <div style={digestCard} onClick={(e) => e.stopPropagation()}>
-            <button style={digestClose} onClick={() => setDigestModalOpen(false)} aria-label="Close"><X size={16} color={C.cream} /></button>
+            <div style={{ ...D.type.subtitle, color: C.cream, marginBottom: 4 }}>Email updates</div>
             {digestOptOut === null ? (
-              <div style={{ color: C.cream, fontSize: 15, padding: "6px 0" }}>Loading…</div>
+              <div style={{ color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, padding: "6px 0" }}>loading<LoadingDots /></div>
             ) : digestOptOut ? (
               <>
-                <div style={digestTitle}>Resubscribe to email updates for this room?</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>resubscribe</button>
-                <div style={digestDivider} />
-                <div style={digestSub}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+                <div style={{ ...digestSub, margin: "0 0 14px" }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
               </>
             ) : (
               <>
-                <div style={digestTitle}>Unsubscribe from email updates for this room?</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>unsubscribe</button>
-                <div style={digestDivider} />
-                <div style={digestSub}>You'll stop getting the daily digest for this room. You can resubscribe here anytime.</div>
+                <div style={{ ...digestSub, margin: "0 0 14px" }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
+                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
               </>
             )}
+            <div style={{ marginTop: 18 }}>
+              <button
+                style={{ ...D.pill.M, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
+                onClick={() => setDigestModalOpen(false)}
+                disabled={digestBusy}
+              >Cancel</button>
+            </div>
           </div>
         </div>
       )}
@@ -1221,20 +1227,12 @@ const composeCloseX: React.CSSProperties = {
 const digestOverlay: React.CSSProperties = {
   position: "fixed", inset: 0, background: "rgba(26,58,74,0.25)", display: "flex",
   alignItems: "center", justifyContent: "center", zIndex: 1000,
+  animation: "dDimIn 180ms ease-out",
 };
 const digestCard: React.CSSProperties = {
-  background: C.yellow, borderRadius: 15, padding: "28px 32px", width: "min(360px, 88vw)",
-  position: "relative", textAlign: "center",
-};
-const digestClose: React.CSSProperties = {
-  position: "absolute", top: 16, right: 16, border: "none", background: "transparent", cursor: "pointer",
-};
-const digestTitle: React.CSSProperties = {
-  color: CANON.cream, fontSize: 15, fontWeight: 600, letterSpacing: -0.5, marginBottom: 16,
+  ...D.card.dialog, background: C.yellow, textAlign: "left",
 };
 const alertBtn: React.CSSProperties = {
-  border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
-  fontWeight: 700, fontSize: 14, padding: "10px 32px", borderRadius: 9999, cursor: "pointer",
+  ...D.pill.M, border: `2px solid ${CANON.alert}`, background: "transparent", color: CANON.alert,
 };
-const digestDivider: React.CSSProperties = { height: 1, background: "rgba(253,248,236,0.5)", margin: "20px 0 14px" };
-const digestSub: React.CSSProperties = { color: CANON.cream, fontSize: 12, opacity: 0.9, lineHeight: 1.45 };
+const digestSub: React.CSSProperties = { color: CANON.cream, fontSize: 13, opacity: 0.85, lineHeight: 1.45 };

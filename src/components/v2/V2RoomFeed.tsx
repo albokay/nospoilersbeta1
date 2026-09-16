@@ -1012,26 +1012,26 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           when the current composer has unsaved text. Same modal for both
           triggers per spec. */}
       {pendingCollapseTarget !== null && (
-        <Modal onClose={cancelDiscardDraft} width="min(440px,90vw)">
-          <div style={{ textAlign: "center", padding: "8px 0" }}>
-            <h3 className="title" style={{ margin: "0 0 16px", fontSize: 18 }}>Discard your reply?</h3>
-            <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px" }}>
+        // Cream dialog (polish pass 2026-09-15): a typing-loss hint, not a
+        // room action.
+        <Modal onClose={cancelDiscardDraft} width="min(360px, 92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
+          <div>
+            <h3 style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" }}>Discard your reply?</h3>
+            <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.9, margin: "0 0 18px" }}>
               If you open another thread, you will lose what you've been writing. Are you sure?
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+            <div style={{ display: "flex", gap: 12 }}>
               <button
-                className="btn"
-                onClick={cancelDiscardDraft}
-                style={{ background: "transparent", border: "2px solid var(--canon-cream,#fef8ea)", color: CANON.cream }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn"
                 onClick={confirmDiscardDraft}
-                style={{ background: "var(--danger)", border: "none", color: CANON.cream }}
+                style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box", cursor: "pointer", flex: 1, background: "var(--danger)", border: "none", color: CANON.cream, whiteSpace: "nowrap" }}
               >
                 Yes, I'm sure
+              </button>
+              <button
+                onClick={cancelDiscardDraft}
+                style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box", cursor: "pointer", flex: 1, background: "transparent", border: "2px solid var(--canon-dark,#1a3a4a)", color: "var(--canon-dark,#1a3a4a)" }}
+              >
+                Cancel
               </button>
             </div>
           </div>

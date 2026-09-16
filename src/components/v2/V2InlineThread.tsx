@@ -535,6 +535,12 @@ export default function V2InlineThread({
     );
   }
 
+  // Dialog M-pill geometry (polish pass 2026-09-15).
+  const dlgPillM: React.CSSProperties = {
+    fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 700, padding: "12px 28px",
+    minHeight: 44, borderRadius: 9999, boxSizing: "border-box", cursor: "pointer",
+  };
+
   // S-pill geometry for the thread action row (colors/hovers stay on the
   // sb-* classes; polish pass 2026-09-15 — was 3×12 / 26px tall).
   const sPillGeom: React.CSSProperties = {
@@ -891,13 +897,13 @@ export default function V2InlineThread({
       {/* Empty-selection hint modal — same shape as the Quote hint below;
           shown when the user clicks Highlight without first selecting text. */}
       {highlightHint && (
-        <Modal onClose={() => setHighlightHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+        <Modal onClose={() => setHighlightHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
+          <div>
+            <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
               Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setHighlightHint(false)}>Got it</button>
+              <button style={{ ...dlgPillM, background: "var(--canon-identity,#355eb8)", border: "none", color: CANON.cream }} onClick={() => setHighlightHint(false)}>Got it</button>
             </div>
           </div>
         </Modal>
@@ -906,44 +912,43 @@ export default function V2InlineThread({
       {/* Quote hint modal — v1's copy ported verbatim. Shown when the user
           clicks Quote with no text highlighted. */}
       {threadQuoteHint && (
-        <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+        <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
+          <div>
+            <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
-            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               The thread stays linear, but the connections between ideas are visible.
             </p>
-            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 24px", fontSize: 13, lineHeight: 1.6, opacity: 0.7, fontStyle: "italic" }}>
               This might feel confusing, but try it out! You can always edit your response after you post it.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
+              <button style={{ ...dlgPillM, background: "var(--canon-identity,#355eb8)", border: "none", color: CANON.cream }} onClick={() => setThreadQuoteHint(false)}>Got it</button>
             </div>
           </div>
         </Modal>
       )}
 
       {showDeleteModal && (
-        <Modal onClose={cancelDelete} width="min(420px,90vw)">
-          <div style={{ textAlign: "center", padding: "8px 0" }}>
-            <h3 className="title" style={{ margin: "0 0 16px", fontSize: 18 }}>Delete this entry?</h3>
-            <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: "0 0 24px" }}>
+        // Yellow dialog (polish pass 2026-09-15): acting on a room's entry.
+        <Modal onClose={cancelDelete} width="min(360px, 92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: "var(--canon-accent,#dea838)", color: CANON.cream, animation: "dCardRise 180ms ease-out" }}>
+          <div>
+            <h3 style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" }}>Delete this entry?</h3>
+            <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.9, margin: "0 0 18px" }}>
               If it has responses, they'll stay visible in the room as a tombstone. Otherwise the entry disappears from the feed.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 10 }}>
+            <div style={{ display: "flex", gap: 12 }}>
               <button
-                className="btn"
                 onClick={handleDelete}
                 disabled={deleteSubmitting}
-                style={{ background: "var(--danger)", border: "none", color: CANON.cream }}
+                style={{ ...dlgPillM, flex: 1, background: "var(--danger)", border: "none", color: CANON.cream }}
               >
                 {deleteSubmitting ? "Deleting…" : "Delete"}
               </button>
               <button
-                className="btn"
                 onClick={cancelDelete}
-                style={{ background: "transparent", border: "2px solid var(--canon-cream,#fef8ea)", color: CANON.cream }}
+                style={{ ...dlgPillM, flex: 1, background: "transparent", border: "2px solid var(--canon-cream,#fef8ea)", color: CANON.cream }}
               >
                 Cancel
               </button>

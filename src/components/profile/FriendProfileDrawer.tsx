@@ -73,7 +73,7 @@ export default function FriendProfileDrawer() {
       <button style={closeX} title="close" onClick={() => setUsername(null)}>
         <X size={20} color={CANON.cream} />
       </button>
-      <div style={{ padding: "56px 20px 48px", boxSizing: "border-box" }}>
+      <div style={{ padding: "56px 24px 48px", boxSizing: "border-box" }}>
         {!ready ? (
           <div style={{ display: "flex", justifyContent: "center", padding: 40 }} aria-busy="true">
             <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
@@ -104,7 +104,9 @@ const panel: React.CSSProperties = {
   overflowY: "auto",
 };
 const closeX: React.CSSProperties = {
-  // Fixed (not absolute) so it stays put while the panel scrolls.
-  position: "fixed", top: 16, right: 16, zIndex: 81, border: "none",
-  background: "transparent", cursor: "pointer", padding: 6, lineHeight: 0,
+  // Fixed (not absolute) so it stays put while the panel scrolls; 44px hit
+  // (polish pass 2026-09-15).
+  position: "fixed", top: 12, right: 12, zIndex: 81, border: "none",
+  width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
+  background: "transparent", cursor: "pointer", padding: 0, lineHeight: 0,
 };
