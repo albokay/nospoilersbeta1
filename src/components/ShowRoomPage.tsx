@@ -1140,17 +1140,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             ) : digestOptOut ? (
               <>
                 <div style={{ ...digestSub, margin: "0 0 14px" }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
-                <button className="d-press d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
+                <button className="d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
               </>
             ) : (
               <>
                 <div style={{ ...digestSub, margin: "0 0 14px" }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
-                <button className="d-press d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
+                <button className="d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
               </>
             )}
             <div style={{ marginTop: 18 }}>
               <button
-                className="d-press d-btn-cream"
+                className="d-btn-cream"
                 style={{ ...D.pill.M, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                 onClick={() => setDigestModalOpen(false)}
                 disabled={digestBusy}

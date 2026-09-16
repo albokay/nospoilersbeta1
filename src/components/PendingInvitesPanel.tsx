@@ -139,14 +139,16 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
   }
 
   return (
-    <div>
+    // Sits directly under the editable name fields (2026-09-16) — the same
+    // 12px rhythm so the two row types read as one list.
+    <div style={{ marginTop: 12 }}>
       {staleCount > 0 && (
         <div style={{ color: CANON.cream, fontSize: 12, fontWeight: 700, lineHeight: 1.5, margin: "4px 0 10px" }}>
           {preventLastWordOrphan(`${staleInviteLine(staleCount)} A nudge might be all they need.`)}
         </div>
       )}
       {invites.map((inv) => (
-        <div key={inv.token} style={{ marginBottom: 8 }}>
+        <div key={inv.token} style={{ marginBottom: 12 }}>
           <div style={fieldRow}>
             <span style={fieldName}>{inviteeLabel(inv)}</span>
             {sentFor === inv.token ? (
@@ -196,7 +198,7 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
         </div>
       ))}
       {others.map((inv, i) => (
-        <div key={`o${i}`} style={{ marginBottom: 8 }}>
+        <div key={`o${i}`} style={{ marginBottom: 12 }}>
           <div style={fieldRow}>
             <span style={fieldName}>{inv.name || "A friend"}</span>
             <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -236,15 +238,18 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
 }
 
 // Field rows match the contact-rename inputs they sit among (cream pills).
+// Geometry tracks D.input (2026-09-16): a pending row and an editable
+// name field are the same pill, so a half-joined group reads as one list
+// instead of two mismatched ones.
 const fieldRow: React.CSSProperties = {
-  background: CANON.cream, borderRadius: 65, boxSizing: "border-box",
-  padding: "9px 10px 9px 18px", minHeight: 44,
+  background: CANON.cream, borderRadius: 9999, boxSizing: "border-box",
+  padding: "9px 10px 9px 24px", minHeight: 48,
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
 };
 // Pending names are uneditable and slightly greyed (Alborz, QA round 3) —
 // they read as placeholders until the friend joins and becomes renameable.
 const fieldName: React.CSSProperties = {
-  color: CANON.dark, opacity: 0.55, fontFamily: '"Inter", sans-serif', fontSize: 14,
+  color: CANON.dark, opacity: 0.55, fontFamily: '"Inter", sans-serif', fontSize: 16,
   minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 const pendingNote: React.CSSProperties = {
