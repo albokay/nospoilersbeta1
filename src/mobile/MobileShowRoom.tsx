@@ -1005,8 +1005,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {composeOpen && createPortal(
         <>
         <div style={{ ...composeShell, ...(composeMinimized ? { display: "none" } : {}) }}>
-          <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
-          <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: 60, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
+          {/* Pass 3: 40 → 44 circles at the standard top-bar spots —
+              minimize LEFT, discard RIGHT; the caption between them
+              (rendered by ComposeForm) names destination · tag. */}
+          <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>
+          <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: "auto", left: 12, border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>
           <ComposeForm
             ref={composeFormRef}
             autoPrompt={composeAuto}
@@ -1015,7 +1018,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             restrictGroupId={privateOnly ? undefined : roomId}
             privateOnly={privateOnly}
             defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
-            privateSubmitLabel="save draft"
+            mobileHeaderContext={privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room")}
             hideTopRightClose
             onCancel={() => setComposeOpen(false)}
             onSubmitted={(destination, threadId) => {
@@ -1199,7 +1202,7 @@ const continueChip: React.CSSProperties = {
   position: "fixed", bottom: 0, right: 32, zIndex: 1001,
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
   background: CANON.cream, border: "none", minWidth: 210,
-  fontFamily: LORA, fontWeight: 700, fontSize: 13,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   padding: "11px 20px", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 13px)",
   borderRadius: "24px 24px 0 0", cursor: "pointer",
   boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
@@ -1207,8 +1210,8 @@ const continueChip: React.CSSProperties = {
 const composeCloseX: React.CSSProperties = {
   position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12,
   background: "var(--canon-cream,#fef8ea)", border: "2px solid var(--canon-alert,#f45028)",
-  color: CANON.alert, borderRadius: "50%", width: 40, height: 40, padding: 0,
-  display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 1010,
+  color: CANON.alert, borderRadius: "50%", width: 44, height: 44, padding: 0,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 1010,
 };
 const dim: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: "rgba(26,58,74,0.35)",

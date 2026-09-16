@@ -22,6 +22,8 @@ import PromptCard from "../PromptCard";
 import LoadingDots from "../LoadingDots";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 import { CANON } from "../../styles/canon";
+import { M } from "../../mobile/m";
+import { D } from "../dashboardChrome";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
 // chrome (white on green/mustard) wouldn't read on cream, and compose has
@@ -29,8 +31,11 @@ import { CANON } from "../../styles/canon";
 const CREAM_BG = CANON.cream;
 const PAPER_BG = "#fdfbf3";
 const INK = CANON.dark; // midnightblue — filled-in title + body text
-const INK_SOFT = "#5a4d3a";
-const INK_FAINT = "#8a7860";
+// Pass 3: the brown compose greys (#5a4d3a / #8a7860) retire — quiet text
+// is dark ink at 0.7. The ruled-line greys below are the paper's own idiom
+// and stay (the compose modal's unique color, per Alborz).
+const INK_70 = "rgba(26,58,74,0.7)";
+const INK_SOFT = "#5a4d3a"; // legacy standalone "× not now" only
 const RULE = "rgba(43, 36, 24, 0.32)";
 const RULE_FAINT = "rgba(43, 36, 24, 0.14)";
 
@@ -161,6 +166,10 @@ type ComposeFormProps = {
   /** Onboarding: hide the action-row "not now" cancel (the flow provides its
    *  own back affordance instead; there is no skipping out). */
   hideCancel?: boolean;
+  /** Pass 3, /m only: the top-bar caption between the − / × circles —
+   *  the destination half ("Draft" or the room name); the form appends
+   *  the live " · S01 E04" tag itself. */
+  mobileHeaderContext?: string;
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -175,7 +184,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false },
+  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -549,12 +558,12 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
 
   // === GUARDS ===
   if (!authLoading && !user) {
-    return <div style={{ padding: 24, color: INK_SOFT }}>sign in to write.</div>;
+    return <div style={{ padding: 24, color: INK_70 }}>sign in to write.</div>;
   }
   if (showError) {
     return (
       <div style={{ minHeight: "100vh", padding: "100px 24px", color: INK }}>
-        <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", color: INK_SOFT }}>
+        <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center", fontFamily: "Lora, Georgia, serif", fontStyle: "italic", color: INK_70 }}>
           {showError}
         </div>
         <div style={{ textAlign: "center", marginTop: 18 }}>
@@ -565,7 +574,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   }
   if (!show || !progress) {
     return (
-      <div style={{ minHeight: "100vh", padding: "100px 24px", textAlign: "center", color: INK_SOFT, fontStyle: "italic" }}>
+      <div style={{ minHeight: "100vh", padding: "100px 24px", textAlign: "center", color: INK_70, fontStyle: "italic" }}>
         loading<LoadingDots />
       </div>
     );
@@ -604,7 +613,20 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           background-image: none !important;
           color: ${INK} !important;
         }
-        .v2-compose-title-input::placeholder { color: var(--canon-accent,#dea838) !important; opacity: 1 !important; font-weight: 500; }
+        .v2-compose-title-input::placeholder { color: var(--canon-accent,#dea838) !important; opacity: 1 !important; font-family: 'Lora', Georgia, serif; font-weight: 600; }
+        /* Pass 3: the in-compose progress pill — 44 min at 14/700 (green
+           fill stays on desktop); /m swaps to the Identity-outline field
+           with an Identity 16px chevron. */
+        .v2-compose-progress .progress-control {
+          height: auto !important; min-height: 44px;
+          font-size: 14px !important; font-weight: 700 !important;
+        }
+        .v2-compose-progress--m .progress-control {
+          background: transparent !important;
+          color: var(--canon-identity,#355eb8) !important;
+          border-color: var(--canon-identity,#355eb8) !important;
+        }
+        .v2-compose-progress--m svg { stroke: var(--canon-identity,#355eb8); width: 16px; height: 16px; }
       `}</style>
 
       {/* TOP-RIGHT: × not now (duplicate of action-row cancel).
@@ -632,6 +654,14 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         </div>
       )}
 
+      {/* Pass 3, /m: the top-bar caption between the − / × circles —
+          destination · live tag, 13/400 dark at 0.55. */}
+      {mobileIdiom && mobileHeaderContext && (
+        <div style={{ position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 64, right: 64, height: 44, zIndex: 1005, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: "rgba(26,58,74,0.55)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none" }}>
+          {mobileHeaderContext} · {tagShort}
+        </div>
+      )}
+
       <main style={{ maxWidth: 720, margin: "0 auto", padding: mobileIdiom ? "56px 16px 24px" : "64px 48px 180px" }}>
         {/* === CONTEXT === */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -648,20 +678,11 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               >
                 {autoPrompt
                   ? <>Write down your immediate thoughts<br />before reading your friends&rsquo;:</>
-                  : <>capture your thoughts on:</>}
+                  : <>Capture your thoughts on</>}
               </div>
-              <h1
-                style={{
-                  fontFamily: "Lora, Georgia, serif",
-                  fontWeight: 700,
-                  fontSize: 36,
-                  letterSpacing: "0.02em",
-                  color: CANON.identity,
-                  textTransform: "uppercase",
-                  margin: 0,
-                  marginBottom: 10,
-                }}
-              >
+              {/* Pass 3: Lora 36 UPPERCASE 0.02em → Display Identity,
+                  natural case, no tracking. */}
+              <h1 style={{ ...(mobileIdiom ? M.type.display : D.type.display), color: CANON.identity, margin: "0 0 10px" }}>
                 {show.name}
               </h1>
             </>
@@ -675,6 +696,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               next mount/refetch. Local progress state mirrors the returned
               entry so this page's tag computation + rewatch annotation
               update immediately. */}
+          <div className={`v2-compose-progress${mobileIdiom ? " v2-compose-progress--m" : ""}`} style={{ display: "flex", justifyContent: "center" }}>
           <OneSelectProgress
             show={show}
             value={progress}
@@ -695,6 +717,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             }}
             onForwardPick={handleRatingForwardPick}
           />
+          </div>
           {progress.isRewatching && (
             <div
               style={{
@@ -702,7 +725,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 fontFamily: "Lora, Georgia, serif",
                 fontStyle: "italic",
                 fontSize: 13,
-                color: INK_FAINT,
+                color: INK_70,
                 maxWidth: 480,
                 margin: "10px auto 0",
                 lineHeight: 1.5,
@@ -722,7 +745,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             style={{
               fontFamily: "Inter, sans-serif",
               fontSize: 13,
-              color: INK_FAINT,
+              color: INK_70,
               maxWidth: 480,
               margin: "0 auto 16px",
               lineHeight: 1.5,
@@ -756,13 +779,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           <input
             className="v2-compose-title-input"
             type="text"
-            placeholder="title"
+            placeholder="Title"
             value={postTitle}
             onChange={(e) => setPostTitle(e.target.value)}
             maxLength={200}
             style={{
               fontFamily: "Inter, sans-serif",
-              fontSize: 26,
+              fontSize: 22,
               fontWeight: 600,
               color: INK,
               border: "none",
@@ -797,7 +820,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               maxWidth: "100%",
               height: `${BODY_MIN_LINES * LH}px`,
               minHeight: `${BODY_MIN_LINES * LH}px`,
-              resize: "vertical",
+              resize: "none",
               overflow: "hidden",
               outline: "none",
               fontWeight: 400,
@@ -814,22 +837,15 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 <button
                   onClick={handlePromptBtn}
                   style={{
+                    ...(mobileIdiom ? M.pill.S : D.pill.S),
                     background: promptButton?.background ?? "var(--green)",
                     color: CANON.cream,
-                    border: "none",
-                    borderRadius: 9999,
-                    padding: "9px 18px",
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: 13,
-                    fontWeight: 400,
-                    letterSpacing: 0,
-                    cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 8,
                   }}
                 >
-                  <Sparkles size={14} color="currentColor" /> {promptButton?.label ?? "want a prompt?"}
+                  <Sparkles size={14} color="currentColor" /> {promptButton?.label ?? "Want a prompt?"}
                 </button>
               ) : (
                 <PromptCard
@@ -896,18 +912,14 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               onClick={attemptDiscard}
               disabled={submitting}
               style={{
+                ...(mobileIdiom ? M.pill.M : D.pill.M),
                 background: "transparent",
                 border: `2px solid var(--canon-alert,#f45028)`,
                 color: CANON.alert,
-                borderRadius: 9999,
-                padding: "10px 20px",
-                fontFamily: "Inter, sans-serif",
-                fontSize: 13,
-                fontWeight: 400,
                 cursor: submitting ? "not-allowed" : "pointer",
               }}
             >
-              not now
+              Not now
             </button>
             )}
             {(() => {
@@ -916,29 +928,28 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 postBody.trim() !== "" &&
                 destination !== null;
               const canSubmit = hasContent && !submitting;
+              // Pass 3: the label is ALWAYS visible (the empty 130px pill
+              // at 0.4 is retired) — 0.6 until the draft is valid. Desktop
+              // keeps the green fill; /m goes Identity per its board.
               return (
                 <button
                   onClick={submitPost}
                   disabled={!canSubmit}
-                  className="btn post h40"
                   style={{
+                    ...(mobileIdiom ? M.pill.M : D.pill.M),
+                    background: mobileIdiom ? CANON.identity : "var(--green)",
+                    color: CANON.cream,
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 2,
-                    opacity: hasContent ? 1 : 0.4,
+                    gap: 6,
+                    opacity: hasContent ? 1 : 0.6,
                     cursor: canSubmit ? "pointer" : "not-allowed",
-                    minWidth: 130,
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: 13,
-                    fontWeight: 400,
                   }}
                 >
-                  {!hasContent
-                    ? null
-                    : submitting
-                      ? <>{externalSubmit?.submittingLabel ?? "posting"}<LoadingDots /></>
-                      : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "share entry"}<ArrowRight size={14} /></>}
+                  {submitting
+                    ? <>{externalSubmit?.submittingLabel ?? "posting"}<LoadingDots /></>
+                    : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "Share entry"}<ArrowRight size={14} /></>}
                 </button>
               );
             })()}

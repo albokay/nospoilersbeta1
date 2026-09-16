@@ -1075,15 +1075,19 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <>
         <div style={{ ...composeBackdrop, ...(composeMinimized ? { display: "none" } : {}) }}>
           <div style={composeCardOuter}>
-            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={16} color={CANON.alert} /></button>
-            <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: 66, border: `2px solid ${CANON.identity}` }}><Minus size={16} color={CANON.identity} /></button>
+            {/* Pass 3: 30 → 44 circles, FIXED at the card's top-right
+                corner (the card scrolls; absolute buttons rode away with
+                long drafts). Card = 85vw×90vh centered → corner sits at
+                5vh / 7.5vw. × still routes through attemptDiscard. */}
+            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>
+            <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: "calc(7.5vw + 80px)", border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>
             <ComposeForm
               ref={composeFormRef}
               autoPrompt={composeAuto}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}
-              privateSubmitLabel="save draft"
+              privateSubmitLabel="Save draft"
               // Default the destination to match the tab you wrote from:
               // friend tab → this room, private tab → private.
               defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
@@ -1263,14 +1267,16 @@ const continueChip: React.CSSProperties = {
   position: "fixed", bottom: 0, right: 220, zIndex: 1001,
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
   background: CANON.cream, border: "none", minWidth: 240,
-  fontFamily: LORA, fontWeight: 700, fontSize: 14,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14,
   padding: "12px 32px 14px", borderRadius: "24px 24px 0 0", cursor: "pointer",
   boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
 };
+// Pass 3: 44 circles pinned to the modal-card corner (fixed — the card
+// scrolls under them); cream fill so the paper never shows through.
 const composeCloseX: React.CSSProperties = {
-  position: "absolute", top: 20, right: 24, background: "transparent", border: "2px solid var(--canon-alert,#f45028)",
-  color: CANON.alert, borderRadius: "50%", width: 34, height: 34, padding: 0,
-  display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", zIndex: 10,
+  position: "fixed", top: "calc(5vh + 16px)", right: "calc(7.5vw + 24px)", background: CANON.cream, border: "2px solid var(--canon-alert,#f45028)",
+  color: CANON.alert, borderRadius: "50%", width: 44, height: 44, padding: 0,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 1010,
 };
 // Digest gear modal — mirrors the dashboard "Leave this group?" look (accent
 // card, cream title, alert-outline action button).
