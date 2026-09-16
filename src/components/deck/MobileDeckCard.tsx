@@ -29,8 +29,10 @@
  * The artifact card is screenshot-safe: the Sidebar mark is baked in.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, ArrowRight, X } from "lucide-react";
+import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, ArrowLeft, ArrowRight, X } from "lucide-react";
 import LoadingDots from "../LoadingDots";
+import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
+import { M, OVERLAY } from "../../mobile/m";
 import {
   fetchDeckCards, fetchMyDeckAnswers, fetchGroupDeckAnswers, upsertDeckAnswer,
   type DeckCard, type GroupDeckAnswer,
@@ -48,7 +50,7 @@ const ST_W = 170;   // statement column (grid view) — wide enough for the
                     // check was clipping under the sticky (me) column at 150)
 const ME_W = 48;    // (me) column
 const FR_W = 56;    // friend columns
-const SHEET_CW = 36; // sheet answer columns (air-tight grid, 2026-08-14)
+const SHEET_CW = 48; // sheet answer columns (pass 3: 36 → 48 thumb hits)
 
 export default function MobileDeckCard({ mode, groupId, others = [], viewerId }: {
   mode: "personal" | "group";
@@ -70,6 +72,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
   const [tapTip, setTapTip] = useState<{ plural: boolean; x: number; y: number } | null>(null);
   const tapTipTimer = useRef<number | null>(null);
+  // Pass 3: the answers sheet joins the M sheet grammar — grabber +
+  // swipe-down (scrollRef gates the drag so the rows still scroll).
+  const sheetScrollRef = useRef<HTMLDivElement>(null);
+  const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetScrollRef });
   function showTapTip(cardId: string, e: React.MouseEvent) {
     if (tapTipTimer.current) window.clearTimeout(tapTipTimer.current);
     setTapTip({ plural: coveredCount(cardId) > 1, x: e.clientX, y: e.clientY });
@@ -134,10 +140,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   // rather than the whole deck, so the route never promises a grid with
   // nothing of theirs left to fill.
   const hasUnanswered = anyAnswered.some((c) => myAnswers[c.id] === undefined);
-  // No group subtitle (Alborz QA 2026-07-18 — "our answers on Sidebar" cut).
-  const subtitle = mode === "group"
-    ? null
-    : firstSet ? "my answers on Sidebar" : "my latest answers on Sidebar";
+  // Pass 3: the mode-specific Business subtitle is replaced by one caption
+  // that says what the sheet is and where to act (verbatim, both modes).
 
   // Answer-to-reveal pull signal (Alborz §6.1): revealable answers exist —
   // any friend row on a card the viewer hasn't answered.
@@ -242,7 +246,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
           width: "100%", zIndex: 40, cursor: "pointer",
           background: CANON.cream, borderRadius: "24px 24px 0 0",
           boxShadow: "0 -6px 24px rgba(0,0,0,0.18)",
-          padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 10px) 34px",
+          // Pass 3: left padding 34 → 24 (matches the dashboard deck tab).
+          padding: "16px 20px calc(env(safe-area-inset-bottom, 0px) + 10px) 24px",
           boxSizing: "border-box",
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
         }}
@@ -263,61 +268,52 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
         <div style={{ position: "absolute", inset: 0, background: "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
-        {/* "×" + tap-outside close (Alborz 2026-08-01 — the swipe handle and
-            its gesture retired here with the tips sheet's, so the rows can
-            scroll without competing with a drag). */}
-        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* No "×" on THIS sheet (Alborz 2026-08-11 — it collided with the
-              name columns; tap-outside closes). The pencil rides the title
-              instead and jumps straight into the grid's edit mode. */}
+        {/* Pass 3: the M sheet grammar — grabber + swipe-down + tap-out, no
+            ×. The scrollRef gate keeps the drag off the scrolling rows (the
+            2026-08-01 conflict that retired the old handle). */}
+        <div
+          {...sheetSwipe.handlers}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}
+        >
+          <div style={{ flexShrink: 0, paddingTop: 10 }}><div style={{ ...OVERLAY.grabber(CANON.dark), margin: "0 auto" }} /></div>
           {/* Header + the vertical names SHARE this band (names bottom-
               aligned at the right) so they don't push the questions down
               with their own row (Alborz QA 2026-07-18). Name slot widths
               match the row cells below and run to the sheet's right EDGE
               (no band padding on that side) so the columns line up with the
-              air-tight cells. */}
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "16px 0 8px 20px" }}>
+              air-tight cells. The pencil rides over the "me" column in
+              EVERY mode (pass 3 — personal's beside-the-title spot retired),
+              at a 44 hit with a 20 glyph. */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "6px 0 8px 20px" }}>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
-                {/* Group mode's pencil sits over the (me) column (Alborz
-                    2026-08-14); personal has no (me), so it keeps the
-                    beside-the-title spot. */}
-                {mode === "personal" && (
-                  <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                    style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: "4px 6px", display: "inline-flex" }}>
-                    <Pencil size={15} />
-                  </button>
-                )}
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
+              {/* Pass 3 caption (verbatim): what the sheet is + where to act. */}
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7, marginTop: 3, paddingRight: 8 }}>
+                Latest answers · edit yours with the pencil
               </div>
-              {subtitle && <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 11.5, color: CANON.business, marginTop: 3 }}>{subtitle}</div>}
               {pairLine && (
                 <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
               )}
             </div>
-            {mode === "group" && (
-              <div style={{ display: "flex", flexShrink: 0 }}>
-                {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
-                  <span key={m.id} style={{ width: SHEET_CW, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
-                    {/* The edit pencil rides ON TOP of "(me)" (Alborz
-                        2026-08-14); the band grows to hold it — names stay
-                        bottom-aligned. Jumps straight into the grid's edit
-                        mode, as before. */}
-                    {m.id === viewerId && (
-                      <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                        style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
-                        <Pencil size={15} />
-                      </button>
-                    )}
-                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ display: "flex", flexShrink: 0 }}>
+              {[{ id: viewerId, label: "(me)" }, ...columns].map((m) => (
+                <span key={m.id} style={{ width: SHEET_CW, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
+                  {m.id === viewerId && (
+                    <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                      <Pencil size={20} />
+                    </button>
+                  )}
+                  {mode === "group" && (
+                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {m.label}
                     </span>
-                  </span>
-                ))}
-              </div>
-            )}
+                  )}
+                </span>
+              ))}
+            </div>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
+          <div ref={sheetScrollRef} style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}>
             {/* AIR-TIGHT grid grammar (Alborz 2026-08-14): full-height color
                 cells with cream thumbs tile edge-to-edge under the name
                 columns, exactly like the full grid — the floating mini-cells
@@ -327,7 +323,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               const stripe = i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent";
               const cols = mode === "personal" ? [{ id: viewerId }] : [{ id: viewerId }, ...columns];
               return (
-                <div key={card.id} style={{ display: "flex", alignItems: "stretch", minHeight: 44, fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.35, color: CANON.dark }}>
+                <div key={card.id} style={{ display: "flex", alignItems: "stretch", minHeight: 48, fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark }}>
                   <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", padding: "11px 12px 11px 20px", background: stripe }}>{card.statement}</span>
                   {cols.map((m) => {
                     const v = mode === "personal" ? myAnswers[card.id] : valueFor(m.id, card.id);
@@ -342,8 +338,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                         }}
                       >
                         {v === null
-                          ? <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 13, color: CANON.friend, userSelect: "none" }}>?</span>
-                          : v !== undefined && <Th v={v} size={15} color={CANON.cream} />}
+                          ? <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, color: CANON.friend, userSelect: "none" }}>?</span>
+                          : v !== undefined && <Th v={v} size={16} color={CANON.cream} />}
                       </span>
                     );
                   })}
@@ -351,25 +347,28 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
               );
             })}
             {/* Right under the question list, not pinned to the screen
-                bottom. Appears once there's MORE than the sheet shows
-                (Alborz QA 2026-07-18 — at 8 answered the sheet already IS
-                everything) OR the viewer has unanswered cards to fill in
-                via the grid's pencil. */}
-            {(hasUnanswered || (mode === "group" ? anyAnswered.length > WINDOW : !firstSet)) && (
-              <button
-                onClick={() => setUi("grid")}
-                style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "12px 20px", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
-              >
-                see more answers <ArrowRight size={13} strokeWidth={2.5} />
-              </button>
-            )}
-            {cardFindings && (
-              <button
-                onClick={() => setUi("findings")}
-                style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", border: "none", background: "transparent", cursor: "pointer", padding: "4px 20px 12px", fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 12, color: CANON.identity }}
-              >
-                see findings <ArrowRight size={13} strokeWidth={2.5} />
-              </button>
+                bottom. Pass 3: the two stacked text links become S pills in
+                one right-aligned row — "All answers" outline, "Findings"
+                Identity fill. Same appearance conditions as before. */}
+            {((hasUnanswered || (mode === "group" ? anyAnswered.length > WINDOW : !firstSet)) || cardFindings) && (
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, padding: "14px 20px 12px" }}>
+                {(hasUnanswered || (mode === "group" ? anyAnswered.length > WINDOW : !firstSet)) && (
+                  <button
+                    onClick={() => setUi("grid")}
+                    style={{ ...M.pill.S, background: "transparent", color: CANON.identity, border: `2px solid ${CANON.identity}`, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    All answers <ArrowRight size={14} strokeWidth={2.5} />
+                  </button>
+                )}
+                {cardFindings && (
+                  <button
+                    onClick={() => setUi("findings")}
+                    style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    Findings <ArrowRight size={14} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -385,39 +384,49 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
     const quoteEnd = (t: string) => (t.startsWith("“") || t.startsWith('"')) ? t.indexOf(t[0] === '"' ? '"' : "”", 1) : -1;
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: CANON.friend }}>
-        <button onClick={() => setUi("sheet")} aria-label="close"
-          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 8px)", right: 14, zIndex: 2, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", padding: 6 }}>
-          <X size={24} />
+        {/* Pass 3: it returns to the answers sheet, so it's a BACK, not a
+            close — standard top-bar position, 44 hit; the caption opposite
+            names the share gesture (a screenshot IS the share). */}
+        <button onClick={() => setUi("sheet")} aria-label="back to answers"
+          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+          <ArrowLeft size={20} />
         </button>
-        <div style={{ position: "absolute", left: 20, right: 20, top: "calc(env(safe-area-inset-top, 0px) + 72px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 12px 32px rgba(0,0,0,0.3)", padding: "20px 20px 14px" }}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.7 }}>
+          Screenshot to share
+        </div>
+        <div style={{ position: "absolute", left: 20, right: 20, top: "calc(env(safe-area-inset-top, 0px) + 72px)", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 32px rgba(0,0,0,0.3)", padding: "24px 24px 14px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 20, color: CANON.identity, whiteSpace: "nowrap" }}>How We Watch TV</div>
+              <div style={{ ...M.type.title, color: CANON.identity, whiteSpace: "nowrap" }}>How We Watch TV</div>
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.5, color: CANON.dark, margin: "4px 0 16px" }}>
                 {profile?.display_name ?? "Me"}, with {joinNames(others.map((o) => o.label))}
               </div>
             </div>
             {/* The dynamic logo, on the card's own cream (surfaceBg keeps the
-                cream block visible on the cream surface). */}
+                cream block visible on the cream surface). Untouched. */}
             <SidebarLogo scale={0.34} wordmarkTint={CANON.dark} surfaceBg={CANON.cream} />
           </div>
-          <div style={{ fontFamily: LORA, fontWeight: 600, fontSize: 19, lineHeight: 1.35, color: CANON.identity, marginBottom: 16 }}>{cardFindings.headline}</div>
+          {/* Pass 3: headline 600/19 → 700/22 (one Lora weight site-wide);
+              stays plain Identity — no name coloring in the headline. */}
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: CANON.identity, marginBottom: 16 }}>{cardFindings.headline}</div>
           {cardFindings.lines.map((l, i) => {
-            // Emphasis: the ally/opposite name bolds Identity; a leading
-            // quoted statement renders italic (the rev-3 mockup treatment).
+            // Emphasis: the ally/opposite name bolds in ALERT (pass 3 — was
+            // Identity); a leading quoted statement renders italic.
             const bi = l.bold ? l.text.indexOf(l.bold) : -1;
             const qe = quoteEnd(l.text);
             return (
-              <div key={i} style={{ fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.55, marginBottom: 13, color: CANON.dark }}>
+              <div key={i} style={{ fontFamily: "Inter, sans-serif", fontSize: 15, lineHeight: 1.5, marginBottom: 14, color: CANON.dark }}>
                 {bi >= 0 && l.bold ? (
-                  <>{l.text.slice(0, bi)}<b style={{ color: CANON.identity }}>{l.bold}</b>{l.text.slice(bi + l.bold.length)}</>
+                  <>{l.text.slice(0, bi)}<b style={{ color: CANON.alert }}>{l.bold}</b>{l.text.slice(bi + l.bold.length)}</>
                 ) : qe > 0 ? (
                   <><i>{l.text.slice(0, qe + 1)}</i>{l.text.slice(qe + 1)}</>
                 ) : l.text}
               </div>
             );
           })}
-          <div style={{ borderTop: "1px solid rgba(141,170,186,0.4)", marginTop: 14, paddingTop: 10, fontFamily: "Inter, sans-serif", fontSize: 11, fontWeight: 600, color: CANON.business, display: "flex", justifyContent: "space-between" }}>
+          {/* Pass 3: 11/600 Business → Caption 13 at 0.7 dark (Business as
+              text on cream ≈ 2.3:1). */}
+          <div style={{ borderTop: "1px solid rgba(141,170,186,0.4)", marginTop: 14, paddingTop: 10, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 400, color: CANON.dark, opacity: 0.7, display: "flex", justifyContent: "space-between" }}>
             <span>{answeredMine.length} questions answered</span>
             <span>beta.sidebar.watch</span>
           </div>

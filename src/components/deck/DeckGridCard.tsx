@@ -31,6 +31,7 @@ import {
 } from "../../lib/db";
 import { pairHeaderLine, computeFindings, type DeckMember } from "../../lib/deckFindings";
 import { CANON } from "../../styles/canon";
+import { D } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -157,6 +158,19 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
     return columns.findIndex((m) => valueFor(m.id, cardId) === null);
   }
 
+  // Pass 3: friend names inside the Findings sticky bold in ALERT (the
+  // headline stays plain). Longest-first so "Maya B" beats "Maya".
+  const nameLabels = others.map((o) => o.label).filter(Boolean).sort((a, b) => b.length - a.length);
+  const nameRx = nameLabels.length
+    ? new RegExp(`(${nameLabels.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g")
+    : null;
+  function emphasizeNames(text: string): React.ReactNode {
+    if (!nameRx) return text;
+    const parts = text.split(nameRx);
+    if (parts.length === 1) return text;
+    return parts.map((p, i) => (i % 2 === 1 ? <b key={i} style={{ color: CANON.alert }}>{p}</b> : p));
+  }
+
   function toggleOwn(cardId: string) {
     if (ui !== "edit" || saving) return;
     const cur = valueFor(viewerId, cardId);
@@ -205,8 +219,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   // the mobile surfaces keep their beside-the-title pencils).
   const headerRow = (
     <div style={{ display: "flex", alignItems: "baseline", background: CANON.cream }}>
-      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "16px 8px 4px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
-        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+      {/* Pass 3: title 32 → Title 28; header padding-top 16 → 20. */}
+      <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "20px 8px 4px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
+        <span style={{ ...D.type.title, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
       </div>
       <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
         {isWe && <span style={colName}>(me)</span>}
@@ -225,11 +240,17 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   const subRow = (
     <div style={{ display: "flex", alignItems: "center", background: CANON.cream, paddingBottom: 6 }}>
       <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "0 8px 0 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
-        {pairLine && (
+        {/* Pass 3: the caption says what the card is + where to act; the
+            n=2 pair line keeps this row when present — the caption yields. */}
+        {pairLine ? (
           <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>
             {pairDash > -1
               ? <>{pairLine.slice(0, pairDash + 1)}<br />{pairLine.slice(pairDash + 2)}</>
               : pairLine}
+          </span>
+        ) : (
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+            Latest answers · edit yours with the pencil
           </span>
         )}
       </div>
@@ -241,12 +262,13 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           </button>
         ) : (
           <span style={{ position: "relative", display: "inline-block" }}>
+            {/* Pass 3: pencil 15 → 20 in a 44 hit, same spot under "(me)". */}
             <button
               onClick={() => { setEdits({}); setUi("edit"); }}
               onMouseEnter={() => setEditTip(true)}
               onMouseLeave={() => setEditTip(false)}
-              style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "inline-flex" }}>
-              <Pencil size={15} strokeWidth={2} />
+              style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <Pencil size={20} strokeWidth={2} />
             </button>
             {editTip && (
               <span style={editTipBubble}>Edit answers?</span>
@@ -289,7 +311,8 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
             dashboard, Sky in the group room (Alborz QA 2026-07-20);
             Identity once opened. */}
         <div style={{ padding: dockInFlow ? "16px 24px 46px" : "16px 24px 14px" }}>
-          <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 32, color: mode === "personal" ? CANON.personal : CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
+          {/* Pass 3: docked title 32 → Title 28 too. */}
+          <span style={{ ...D.type.title, color: mode === "personal" ? CANON.personal : CANON.friend, whiteSpace: "nowrap" }}>{title}</span>
         </div>
       </div>
   );
@@ -318,7 +341,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           const editing = ui === "edit";
           return (
             <div key={card.id} style={{ display: "flex", minHeight: ROW_MIN_H, alignItems: "stretch" }}>
-              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.35, color: CANON.dark }}>
+              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 15, lineHeight: 1.4, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
@@ -384,7 +407,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           tone="cream"
           tilt={2.5}
           width={290}
-          fontSize={13}
+          fontSize={14}
           ignoreViewportGate={false}
           animateEntrance
           // Same lift as the tips stickies (Alborz 2026-08-14) — the default
@@ -409,17 +432,19 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
             onPointerCancel: () => { findingsGrab.current = null; },
           }}
         >
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Findings:</div>
+          {/* Pass 3: "Findings:" → "Findings"; friend names in the lines and
+              quote suffixes bold alert; the headline stays plain. */}
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Findings</div>
           <div style={{ fontWeight: 700, marginBottom: findings.quotes.length ? 4 : 8 }}>{findings.headline}</div>
           {findings.quotes.map((q) => (
             // A NO-take's suffix ("— {name} says NOPE.") lands outside the
             // closing quote, upright against the italic statement.
             <div key={q.text} style={{ fontStyle: "italic", margin: "2px 0" }}>
-              · &ldquo;{q.text}&rdquo;{q.suffix && <span style={{ fontStyle: "normal" }}>{q.suffix}</span>}
+              · &ldquo;{q.text}&rdquo;{q.suffix && <span style={{ fontStyle: "normal" }}>{emphasizeNames(q.suffix)}</span>}
             </div>
           ))}
           {findings.lines.map((l) => (
-            <div key={l} style={{ marginTop: 8 }}>{l}</div>
+            <div key={l} style={{ marginTop: 8 }}>{emphasizeNames(l)}</div>
           ))}
         </StickyNote>
       )}
@@ -440,17 +465,18 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   return openOverlay;
 }
 
-// The site's tipBubble look (DashboardPage), anchored above the pencil
-// (back in its sub-row spot, so the bubble opens over the header band).
+// Pass 3: both deck bubbles adopt D.hoverPop (13, radius 18, 9×14, the one
+// unified shadow) — each keeps its own fill. Anchored above the pencil.
 const editTipBubble: React.CSSProperties = {
+  ...D.hoverPop,
   position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
-  background: CANON.personal, color: CANON.cream, padding: "7px 12px", borderRadius: 12,
-  fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 600, lineHeight: 1.3,
-  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10, boxShadow: "0 6px 18px rgba(0,0,0,0.2)",
+  background: CANON.personal, color: CANON.cream, fontWeight: 600,
+  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10,
 };
 
+// Pass 3: member names 13 → Label 14/700.
 const colName: React.CSSProperties = {
-  fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.dark,
+  fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark,
   maxWidth: MEMBER_W - 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 
@@ -470,12 +496,12 @@ function cell(v: boolean | null | undefined): React.CSSProperties {
 // phantom horizontal scroll + rubber-band snap-back), and spilled below the
 // card on the bottom-most row. Up-left it sits over the grid interior,
 // always inside the card.
+// Pass 3: D.hoverPop metrics, cream fill kept.
 const coveredBubble: React.CSSProperties = {
+  ...D.hoverPop,
   position: "absolute", right: 24, bottom: 26, zIndex: 6,
-  background: CANON.cream, color: CANON.dark, borderRadius: 10,
-  padding: "10px 14px", fontFamily: "Inter, sans-serif", fontWeight: 500,
-  fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",
-  boxShadow: "0 6px 18px rgba(0,0,0,0.3)", pointerEvents: "none",
+  background: CANON.cream, color: CANON.dark,
+  whiteSpace: "nowrap", textAlign: "left", pointerEvents: "none",
 };
 
 /** Cream Lucide thumb — the mobile grid's cell grammar (Alborz 2026-08-12). */
