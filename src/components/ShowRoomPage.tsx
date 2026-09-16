@@ -133,6 +133,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [location.pathname]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
+  // Pass 3 (flows polish): the guide tab's canon pill portals into this
+  // slot in the control card (ShowReference owns the canon state).
+  const [canonSlotEl, setCanonSlotEl] = useState<HTMLSpanElement | null>(null);
   // The progress-picker sticky, now header-"?"-toggleable (2026-09-15 —
   // dashboard tips parity; it used to be gone forever once X'd). null =
   // auth not resolved yet; first resolution honors the per-account flag.
@@ -917,6 +920,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {tab !== "reference" && (
                 <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
               )}
+              {/* Guide tab (pass 3): the canon pill leads the row (Alborz —
+                  action left, dials follow, picker ends the row). */}
+              {tab === "reference" && <span ref={setCanonSlotEl} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }} />}
               {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                 <>
                   <span style={controlDivider} />
@@ -946,7 +952,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 </>
               )}
               {show && progressForShow ? (
-                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: tab === "reference" ? "flex-start" : "flex-end", minHeight: 44, minWidth: 0 }}>
+                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "flex-end", minHeight: 44, minWidth: 0 }}>
                   <OneSelectProgress
                     show={show}
                     value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -960,7 +966,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
 
             {tab === "reference" && show && refEff && (
-              <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+              <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} canonSlot={canonSlotEl} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
             )}
             {/* Friend + drafts columns stay MOUNTED (display:none) on the
                 other tabs, so in-progress replies/drafts survive a guide

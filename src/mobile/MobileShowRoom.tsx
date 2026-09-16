@@ -117,6 +117,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [composeMinimized, setComposeMinimized] = useState(false);
   useEffect(() => { if (!composeOpen) setComposeMinimized(false); }, [composeOpen]);
   const [rosterOpen, setRosterOpen] = useState(false);
+  // Pass 3 (flows polish): the guide tab's canon pill portals into this
+  // slot in the control card (ShowReference owns the canon state).
+  const [canonSlotEl, setCanonSlotEl] = useState<HTMLSpanElement | null>(null);
   // Byline tap → the member's pool as an OVERLAY on the still-mounted room
   // (stable back swipe): opening pushes a same-path history entry, so the
   // iOS edge-swipe / back button pops it → popstate → overlay closes and
@@ -886,8 +889,23 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </select>
                 <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               </span>
+            ) : tab === "reference" && show && progressForShow ? (
+              /* Guide tab (pass 3): picker takes the LEFT slot; the canon
+                 pill (portaled by ShowReference) takes the right. */
+              <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
+                <OneSelectProgress
+                  show={show}
+                  value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
+                  onConfirm={onProgressConfirm}
+                  onForwardPick={onForwardPick}
+                  requireConfirm
+                  allowZero
+                />
+              </div>
             ) : <span />}
-            {show && progressForShow && (
+            {tab === "reference" ? (
+              <span ref={setCanonSlotEl} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }} />
+            ) : show && progressForShow && (
               <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
@@ -911,7 +929,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
-          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} canonSlot={canonSlotEl} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
         )}
         {/* Friend + drafts columns stay MOUNTED (display:none) on the other
             tabs, so in-progress replies/drafts survive a guide check

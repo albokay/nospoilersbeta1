@@ -7,6 +7,7 @@
 // the dial reaches it — "no 0-state reference page").
 
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
@@ -17,13 +18,15 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import { setCanonPin, setEssentialEps, upsertRewatchStatus, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames } from "../../lib/db";
 import { groupDisplayName, joinNames } from "../../lib/groupNames";
+import { M } from "../../mobile/m";
+import { D } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, canonSlot = null,
 }: {
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
@@ -35,6 +38,9 @@ export default function ShowReference({
   /** Standalone (dashboard-route) guide: link out to the viewer's open show
    *  rooms for this show (one pill per friend-group room). */
   showRoomLinks?: boolean;
+  /** Pass 3: the host control card's slot element — the canon pill
+   *  portals into it ("In your canon" / "Add to canon"). */
+  canonSlot?: HTMLElement | null;
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -269,11 +275,13 @@ export default function ShowReference({
     );
   }
 
+  // Pass 3: section heads Title 22/28, sentence case, no colons; margins
+  // 36/14 → 32/12; captions 13 at 0.85 (never 12 — the guide rule).
   const sectionH: React.CSSProperties = {
-    fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 26, color: CREAM,
-    margin: "36px 0 14px",
+    fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM,
+    margin: "32px 0 12px",
   };
-  const small: React.CSSProperties = { fontSize: 12, color: CREAM, opacity: 0.85 };
+  const small: React.CSSProperties = { fontSize: 13, color: CREAM, opacity: 0.85 };
   // Crew names read exactly like the line always did, just underlined + tappable.
   const crewLink: React.CSSProperties = {
     background: "transparent", border: "none", padding: 0, cursor: "pointer",
@@ -291,49 +299,47 @@ export default function ShowReference({
           name (rev 3 — swaps with the "with …" members line per tab);
           attribution moved to the page bottom. */}
 
-      {/* ── Canon controls (rev 5 — Alborz 2026-09-07): the reference page
-            only ADDS; the blurb, edit and remove all live on the dashboard's
-            canon shelf now. ── */}
-      {user && (canonOn !== null || roomLinks.length > 0) && (
-        <div style={{ marginBottom: 32, display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
-          {canonOn === null ? null : !canonOn ? (
-            // Canon full (12 since 2026-09-09) → no pill, no note; the
-            // room pills below still render.
-            (canonCount ?? 0) >= 12 ? null : (
-              <>
-                <button
-                  onClick={addToCanon}
-                  disabled={canonBusy}
-                  style={{ background: "transparent", border: `2px solid ${CREAM}`, color: CREAM, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                >
-                  add to your canon
-                </button>
-                <div style={{ fontStyle: "italic", fontSize: 12, opacity: 0.85, marginTop: 6 }}>
-                  (also sets your progress to the latest episode)
-                </div>
-              </>
-            )
-          ) : (
-            // No star here (stars = essentials); cream pill in Accent text.
-            // Tap → the dashboard, scrolled to the canon section.
+      {/* ── Canon controls (pass 3): the pill lives in the host control
+            card's right/left slot (portal); under the card sit the
+            non-canon caption + the room-link pills. Canon full (12) →
+            no pill, no caption; room pills still render. ── */}
+      {user && canonSlot && canonOn !== null && createPortal(
+        !canonOn ? (
+          (canonCount ?? 0) >= 12 ? null : (
             <button
-              onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })}
-              title="See your canon on the dashboard"
-              style={{ background: CREAM, border: "none", color: CANON.accent, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              onClick={addToCanon}
+              disabled={canonBusy}
+              style={{ ...(mobile ? M.pill.S : D.pill.M), background: CANON.accent, color: CREAM, display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap", opacity: canonBusy ? 0.6 : 1 }}
             >
-              in your canon
+              <Star size={16} color={CREAM} strokeWidth={2.2} /> Add to canon
             </button>
+          )
+        ) : (
+          <button
+            onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })}
+            title="See your canon on the dashboard"
+            style={{ ...(mobile ? M.pill.S : D.pill.M), background: CANON.accent, color: CREAM, display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}
+          >
+            <Star size={16} color={CREAM} fill={CREAM} strokeWidth={2.2} /> In your canon
+          </button>
+        ),
+        canonSlot,
+      )}
+      {user && ((canonOn === false && (canonCount ?? 0) < 12) || roomLinks.length > 0) && (
+        <div style={{ marginBottom: 28, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+          {canonOn === false && (canonCount ?? 0) < 12 && (
+            <div style={{ fontSize: 13, opacity: 0.85, flexBasis: "100%" }}>
+              Adds it at the latest episode
+            </div>
           )}
-          {/* Open show rooms for this show (dashboard-route only) — the
-              "in your canon" pill grammar; one per friend-group room. */}
           {roomLinks.map((r) => (
             <button
               key={r.roomId}
               onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)}
               title={`Open your show room with ${r.label}`}
-              style={{ background: CREAM, border: "none", color: CANON.accent, borderRadius: 65, padding: "9px 22px", fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              style={{ ...(mobile ? M.pill.M : D.pill.M), background: CREAM, color: CANON.accent, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             >
-              open your room with {r.label}
+              Open your room with {r.label}
             </button>
           ))}
         </div>
@@ -346,46 +352,44 @@ export default function ShowReference({
             degrade to the so-far list until the cache rebuilds. ── */}
       {visiblePeople.length > 0 && (
         <>
-          {/* "Cast for (picker):" — the picker mirrors the yellow modal's
-              progress pill (cream text + outline, yellow fill, overlay
-              chevron; OneSelectProgress's non-plain grammar). */}
-          <h2 style={{ ...sectionH, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            {episodeCast ? (
-              <>
-                Cast for
-                <span style={{ position: "relative", display: "inline-block" }}>
-                  <select
-                    value={`${selCastEp.s}-${selCastEp.e}`}
-                    onChange={(ev) => {
-                      const [ss, ee] = ev.target.value.split("-").map(Number);
-                      setCastEpisode({ s: ss, e: ee });
-                      setCastExpanded(false);
-                    }}
-                    aria-label="Pick an episode"
-                    style={{
-                      appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
-                      background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
-                      borderRadius: 9999, height: 40, boxSizing: "border-box",
-                      padding: "8px 28px 8px 14px", fontSize: 12, fontWeight: 700,
-                      fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
-                      textAlign: "center", textAlignLast: "center",
-                      maxWidth: mobile ? 210 : 320, textOverflow: "ellipsis",
-                    }}
-                  >
-                    {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
-                      <optgroup key={sn} label={`Season ${sn}`}>
-                        {watchedEpisodes.filter(ep => ep.s === sn).map((ep) => (
-                          <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} color={CREAM} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-                </span>
-              </>
-            ) : "Cast so far:"}
-          </h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18 }}>
+          {/* Pass 3: "Cast for [picker]:" → "Cast" head, then the episode
+              picker on its own line as an M cream-outline pill (14/700,
+              16 chevron). */}
+          <h2 style={sectionH}>{episodeCast ? "Cast" : "Cast so far"}</h2>
+          {episodeCast && (
+            <div style={{ margin: "0 0 16px" }}>
+              <span style={{ position: "relative", display: "inline-block" }}>
+                <select
+                  value={`${selCastEp.s}-${selCastEp.e}`}
+                  onChange={(ev) => {
+                    const [ss, ee] = ev.target.value.split("-").map(Number);
+                    setCastEpisode({ s: ss, e: ee });
+                    setCastExpanded(false);
+                  }}
+                  aria-label="Pick an episode"
+                  style={{
+                    appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+                    background: "transparent", border: `2px solid ${CREAM}`, color: CREAM,
+                    borderRadius: 9999, minHeight: 44, boxSizing: "border-box",
+                    padding: "8px 34px 8px 16px", fontSize: 14, fontWeight: 700,
+                    fontFamily: '"Inter", sans-serif', cursor: "pointer", outline: "none",
+                    textAlign: "center", textAlignLast: "center",
+                    maxWidth: mobile ? 240 : 340, textOverflow: "ellipsis",
+                  }}
+                >
+                  {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
+                    <optgroup key={sn} label={`Season ${sn}`}>
+                      {watchedEpisodes.filter(ep => ep.s === sn).map((ep) => (
+                        <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <ChevronDown size={16} color={CREAM} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              </span>
+            </div>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 14 : 18, justifyContent: mobile ? "center" : undefined }}>
             {(castExpanded ? (episodeCast ?? visiblePeople) : foldedCast).map((p) => (
               <button
                 key={p.name}
@@ -398,36 +402,43 @@ export default function ShowReference({
                     src={`https://image.tmdb.org/t/p/w185${p.img}`}
                     alt=""
                     loading="lazy"
-                    style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", objectFit: "cover" }}
+                    style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover" }}
                   />
                 ) : (
-                  <div style={{ width: mobile ? 64 : 72, height: mobile ? 64 : 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
+                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
                     {p.name[0]}
                   </div>
                 )}
-                <div style={{ fontWeight: 700, fontSize: 13, marginTop: 6 }}>{p.name}</div>
-                {p.character && <div style={{ fontSize: 12, opacity: 0.9 }}>{p.character}</div>}
-                {/* "since …" only once that point is meaningfully behind you
-                    (pilot-cast "since S1 E1" is noise). */}
-                {idx(p.firstS, p.firstE) > idx(1, 1) && (
-                  <div style={{ ...small, marginTop: 2 }}>
-                    {p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`}
-                  </div>
-                )}
+                <div style={{ fontWeight: 700, fontSize: 14, marginTop: 6 }}>{p.name}</div>
+                {/* Pass 3: role + "since …" share ONE 13 line at 0.85
+                    ("since …" only once that point is meaningfully behind
+                    you — pilot-cast "since S1 E1" is noise). */}
+                {(() => {
+                  const since = idx(p.firstS, p.firstE) > idx(1, 1)
+                    ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`)
+                    : null;
+                  if (!p.character && !since) return null;
+                  return (
+                    <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>
+                      {p.character}{p.character && since ? " · " : ""}{since}
+                    </div>
+                  );
+                })()}
               </button>
             ))}
           </div>
           {(episodeCast ?? visiblePeople).length > 8 && (
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              {/* Pass 3: italic text link → S ghost pill + 16 chevron. */}
               <button
                 onClick={() => setCastExpanded((v) => !v)}
                 aria-label={castExpanded ? "Show fewer" : "Show this episode's whole cast"}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: 4, color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 13 }}
+                style={{ ...(mobile ? M.pill.S : D.pill.S), background: "transparent", border: "none", color: CREAM, display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                {castExpanded ? "show fewer" : "see whole cast"}
+                {castExpanded ? "Show fewer" : "See whole cast"}
                 {castExpanded
-                  ? <ChevronUp size={20} color={CREAM} strokeWidth={2.5} />
-                  : <ChevronDown size={20} color={CREAM} strokeWidth={2.5} />}
+                  ? <ChevronUp size={16} color={CREAM} strokeWidth={2.5} />
+                  : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
               </button>
             </div>
           )}
@@ -435,14 +446,14 @@ export default function ShowReference({
       )}
 
 
-      <h2 style={sectionH}>Previously on {ref.showName}:</h2>
+      <h2 style={sectionH}>So far on {ref.showName}</h2>
       {/* The essentials sticky (mobile: in-flow; desktop: first rail cell of
           the grid below) — X'd out per show, re-summoned by the dashboard's
           pick-essentials prompt. */}
       {user && canonOn && stickyVisible && mobile && (
         <div style={{ margin: "0 0 24px" }}>
           <StickyNote
-            tone="cream" tilt={-3} width={190} fontSize={13} ignoreViewportGate
+            tone="cream" tilt={-3} width={190} fontSize={13} ignoreViewportGate dismissSize={20}
             onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
             dismissLabel="Dismiss"
             style={{ position: "relative", zIndex: 5, display: "inline-block" }}
@@ -470,7 +481,7 @@ export default function ShowReference({
             onClick={() => toggleSeason(season.n)}
             aria-expanded={isOpen}
             aria-label={`${isOpen ? "Collapse" : "Expand"} season ${season.n}`}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 16 : 18, color: CREAM, opacity: 0.95 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: LORA, fontWeight: 700, fontSize: 22, minHeight: 44, color: CREAM, opacity: 0.95 }}
           >
             Season {season.n}
             {isOpen
@@ -478,14 +489,15 @@ export default function ShowReference({
               : <ChevronDown size={16} color={CREAM} strokeWidth={2.5} />}
           </button>
         );
-        const starBtn = (ep: Ep, size: number, inline: boolean) => (
+        // Pass 3: 20 glyph in a 44 hit (was 15/17 with 2px padding).
+        const starBtn = (ep: Ep) => (
           <button
             onClick={() => toggleEssential(ep.s, ep.e)}
             aria-pressed={essentials.has(idx(ep.s, ep.e))}
             title={essentials.has(idx(ep.s, ep.e)) ? "Un-star this essential" : "Star as an essential episode"}
-            style={{ background: "transparent", border: "none", padding: 2, cursor: "pointer", lineHeight: 0, flexShrink: 0, ...(inline ? { marginRight: 6, verticalAlign: "middle" } : {}) }}
+            style={{ background: "transparent", border: "none", padding: 0, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", lineHeight: 0, flexShrink: 0 }}
           >
-            <Star size={size} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
+            <Star size={20} color={CREAM} fill={essentials.has(idx(ep.s, ep.e)) ? CREAM : "none"} strokeWidth={2} />
           </button>
         );
         const stillBtn = (ep: Ep) => (
@@ -494,18 +506,19 @@ export default function ShowReference({
             aria-label={`Enlarge the episode ${ep.e} still`}
             style={{ padding: 0, border: "none", background: "transparent", cursor: "zoom-in", lineHeight: 0, display: "block" }}
           >
-            <img src={ep.still!} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 10, display: "block" }} />
+            <img src={ep.still!} alt="" loading="lazy" style={{ width: stillW, height: stillH, objectFit: "cover", borderRadius: 12, display: "block" }} />
           </button>
         );
+        // Pass 3: title 15/600 (the air date leaves it); the 13-at-0.85
+        // credits line leads with the air date; summary Body 15/1.6.
         const epText = (ep: Ep) => (
           <>
-            <div style={{ fontWeight: 700, fontSize: mobile ? 14 : 15 }}>
-              {user && canonOn && mobile && starBtn(ep, 15, true)}
+            <div style={{ fontWeight: 600, fontSize: 15 }}>
               Episode {ep.e} · {ep.title}
-              {ep.airDate && <span style={{ fontWeight: 500, opacity: 0.7 }}>  ·  {ep.airDate}</span>}
             </div>
-            {(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
+            {(ep.airDate || ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && (
               <div style={{ ...small, marginTop: 2 }}>
+                {ep.airDate && <>{ep.airDate}{(ep.writers.length > 0 || ep.directors.length > 0 || ep.dp.length > 0) && " · "}</>}
                 {[
                   { label: "written by", credits: ep.writers.map(toCredit) },
                   { label: "directed by", credits: ep.directors.map(toCredit) },
@@ -528,7 +541,7 @@ export default function ShowReference({
               <div style={{ marginTop: 8 }}>{stillBtn(ep)}</div>
             )}
             {ep.summary && (
-              <div style={{ fontSize: mobile ? 13 : 14, lineHeight: 1.55, marginTop: mobile ? 8 : 4, opacity: 0.95, maxWidth: 620 }}>
+              <div style={{ fontSize: 15, lineHeight: 1.6, marginTop: mobile ? 8 : 4, opacity: 0.95, maxWidth: 620 }}>
                 {ep.summary}
               </div>
             )}
@@ -541,8 +554,13 @@ export default function ShowReference({
             return (
               <div key={season.n} style={{ marginBottom: isOpen ? 28 : 14 }}>
                 <div style={{ marginBottom: isOpen ? 10 : 0 }}>{headerBtn(season, isOpen)}</div>
+                {/* Pass 3: the essentials star moves out of the title into
+                    a left gutter (44 hit, top-aligned with the title). */}
                 {isOpen && watched.map((ep) => (
-                  <div key={ep.e} style={{ marginBottom: 20 }}>{epText(ep)}</div>
+                  <div key={ep.e} style={{ marginBottom: 20, display: "flex", gap: 4 }}>
+                    {user && canonOn && <div style={{ flexShrink: 0, marginLeft: -8, marginTop: -10 }}>{starBtn(ep)}</div>}
+                    <div style={{ minWidth: 0, flex: 1 }}>{epText(ep)}</div>
+                  </div>
                 ))}
               </div>
             );
@@ -561,7 +579,7 @@ export default function ShowReference({
           {user && canonOn && stickyVisible && (
             <div style={{ position: "absolute", top: -2, left: -186, zIndex: 5 }}>
               <StickyNote
-                tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate
+                tone="cream" tilt={-3} width={170} fontSize={13} ignoreViewportGate dismissSize={20}
                 onDismiss={() => { setStickyVisible(false); try { localStorage.setItem(stickyKey, "1"); } catch { /* fine */ } }}
                 dismissLabel="Dismiss"
                 style={{ position: "relative", display: "inline-block" }}
@@ -580,8 +598,8 @@ export default function ShowReference({
                   <div style={{ marginBottom: isOpen ? 12 : 14 }}>{headerBtn(season, isOpen)}</div>
                   {isOpen && watched.map((ep) => (
                     <React.Fragment key={`${season.n}-${ep.e}`}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, paddingTop: 2, marginBottom: 20 }}>
-                        {user && canonOn && starBtn(ep, 17, false)}
+                      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-start", gap: 8, marginBottom: 20 }}>
+                        {user && canonOn && <div style={{ marginTop: -10 }}>{starBtn(ep)}</div>}
                         {ep.still && stillBtn(ep)}
                       </div>
                       <div style={{ minWidth: 0, marginBottom: 20 }}>{epText(ep)}</div>
@@ -598,7 +616,7 @@ export default function ShowReference({
           — the dial's dropdown already tells the viewer how much is left). */}
 
       {/* ── Trailers: launch + unlocked season trailers + ONE locked tease ── */}
-      <h2 style={sectionH}>Trailers:</h2>
+      <h2 style={sectionH}>Trailers</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
         {ref.launchTrailerKey && <RefTrailer label="the launch trailer" trailerKey={ref.launchTrailerKey} />}
         {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
