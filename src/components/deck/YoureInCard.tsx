@@ -19,8 +19,8 @@ import LoadingDots from "../LoadingDots";
 import InviteLinkRow, { type InviteLink } from "../InviteLinkRow";
 import { preventLastWordOrphan } from "../../lib/utils";
 import { CANON } from "../../styles/canon";
-
-const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
+import { M } from "../../mobile/m";
+import { D } from "../dashboardChrome";
 
 export type YoureInVariant =
   /** inviteLinks (2026-08-18): the just-sent invites' links, one per friend,
@@ -85,7 +85,8 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
         } : undefined}
         onTouchCancel={mobile ? () => { dragStart.current = null; setDragX(0); } : undefined}
         style={{
-          ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "56px 28px 40px" : "72px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column", touchAction: "none" as const } : {}),
+          // Pass 3 paddings: desktop top 72 → 64; mobile 56/28/40 → 32/24/28.
+          ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "32px 24px 28px" : "64px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column", touchAction: "none" as const } : {}),
           transform: flung
             ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
             : dragX !== 0
@@ -96,7 +97,8 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
             : dragStart.current != null ? "none" : "transform .18s ease",
         }}
       >
-        <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 30 : 34, letterSpacing: 0, color: CANON.accent, margin: 0 }}>
+        {/* Pass 3: accent-on-cream (≈1.9:1) → Display Identity. */}
+        <h1 style={{ ...(mobile ? M.type.display : D.type.display), color: CANON.identity, margin: 0 }}>
           You&rsquo;re in!
         </h1>
 
@@ -105,8 +107,10 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
             off the card. On mobile the card itself is touchAction:none for
             the swipe; pan-y here lets the body scroll under a finger. */}
         <div style={{
-          fontFamily: "Inter, sans-serif", fontWeight: 600, fontSize: 14, lineHeight: 1.6, color: CANON.identity, marginTop: 22,
-          maxWidth: mobile ? "100%" : 460,
+          // Pass 3: 14/600 Identity → Body 15/400 dark ink; the alert
+          // emphases below stay — the deliberate can't-miss exception.
+          fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 15, lineHeight: 1.6, color: CANON.dark, marginTop: 22,
+          maxWidth: mobile ? "100%" : 480,
           overflowY: "auto", WebkitOverflowScrolling: "touch",
           ...(mobile ? { flexShrink: 1, minHeight: 0, touchAction: "pan-y" as const } : { maxHeight: 380 }),
         }}>
@@ -127,7 +131,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
                       : `Sidebar has emailed your ${variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.`)}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                    {variant.inviteLinks.map((l) => <InviteLinkRow key={l.link} name={l.name} link={l.link} tone="cream" />)}
+                    {variant.inviteLinks.map((l) => <InviteLinkRow key={l.link} name={l.name} link={l.link} tone="cream" mobileIdiom={mobile} />)}
                   </div>
                 </>
               )}
@@ -156,23 +160,24 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
                 (many invite-link rows) — the body scrolls instead. */}
             <div style={{ flex: 1, minHeight: 88, position: "relative" }}>
               <button
-                style={{ ...goTab, opacity: busy ? 0.7 : 1, right: -48, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 13.5, minHeight: 44 }}
+                style={{ ...goTab, opacity: busy ? 0.7 : 1, right: -56, top: "50%", transform: "translateY(-50%)", padding: "14px 24px", fontSize: 14, minHeight: 48 }}
                 disabled={busy}
                 onClick={onDone}
               >
                 {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={18} strokeWidth={2.5} /> GET STARTED!</>}
               </button>
             </div>
-            {/* Three-line arrangement on mobile (Alborz 2026-08-11);
-                desktop keeps its two-line break. */}
-            <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
-              Sidebar is<br />for you and<br />your friends.
+            {/* Pass 3: closer Lora 30 → Title 22 — the title leads, the
+                closer closes; two lines per the board. */}
+            <div style={{ ...M.type.title, color: CANON.identity, textAlign: "right" }}>
+              Sidebar is for you<br />and your friends.
             </div>
           </>
         ) : (
           <>
             <div style={{ position: "absolute", right: 64, bottom: 56 }}>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, lineHeight: 1.25, letterSpacing: 0, color: CANON.identity, textAlign: "right" }}>
+              {/* Pass 3: closer Lora 34 → Title 28. */}
+              <div style={{ ...D.type.title, color: CANON.identity, textAlign: "right" }}>
                 Sidebar is for you and<br />your friends.
               </div>
             </div>
@@ -181,7 +186,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
               disabled={busy}
               onClick={onDone}
             >
-              {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={24} strokeWidth={2.5} /> GET STARTED!</>}
+              {busy ? <>one moment<LoadingDots /></> : <><ArrowRight size={20} strokeWidth={2.5} /> GET STARTED!</>}
             </button>
           </>
         )}
@@ -204,10 +209,13 @@ const alertSpan: React.CSSProperties = { color: CANON.alert, fontWeight: 700 };
 // The tab grammar: a full stadium pill breaking the card's right edge —
 // SAME shape as the NOPE/YES tabs (Alborz QA 2026-07-18; was flat-right).
 // No drop shadow: the tab is part of the card, not floating above it.
+// Pass 3: radius 65 → 9999, 15 → 14, padding 22×30 → 16×32 (min 52 = L —
+// the card's one act); nowrap so the label never wraps into the clipped
+// zone when it hangs off the phone edge.
 const goTab: React.CSSProperties = {
   position: "absolute", border: "none", cursor: "pointer",
   display: "flex", alignItems: "center", gap: 12,
   background: CANON.identity, color: CANON.cream,
-  fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, letterSpacing: 0.5,
-  padding: "22px 30px", borderRadius: 65, minHeight: 52,
+  fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
+  padding: "16px 32px", borderRadius: 9999, minHeight: 52, whiteSpace: "nowrap",
 };

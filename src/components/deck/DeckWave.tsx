@@ -26,6 +26,8 @@ import { useAuth } from "../../lib/auth";
 import { fetchDeckCards, fetchMyDeckAnswers, fetchMyLastDeckAnswerAt, upsertDeckAnswer, type DeckCard } from "../../lib/db";
 import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPending";
 import { CANON } from "../../styles/canon";
+import { M } from "../../mobile/m";
+import { D } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -111,6 +113,22 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   const [dragX, setDragX] = useState(0);
   const [flung, setFlung] = useState<"left" | "right" | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // Pass 3: one caption under the first card teaches the gesture; it hides
+  // after the first answer (this mount).
+  const [hasAnswered, setHasAnswered] = useState(false);
+  // Desktop advertises "← / →" in that caption, so the keys actually work:
+  // ← = NOPE, → = YES. Ref indirection keeps the listener registered above
+  // the early returns while always calling the current card's answer().
+  const answerRef = useRef<(agreed: boolean) => void>(() => {});
+  useEffect(() => {
+    if (idiom === "mobile") return;
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") answerRef.current(false);
+      else if (e.key === "ArrowRight") answerRef.current(true);
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [idiom]);
 
   const userId = user?.id;
   const userCreatedAt = user?.created_at;
@@ -184,9 +202,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   if ((!anonymous && !user) || queue === null || queue.length === 0) return null;
   const card = queue[Math.min(idx, queue.length - 1)];
   const mobile = idiom === "mobile";
+  answerRef.current = (agreed) => answer(agreed);
 
   function answer(agreed: boolean, viaSwipe = false) {
     if ((!anonymous && !user) || doneRef.current || exit || flung) return;
+    setHasAnswered(true);
     answeredRef.current.add(card.id);
     if (anonymous) {
       addPendingDeckAnswer(card.id, agreed);
@@ -224,22 +244,22 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       // SCROLL when heading + card outrun the screen (Alborz 2026-08-11 —
       // the card used to flex-shrink to fit, pushing the statement under the
       // corner tabs).
-      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 128 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
+      // Pass 3: welcome top padding 128 → 72 — the dim covers the page and
+      // /m has no top bar under the wave, so nothing to clear anymore.
+      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 72 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
     }}>
       <div style={{ width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", display: "flex", flexDirection: "column", justifyContent: "center", ...(mobile ? {} : { maxHeight: "100%" }) }}>
-        {/* Welcome copy restructured 2026-08-11 (Alborz): H1 is just the
-            greeting; the tagline drops to Header 2 and the setup note to
-            Body (canon §16 sizes). Both platforms. */}
+        {/* Welcome copy (pass 3, 2026-09-15): Display heading (dash dropped),
+            Body tagline wrapping naturally, setup note 13 at 0.85 with the
+            parentheses gone. Both platforms via the token scales. */}
         {heading === "welcome" && (
           <div style={{ textAlign: "left", marginBottom: mobile ? 20 : 28, flexShrink: 0 }}>
-            <h1 style={{ ...h1Style, fontSize: mobile ? 28 : 34 }}>Welcome to Sidebar &ndash;</h1>
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream, marginTop: 10, lineHeight: 1.45 }}>
-              a place for you and your friends<br />to talk about TV, spoiler-free.
+            <h1 style={{ ...(mobile ? M.type.display : D.type.display), color: CANON.cream, margin: 0 }}>Welcome to Sidebar</h1>
+            <div style={{ ...(mobile ? M.type.body : D.type.body), color: CANON.cream, marginTop: 10 }}>
+              A place for you and your friends to talk about TV, spoiler-free.
             </div>
-            {/* One paragraph, natural wrap (Alborz 2026-08-12) — the shorter
-                block sits the card higher on mobile. */}
-            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, marginTop: 14, lineHeight: 1.5 }}>
-              Before you get set up, a few questions to get you in the mood for TV. (Your friends will answer these too.)
+            <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85, marginTop: 14, lineHeight: 1.5 }}>
+              Before you get set up, a few questions to get you in the mood for TV. Your friends will answer these too.
             </div>
           </div>
         )}
@@ -307,10 +327,10 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             </div>
           </div>
 
-          {/* Batch position, e.g. "2/4" (Alborz 2026-08-11) — small Identity
-              counter centered at the card's bottom, both platforms. */}
-          <div style={{ position: "absolute", bottom: mobile ? 16 : 20, left: 0, right: 0, textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.identity, pointerEvents: "none" }}>
-            {Math.min(idx, queue.length - 1) + 1}/{queue.length}
+          {/* Batch position (pass 3: "1/4" bold → "1 of 4" caption at 0.7 —
+              the bold fraction competed with the statement). */}
+          <div style={{ position: "absolute", bottom: mobile ? 16 : 20, left: 0, right: 0, textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.identity, opacity: 0.7, pointerEvents: "none" }}>
+            {Math.min(idx, queue.length - 1) + 1} of {queue.length}
           </div>
 
           {/* Mobile tabs sit in the card's extreme corners, smaller — the
@@ -329,6 +349,15 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             YES
           </button>
         </div>
+
+        {/* Pass 3: one caption teaches the gesture on the welcome wave,
+            gone after the first answer. Desktop names the arrow keys the
+            keydown listener above actually serves. */}
+        {heading === "welcome" && !hasAnswered && (
+          <div style={{ textAlign: "center", marginTop: 14, flexShrink: 0, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.cream }}>
+            {mobile ? "Swipe, or tap a stamp" : "Tap a stamp, or use ← / →"}
+          </div>
+        )}
       </div>
       <style>{`
         @keyframes deckCardIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
@@ -344,9 +373,6 @@ const dimWrap: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center",
   padding: 20, boxSizing: "border-box",
 };
-const h1Style: React.CSSProperties = {
-  fontFamily: LORA, fontWeight: 700, lineHeight: 1.2, letterSpacing: 0, color: CANON.cream, margin: 0,
-};
 const cardStyle: React.CSSProperties = {
   position: "relative", background: CANON.cream, borderRadius: 24,
   boxShadow: "0 12px 36px rgba(0,0,0,0.25)",
@@ -354,12 +380,15 @@ const cardStyle: React.CSSProperties = {
 };
 // No drop shadow — the tabs read as PART of the card, stamped across its
 // edge, not elements floating above it (Alborz QA 2026-07-18).
+// Pass 3: radius 65 → 9999 (full stadium); mobile min-height 40 → 44
+// (thumb target). Weight 800 / 0.5 tracking / corner placement are the
+// deck's stamp idiom — unchanged.
 const tab: React.CSSProperties = {
   position: "absolute", border: "none", cursor: "pointer",
   display: "flex", alignItems: "center", gap: 10,
   color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 14, letterSpacing: 0.5,
-  padding: "18px 26px", borderRadius: 65, minHeight: 48,
+  padding: "18px 26px", borderRadius: 9999, minHeight: 48,
 };
 const tabMobile: React.CSSProperties = {
-  padding: "12px 20px", fontSize: 13, minHeight: 40, gap: 8,
+  padding: "12px 20px", fontSize: 13, minHeight: 44, gap: 8,
 };

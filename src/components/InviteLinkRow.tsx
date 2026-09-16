@@ -9,10 +9,16 @@
  *
  * tone: "cream" = on the cream card (Identity ink); "sky" = on the sky
  * invite modal/sheet (Cream ink).
+ *
+ * Pass 3 (2026-09-15): the CREAM tone is the standard on-cream field —
+ * sky inset ring, full stadium, 48 tall (44 with mobileIdiom), Identity
+ * name + link, an Identity-fill S "Copy" pill. The sky tone keeps its
+ * text-plus-circle look (the invite sheet/panel fallback links).
  */
 import React, { useState } from "react";
 import { Copy, Check } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { D } from "./dashboardChrome";
 
 export type InviteLink = { name: string; link: string };
 
@@ -28,13 +34,35 @@ export function shortInviteLink(link: string): string {
   }
 }
 
-export default function InviteLinkRow({ name, link, tone }: InviteLink & { tone: "cream" | "sky" }) {
+export default function InviteLinkRow({ name, link, tone, mobileIdiom = false }: InviteLink & { tone: "cream" | "sky"; mobileIdiom?: boolean }) {
   const [copied, setCopied] = useState(false);
   const ink = tone === "cream" ? CANON.identity : CANON.cream;
   function copy() {
     try { navigator.clipboard?.writeText(link); } catch { /* ignore */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+  if (tone === "cream") {
+    const fs = mobileIdiom ? 13 : 14;
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, minWidth: 0, boxSizing: "border-box",
+        background: CANON.cream, borderRadius: 9999, boxShadow: `inset 0 0 0 2px ${CANON.friend}`,
+        minHeight: mobileIdiom ? 44 : 48, padding: mobileIdiom ? "6px 6px 6px 16px" : "6px 6px 6px 20px",
+      }}>
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: fs, color: CANON.identity, flexShrink: 0 }}>{name}</span>
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: fs, color: CANON.identity, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {shortInviteLink(link)}
+        </span>
+        <button
+          onClick={copy}
+          aria-label={copied ? "copied" : `copy ${name}'s invite link`}
+          style={{ ...D.pill.S, background: CANON.identity, color: CANON.cream, flexShrink: 0 }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    );
   }
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -48,7 +76,7 @@ export default function InviteLinkRow({ name, link, tone }: InviteLink & { tone:
         style={{
           flexShrink: 0, width: 30, height: 30, borderRadius: "50%", cursor: "pointer",
           border: `2px solid ${ink}`, background: copied ? ink : "transparent",
-          color: copied ? (tone === "cream" ? CANON.cream : CANON.friend) : ink,
+          color: copied ? CANON.friend : ink,
           display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0,
         }}
       >
