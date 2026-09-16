@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CANON } from "../../styles/canon";
 import { createPortal } from "react-dom";
-import { ChartBar, ChevronDown, ChevronUp, CircleCheck, SquarePen } from "lucide-react";
+import { ChartBar, ChevronDown, ChevronUp, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
+import LoadingDots from "../LoadingDots";
+import { D } from "../dashboardChrome";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
@@ -805,36 +807,64 @@ export default function V2RoomMap({
                       width={editMode ? 240 : 160}
                       portal
                     >
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        aria-label={editMode ? "Confirm rating changes" : "Adjust episode ratings"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleToggleEditMode();
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
+                      {/* Pass 3: while editing, the exit is an explicit S
+                          Identity "Save" pill (the deck's edit grammar) —
+                          it used to commit via a bare check icon. */}
+                      {editMode ? (
+                        <button
+                          aria-label="Confirm rating changes"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             void handleToggleEditMode();
-                          }
-                        }}
-                        style={{
-                          position: "absolute",
-                          top: 4,
-                          left: CELL / 2 - 12,
-                          width: 24,
-                          height: 24,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: committing ? "wait" : "pointer",
-                          color: CANON.alert,
-                          zIndex: 3,
-                        }}
-                      >
-                        {editMode ? <CircleCheck size={16} /> : <SquarePen size={16} />}
-                      </div>
+                          }}
+                          style={{
+                            ...D.pill.S,
+                            position: "absolute",
+                            top: 4,
+                            left: CELL / 2 - 33,
+                            background: CANON.identity,
+                            color: CANON.cream,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: committing ? "wait" : "pointer",
+                            zIndex: 3,
+                          }}
+                        >
+                          {committing ? <LoadingDots /> : "Save"}
+                        </button>
+                      ) : (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Adjust episode ratings"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleToggleEditMode();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              void handleToggleEditMode();
+                            }
+                          }}
+                          style={{
+                            position: "absolute",
+                            top: 4,
+                            left: CELL / 2 - 12,
+                            width: 24,
+                            height: 24,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            color: CANON.alert,
+                            zIndex: 3,
+                          }}
+                        >
+                          <SquarePen size={16} />
+                        </div>
+                      )}
                     </Tooltip>
                     {saveError && (
                       <div
@@ -885,7 +915,9 @@ export default function V2RoomMap({
                     // default HEADER_HEIGHT - 36, so for the self column
                     // this cap should match the actual text width with a
                     // small visual gap (8 px).
-                    maxWidth: isSelfCol ? dynamicHeaderHeight - 36 : dynamicHeaderHeight - 8,
+                    // While editing, the 36px Save pill (top 4) needs more room
+                    // than the 24px icon did — cap the rotated name lower.
+                    maxWidth: isSelfCol ? dynamicHeaderHeight - (editMode ? 52 : 36) : dynamicHeaderHeight - 8,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     fontSize: 13,

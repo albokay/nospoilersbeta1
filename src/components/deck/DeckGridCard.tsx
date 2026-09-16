@@ -22,7 +22,7 @@
  * docked card at all (pre-seed / pre-catch-up accounts see nothing).
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, CircleCheck, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Pencil, ThumbsUp, ThumbsDown } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import StickyNote from "../StickyNote";
 import {
@@ -241,8 +241,13 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
     <div style={{ display: "flex", alignItems: "center", background: CANON.cream, paddingBottom: 6 }}>
       <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "0 8px 0 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
         {/* Pass 3: the caption says what the card is + where to act; the
-            n=2 pair line keeps this row when present — the caption yields. */}
-        {pairLine ? (
+            n=2 pair line keeps this row when present — the caption yields.
+            While editing, the caption names the mode instead. */}
+        {ui === "edit" ? (
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+            Editing your answers · tap a cell to change it
+          </span>
+        ) : pairLine ? (
           <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>
             {pairDash > -1
               ? <>{pairLine.slice(0, pairDash + 1)}<br />{pairLine.slice(pairDash + 2)}</>
@@ -256,9 +261,12 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
       </div>
       <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box" }}>
         {ui === "edit" ? (
+          /* Pass 3: an explicit S Identity "Save" pill in the pencil's
+             slot (was a 14px alert check glyph — alert meant "save" only
+             here). LoadingDots inside while saving. */
           <button title="save your answers" onClick={confirmEdits} disabled={saving}
-            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "inline-flex", alignItems: "center", padding: 2 }}>
-            {saving ? <LoadingDots /> : <CircleCheck size={18} strokeWidth={2} />}
+            style={{ ...D.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            {saving ? <LoadingDots /> : "Save"}
           </button>
         ) : (
           <span style={{ position: "relative", display: "inline-block" }}>
@@ -355,18 +363,27 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
                   ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
               >
-                {/* Sharp corners on the edit chips (Alborz QA 2026-07-18);
-                    cream thumb on the fill (Alborz 2026-08-12 — mobile-grid
-                    parity). */}
-                <div style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                  border: editing && mine === undefined ? `1.5px dashed ${withA(CANON.business, 0.6)}` : "none",
-                  transform: editing ? (phase === "up" ? "scale(0.94)" : "scale(0.82)") : undefined,
-                  transition: phase === "up" ? "none" : "transform .18s ease",
-                }}>
-                  {mine != null && <Th v={mine} size={16} />}
-                </div>
+                {/* Pass 3 edit drawing: a 36px radius-6 swatch centered in
+                    the 104×52 cell — filled for an answer, dashed
+                    (Business 0.8) when unanswered; the click bounce
+                    animates the swatch (0.94 → rest). Non-edit keeps the
+                    full color cell with its cream thumb. */}
+                {editing ? (
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 6, margin: "auto", boxSizing: "border-box",
+                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                    border: mine === undefined ? `2px dashed ${withA(CANON.business, 0.8)}` : "none",
+                    transform: phase === "up" ? "scale(0.94)" : "scale(1)",
+                    transition: phase === "up" ? "none" : "transform .18s ease",
+                  }} />
+                ) : (
+                  <div style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                  }}>
+                    {mine != null && <Th v={mine} size={16} />}
+                  </div>
+                )}
               </div>
               {columns.map((m, ci) => {
                 const v = valueFor(m.id, card.id);
@@ -394,6 +411,13 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
             </div>
           );
         })}
+        {/* Pass 3: the edit footer — "Changes are kept when you press
+            Save." (caption 13 at 0.7, statement column). */}
+        {ui === "edit" && (
+          <div style={{ position: "sticky", left: 0, width: STATEMENT_W, boxSizing: "border-box", padding: "12px 24px 14px", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+            Changes are kept when you press Save.
+          </div>
+        )}
       </div>
 
       {/* §7.6.2 — the Findings sticky, beside the card (n≥3; cleared while

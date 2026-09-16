@@ -29,7 +29,7 @@
  * The artifact card is screenshot-safe: the Sidebar mark is baked in.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, CircleCheck, ThumbsUp, ThumbsDown, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { Pencil, ThumbsUp, ThumbsDown, ArrowLeft, ArrowRight, X } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import { M, OVERLAY } from "../../mobile/m";
@@ -49,7 +49,7 @@ const ST_W = 170;   // statement column (grid view) — wide enough for the
                     // title + its pencil/save-check (Alborz 2026-08-11: the
                     // check was clipping under the sticky (me) column at 150)
 const ME_W = 48;    // (me) column
-const FR_W = 56;    // friend columns
+const FR_W = 48;    // friend columns (pass 3: 56 → 48)
 const SHEET_CW = 48; // sheet answer columns (pass 3: 36 → 48 thumb hits)
 
 export default function MobileDeckCard({ mode, groupId, others = [], viewerId }: {
@@ -446,51 +446,54 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   const stW = Math.max(ST_W, availW - ME_W - FR_W * columns.length);
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: mode === "personal" ? CANON.personal : CANON.friend, display: "flex", flexDirection: "column" }}>
-      {ui !== "edit" && (
-        <button onClick={() => setUi("sheet")} aria-label="close"
-          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 8px)", right: 14, zIndex: 2, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", padding: 6 }}>
-          <X size={24} />
-        </button>
+      {/* Pass 3: the standard top bar — 44px × at 12/12 with a 20 glyph.
+          In the grid it closes to the sheet; while editing it CANCELS the
+          edit (unsaved flips discarded); the caption names the mode. */}
+      <button
+        onClick={() => { if (ui === "edit") { setEdits({}); setUi("grid"); } else setUi("sheet"); }}
+        aria-label={ui === "edit" ? "cancel editing" : "close"}
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+        <X size={20} />
+      </button>
+      {ui === "edit" && (
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85 }}>
+          Editing your answers
+        </div>
       )}
-      <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 44px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
-        {/* Frozen top: title + (me) + names. */}
-        <div style={{ display: "flex", position: "sticky", top: 0, zIndex: 4, background: CANON.cream, minWidth: stW + ME_W + FR_W * columns.length }}>
-          {/* Pencil (→ save check while editing) rides ON TOP of "(me)" in
-              group grids (Alborz 2026-08-14); the personal grid has no (me)
-              column, so its pencil stays beside the title. */}
-          <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 8px 14px", boxSizing: "border-box", display: "flex", alignItems: "flex-end", gap: 6 }}>
-            <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 13.5, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
-            {!isWe && (ui === "edit" ? (
-              <button title="save your answers" onClick={confirmEdits} disabled={saving}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center", padding: 2 }}>
-                {saving ? <LoadingDots /> : <CircleCheck size={20} strokeWidth={2.5} />}
-              </button>
-            ) : (
-              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
-                <Pencil size={14} />
-              </button>
-            ))}
-          </div>
-          <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2, paddingTop: 8, paddingBottom: 4, boxSizing: "border-box" }}>
-            {isWe && (ui === "edit" ? (
-              <button title="save your answers" onClick={confirmEdits} disabled={saving}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.alert, display: "flex", alignItems: "center", padding: 2 }}>
-                {saving ? <LoadingDots /> : <CircleCheck size={20} strokeWidth={2.5} />}
-              </button>
-            ) : (
-              <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, padding: 2, display: "flex" }}>
-                <Pencil size={14} />
-              </button>
-            ))}
-            {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 11, color: CANON.dark }}>(me)</span>}
-          </div>
-          {columns.map((m) => (
-            <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 10.5, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
+      <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+        {/* Frozen top (pass 3): Row A = Title 22 + the S Identity "Save"
+            pill while editing (the 13.5 title squeezed beside a check glyph
+            is retired); Row B = the column-header band — the pencil sits
+            over the me column in every mode, at a 44 hit. */}
+        <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream }}>
+          <div style={{ display: "flex", alignItems: "center", minWidth: stW + ME_W + FR_W * columns.length }}>
+            <div style={{ position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 2px 14px", boxSizing: "border-box", flex: "0 0 auto" }}>
+              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
             </div>
-          ))}
+            {ui === "edit" && (
+              <button onClick={confirmEdits} disabled={saving}
+                style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream, position: "sticky", right: 12, marginLeft: "auto", marginTop: 12, flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                {saving ? <LoadingDots /> : "Save"}
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", minWidth: stW + ME_W + FR_W * columns.length }}>
+            <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }} />
+            <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2, paddingBottom: 4, boxSizing: "border-box" }}>
+              {ui !== "edit" && (
+                <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
+                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <Pencil size={20} />
+                </button>
+              )}
+              {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark }}>(me)</span>}
+            </div>
+            {columns.map((m) => (
+              <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
+                <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Rows = questions somebody here has answered (Alborz 2026-08-01),
@@ -499,8 +502,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
         {anyAnswered.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
           return (
-            <div key={card.id} style={{ display: "flex", minHeight: 42, alignItems: "stretch", minWidth: stW + ME_W + FR_W * columns.length }}>
-              <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 10.5, lineHeight: 1.3, color: CANON.dark }}>
+            <div key={card.id} style={{ display: "flex", minHeight: 48, alignItems: "stretch", minWidth: stW + ME_W + FR_W * columns.length }}>
+              <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
@@ -513,19 +516,26 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   cursor: ui === "edit" ? "pointer" : "default",
                 }}
               >
-                {/* Edit mode shrinks the color block into a sharp-cornered
-                    chip; taps bounce it (the room map's rating-edit feel). */}
-                <div style={{
-                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                  border: ui === "edit" && mine === undefined ? "1.5px dashed rgba(141,170,186,0.6)" : "none",
-                  transform: ui === "edit"
-                    ? (bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(0.82)")
-                    : undefined,
-                  transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
-                }}>
-                  {mine != null && <Th v={mine} size={14} color={CANON.cream} />}
-                </div>
+                {/* Pass 3 edit drawing: a 36px radius-6 swatch centered in
+                    the cell — filled for an answer, dashed (Business 0.8)
+                    when unanswered; the click bounce animates the swatch
+                    (0.94 → rest). Non-edit keeps the full color cell. */}
+                {ui === "edit" ? (
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 6, margin: "auto", boxSizing: "border-box",
+                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                    border: mine === undefined ? "2px dashed rgba(141,170,186,0.8)" : "none",
+                    transform: bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(1)",
+                    transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
+                  }} />
+                ) : (
+                  <div style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                  }}>
+                    {mine != null && <Th v={mine} size={16} color={CANON.cream} />}
+                  </div>
+                )}
               </div>
               {columns.map((m) => {
                 const v = valueFor(m.id, card.id);
@@ -537,13 +547,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
                   >
                     {v === null
                       ? <span aria-hidden style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>?</span>
-                      : v !== undefined && <Th v={v} size={14} color={CANON.cream} />}
+                      : v !== undefined && <Th v={v} size={16} color={CANON.cream} />}
                   </div>
                 );
               })}
             </div>
           );
         })}
+        {/* Pass 3: the edit footer explains the two rules (verbatim,
+            per the board). Sticky-left so a horizontal scroll keeps it. */}
+        {ui === "edit" && (
+          <div style={{ position: "sticky", left: 0, width: availW - 20, boxSizing: "border-box", padding: "14px 16px 10px", textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+            Tap your column to flip an answer. Friends&rsquo; answers dim while you edit.
+          </div>
+        )}
       </div>
       {tapTipOverlay}
     </div>
