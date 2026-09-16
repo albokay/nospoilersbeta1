@@ -50,7 +50,10 @@ export const D = {
   glyph: 20,          // lucide size inside iconBtn; 16 inline with text
   circleBtn: (ink: string): React.CSSProperties => ({ width: 44, height: 44, borderRadius: "50%", background: "transparent", border: `2px solid ${ink}`, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }),
   header: {           // one bar for dashboard, group room, show room
-    bar:    { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", height: 96, padding: "0 24px", boxSizing: "border-box" } as React.CSSProperties,
+    // flexShrink 0: the dashboard's green root is a flex column — without it
+    // the flex algorithm compresses the bar below 96 whenever the page
+    // overflows, riding the logo/circles up (Alborz 2026-09-15).
+    bar:    { display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", height: 96, flexShrink: 0, padding: "0 24px", boxSizing: "border-box" } as React.CSSProperties,
     center: { display: "flex", flexDirection: "column", alignItems: "center", gap: 2, minWidth: 0 } as React.CSSProperties,
     right:  { display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" } as React.CSSProperties,
   },
