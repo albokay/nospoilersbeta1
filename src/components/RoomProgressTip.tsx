@@ -3,8 +3,11 @@
  * QA round 3; replaced the zero-progress ticket at the top of the entry
  * column). Shows on room entrance REGARDLESS of progress, until X'd
  * (one flag per ACCOUNT — the lesson transfers between rooms, but a new
- * account on a shared browser still gets it; Alborz's 2026-08-01 catch). No "?"
- * toggle in the show room; once dismissed it's gone.
+ * account on a shared browser still gets it; Alborz's 2026-08-01 catch).
+ *
+ * Desktop (2026-09-15): the header "?" toggles it back after dismissal —
+ * ShowRoomPage owns visibility via `open`/`onDismiss` (dashboard tips
+ * parity). Mobile stays self-managed: once X'd it's gone.
  *
  * Desktop: a cream StickyNote to the RIGHT of the progress dropdown,
  * leading with a ← icon aligned to point at it. Mobile: the inline-card
@@ -17,15 +20,26 @@ import StickyNote from "./StickyNote";
 import { CANON } from "../styles/canon";
 import { ROOM_PROGRESS_TIP, roomTipKey } from "../lib/tipsContent";
 
-export default function RoomProgressTip({ idiom, userId }: { idiom: "desktop" | "mobile"; userId: string }) {
-  const [dismissed, setDismissed] = useState<boolean>(() => {
+export default function RoomProgressTip({ idiom, userId, open, onDismiss }: {
+  idiom: "desktop" | "mobile";
+  userId: string;
+  /** Controlled visibility — the parent decides when the sticky shows
+   *  (the desktop "?" toggle). Omitted = self-managed (mobile). */
+  open?: boolean;
+  onDismiss?: () => void;
+}) {
+  const [selfDismissed, setSelfDismissed] = useState<boolean>(() => {
     try { return !!localStorage.getItem(roomTipKey(userId)); } catch { return false; }
   });
-  if (dismissed) return null;
+  const visible = open !== undefined ? open : !selfDismissed;
+  if (!visible) return null;
 
   function dismiss() {
+    // X always re-arms the per-account flag, controlled or not — the
+    // sticky stops auto-showing on entrance either way.
     try { localStorage.setItem(roomTipKey(userId), "1"); } catch { /* tolerate */ }
-    setDismissed(true);
+    setSelfDismissed(true);
+    onDismiss?.();
   }
 
   if (idiom === "desktop") {

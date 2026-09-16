@@ -28,6 +28,7 @@ import { joinNames } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
 import { ensureShowReference } from "../lib/reference";
+import { roomTipKey } from "../lib/tipsContent";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -132,6 +133,23 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [location.pathname]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
+  // The progress-picker sticky, now header-"?"-toggleable (2026-09-15 —
+  // dashboard tips parity; it used to be gone forever once X'd). null =
+  // auth not resolved yet; first resolution honors the per-account flag.
+  const [progressTipOpen, setProgressTipOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    setProgressTipOpen((cur) => {
+      if (cur !== null) return cur;
+      try { return !localStorage.getItem(roomTipKey(user.id)); } catch { return true; }
+    });
+  }, [user?.id]);
+  function closeProgressTip() {
+    // Same contract as the sticky's own X: closing re-arms the
+    // per-account "don't auto-show on entrance" flag.
+    try { if (user) localStorage.setItem(roomTipKey(user.id), "1"); } catch { /* tolerate */ }
+    setProgressTipOpen(false);
+  }
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   // Compose minimize (Alborz 2026-09-08): hide the modal WITHOUT unmounting
@@ -823,6 +841,19 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             ) : null}
           </div>
           <div style={D.header.right}>
+            {/* Tips "?" (2026-09-15, dashboard parity): toggles the
+                progress-picker sticky back after dismissal. Friend tab
+                only — that's where the picker (and the sticky) lives.
+                Sticky OFF → cream fill + green "?" (the invitation). */}
+            {!privateOnly && tab === "friend" && user && (
+              <button
+                style={{ ...D.circleBtn(C.cream), ...(progressTipOpen ? {} : { background: C.cream, border: `2px solid ${C.cream}` }) }}
+                title="tips"
+                onClick={() => (progressTipOpen ? closeProgressTip() : setProgressTipOpen(true))}
+              >
+                <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: progressTipOpen ? C.cream : C.green }}>?</span>
+              </button>
+            )}
             <button style={D.circleBtn(C.cream)} title="account" onClick={() => setShowAccount(true)}>
               <UserPen size={20} color={C.cream} />
             </button>
@@ -1128,8 +1159,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {user && <DeckWave wave="drip" heading="none" idiom="desktop" onComplete={() => {}} />}
 
       {/* Help-system QA round 3: the progress-picker sticky — right of the
-          dropdown, ← pointing at it; first-entrance, X-able, no toggle. */}
-      {tab === "friend" && !privateOnly && user && <RoomProgressTip idiom="desktop" userId={user.id} />}
+          dropdown, ← pointing at it; first-entrance, X-able. Now controlled
+          by the header "?" (2026-09-15) so a dismissed sticky can come back. */}
+      {tab === "friend" && !privateOnly && user && (
+        <RoomProgressTip idiom="desktop" userId={user.id} open={progressTipOpen === true} onDismiss={closeProgressTip} />
+      )}
 
       {/* Help-system arc CP3 — the guided sample-room tour, re-entry
           context (the header's "how does this room work?" button). */}
