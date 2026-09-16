@@ -1,12 +1,18 @@
 import React, { useRef, useState } from "react";
-import { X, Clock, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import CanonRadio from "./CanonRadio";
+import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { openAsk, sendSikwEmail } from "../lib/db";
-import { CANON } from "../styles/canon";
+import { CANON, withAlpha } from "../styles/canon";
+import { M, OVERLAY } from "../mobile/m";
+import { D } from "./dashboardChrome";
 
-// Canon palette
+// Canon palette. Pass 3 (2026-09-16): the off-palette greys (#5f5e5a,
+// #2c2c2a) retired — quiet text is dark ink at 0.7. The surface itself is
+// DORMANT (SIKW retired 2026-07-28; the map opens PollComposer directly) —
+// restyled anyway per Alborz so a revival lands on the current grammar.
 const CREAM        = CANON.cream;
 const CANON_BLUE   = CANON.identity;
 const CANON_GREEN  = CANON.personal;
@@ -14,7 +20,9 @@ const CANON_YELLOW = CANON.accent;
 const CANON_RED    = CANON.alert;
 const CANON_NAVY   = CANON.dark;
 const CANON_LIGHT  = CANON.friend;
-const TEXT_MUTED   = "#5f5e5a";
+const INK_70       = "rgba(26,58,74,0.7)";
+const INTER        = '"Inter", sans-serif';
+const LORA         = '"Lora", Georgia, serif';
 
 const MESSAGE_MAX = 80;
 
@@ -31,10 +39,9 @@ interface Props {
   progressEpisode: number;
   onClose: () => void;
   onOpened?: (askId: string) => void;
-}
-
-function formatSE(season: number, episode: number): string {
-  return `Season ${season} Episode ${episode}`;
+  /** Pass 3: /m idiom — the cream bottom sheet (grabber, swipe-down,
+   *  tap-out, no ×). Default false = the desktop Form card. */
+  mobile?: boolean;
 }
 
 export default function SIKWComposer({
@@ -43,6 +50,7 @@ export default function SIKWComposer({
   progressEpisode,
   onClose,
   onOpened,
+  mobile = false,
 }: Props) {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [customSelected, setCustomSelected] = useState<boolean>(false);
@@ -52,6 +60,7 @@ export default function SIKWComposer({
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
   const customInputRef = useRef<HTMLInputElement | null>(null);
+  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting });
 
   function handleSelectPreset(preset: string) {
     setSelectedPreset(preset);
@@ -124,62 +133,21 @@ export default function SIKWComposer({
     attemptSubmit(true);
   }
 
-  return (
-    <Modal onClose={onClose} width="min(420px, 92vw)" cardStyle={{ background: CREAM, padding: "20px 22px 18px", border: "none" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          marginBottom: 4,
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>
-          Should I keep watching?
-        </div>
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            background: "transparent",
-            border: "none",
-            padding: 6,
-            margin: -6,
-            color: TEXT_MUTED,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <X size={16} />
-        </button>
-      </div>
-      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>
-        Ask the room whether to stick with the show.
-      </div>
+  const mPill = mobile ? M.pill.M : D.pill.M;
 
-      {/* Progress context block */}
-      <div
-        style={{
-          background: "rgba(173,200,215,0.25)",
-          border: "none",
-          borderRadius: 12,
-          padding: "10px 12px",
-          marginBottom: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <Clock size={14} color={CANON_NAVY} strokeWidth={1.8} />
-        <div style={{ fontSize: 12, color: CANON_NAVY }}>
-          Your friends will see you're at{" "}
-          <span style={{ fontWeight: 600 }}>
-            {formatSE(progressSeason, progressEpisode)}
-          </span>
-          .
-        </div>
+  const content = (
+    <>
+      <style>{`
+        .sikw-composer-input::placeholder { color: rgba(26,58,74,0.45); opacity: 1; }
+      `}</style>
+      {/* No × (pass 3) — Cancel is the exit; tap-out still closes. The
+          clock box folded into the caption below. */}
+      <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, lineHeight: 1.25, color: CANON_NAVY, marginBottom: 4 }}>
+        Should I keep watching?
+      </div>
+      <div style={{ fontFamily: INTER, fontSize: 13, lineHeight: 1.45, color: INK_70, marginBottom: 20 }}>
+        Ask the room whether to stick with the show. They&rsquo;ll see you&rsquo;re at{" "}
+        <b>S{progressSeason} E{progressEpisode}</b>.
       </div>
 
       {showReplaceConfirm && (
@@ -188,44 +156,27 @@ export default function SIKWComposer({
             background: "rgba(222,168,56,0.15)",
             border: `2px solid ${CANON_YELLOW}`,
             borderRadius: 12,
-            padding: "10px 12px",
-            marginBottom: 14,
-            fontSize: 12,
+            padding: "12px 14px",
+            marginBottom: 16,
+            fontFamily: INTER,
+            fontSize: 13,
             color: CANON_NAVY,
-            lineHeight: 1.4,
+            lineHeight: 1.45,
           }}
         >
           You have an active {existingType === "poll" ? "poll" : "ask"} in this room. Opening a new ask will replace it.
-          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
               onClick={handleConfirmReplace}
               disabled={submitting}
-              style={{
-                background: CANON_YELLOW,
-                color: CANON.cream,
-                border: `2px solid ${CANON_YELLOW}`,
-                padding: "5px 12px",
-                borderRadius: 9999,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: submitting ? "default" : "pointer",
-              }}
+              style={{ ...mPill, background: CANON_YELLOW, color: CREAM, cursor: submitting ? "default" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             >
               {submitting ? <>Opening<LoadingDots /></> : "Replace it"}
             </button>
             <button
               onClick={() => setShowReplaceConfirm(false)}
               disabled={submitting}
-              style={{
-                background: "transparent",
-                color: TEXT_MUTED,
-                border: `2px solid ${TEXT_MUTED}`,
-                padding: "5px 12px",
-                borderRadius: 9999,
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
+              style={{ ...mPill, background: "transparent", border: `2px solid ${CANON_LIGHT}`, color: CANON_LIGHT, cursor: "pointer" }}
             >
               Cancel
             </button>
@@ -233,11 +184,13 @@ export default function SIKWComposer({
         </div>
       )}
 
-      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 8 }}>
+      <div style={{ fontFamily: INTER, fontSize: 14, fontWeight: 700, color: CANON_NAVY, marginBottom: 8 }}>
         How do you want to ask it?
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+      {/* Preset rows — 48 min at 15/radius 12; the SELECTED row fills solid
+          sky (+600) so the choice reads as a state, others sky at 45%. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {PRESETS.map((preset) => {
           const selected = selectedPreset === preset;
           return (
@@ -247,12 +200,15 @@ export default function SIKWComposer({
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "9px 12px",
+                padding: "12px 16px",
+                minHeight: 48,
+                boxSizing: "border-box",
                 borderRadius: 12,
-                background: CANON_LIGHT,
-                border: "none",
-                fontSize: 13,
-                color: selected ? CANON_NAVY : "#2c2c2a",
+                background: selected ? CANON_LIGHT : withAlpha(CANON_LIGHT, 0.45),
+                fontFamily: INTER,
+                fontSize: 15,
+                fontWeight: selected ? 600 : 400,
+                color: CANON_NAVY,
                 cursor: "pointer",
               }}
             >
@@ -269,114 +225,116 @@ export default function SIKWComposer({
           );
         })}
 
-        {/* Write your own */}
-        <div
+        {/* Write your own — same row grammar ("(write your own)" label kept
+            per Alborz); the field appears BELOW the row as a 44 on-cream
+            input, not tucked inside it. */}
+        <label
           style={{
-            padding: "9px 12px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            minHeight: 48,
+            boxSizing: "border-box",
             borderRadius: 12,
-            border: "none",
-            background: CANON_LIGHT,
+            background: customSelected ? CANON_LIGHT : withAlpha(CANON_LIGHT, 0.45),
+            fontFamily: INTER,
+            fontSize: 15,
+            fontWeight: customSelected ? 600 : 400,
+            color: CANON_NAVY,
+            cursor: "pointer",
           }}
         >
-          <label
+          <CanonRadio
+            checked={customSelected}
+            color={CANON_BLUE}
+            size={20}
+            dotSize={10}
+          />
+          <input
+            type="radio"
+            name="sikw-preset"
+            checked={customSelected}
+            onChange={handleSelectCustom}
+            style={{ display: "none" }}
+          />
+          (write your own)
+        </label>
+        {customSelected && (
+          <input
+            ref={customInputRef}
+            className="sikw-composer-input"
+            type="text"
+            value={customText}
+            onChange={handleCustomChange}
+            maxLength={MESSAGE_MAX}
+            placeholder="80 char max — keep it spoiler-free for friends behind you"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 13,
-              color: "#2c2c2a",
-              marginBottom: customSelected ? 8 : 0,
-              cursor: "pointer",
+              width: "100%",
+              boxSizing: "border-box",
+              border: "none",
+              borderRadius: 9999,
+              background: CREAM,
+              boxShadow: `inset 0 0 0 2px ${CANON_LIGHT}`,
+              minHeight: 44,
+              padding: "10px 16px",
+              fontFamily: INTER,
+              fontSize: 15,
+              color: CANON_NAVY,
+              outline: "none",
             }}
-          >
-            <CanonRadio
-              checked={customSelected}
-              color={CANON_BLUE}
-              size={20}
-              dotSize={10}
-            />
-            <input
-              type="radio"
-              name="sikw-preset"
-              checked={customSelected}
-              onChange={handleSelectCustom}
-              style={{ display: "none" }}
-            />
-            (write your own)
-          </label>
-          {customSelected && (
-            <input
-              ref={customInputRef}
-              type="text"
-              value={customText}
-              onChange={handleCustomChange}
-              maxLength={MESSAGE_MAX}
-              placeholder="80 char max — keep it spoiler-free for friends behind you"
-              style={{
-                width: "100%",
-                fontSize: 12,
-                padding: "6px 14px",
-                borderRadius: 9999,
-                border: `2px solid ${CANON_LIGHT}`,
-                background: CANON.cream,
-                height: 30,
-                boxSizing: "border-box",
-                color: CANON_NAVY,
-                outline: "none",
-              }}
-            />
-          )}
-        </div>
+          />
+        )}
       </div>
 
-      {error && <div style={{ fontSize: 11, color: CANON_RED, marginBottom: 10 }}>{error}</div>}
+      {error && <div style={{ fontFamily: INTER, fontSize: 13, color: CANON_RED, marginTop: 12 }}>{error}</div>}
 
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          paddingTop: 12,
-          borderTop: `2px solid rgba(26,58,74,0.12)`,
-        }}
-      >
+      {/* Buttons — primary first, label always visible (0.6 until valid);
+          Cancel = sky outline. Divider gone; 28px gap. */}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 28 }}>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
-            color: CANON.cream,
-            border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
-            padding: "8px 18px",
-            borderRadius: 9999,
-            fontSize: 13,
-            fontWeight: 500,
+            ...mPill,
+            background: CANON_GREEN,
+            color: CREAM,
+            opacity: canSubmit ? 1 : 0.6,
             cursor: canSubmit ? "pointer" : "not-allowed",
             display: "inline-flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: 6,
-            minHeight: 36,
-            minWidth: canSubmit ? undefined : 120,
           }}
         >
-          {!canSubmit ? null : submitting ? <>Asking<LoadingDots /></> : <>Ask the room <ArrowRight size={14} /></>}
+          {submitting ? <>Asking<LoadingDots /></> : <>Ask the room <ArrowRight size={14} /></>}
         </button>
         <button
           onClick={onClose}
-          style={{
-            background: "transparent",
-            color: TEXT_MUTED,
-            border: `2px solid ${TEXT_MUTED}`,
-            padding: "8px 16px",
-            borderRadius: 9999,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: "pointer",
-          }}
+          style={{ ...mPill, background: "transparent", border: `2px solid ${CANON_LIGHT}`, color: CANON_LIGHT, cursor: "pointer" }}
         >
           Cancel
         </button>
       </div>
+    </>
+  );
+
+  if (mobile) {
+    return (
+      <div style={{ ...OVERLAY.dim, zIndex: 1200 }} onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose(); }}>
+        <div
+          {...sheetSwipe.handlers}
+          style={{ ...OVERLAY.sheet, background: CREAM, padding: "12px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", ...sheetSwipe.style }}
+        >
+          <div style={OVERLAY.grabber(CANON_NAVY)} />
+          {content}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <Modal onClose={onClose} width="min(560px, 92vw)" cardStyle={{ background: CREAM, borderRadius: 24, padding: 32, border: "none", animation: "dCardRise 180ms ease-out" }}>
+      {content}
     </Modal>
   );
 }

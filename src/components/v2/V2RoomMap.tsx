@@ -1780,6 +1780,8 @@ export default function V2RoomMap({
         createPortal(
           <PollComposer
             groupId={groupId}
+            progressSeason={effectiveProgress(viewerProgress)?.s}
+            progressEpisode={effectiveProgress(viewerProgress)?.e}
             onClose={() => setPollComposerOpen(false)}
             onOpened={() => onPollOpened?.()}
           />,
