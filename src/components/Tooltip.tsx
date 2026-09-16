@@ -119,7 +119,7 @@ export default function Tooltip({
             fontSize: 13,
             fontWeight: 500,
             lineHeight: 1.4,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.32)",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
             // "auto" → CSS max-content shrinks the bubble to its widest
             // inline run. Callers should pair with whiteSpace: nowrap on
             // line spans and an optional maxWidth in tooltipStyle.

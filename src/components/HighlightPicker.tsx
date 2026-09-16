@@ -120,14 +120,16 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
         ...positionStyle,
         background: CREAM,
         borderRadius: 24,
-        padding: "16px 18px 14px",
+        width: 320,
+        boxSizing: "border-box",
+        padding: 16,
         boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         zIndex: 70,
       }}
     >
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: CANON_NAVY, fontFamily: '"Lora", Georgia, serif' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: CANON_NAVY, fontFamily: '"Inter", sans-serif' }}>
           React to this:
         </div>
         <button
@@ -136,8 +138,10 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
           style={{
             background: "transparent",
             border: "none",
-            padding: 6,
-            margin: -6,
+            width: 36,
+            height: 36,
+            padding: 0,
+            margin: "-10px -10px 0 0",
             color: TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
@@ -145,7 +149,7 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
             justifyContent: "center",
           }}
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       </div>
 
@@ -157,11 +161,14 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "7px 10px",
+            gap: 10,
+            padding: "10px 14px",
+            minHeight: 48,
+            boxSizing: "border-box",
             borderRadius: 12,
             background: CANON_LIGHT,
-            fontSize: 13,
+            fontSize: 15,
+            fontWeight: selected === "yup" ? 600 : 400,
             color: CANON.cream,
             cursor: "pointer",
           }}
@@ -171,21 +178,22 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
         </label>
 
         {/* Note */}
-        <div style={{ padding: "7px 10px", borderRadius: 12, background: CANON_LIGHT }}>
+        <div style={{ padding: "10px 14px", minHeight: 48, boxSizing: "border-box", borderRadius: 12, background: CANON_LIGHT, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <label
             onClick={handleSelectNote}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 13,
+              gap: 10,
+              fontSize: 15,
+              fontWeight: selected === "note" ? 600 : 400,
               color: CANON.cream,
-              marginBottom: selected === "note" ? 6 : 0,
+              marginBottom: selected === "note" ? 8 : 0,
               cursor: "pointer",
             }}
           >
             <CanonRadio checked={selected === "note"} color={CANON_YELLOW} />
-            <span>(write a short note)</span>
+            <span>Write a short note&hellip;</span>
           </label>
           {selected === "note" && (
             <input
@@ -197,12 +205,13 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
               placeholder="write a short note"
               style={{
                 width: "100%",
-                fontSize: 12,
-                padding: "5px 10px",
+                fontSize: 14,
+                padding: "8px 14px",
                 borderRadius: 9999,
                 border: "none",
-                background: "rgba(253,248,236,0.7)",
-                height: 26,
+                background: CREAM,
+                boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)",
+                height: 40,
                 boxSizing: "border-box",
                 color: CANON_NAVY,
                 outline: "none",
@@ -218,18 +227,20 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
           onClick={handleOk}
           disabled={!canSubmit}
           style={{
-            background: canSubmit ? color : "rgba(150,150,150,0.35)",
+            background: color,
             color: CANON.cream,
-            border: canSubmit ? `2px solid ${color}` : "none",
-            padding: "6px 16px",
+            border: `2px solid ${color}`,
+            padding: "8px 16px",
             borderRadius: 9999,
-            fontSize: 12,
-            fontWeight: 500,
+            fontSize: 13,
+            fontWeight: 700,
+            minHeight: 36,
+            boxSizing: "border-box",
+            opacity: canSubmit ? 1 : 0.6,
             cursor: canSubmit ? "pointer" : "not-allowed",
-            minHeight: 28,
           }}
         >
-          {submitting ? "Saving…" : "ok"}
+          {submitting ? "Saving…" : "OK"}
         </button>
         <button
           onClick={onClose}
@@ -237,10 +248,12 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
             background: "transparent",
             color: TEXT_MUTED,
             border: `2px solid ${TEXT_MUTED}`,
-            padding: "6px 12px",
+            padding: "8px 16px",
             borderRadius: 9999,
-            fontSize: 12,
-            fontWeight: 500,
+            fontSize: 13,
+            fontWeight: 700,
+            minHeight: 36,
+            boxSizing: "border-box",
             cursor: "pointer",
           }}
         >

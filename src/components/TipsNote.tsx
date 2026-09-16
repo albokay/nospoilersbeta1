@@ -82,6 +82,8 @@ export default function TipsNote({ page, onDismiss }: {
         onDismiss={onDismiss}
         ariaLabel="Tips"
         ignoreViewportGate
+        fontSize={15}
+        dismissSize={20}
         animateEntrance={!stepped}
         entranceDelayMs={0}
         // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
@@ -94,7 +96,7 @@ export default function TipsNote({ page, onDismiss }: {
             style={{ ...stepBtn, opacity: atStart ? 0.3 : 1, cursor: atStart ? "default" : "pointer" }}>
             <ChevronLeft size={18} />
           </button>
-          <span style={{ opacity: 0.3, fontSize: 12, fontWeight: 700 }}>{idx + 1}/{GROUP_ROOM_TIPS.length}</span>
+          <span style={{ opacity: 0.5, fontSize: 13, fontWeight: 700 }}>Tip {idx + 1} of {GROUP_ROOM_TIPS.length}</span>
           <button aria-label="next tip" disabled={atEnd} onClick={() => step(1)}
             style={{ ...stepBtn, opacity: atEnd ? 0.3 : 1, cursor: atEnd ? "default" : "pointer" }}>
             <ChevronRight size={18} />
@@ -114,6 +116,8 @@ export default function TipsNote({ page, onDismiss }: {
       onDismiss={onDismiss}
       ariaLabel="Tips"
       ignoreViewportGate
+      fontSize={15}
+      dismissSize={20}
       entranceDelayMs={0}
       // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
       boxShadow="0 4px 14px rgba(0,0,0,0.13)"

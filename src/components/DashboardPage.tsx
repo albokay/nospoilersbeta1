@@ -1578,12 +1578,15 @@ export default function DashboardPage() {
   // used to be three sequential round trips — rate check, insert, full
   // history refetch — before anything appeared). On failure the ghost is
   // removed and the draft handed back.
-  async function sendChat() {
-    if (!user || !chatGroupId || !chatInput.trim()) return;
-    const body = chatInput.trim();
+  // Failure keeps the ghost at 0.6 with a "not sent · retry" affordance
+  // (polish pass 2026-09-15 — it used to silently return the draft to the
+  // input, which read as the message vanishing).
+  const [chatFailedIds, setChatFailedIds] = useState<Set<string>>(new Set());
+
+  async function sendChatBody(body: string) {
+    if (!user || !chatGroupId || !body) return;
     const gid = chatGroupId;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setChatInput("");
     setChatMessages((prev) => [...prev, { id: tempId, authorId: user.id, username: "", displayName: null, body, createdAt: Date.now() }]);
     try {
       const sent = await sendGroupMessage(gid, user.id, body);
@@ -1592,9 +1595,21 @@ export default function DashboardPage() {
         : prev.map((m) => (m.id === tempId ? { ...m, id: sent.id, createdAt: sent.createdAt } : m)));
     } catch (e) {
       console.error("[dashboard] send message failed", e);
-      setChatMessages((prev) => prev.filter((m) => m.id !== tempId));
-      setChatInput(body);
+      setChatFailedIds((prev) => new Set(prev).add(tempId));
     }
+  }
+
+  function retryChatMessage(tempId: string, body: string) {
+    setChatMessages((prev) => prev.filter((m) => m.id !== tempId));
+    setChatFailedIds((prev) => { const n = new Set(prev); n.delete(tempId); return n; });
+    void sendChatBody(body);
+  }
+
+  async function sendChat() {
+    if (!chatInput.trim()) return;
+    const body = chatInput.trim();
+    setChatInput("");
+    await sendChatBody(body);
   }
 
   // One drawer thumbnail — poster opens the room; DNF thumbs carry the
@@ -2400,18 +2415,41 @@ export default function DashboardPage() {
             <div style={{ position: "fixed", inset: 0, zIndex: 69 }} onClick={() => setChatGroupId(null)} />
           <div style={chatPanel}>
             <div style={chatHeader}>
-              {/* "not spoiler-gated" rides the header (mobile-polish mirror
-                  2026-09-14) — it used to live in the input placeholder. */}
-              <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}><span style={{ color: C.blue }}>You're connected with:</span><br /><span style={{ color: C.green }}>{connected}</span><span style={{ color: C.blue }}> &middot; not spoiler-gated</span></div>
-              <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setChatGroupId(null)}><X size={18} color={C.sky} /></button>
+              {/* Room grammar (polish pass 2026-09-15, mobile parity): the
+                  group's label as a Lora subtitle + the not-gated caption —
+                  the caption carries the warning so the placeholder can be
+                  a placeholder. */}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ ...D.type.subtitle, color: C.green, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {cg ? groupGenericName(cg.group, groupNumberById[cg.group.id]) : "Group"} chat
+                </div>
+                <div style={{ ...D.type.caption, color: C.blue, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  with {connected} &middot; not spoiler-gated
+                </div>
+              </div>
+              <button style={{ ...D.iconBtn, margin: "-8px -8px 0 0" }} onClick={() => setChatGroupId(null)} aria-label="Close chat"><X size={20} color={C.midnight} /></button>
             </div>
             <div style={chatBody} ref={chatBodyRef}>
               {chatMessages.map((m) => {
                 const mine = m.authorId === selfUserId;
+                const pending = m.id.startsWith("temp-");
+                const failed = chatFailedIds.has(m.id);
                 return (
-                  <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    {!mine && <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.85, marginBottom: 3 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", marginBottom: 12, ...(pending ? { opacity: 0.6 } : null) }}>
+                    {!mine && <div style={{ fontSize: 13, color: CANON.cream, opacity: 0.9, marginBottom: 4 }}>{personDisplayName(contactNames, m.authorId, m.username, m.displayName)}</div>}
                     <div style={mine ? chatBubbleMine : chatBubbleOther}>{linkifyText(m.body)}</div>
+                    {pending && (
+                      failed ? (
+                        <button
+                          onClick={() => retryChatMessage(m.id, m.body)}
+                          style={{ border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: 11, color: CANON.cream, opacity: 0.9, marginTop: 3, padding: 0, textDecoration: "underline" }}
+                        >
+                          not sent &middot; retry
+                        </button>
+                      ) : (
+                        <div style={{ fontSize: 11, color: CANON.cream, opacity: 0.7, marginTop: 3 }}>sending&hellip;</div>
+                      )
+                    )}
                   </div>
                 );
               })}
@@ -2432,7 +2470,7 @@ export default function DashboardPage() {
                 className="chat-ph"
                 style={chatInputBox}
               />
-              <button style={chatSend} onClick={sendChat}><ArrowUp size={18} color={CANON.cream} /></button>
+              <button style={chatSend} onClick={sendChat}><ArrowUp size={20} color={CANON.cream} /></button>
             </div>
           </div>
           </>
@@ -2449,7 +2487,7 @@ export default function DashboardPage() {
         <div style={finishedPanel}>
           <div style={chatHeader}>
             <MonitorCheck size={20} color={C.green} />
-            <button style={{ border: "none", background: "transparent", cursor: "pointer" }} onClick={() => setFinishedDrawerOpen(false)}><X size={18} color={C.sky} /></button>
+            <button style={{ ...D.iconBtn, margin: "-8px -8px 0 0" }} onClick={() => setFinishedDrawerOpen(false)} aria-label="Close"><X size={20} color={C.midnight} /></button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
             {drawerItems.finished.length > 0 && (
@@ -3079,8 +3117,8 @@ const tipBubble: React.CSSProperties = {
   // docs/hover-pill-preview.html rev 6, Alborz 2026-08-21): cream, navy,
   // −6° lean, a QUARTER of the bubble left of the anchor point, and a very
   // subtle shadow (was the highlight bubble's heavier 25%).
-  position: "fixed", background: CANON.cream, color: C.midnight, padding: "6px 10px", borderRadius: 12,
-  fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 500, lineHeight: 1.35,
+  position: "fixed", background: CANON.cream, color: C.midnight, padding: "6px 10px", borderRadius: 18,
+  fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 500, lineHeight: 1.35,
   transform: "translate(-25%, -100%) rotate(-6deg)", transformOrigin: "bottom center",
   whiteSpace: "nowrap", pointerEvents: "none", zIndex: 9999, boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
 };
@@ -3137,24 +3175,25 @@ const chatPanel: React.CSSProperties = {
 };
 const chatHeader: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-  background: C.cream, padding: "18px 20px",
+  background: C.cream, padding: "16px 12px 16px 24px",
 };
 const chatBody: React.CSSProperties = { flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column" };
 const chatBubbleOther: React.CSSProperties = {
-  background: C.sky, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 13, lineHeight: 1.4,
+  background: C.sky, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 15, lineHeight: 1.4,
 };
 const chatBubbleMine: React.CSSProperties = {
-  background: C.cream, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 13, lineHeight: 1.4,
+  background: C.cream, color: C.midnight, padding: "10px 14px", borderRadius: 16, maxWidth: "78%", fontSize: 15, lineHeight: 1.4,
 };
 const chatInputRow: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", padding: "14px 16px", background: C.cream };
 // Sky-outlined field box, pill radius like the site's buttons (Alborz
 // 2026-08-11 — borderless it vanished against the cream input row).
 const chatInputBox: React.CSSProperties = {
-  flex: 1, border: `2px solid ${C.sky}`, borderRadius: 65, padding: "10px 18px", fontFamily: '"Inter", sans-serif',
-  fontSize: 13, color: C.midnight, background: CANON.cream, outline: "none",
+  flex: 1, border: `2px solid ${C.sky}`, borderRadius: 9999, padding: "10px 18px", fontFamily: '"Inter", sans-serif',
+  fontSize: 15, color: C.midnight, background: CANON.cream, outline: "none",
+  minHeight: 44, boxSizing: "border-box",
 };
 const chatSend: React.CSSProperties = {
-  border: "none", background: C.blue, borderRadius: "50%", width: 38, height: 38, display: "inline-flex",
+  border: "none", background: C.blue, borderRadius: "50%", width: 44, height: 44, display: "inline-flex",
   alignItems: "center", justifyContent: "center", cursor: "pointer", flex: "0 0 auto",
 };
 // Trailer-aware overlay for the opt-in modal ONLY (the shared `overlay` above is
