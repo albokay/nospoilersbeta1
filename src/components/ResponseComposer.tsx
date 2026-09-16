@@ -1,3 +1,4 @@
+import { X as XIcon } from "lucide-react";
 import React, { useRef, useState, useEffect } from "react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
@@ -100,6 +101,12 @@ export default function ResponseComposer({
   const replyTagE = postTagEpisode ?? viewerEpisode;
   const { user, profile } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // M-pill geometry for the composer's buttons (colors/hovers stay on the
+  // sb-* classes; polish pass 2026-09-15).
+  const mPillGeom: React.CSSProperties = {
+    fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44,
+    borderRadius: 9999, boxSizing: "border-box",
+  };
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -317,7 +324,7 @@ export default function ResponseComposer({
             <button className="insert-quote-main" onClick={handleInsertQuote}>
               Insert quotation from {pendingReference.authorName}.
             </button>
-            <button className="insert-quote-cancel" onClick={onClearReference} title="Cancel">×</button>
+            <button className="insert-quote-cancel" onClick={onClearReference} title="Cancel" style={{ display: "inline-flex", alignItems: "center" }}><XIcon size={14} /></button>
           </div>
         </div>
       )}
@@ -334,9 +341,10 @@ export default function ResponseComposer({
           at the TEXTAREA's corner, so the 8px right/bottom shell padding
           floats it 8px up-and-left of the visible corner (Alborz 2026-08-13
           tweak 1 — it got lost flush in the corner). */}
-      <div style={{ background: CANON.cream, borderRadius: 15, padding: "0 8px 8px 0" }}>
+      <div style={{ background: CANON.cream, borderRadius: 12, padding: "0 8px 8px 0" }}>
         <textarea
           ref={textareaRef}
+          className="d-comp-ta"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write your response…"
@@ -346,11 +354,12 @@ export default function ResponseComposer({
             width: "100%",
             boxSizing: "border-box",
             background: "transparent",
-            color: "#000",
+            color: CANON.dark,
             border: "none",
-            borderRadius: 15, // canon field radius (card retired 2026-08-13)
-            padding: "10px 12px",
-            fontSize: 14,
+            borderRadius: 12, // polish pass 2026-09-15 (was 15)
+            padding: "14px 16px",
+            fontSize: 15,
+            lineHeight: 1.6,
             resize: "vertical",
             fontFamily: "inherit",
             outline: "none",
@@ -415,13 +424,15 @@ export default function ResponseComposer({
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 8 }}>
-        {/* btn-danger carries the base Alert outline AND the 2026-08-13
-            hover (Alert fill + Cream text) from theme.ts. */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 8 }}>
         <button
-          className="btn btn-danger"
+          // Cream outline at rest; alert only on hover (polish pass
+          // 2026-09-15 — cancelling a draft isn't destructive, and the
+          // draft-loss confirm already exists).
+          className="btn sb-cancel-quiet"
           onClick={onCancel}
           disabled={submitting}
+          style={mPillGeom}
         >
           Cancel
         </button>
@@ -430,26 +441,28 @@ export default function ResponseComposer({
             className="btn"
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
+            style={{ ...mPillGeom, background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
           >
             {submitting ? "Sending…" : "Send request"}
           </button>
         ) : (() => {
           // Context-specific LABEL only (2026-08-13, Alborz): all three
-          // variants share ONE style — Cream fill + Cream outline, Sky
-          // text — replacing the old per-context accent border/text.
+          // variants share ONE style. Polish pass 2026-09-15 (approved):
+          // identity fill + cream text — the site's one primary-button
+          // grammar; the cream-fill/sky-text version was ≈1.7:1.
           const label = inGroupContext
             ? "Send to the room"
             : threadIsPublic
               ? "Share response"
               : "Add your thoughts";
           return (
-            // sb-send (theme.ts): Cream fill/outline + Sky text; hover =
-            // Sky fill + Cream outline/text (Alborz 2026-08-13).
+            // sb-send (theme.ts): Identity fill + cream text; hover = cream
+            // fill + identity text.
             <button
               className="btn sb-send"
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
+              style={mPillGeom}
             >
               {submitting ? "Posting…" : label}
             </button>

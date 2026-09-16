@@ -535,11 +535,19 @@ export default function V2InlineThread({
     );
   }
 
+  // S-pill geometry for the thread action row (colors/hovers stay on the
+  // sb-* classes; polish pass 2026-09-15 — was 3×12 / 26px tall).
+  const sPillGeom: React.CSSProperties = {
+    fontSize: 13, fontWeight: 700, padding: "8px 16px", minHeight: 36,
+    borderRadius: 9999, boxSizing: "border-box",
+  };
+
   // The two collapse buttons (above-replies and end-of-thread) share the
   // same call path — onCollapseTop is wired in V2RoomFeed to clear
   // expansion + scroll the ticket top into view (instantly). Styled as
   // plain white text + chevron — no border, no fill (default or hover).
   const collapseButton = (
+    // Ghost S pill (polish pass 2026-09-15): no border, 0.85, real chevron.
     <button
       onClick={onCollapseTop}
       style={{
@@ -548,14 +556,19 @@ export default function V2InlineThread({
         color: CANON.cream,
         cursor: "pointer",
         fontSize: 13,
-        padding: "4px 8px",
+        fontWeight: 700,
+        padding: "8px 16px",
+        minHeight: 36,
+        borderRadius: 9999,
+        opacity: 0.85,
         display: "inline-flex",
         alignItems: "center",
-        gap: 5,
+        gap: 6,
         fontFamily: "inherit",
+        boxSizing: "border-box",
       }}
     >
-      <ChevronUp size={13} color={CANON.cream} /> collapse
+      <ChevronUp size={16} color={CANON.cream} /> Collapse
     </button>
   );
 
@@ -662,7 +675,7 @@ export default function V2InlineThread({
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
       {!isTombstone && !editing && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, padding: "8px 0", marginTop: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
           {isOwn && (
             <>
               {replyCount > 0 ? (
@@ -675,7 +688,7 @@ export default function V2InlineThread({
                 >
                   <button
                     className="btn"
-                    style={{ fontSize: 13, padding: "3px 12px", opacity: 0.45, pointerEvents: "none" }}
+                    style={{ ...sPillGeom, opacity: 0.45, pointerEvents: "none" }}
                     disabled
                   >
                     Edit
@@ -692,7 +705,7 @@ export default function V2InlineThread({
                   <button
                     className="btn sb-edit-business"
                     onClick={openEdit}
-                    style={{ fontSize: 13, padding: "3px 12px" }}
+                    style={sPillGeom}
                   >
                     Edit
                   </button>
@@ -701,7 +714,7 @@ export default function V2InlineThread({
               <button
                 className="btn btn-danger"
                 onClick={openDelete}
-                style={{ fontSize: 13, padding: "3px 12px" }}
+                style={sPillGeom}
               >
                 Delete
               </button>
@@ -716,7 +729,7 @@ export default function V2InlineThread({
               ref={highlightBtnRef}
               className="btn sb-hl-entry"
               onClick={mobileIdiom ? () => setMobileHlInfoOpen(true) : handleHighlightClick}
-              style={{ fontSize: 13, padding: "3px 12px" }}
+              style={sPillGeom}
             >
               Highlight…
             </button>
@@ -727,7 +740,7 @@ export default function V2InlineThread({
             <button
               className="btn sb-cream-outline"
               onClick={handleQuoteThread}
-              style={{ fontSize: 13, padding: "3px 12px" }}
+              style={sPillGeom}
             >
               Quote…
             </button>
@@ -748,7 +761,8 @@ export default function V2InlineThread({
 
       {/* Reply count indicator — under entry, above replies. */}
       {replyCount > 0 && (
-        <div className="muted" style={{ fontSize: 14, marginTop: 16, color: CANON.dark, opacity: 0.7 }}>
+        // Cream Label (polish pass 2026-09-15 — dark at 0.7 on sky was weak).
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, marginTop: 24, color: CANON.cream }}>
           {replyCount} {replyCount === 1 ? "response" : "responses"}
         </div>
       )}
@@ -849,15 +863,15 @@ export default function V2InlineThread({
           is open (replaced by the composer above). When the composer is
           open and only the collapse is left, it still sits on the right
           edge (consistent placement across states). */}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 20 }}>
         {collapseButton}
         {!isTombstone && !composerOpen && (
           // Cream outline + text, cream-fill/Sky-text hover (Alborz
-          // 2026-08-13 tweak).
+          // 2026-08-13 tweak); M pill 14/700 (polish pass — was 17/500).
           <button
             className="btn sb-cream-outline"
             onClick={openComposer}
-            style={{ fontSize: 17, padding: "10px 22px" }}
+            style={{ fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
           >
             Write a response
           </button>

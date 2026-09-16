@@ -665,7 +665,7 @@ header.site{
 
 /* Reply cards: white bg, yellow text & buttons */
 .reply-card{ background:var(--canon-cream,#fef8ea) !important; }
-.reply-card .btn:not(.btn-danger){ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
+.reply-card .btn:not(.btn-danger){ color:var(--canon-dark,#1a3a4a) !important; border-color:var(--dos-bg) !important; background:transparent !important; } /* dark text on cream (2026-09-15 contrast fix; border keeps the room's ink) */
 .reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
 .reply-card .likeWrap{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
 .reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
@@ -861,7 +861,9 @@ body { -webkit-font-smoothing: antialiased; }
   border-radius: 9999px;
   overflow: hidden;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
+  min-height: 36px;
+  box-sizing: border-box;
 }
 .insert-quote-main {
   background: transparent;
@@ -1017,8 +1019,14 @@ body .btn.sb-hl-entry{ background:var(--canon-accent,#dea838) !important; border
 body .btn.sb-hl-entry:hover{ background:var(--canon-friend,#adc8d7) !important; border-color:var(--canon-accent,#dea838) !important; color:var(--canon-cream,#fef8ea) !important; }
 /* Composer submit: Cream fill + Cream outline + Sky text; hover = Sky fill,
    Cream outline, Cream text. */
-body .btn.sb-send{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; font-weight:700; }
-body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; }
+/* Identity fill + cream text (2026-09-15 polish, approved — the cream-fill
+   sky-text version was ≈1.7:1); hover = cream fill + identity text. */
+body .btn.sb-send{ background:var(--canon-identity,#355eb8) !important; border-color:var(--canon-identity,#355eb8) !important; color:var(--canon-cream,#fef8ea) !important; font-weight:700; }
+body .btn.sb-send:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-identity,#355eb8) !important; color:var(--canon-identity,#355eb8) !important; }
+/* Quiet composer Cancel (2026-09-15): cream outline at rest; alert only on
+   hover — cancelling a draft isn't destructive. */
+body .btn.sb-cancel-quiet{ background:transparent !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; font-weight:700; }
+body .btn.sb-cancel-quiet:hover{ background:var(--canon-alert,#f45028) !important; border-color:var(--canon-alert,#f45028) !important; color:var(--canon-cream,#fef8ea) !important; }
 /* Reply-card Highlight… (classless button, sky fill base): hover = Cream
    fill, Sky outline, Accent text. */
 .sb-hl-reply:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-friend,#adc8d7) !important; color:var(--canon-accent,#dea838) !important; }
@@ -1045,6 +1053,9 @@ body .btn.sb-send:hover{ background:var(--canon-friend,#adc8d7) !important; bord
    2026-08-18). The mobile pages cover the body anyway; only the status-bar
    strip and rubber-band area change. Class set at boot (installPrompt). */
 body.pwa-standalone{ background-image:none !important; }
+
+/* Composer textarea placeholder (2026-09-15): 45% dark on the cream field. */
+.d-comp-ta::placeholder{ color: rgba(26,58,74,0.45); }
 
 /* ── Desktop polish pass (2026-09-15) ─────────────────────────────────────
    Overlay motion: every card arrives the same way (dim fade + 8px rise).

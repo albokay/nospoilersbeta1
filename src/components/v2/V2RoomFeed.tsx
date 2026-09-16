@@ -695,11 +695,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // V2InlineThread.
                 cursor: isExpanded ? "default" : "pointer",
                 position: "relative",
-                paddingTop: mobileIdiom ? 16 : 12,
+                // Polish pass 2026-09-15 (desktop): 16/20 collapsed, 20/24
+                // expanded; mobile keeps its 16px sides from the /m pass.
+                paddingTop: mobileIdiom ? 16 : (isExpanded ? 20 : 16),
                 paddingBottom: 36,
-                // Mobile polish 2026-09-14: 16px ticket sides on the phone
-                // (the .card class default is 12).
-                ...(mobileIdiom ? { paddingLeft: 16, paddingRight: 16 } : null),
+                ...(mobileIdiom
+                  ? { paddingLeft: 16, paddingRight: 16 }
+                  : { paddingLeft: isExpanded ? 24 : 20, paddingRight: isExpanded ? 24 : 20 }),
                 // Map-cell-click highlight: the OUTLINE stays its normal color
                 // (cream in rooms); the attention pulse is a midnight-blue
                 // flashing dropshadow (`flash-glow`, box-shadow) so the lines
@@ -725,83 +727,22 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
             >
               {redDot && <EntryRedDot count={redDot.count} onDismiss={redDot.onDismiss} />}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  // Tombstones de-emphasize the title row but leave any
-                  // expanded V2InlineThread content (replies, collapse, etc.)
-                  // at full opacity below.
-                  opacity: entry.isDeleted ? 0.35 : 1,
-                }}
-              >
-                <h2
-                  className="title"
-                  style={{
-                    margin: 0, fontSize: 22,
-                    // TSP demo: guide titles render blue. (Wrapping is handled by
-                    // keepTailTogether on the title text, not text-wrap.)
-                    ...(entry.isInstructional ? { color: CANON.identity } : null),
-                  }}
-                >
-                  {resolvedEntryIcon && (
-                    <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
-                      {resolvedEntryIcon}
-                    </span>
-                  )}
-                  {entry.isInstructional && (
-                    // TSP demo: cream flag leads an instructional "Alborz" entry
-                    // title (flag-driven, never literal title text).
-                    <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
-                      <Flag size={18} color={CANON.cream} />
-                    </span>
-                  )}
-                  {entry.isDeleted ? "(deleted entry)" : demoMode ? keepTailTogether(entry.title) : entry.title}
-                  {!entry.isDeleted && (
-                    // SE tag rendered inline AFTER the title with a " • "
-                    // separator (matches the bullet glyph used in bylines
-                    // elsewhere). Same size / weight / family as the title
-                    // (inherits from the h2 .title class) but white — the
-                    // tag reads as title-level chrome, not body text.
-                    <span style={{ color: CANON.cream, whiteSpace: "nowrap", marginLeft: 8 }}>
-                      {" • "}
-                      <EpisodeTag
-                        season={entry.s}
-                        episode={entry.e}
-                        isRewatch={entry.isRewatch}
-                        rewatchS={entry.rewatchS}
-                        rewatchE={entry.rewatchE}
-                        naturalNumbers
-                        parens={false}
-                      />
-                    </span>
-                  )}
-                  {!entry.isDeleted && entry.isEdited && (
-                    <span style={{ fontStyle: "italic", fontSize: 14, fontWeight: 400, opacity: 0.7, marginLeft: 6 }}>(edited)</span>
-                  )}
-                </h2>
-                {/* Entry star RETIRED (help-system QA round 7): the surface
-                    starred entries populated is gone, so the button is too.
-                    The like plumbing (expandedLikeState etc.) stays dormant
-                    for a future revival. */}
-              </div>
-
+              {/* Byline ABOVE the title (polish pass 2026-09-15): one cream
+                  caption line — author · episode tag · time; the " • s1 e4"
+                  suffix moved here from the title. */}
               <div
                 className="muted"
                 style={{
-                  marginTop: 4,
-                  // Mobile polish 2026-09-14: caption 13, cream on the sky —
-                  // the darker muted byline read as a different component.
-                  fontSize: mobileIdiom ? 13 : 14,
-                  ...(mobileIdiom ? { color: CANON.cream } : null),
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                  color: CANON.cream,
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                   flexWrap: "wrap",
                   // Tombstone byline matches the title-row opacity so the
                   // entire entry header fades together.
-                  opacity: entry.isDeleted ? 0.35 : undefined,
+                  opacity: entry.isDeleted ? 0.35 : 0.9,
                 }}
               >
                 {entry.isInstructional ? (
@@ -821,9 +762,69 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   />
                 )}
                 {entry.isDeparted && (
-                  <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
+                  <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>has left the room</span>
                 )}
-                {" "}• {timeAgo(entry.updatedAt)}
+                {!entry.isDeleted && (
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    •{" "}
+                    <EpisodeTag
+                      season={entry.s}
+                      episode={entry.e}
+                      isRewatch={entry.isRewatch}
+                      rewatchS={entry.rewatchS}
+                      rewatchE={entry.rewatchE}
+                      naturalNumbers
+                      parens={false}
+                    />
+                  </span>
+                )}
+                <span>• {timeAgo(entry.updatedAt)}</span>
+                {!entry.isDeleted && entry.isEdited && (
+                  <span style={{ fontStyle: "italic", opacity: 0.7 }}>(edited)</span>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: 4,
+                  // Tombstones de-emphasize the title row but leave any
+                  // expanded V2InlineThread content (replies, collapse, etc.)
+                  // at full opacity below.
+                  opacity: entry.isDeleted ? 0.35 : 1,
+                }}
+              >
+                <h2
+                  className="title"
+                  style={{
+                    // Lora subtitle (polish pass 2026-09-15) — the one place
+                    // a heading wasn't Lora.
+                    margin: 0, ...D.type.subtitle,
+                    // TSP demo: guide titles render blue. (Wrapping is handled by
+                    // keepTailTogether on the title text, not text-wrap.)
+                    ...(entry.isInstructional ? { color: CANON.identity } : null),
+                  }}
+                >
+                  {resolvedEntryIcon && (
+                    <span style={{ marginRight: 4, display: "inline-flex", alignItems: "center" }}>
+                      {resolvedEntryIcon}
+                    </span>
+                  )}
+                  {entry.isInstructional && (
+                    // TSP demo: cream flag leads an instructional "Alborz" entry
+                    // title (flag-driven, never literal title text).
+                    <span style={{ marginRight: 6, display: "inline-flex", alignItems: "center", verticalAlign: "middle" }}>
+                      <Flag size={18} color={CANON.cream} />
+                    </span>
+                  )}
+                  {entry.isDeleted ? "(deleted entry)" : demoMode ? keepTailTogether(entry.title) : entry.title}
+                </h2>
+                {/* Entry star RETIRED (help-system QA round 7): the surface
+                    starred entries populated is gone, so the button is too.
+                    The like plumbing (expandedLikeState etc.) stays dormant
+                    for a future revival. */}
               </div>
 
               <div style={{ marginTop: 6 }}>

@@ -241,7 +241,7 @@ function ReplyBody({
       const afterStart = match.index + match[0].length;
       const after = body.slice(afterStart);
       return (
-        <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+        <div style={{ marginTop: 8, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
           <HighlightableBody
             body={before}
             highlights={highlights}
@@ -282,7 +282,7 @@ function ReplyBody({
       const afterStart = idx + "[QUOTE]".length;
       const after = body.slice(afterStart);
       return (
-        <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+        <div style={{ marginTop: 8, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
           <HighlightableBody
             body={before}
             highlights={highlights}
@@ -673,6 +673,13 @@ export default function RepliesList({
       cur = getParentReply(cur);
     }
     return false;
+  };
+
+  // S-pill geometry for reply actions (colors/hovers stay on the class
+  // rules; polish pass 2026-09-15).
+  const sPillGeom: React.CSSProperties = {
+    fontSize: 13, fontWeight: 700, padding: "8px 16px", minHeight: 36,
+    borderRadius: 9999, boxSizing: "border-box",
   };
 
   const isVisible = (r: Reply): { show: boolean; redacted: boolean } => {
@@ -1077,10 +1084,11 @@ export default function RepliesList({
                     ? `${w}px solid #4b8f6c`
                     : `${w}px solid var(--dos-border)`;
                 })(),
-                // Desktop keeps the 8px left indent; on mobile the reply
-                // cards sit CENTERED in the entry box (Alborz 2026-08-18 —
-                // the indent read as nudged-right on a phone).
-                marginLeft: mobileIdiom ? 0 : 8,
+                // Polish pass 2026-09-15: radius 16, padding 16, no indent
+                // (the 8px nudge-right retired on both platforms).
+                borderRadius: 16,
+                padding: 16,
+                marginLeft: 0,
                 position: "relative",
                 color: "var(--dos-bg)",
                 ["--dos-accent" as any]: "var(--dos-bg)",
@@ -1092,14 +1100,18 @@ export default function RepliesList({
                 <div style={{ position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
               )}
 
+              {/* One caption byline (polish pass 2026-09-15): name · tag ·
+                  time, 13 at 0.8 — the time joins the line instead of
+                  hanging on the right edge. */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
-                <div style={{ fontSize: 14, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
+                <div style={{ fontSize: 13, lineHeight: 1.45, opacity: 0.8, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
                   <Username name={r.author} displayName={dn(r.author)} userId={r.authorId} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {groupId && departedUsernames?.has(r.author) && (
-                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.6 }}>has left the room</span>
+                    <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.75 }}>has left the room</span>
                   )}
                   {thread.showId !== "simshow" && (
-                    <span style={{ color: "var(--dos-cyan)", fontWeight: 700 }}>
+                    <span style={{ color: "var(--dos-cyan)", fontWeight: 400 }}>
+                      &middot;{" "}
                       <EpisodeTag
                         season={r.season}
                         episode={r.episode}
@@ -1111,6 +1123,7 @@ export default function RepliesList({
                       />
                     </span>
                   )}
+                  <span className="muted">&middot; {timeAgo(r.updatedAt)}</span>
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
@@ -1129,7 +1142,6 @@ export default function RepliesList({
                     </button>
                   )}
                 </div>
-                <div className="muted" style={{ fontSize: 12 }}>{timeAgo(r.updatedAt)}</div>
               </div>
 
               {isCurrentlyEditing ? (
@@ -1258,7 +1270,10 @@ export default function RepliesList({
 
               {!isCurrentlyEditing && (
                 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                  {!mobileIdiom && (
+                  {/* No heart on room responses (polish pass 2026-09-15 —
+                      the action set is Edit/Delete/Highlight…/Quote…);
+                      public/journal surfaces keep theirs. */}
+                  {!mobileIdiom && !groupId && (
                     <LikeBadge
                       count={likeCt}
                       userLiked={userLiked}
@@ -1269,8 +1284,8 @@ export default function RepliesList({
                   )}
                   {isReplyOwn && (
                     <>
-                      <button className="btn" style={{ fontSize: 13 }} onClick={() => handleStartEditReply(r)}>Edit</button>
-                      <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
+                      <button className="btn" style={sPillGeom} onClick={() => handleStartEditReply(r)}>Edit</button>
+                      <button className="btn btn-danger" style={sPillGeom} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
                   )}
                   {highlightsEnabled && !mobileIdiom && (
@@ -1281,14 +1296,11 @@ export default function RepliesList({
                       className="sb-hl-reply"
                       onClick={() => handleHighlightClickReply(r.id)}
                       style={{
-                        fontSize: 13,
-                        padding: "3px 12px",
+                        ...sPillGeom,
                         background: "#adc8d7",
                         color: "#FEF8EA",
                         border: "2px solid #adc8d7",
-                        borderRadius: 9999,
                         cursor: "pointer",
-                        fontWeight: 500,
                         fontFamily: "inherit",
                       }}
                     >
@@ -1301,7 +1313,7 @@ export default function RepliesList({
                           !important) — inline colors here are dead weight. */}
                       <button
                         className="btn"
-                        style={{ fontSize: 13 }}
+                        style={sPillGeom}
                         onClick={() => handleQuote(r)}
                         title="Quote this response"
                       >
