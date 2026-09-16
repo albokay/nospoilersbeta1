@@ -889,10 +889,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </select>
                 <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               </span>
-            ) : tab === "reference" && show && progressForShow ? (
-              /* Guide tab (pass 3): picker takes the LEFT slot; the canon
-                 pill (portaled by ShowReference) takes the right. */
-              <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
+            ) : (tab === "reference" || tab === "private") && show && progressForShow ? (
+              /* Guide + drafts tabs (pass 3): picker takes the LEFT slot;
+                 the right slot holds the canon pill (guide, portaled by
+                 ShowReference) or the Write pill (drafts — one 60px row
+                 replaces the stacked full-width Write). */
+              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
                   value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -905,8 +907,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             ) : <span />}
             {tab === "reference" ? (
               <span ref={setCanonSlotEl} style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }} />
+            ) : tab === "private" ? (
+              <button style={{ ...writeBtn, width: "auto", flexShrink: 0 }} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             ) : show && progressForShow && (
-              <div className={`m-progress-cell${tab === "private" ? " private-progress" : ""}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
+              <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
                   show={show}
                   value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -918,9 +922,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
             )}
           </div>
-          {/* Row 3 — Write, full width inside the card. No write on the
-              reference tab (Alborz 2026-09-05) — it's a lookup surface. */}
-          {tab !== "reference" && (
+          {/* Row 3 — Write, full width inside the card (friend tab; the
+              drafts tab's Write sits in its one-row card above, pass 3).
+              No write on the reference tab (Alborz 2026-09-05). */}
+          {tab === "friend" && (
             <div style={{ padding: "4px 12px 12px" }}>
               <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             </div>
@@ -985,9 +990,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 onThreadDeleted={() => load()}
               />
             )}
-            <div style={{ marginTop: privateFeedEntries.length ? 40 : 8 }}>
-              <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
-              <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
+            {/* Pass 3: the explainer is the dashed-cream "not here yet"
+                card, three levels, copy verbatim; below drafts when they
+                exist, the empty state otherwise. */}
+            <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, maxWidth: 560, boxSizing: "border-box" }}>
+              <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
+              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
+              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
             </div>
         </div>
       </div>

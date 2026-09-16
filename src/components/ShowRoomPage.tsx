@@ -1019,9 +1019,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     onThreadDeleted={() => load()}
                   />
                 )}
-                <div style={{ marginTop: privateFeedEntries.length ? 40 : 8 }}>
-                  <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "0 0 12px" }}>Sidebar is best with friends.</p>
-                  <p style={{ ...emptyCopy, maxWidth: 460 }}>But this drafts space is just for you — no one will ever see what you write here. Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
+                {/* Pass 3: the explainer is the dashed-cream "not here
+                    yet" card (D.gatedStub border grammar), three levels,
+                    copy verbatim; below drafts when they exist. */}
+                <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, maxWidth: 560, boxSizing: "border-box" }}>
+                  <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
+                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
+                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
                 </div>
             </div>
 
