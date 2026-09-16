@@ -893,7 +893,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
             {/* ── Control card (polish pass 2026-09-15, mobile parity):
-                   sort · "you've watched" picker · Write in ONE cream card,
+                   Write · sort · "you've watched" picker in ONE cream card,
                    dark ink — replaces the loose toolbar row. The shared
                    progress select stays native; scoped CSS restyles it as
                    text-with-chevron (border-style none also neutralizes the
@@ -908,8 +908,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               .d-room-progress svg { stroke: ${C.midnight}; width: 16px; height: 16px; right: 0 !important; }
             `}</style>
             <div style={controlCard}>
+              {/* Order (Alborz 2026-09-15): Write · divider · sort · picker,
+                  picker RIGHT-ALIGNED at the card's end — the progress
+                  sticky's ← must land on the picker, not Write, so the
+                  picker is the control nearest the note (and the map its
+                  progress drives). No write on the reference tab (Alborz
+                  2026-09-05) — it's a lookup surface; the dial stays. */}
+              {tab !== "reference" && (
+                <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              )}
               {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                 <>
+                  <span style={controlDivider} />
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", minHeight: 44, flexShrink: 0 }}>
                     <select
                       value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`}
@@ -933,11 +943,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     </select>
                     <ChevronDown size={16} color={C.midnight} style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                   </span>
-                  <span style={controlDivider} />
                 </>
               )}
               {show && progressForShow ? (
-                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", minHeight: 44, minWidth: 0 }}>
+                <div className={`d-room-progress${tab === "private" ? " private-progress" : ""}`} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: tab === "reference" ? "flex-start" : "flex-end", minHeight: 44, minWidth: 0 }}>
                   <OneSelectProgress
                     show={show}
                     value={effectiveProgress(progressForShow) || { s: 1, e: 1 }}
@@ -948,11 +957,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   />
                 </div>
               ) : <span style={{ flex: 1 }} />}
-              {/* No write on the reference tab (Alborz 2026-09-05) — it's a
-                  lookup surface; the dial stays. */}
-              {tab !== "reference" && (
-                <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
-              )}
             </div>
 
             {tab === "reference" && show && refEff && (
@@ -1218,8 +1222,10 @@ const backTab: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", boxShadow: "6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
 };
 // The control card (polish pass 2026-09-15): cream, dark ink, one row.
+// Padding right 16 / left 8: the Write pill leads the row now and the
+// picker TEXT ends it, so the text side gets the breathing room.
 const controlCard: React.CSSProperties = {
-  background: C.cream, borderRadius: 12, minHeight: 60, padding: "8px 8px 8px 16px",
+  background: C.cream, borderRadius: 12, minHeight: 60, padding: "8px 16px 8px 8px",
   display: "flex", alignItems: "center", gap: 12, color: C.midnight,
   marginBottom: 24, boxSizing: "border-box",
 };
