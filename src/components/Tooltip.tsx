@@ -20,6 +20,7 @@ export default function Tooltip({
   tooltipStyle,
   disabled = false,
   portal = false,
+  variant = "default",
 }: {
   text: React.ReactNode;
   children: React.ReactNode;
@@ -39,6 +40,10 @@ export default function Tooltip({
   // ancestor that creates a stacking context (opacity, transform, filter).
   // Only valid when useAbsolute is false (fixed positioning).
   portal?: boolean;
+  // "tip" (2026-09-16) = the dashboard's slanted cream pop: cream paper,
+  // dark ink, a −6° lean and LEFT-justified text. "default" keeps the
+  // original sky bubble with centered text.
+  variant?: "default" | "tip";
 }) {
   // Hooks must always be called unconditionally — early return comes after
   const [show, setShow] = useState(false);
@@ -109,24 +114,39 @@ export default function Tooltip({
     >
       {children}
       {show && (useAbsolute || rect) && (() => {
+        const pos = useAbsolute ? getAbsoluteStyle() : getFixedStyle();
+        // The lean composes with whatever transform the placement already
+        // needs (the centering translate), so positioning still holds.
+        const tip = variant === "tip";
         const bubble = (
           <div style={{
-            ...(useAbsolute ? getAbsoluteStyle() : getFixedStyle()),
-            background: "var(--dos-bg)",
-            color: CANON.cream,
+            ...pos,
+            ...(tip
+              ? {
+                  transform: `${pos.transform ? `${pos.transform} ` : ""}rotate(-6deg)`,
+                  transformOrigin: direction === "below" ? "top center" : "bottom center",
+                  background: CANON.cream,
+                  color: CANON.dark,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+                  textAlign: "left" as const,
+                }
+              : {
+                  background: "var(--dos-bg)",
+                  color: CANON.cream,
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+                  textAlign: "center" as const,
+                }),
             borderRadius: 18,
             padding: "9px 14px",
             fontSize: 13,
             fontWeight: 500,
             lineHeight: 1.4,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
             // "auto" → CSS max-content shrinks the bubble to its widest
             // inline run. Callers should pair with whiteSpace: nowrap on
             // line spans and an optional maxWidth in tooltipStyle.
             width: width === "auto" ? "max-content" : width,
             zIndex: 9999,
             pointerEvents: "none",
-            textAlign: "center",
             ...tooltipStyle,
           }}>
             {text}

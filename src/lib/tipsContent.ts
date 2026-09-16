@@ -38,12 +38,11 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   },
   {
     body: "Invited friends who haven't joined yet are listed in the ⚙️ — open it to see who's pending, nudge friends who need reminders, and do other group room maintenance.",
-    // Re-anchored 2026-09-16: the group name + gear moved INTO the 96px
-    // header bar (desktop polish arc), so the old 14%/54% anchor sat on top
-    // of the heading and the first pill row. The note now hangs just below
-    // the bar, right of the centered heading — clamped so it stays on
-    // screen on narrow windows.
-    tilt: 2, top: "208px", left: "min(calc(50% + 330px), calc(100vw - 175px))",
+    // Re-anchored 2026-09-16 (rev 2): the group name + gear live in the
+    // 96px header bar now, so the note sits UP beside them — level with
+    // the bar, just right of the centered heading — rather than below,
+    // where it read as belonging to the shelves. Clamped to stay on screen.
+    tilt: 2, top: "130px", left: "min(calc(50% + 340px), calc(100vw - 180px))",
   },
   // DESKTOP-ONLY as of 2026-08-11 (Alborz sign-off): the mobile sheet drops
   // this tip entirely — self-explanatory there, and it made the sheet too

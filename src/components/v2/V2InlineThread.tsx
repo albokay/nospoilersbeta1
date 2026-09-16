@@ -691,6 +691,7 @@ export default function V2InlineThread({
                   align="right"
                   useAbsolute={true}
                   width={220}
+                  variant="tip"
                 >
                   <button
                     className="btn"
@@ -702,11 +703,12 @@ export default function V2InlineThread({
                 </Tooltip>
               ) : (
                 <Tooltip
-                  text="Just a heads up: if you've watched more episodes since you first wrote this, editing will mean the entry's progress tag will be updated to your current progress."
+                  text="Just a heads up: if you've watched more episodes since you first wrote this, editing will update this entry's progress tag to your current progress."
                   direction="above"
                   align="right"
                   useAbsolute={true}
                   width={260}
+                  variant="tip"
                 >
                   <button
                     className="btn sb-edit-business"

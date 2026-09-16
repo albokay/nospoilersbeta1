@@ -982,7 +982,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           )}
         </div>
         )}
-        <div style={{ display: tab === "private" ? undefined : "none" }}>
+        <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
                 mobileIdiom
@@ -997,7 +997,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             {/* Pass 3: the explainer is the dashed-cream "not here yet"
                 card, three levels, copy verbatim; below drafts when they
                 exist, the empty state otherwise. */}
-            <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, maxWidth: 560, boxSizing: "border-box" }}>
+            <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
               <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
               <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>

@@ -1007,9 +1007,14 @@ body.public-context .prompt-ref { color: #8a6420; }
    Cream text; hover flips to Cream fill + Sky text. */
 body .btn.sb-cream-outline{ background:transparent !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; }
 body .btn.sb-cream-outline:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; }
-/* Entry Edit: Business outline + Business text, static — no transparency
-   or hover wash. */
-body .btn.sb-edit-business, body .btn.sb-edit-business:hover{ background:transparent !important; border-color:var(--canon-business,#8daaba) !important; color:var(--canon-business,#8daaba) !important; opacity:1 !important; }
+/* Entry Edit (2026-09-16): outline at rest, FILLED on hover — it was the
+   only pill in the action row with no rollover. In the DRAFTS lane the
+   Business outline sits on Personal green and reads poorly, so it goes
+   Cream there (and fills cream, green text, on hover). */
+body .btn.sb-edit-business{ background:transparent !important; border-color:var(--canon-business,#8daaba) !important; color:var(--canon-business,#8daaba) !important; opacity:1 !important; }
+body .btn.sb-edit-business:hover{ background:var(--canon-business,#8daaba) !important; border-color:var(--canon-business,#8daaba) !important; color:var(--canon-cream,#fef8ea) !important; opacity:1 !important; }
+body .drafts-lane .btn.sb-edit-business{ border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-cream,#fef8ea) !important; }
+body .drafts-lane .btn.sb-edit-business:hover{ background:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-cream,#fef8ea) !important; color:var(--canon-personal,#7abd8e) !important; }
 /* Delete + composer Cancel hover: Alert fill + Alert outline + Cream text —
    beats the group-context cream-border hover override. */
 body .btn.btn-danger:hover{ background:var(--danger) !important; border-color:var(--danger) !important; color:var(--canon-cream,#fef8ea) !important; }
@@ -1068,6 +1073,13 @@ body.pwa-standalone{ background-image:none !important; }
 .d-press{ transition:none !important; }
 @media (hover:hover){ .d-press:hover:not(:disabled){ transform:translate(1px,-2px); } }
 .d-press:active:not(:disabled){ transform:translateY(1px); opacity:.9; }
+/* Outline actions inside the yellow dialogs (2026-09-16): fill on hover,
+   the same inversion the rest of the site's buttons use. Pair with
+   .d-press for the lift. */
+@media (hover:hover){
+  .d-btn-alert:hover:not(:disabled){ background:var(--canon-alert,#f45028) !important; color:var(--canon-cream,#fef8ea) !important; }
+  .d-btn-cream:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-accent,#dea838) !important; }
+}
 
 `;
 

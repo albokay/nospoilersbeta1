@@ -2364,9 +2364,17 @@ export default function DashboardPage() {
                 <>
                   <div style={gearDivider} />
                   <div style={gearLabel}>Your names for your friends</div>
-                  <div style={gearCaption}>Names default to their log-in info. Enter your own, like your phone&rsquo;s contacts.</div>
+                  {/* The explainer only makes sense once there's a name to
+                      enter — with everyone still pending the section is just
+                      the invite list (Alborz 2026-09-16). */}
                   {others.length > 0 && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                    <div style={gearCaption}>Names default to your friends&rsquo; log-in info. Enter your own names for them, like your phone&rsquo;s contacts.</div>
+                  )}
+                  {others.length > 0 && (
+                    /* One per row (Alborz 2026-09-16): the 2-up grid went
+                       ragged as soon as some friends were in and others were
+                       still pending full-width rows below. */
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
                       {others.map((m) => (
                         <input
                           key={m.userId}

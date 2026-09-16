@@ -1159,9 +1159,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               <>
                 <div style={sheetDivider} />
                 <div style={sheetLabel}>Your names for your friends</div>
-                <div style={{ ...sheetCaption, marginBottom: 12 }}>
-                  Names default to their log-in info. Enter your own, like your phone&rsquo;s contacts.
-                </div>
+                {/* Only once someone's actually in (Alborz 2026-09-16). */}
+                {others.length > 0 && (
+                  <div style={{ ...sheetCaption, marginBottom: 12 }}>
+                    Names default to your friends&rsquo; log-in info. Enter your own names for them, like your phone&rsquo;s contacts.
+                  </div>
+                )}
                 {others.map((m) => (
                   <input
                     key={m.userId}

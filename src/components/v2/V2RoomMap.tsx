@@ -749,18 +749,11 @@ export default function V2RoomMap({
             // column, when self isn't the filtered one but isn't dimmed
             // either) keep their normal interactivity.
             const isClickable = launcherMode && !isSelfCol && !m.isDeparted && !dimmed;
-            // Self-column username + the rating-edit icon BOTH toggle
-            // edit mode (per spec). Tooltip + cursor + click handlers
-            // are applied to both elements so either one is a working
-            // affordance.
-            const usernameTooltipText: React.ReactNode | null = isSelfCol
-              ? (
-                  <>
-                    <span style={{ display: "block" }}>Adjust your</span>
-                    <span style={{ display: "block" }}>episode ratings.</span>
-                  </>
-                )
-              : isClickable
+            // The "(you)" label is INERT (Alborz 2026-09-16): the pencil is
+            // the only way into rating-edit now, so the label lost its
+            // click, its cursor and its tooltip. Other members' names keep
+            // the nudge affordance.
+            const usernameTooltipText: React.ReactNode | null = isClickable
               ? (
                   <>
                     <span style={{ display: "block" }}>Give {dn(m.username)}</span>
@@ -799,13 +792,14 @@ export default function V2RoomMap({
                     <Tooltip
                       text={
                         editMode
-                          ? "Click the episode boxes in the map to adjust episode ratings. Click here again to confirm your choices."
+                          ? "Click the boxes in the map to change your episode ratings. Click here again to confirm your choices."
                           : "Adjust episode ratings."
                       }
                       direction="above"
                       align="center"
                       width={editMode ? 240 : 160}
                       portal
+                      variant="tip"
                     >
                       {/* Pass 3: while editing, the exit is an explicit S
                           Identity "Save" pill (the deck's edit grammar) —
@@ -925,19 +919,14 @@ export default function V2RoomMap({
                     color: isSelfCol ? CANON.identity : CANON.cream,
                     fontStyle: isClickable ? "italic" : undefined,
                     borderBottom: isClickable ? "1px dotted var(--canon-cream,#fef8ea)" : undefined,
-                    cursor: (isClickable || isSelfCol) ? "pointer" : undefined,
+                    cursor: isClickable ? "pointer" : undefined,
                   };
                   const usernameDiv = (
                     <div
-                      role={isClickable || isSelfCol ? "button" : undefined}
-                      tabIndex={isClickable || isSelfCol ? 0 : undefined}
+                      role={isClickable ? "button" : undefined}
+                      tabIndex={isClickable ? 0 : undefined}
                       onClick={
-                        isSelfCol
-                          ? (e) => {
-                              e.stopPropagation();
-                              void handleToggleEditMode();
-                            }
-                          : isClickable
+                        isClickable
                           ? (e) => {
                               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                               const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
@@ -952,14 +941,7 @@ export default function V2RoomMap({
                           : undefined
                       }
                       onKeyDown={
-                        isSelfCol
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                void handleToggleEditMode();
-                              }
-                            }
-                          : isClickable
+                        isClickable
                           ? (e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();

@@ -999,7 +999,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               )}
             </div>
             )}
-            <div style={{ display: tab === "private" ? undefined : "none" }}>
+            <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
                     displayNames={displayNames}
@@ -1013,7 +1013,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {/* Pass 3: the explainer is the dashed-cream "not here
                     yet" card (D.gatedStub border grammar), three levels,
                     copy verbatim; below drafts when they exist. */}
-                <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, maxWidth: 560, boxSizing: "border-box" }}>
+                <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
                   <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
                   <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
@@ -1140,16 +1140,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             ) : digestOptOut ? (
               <>
                 <div style={{ ...digestSub, margin: "0 0 14px" }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
+                <button className="d-press d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(false)}>Resubscribe</button>
               </>
             ) : (
               <>
                 <div style={{ ...digestSub, margin: "0 0 14px" }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
-                <button style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
+                <button className="d-press d-btn-alert" style={alertBtn} disabled={digestBusy} onClick={() => applyDigest(true)}>Unsubscribe</button>
               </>
             )}
             <div style={{ marginTop: 18 }}>
               <button
+                className="d-press d-btn-cream"
                 style={{ ...D.pill.M, background: "transparent", color: C.cream, border: `2px solid ${C.cream}` }}
                 onClick={() => setDigestModalOpen(false)}
                 disabled={digestBusy}
