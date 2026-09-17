@@ -3434,21 +3434,22 @@ export async function fetchGroupThreads(
   latestVisibleReplyAt: Record<string, number>;
   /**
    * Per-thread count of HIDDEN replies (above the viewer's progress) on
-   * threads the viewer authored. Used by the V2 friend-room map's red
-   * notification dot on the viewer's own cells — "you have N responses in
-   * this entry that you can't see yet." Populated ONLY for threads where
-   * `author_id === viewerId`; absent otherwise. Excludes deleted replies.
+   * threads the viewer is PART OF — authored the entry or responded in it
+   * (2026-09-17: was authored-only, so a hidden reply in a thread you'd
+   * responded in never turned red). Drives the red "new writing for when
+   * you catch up" signal. Absent otherwise. Excludes deleted replies and
+   * the viewer's own.
    */
   hiddenCounts: Record<string, number>;
   /**
-   * Per-thread MAX created_at of HIDDEN replies on threads the viewer
-   * authored. Used by the V2 friend-room map to decide whether a prior
+   * Per-thread MAX created_at of HIDDEN replies on threads the viewer is
+   * part of (authored or responded in). Used by the V2 friend-room map to decide whether a prior
    * red-dot manual dismissal is still valid: if a new hidden reply lands
    * with `created_at > redDismissedAt[tid]`, the dismissal is stale and
    * red re-fires (so each new hidden reply gets a fresh chance to notify,
    * matching the green-dot's "new since last visit" semantic). Populated
-   * only for threads where `author_id === viewerId` and at least one
-   * hidden reply exists; absent otherwise.
+   * only for threads the viewer is part of with at least one hidden
+   * reply; absent otherwise.
    */
   latestHiddenReplyAt: Record<string, number>;
   /**
@@ -3548,12 +3549,16 @@ export async function fetchGroupThreads(
     }
     if (maxAt > 0) latestVisibleReplyAt[thread.id] = maxAt;
 
-    // Hidden-count: only populated for threads the viewer authored. Counts
-    // group-scoped, not-deleted replies that the viewer can't see yet
+    // Hidden-count: populated for threads the viewer is PART OF — wrote
+    // the entry or responded in it (the same scope as the green signal).
+    // Counts group-scoped, not-deleted replies the viewer can't see yet
     // (themselves above progress OR an ancestor above progress — i.e. NOT
-    // chain-visible). Excludes the viewer's own replies (you wouldn't nudge
-    // yourself about replies you wrote that are above your own progress).
-    if (viewerId && t.author_id === viewerId) {
+    // chain-visible). Excludes the viewer's own replies.
+    const viewerInThread = !!viewerId && (
+      t.author_id === viewerId ||
+      allReplies.some((r) => r.group_id === groupId && !r.is_deleted && r.author_id === viewerId)
+    );
+    if (viewerInThread) {
       let hidden = 0;
       let maxHiddenAt = 0;
       for (const r of allReplies) {

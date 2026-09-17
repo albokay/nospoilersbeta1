@@ -1016,7 +1016,7 @@ export default function RepliesList({
                   cursor: "default",
                 }}
               >
-                <Lock size={18} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                <Lock size={18} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
                 <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
                   <b>{dn(r.author)}</b> responded from {tag.toLowerCase()}. You&rsquo;ll see it when you catch up.
                 </div>

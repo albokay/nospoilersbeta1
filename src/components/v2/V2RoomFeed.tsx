@@ -638,7 +638,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               style={{ position: "relative", margin: "0 0 12px 0", scrollMarginTop: 72 }}
             >
               <div style={{ ...D.gatedStub(24), padding: "16px 20px", cursor: "default" }}>
-                <Lock size={20} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                <Lock size={20} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.45 }}>
                     {dn(entry.authorUsername)} &middot; s{entry.s} e{entry.e}
@@ -843,7 +843,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                             // Ahead-of-progress stub — same copy as the live site.
                             return (
                               <div key={r.id} style={{ ...D.gatedStub(16), padding: "12px 16px", cursor: "default" }}>
-                                <Lock size={18} strokeWidth={2} style={{ opacity: 0.9, flexShrink: 0 }} />
+                                <Lock size={18} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
                                 <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
                                   <b>{r.author}</b> responded from s{r.season} e{r.episode}. You&rsquo;ll see it when you catch up.
                                 </div>

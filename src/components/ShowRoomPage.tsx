@@ -631,7 +631,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
       // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
       // GREEN = new responses you can READ now, on your own entry or in a
-      // thread you responded in; RED = hidden responses to your entry,
+      // thread you responded in; RED = hidden responses in those same threads,
       // waiting for you to catch up (counted, below). Your own replies are
       // excluded from the visible-latest timestamp, so posting never
       // self-notifies; catching up turns a hidden red into green.
@@ -641,7 +641,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const dismissedAt = redDismissedAt[tid] ?? 0;
       const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
       // Hidden red (with count) revives on every NEWER hidden response.
-      if (isOwn && hiddenCount > 0 && !manuallyDismissed) {
+      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0 && !manuallyDismissed) {
         out[tid] = { kind: "red", redCount: hiddenCount };
       }
     }
