@@ -242,6 +242,9 @@ export default function MobileAuth() {
           <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "0 0 12px" }}>
             We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap it to finish setting up your account — it'll sign you in automatically.
           </p>
+          <p style={{ fontSize: 16, lineHeight: 1.5, opacity: 0.95, margin: "0 0 12px" }}>
+            You can close this tab. The link opens Sidebar in a new one.
+          </p>
           <p style={{ fontSize: 14, lineHeight: 1.5, opacity: 0.8, margin: 0 }}>
             It can take a minute to arrive. If you don't see it, check your spam folder.
           </p>

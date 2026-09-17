@@ -115,6 +115,9 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
         <p style={{ fontSize: 15, lineHeight: 1.6, margin: "0 0 12px" }}>
           We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Click it to finish setting up your account — it'll sign you in automatically.
         </p>
+        <p style={{ fontSize: 15, lineHeight: 1.6, margin: "0 0 12px" }}>
+          You can close this tab. The link opens Sidebar in a new one.
+        </p>
         <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
           It can take a minute to arrive. If you don't see it, check your spam folder.
         </p>

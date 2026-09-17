@@ -35,6 +35,7 @@ import LoadingDots from "../components/LoadingDots";
 import OneSelectProgress from "../components/OneSelectProgress";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import DeckWave from "../components/deck/DeckWave";
+import useOnboardingCatchUp from "../lib/useOnboardingCatchUp";
 import YoureInCard from "../components/deck/YoureInCard";
 import MobileSearchSheet from "./MobileSearchSheet";
 import {
@@ -122,6 +123,19 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   }
 
   const bootRef = useRef<Boot>({});
+
+  // A tab left behind by the email-confirm link catches up when the person
+  // returns to it: setup finished elsewhere → close; questions answered
+  // elsewhere → the wave re-reads and skips them. Only while THIS tab is
+  // pre-group (steps 0–2, no pre-warm started) — an active tab is never
+  // pulled out of its own flow.
+  const [waveRefresh, setWaveRefresh] = useState(0);
+  useOnboardingCatchUp({
+    userId: user?.id,
+    isActive: () => step <= 2 && !bootRef.current.warm,
+    onCaughtUp: () => onDone(null),
+    onRefresh: () => setWaveRefresh((n) => n + 1),
+  });
   const composeRef = useRef<ComposeFormHandle>(null);
 
   // Screen 2 → 3: persist the declared progress so the REAL compose form
@@ -273,7 +287,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   // ── Screen 0: WAVE 1 — 4 question cards with the welcome copy (§12.4).
   //    Self-skipping (already-answered accounts pass straight through). ──────
   if (step === 0) {
-    return <DeckWave wave={1} heading="welcome" idiom="mobile" onComplete={() => setStep(1)} />;
+    return <DeckWave wave={1} heading="welcome" idiom="mobile" refreshKey={waveRefresh} onComplete={() => setStep(1)} />;
   }
 
   // ── Screen 1: the question over the plain green; the shared search sheet

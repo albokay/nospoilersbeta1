@@ -45,6 +45,7 @@ import { joinNames } from "../lib/groupNames";
 import OneSelectProgress from "./OneSelectProgress";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import DeckWave from "./deck/DeckWave";
+import useOnboardingCatchUp from "../lib/useOnboardingCatchUp";
 import YoureInCard from "./deck/YoureInCard";
 import LoadingDots from "./LoadingDots";
 import BrowseRows from "./BrowseRows";
@@ -98,6 +99,19 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   }
 
   const bootRef = useRef<Boot>({});
+
+  // A tab left behind by the email-confirm link catches up when the person
+  // returns to it: setup finished elsewhere → close; questions answered
+  // elsewhere → the wave re-reads and skips them. Only while THIS tab is
+  // pre-group (steps 0–2, no pre-warm started) — an active tab is never
+  // pulled out of its own flow.
+  const [waveRefresh, setWaveRefresh] = useState(0);
+  useOnboardingCatchUp({
+    userId: user?.id,
+    isActive: () => step <= 2 && !bootRef.current.warm,
+    onCaughtUp: () => onDone(null),
+    onRefresh: () => setWaveRefresh((n) => n + 1),
+  });
   const composeRef = useRef<ComposeFormHandle>(null);
 
   useEffect(() => {
@@ -329,7 +343,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   // Self-skipping: an account that already answered them passes straight
   // through (e.g. a returning 0-group user re-guided by the gate). ──────────
   if (step === 0) {
-    return <DeckWave wave={1} heading="welcome" idiom="desktop" onComplete={() => setStep(1)} />;
+    return <DeckWave wave={1} heading="welcome" idiom="desktop" refreshKey={waveRefresh} onComplete={() => setStep(1)} />;
   }
 
   // ── Screen 1: search button → the site's search card → picker card ─────────

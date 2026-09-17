@@ -38,7 +38,7 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const DRIP_INTERVAL_DAYS = 14;
 const DRIP_INTERVAL_MS = DRIP_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
 
-export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, onComplete }: {
+export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, refreshKey = 0, onComplete }: {
   /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
    *  modal: up to 4 of the viewer's unanswered cards, oldest first, at most
    *  once per session (sessionStorage flag).
@@ -92,6 +92,10 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
    *  park in localStorage and are claimed by the next sign-in on this
    *  browser (see lib/deckPending). Used at the invitee's door, wave 1. */
   anonymous?: boolean;
+  /** Bump to re-read the deck + answers in place (the current card stays up
+   *  until the new queue lands). The onboarding catch-up uses it when a tab
+   *  comes back after the questions were answered in another tab. */
+  refreshKey?: number;
   onComplete: () => void;
 }) {
   const { user } = useAuth();
@@ -189,7 +193,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
     // Keyed on the user's ID, not the user OBJECT — the object gets a new
     // identity on every token refresh, which re-ran this mid-wave.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, userCreatedAt, wave, requirePriorWave, leadCardId, anonymous]);
+  }, [userId, userCreatedAt, wave, requirePriorWave, leadCardId, anonymous, refreshKey]);
 
   // Nothing to serve → complete silently (once).
   useEffect(() => {
