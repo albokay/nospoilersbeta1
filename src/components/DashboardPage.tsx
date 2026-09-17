@@ -1913,33 +1913,37 @@ export default function DashboardPage() {
           {/* NO position/zIndex on this wrapper — a stacking context would
               trap the open grid's fixed overlay below the yellow band (z 2);
               the tuck-behind works purely off the band being positioned
-              later in the DOM. Border signposts (Alborz 2026-09-07; polish
-              pass 2026-09-15: flanking flex columns replace the absolute
-              calc(50% ± 370px) divs, so nothing clips at narrow widths). */}
-          <div style={{ ...D.type.caption, width: 220, color: CANON.cream, opacity: 0.85, paddingBottom: 40, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
-            Your friend groups <ArrowUp size={16} strokeWidth={1.5} />
-          </div>
+              later in the DOM. Border signposts (Alborz 2026-09-17): BOTH
+              live in the right-hand column, arrows leading, sharing one
+              left edge — "Your friend groups" 16px ABOVE the green/yellow
+              border, the collect/log note 16px BELOW it. The card tucks 24px
+              behind the band, so this column's bottom sits 24px under the
+              border: paddingBottom 40 = 24 + 16 above; top calc(100% − 8px)
+              = 24 − 16 below. zIndex lifts the column (NOT the wrapper)
+              above the band so the lower note paints on the yellow. The
+              left column is a matching spacer that keeps the card centered. */}
+          <div aria-hidden style={{ flex: "0 1 270px", minWidth: 0 }} />
           <DeckGridCard mode="personal" viewerId={user.id} dockInFlow />
-          <div style={{ width: 220 }} />
+          <div style={{ flex: "0 1 270px", minWidth: 0, alignSelf: "stretch", position: "relative", zIndex: 3, display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingLeft: 48, paddingBottom: 40, boxSizing: "border-box" }}>
+            <div style={signpost}>
+              <ArrowUp size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+              <span>Your friend groups</span>
+            </div>
+            <div style={{ ...signpost, position: "absolute", left: 48, top: "calc(100% - 8px)", alignItems: "flex-start" }}>
+              <ArrowDown size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+            </div>
+          </div>
         </div>
       )}
       {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its OWN
             Accent-yellow zone below the fold — clearly separated from the
             group world, matching the reference tab's world color. ── */}
       {!inGroup && !socialOnbActive && (
-        <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "24px 24px 140px" }}>
-          {/* The yellow-side signpost (polish pass 2026-09-15): a matching
-              [220 | 640 | 220] row at the band's top — the right slot holds
-              the collect/log caption, mirroring the green-side column
-              beside the deck card above. Natural wrap, no clipping. */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 24, marginBottom: 24 }}>
-            <div style={{ width: 220 }} />
-            <div style={{ width: 640 }} />
-            <div style={{ ...D.type.caption, width: 220, color: CANON.cream, opacity: 0.85, display: "flex", alignItems: "flex-start", gap: 6, textAlign: "left" }}>
-              <ArrowDown size={16} strokeWidth={1.5} style={{ marginTop: 2, flexShrink: 0 }} />
-              <span>Your space to collect and log. This becomes the profile your friends see.</span>
-            </div>
-          </div>
+        // Top padding 104 clears the collect/log note that now hangs into
+        // the band from the signpost column above (16px under the border,
+        // three lines) with room to breathe before the band's content.
+        <div style={{ background: C.yellow, position: "relative", zIndex: 2, padding: "104px 24px 140px" }}>
           <ReferenceLookupBand />
         </div>
       )}
@@ -3127,6 +3131,12 @@ const notifDotChat: React.CSSProperties = {
 };
 const notifDotCluster: React.CSSProperties = {
   width: 16, height: 16, borderRadius: "50%", background: C.blue, flexShrink: 0,
+};
+// Border signposts: caption type in cream, an arrow leading each line.
+// The three-line collect/log split is Alborz's (nowrap keeps it exact).
+const signpost: React.CSSProperties = {
+  ...D.type.caption, color: CANON.cream, opacity: 0.85,
+  display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap", textAlign: "left",
 };
 const tipBubble: React.CSSProperties = {
   // The highlight-hover bubble's grammar, element-anchored (approved mockup
