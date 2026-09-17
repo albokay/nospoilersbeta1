@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { MessageSquare, Link2, X, Heart, Lock } from "lucide-react";
+import { CANON } from "../styles/canon";
 
 /** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
 function afterScroll(): Promise<void> {
@@ -860,39 +861,43 @@ export default function RepliesList({
       {highlightPicker && (
         <HighlightPicker
           anchorRect={highlightPicker.anchorRect}
+          anchorEl={highlightBtnRefs.current[highlightPicker.replyId]}
           onClose={() => setHighlightPicker(null)}
           onConfirm={handleHighlightConfirmReply}
           color="#adc8d7"
         />
       )}
 
+      {/* Hint modals (2026-09-16): the same cream info card the entry-level
+          hints got in the desktop polish pass — dark ink, Body 15, an
+          Identity "Got it" (these reply-card copies had been missed). */}
       {highlightHint && (
-        <Modal onClose={() => setHighlightHint(null)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 32px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+        <Modal onClose={() => setHighlightHint(null)} width="min(520px,92vw)" cardStyle={hintCard}>
+          <div>
+            <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
               Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setHighlightHint(null)}>Got it</button>
+              <button className="d-btn-identity" style={hintGotIt} onClick={() => setHighlightHint(null)}>Got it</button>
             </div>
           </div>
         </Modal>
       )}
 
       {quoteHintId && (
-        <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardClassName="explanation-card">
-          <div style={{ padding: "16px 12px 12px" }}>
-            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+        <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardStyle={hintCard}>
+          <div>
+            <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
             </p>
-            <p style={{ margin: "0 0 16px", fontSize: 17, lineHeight: 1.6, fontWeight: 500 }}>
+            <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               The thread stays linear, but the connections between ideas are visible.
             </p>
-            <p style={{ margin: "0 0 32px", fontSize: 15, lineHeight: 1.6, opacity: 0.65, fontStyle: "italic" }}>
+            <p style={{ margin: "0 0 24px", fontSize: 13, lineHeight: 1.6, opacity: 0.7, fontStyle: "italic" }}>
               This might feel confusing, but try it out! You can always edit your response after you post it.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" style={{ fontSize: 15, padding: "8px 24px" }} onClick={() => setQuoteHintId(null)}>Got it</button>
+              <button className="d-btn-identity" style={hintGotIt} onClick={() => setQuoteHintId(null)}>Got it</button>
             </div>
           </div>
         </Modal>
@@ -1284,7 +1289,7 @@ export default function RepliesList({
                   )}
                   {isReplyOwn && (
                     <>
-                      <button className="btn" style={sPillGeom} onClick={() => handleStartEditReply(r)}>Edit</button>
+                      <button className="btn sb-reply-friend" style={sPillGeom} onClick={() => handleStartEditReply(r)}>Edit</button>
                       <button className="btn btn-danger" style={sPillGeom} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
                   )}
@@ -1312,7 +1317,7 @@ export default function RepliesList({
                       {/* Styled by the `.reply-card .btn` rules (theme.ts,
                           !important) — inline colors here are dead weight. */}
                       <button
-                        className="btn"
+                        className="btn sb-reply-friend"
                         style={sPillGeom}
                         onClick={() => handleQuote(r)}
                         title="Quote this response"
@@ -1361,3 +1366,14 @@ export default function RepliesList({
     </>
   );
 }
+
+// The cream info-card grammar (matches V2InlineThread's entry-level hints).
+const hintCard: React.CSSProperties = {
+  borderRadius: 24, padding: 32, background: CANON.cream, color: CANON.dark,
+  animation: "dCardRise 180ms ease-out",
+};
+const hintGotIt: React.CSSProperties = {
+  fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 700, padding: "12px 28px",
+  minHeight: 44, borderRadius: 9999, boxSizing: "border-box", cursor: "pointer",
+  background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}`,
+};

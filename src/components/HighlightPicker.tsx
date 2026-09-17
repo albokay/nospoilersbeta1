@@ -29,6 +29,11 @@ const NOTE_MAX         = 50;
 interface Props {
   /** Bounding rect of the Highlight button, used to anchor the popover. */
   anchorRect: DOMRect;
+  /** The button the picker hangs from. When given, the picker re-reads its
+   *  rect on every scroll (any scroller — the room pages scroll inside a
+   *  fixed container, not the window) and resize, so it travels with the
+   *  page instead of staying pinned to where it opened. */
+  anchorEl?: HTMLElement | null;
   onClose: () => void;
   onConfirm: (payload: { kind: "yup" } | { kind: "note"; note: string }) => void | Promise<void>;
   /** Color for the radio dot AND the `ok` button — defaults to canon-yellow
@@ -37,8 +42,24 @@ interface Props {
   color?: string;
 }
 
-export default function HighlightPicker({ anchorRect, onClose, onConfirm, color = CANON_YELLOW }: Props) {
+export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfirm, color = CANON_YELLOW }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [rect, setRect] = useState<DOMRect>(anchorRect);
+  useEffect(() => {
+    if (!anchorEl) return;
+    let raf = 0;
+    const follow = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setRect(anchorEl.getBoundingClientRect()));
+    };
+    window.addEventListener("scroll", follow, true);
+    window.addEventListener("resize", follow);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", follow, true);
+      window.removeEventListener("resize", follow);
+    };
+  }, [anchorEl]);
   const noteInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selected, setSelected] = useState<"yup" | "note" | null>(null);
@@ -50,8 +71,8 @@ export default function HighlightPicker({ anchorRect, onClose, onConfirm, color 
   // right edge so the popover doesn't kiss the screen edge.
   const positionStyle: React.CSSProperties = {
     position: "fixed",
-    top:   anchorRect.bottom + GAP_FROM_ANCHOR,
-    right: Math.max(14, window.innerWidth - anchorRect.right),
+    top:   rect.bottom + GAP_FROM_ANCHOR,
+    right: Math.max(14, window.innerWidth - rect.right),
     width: POPOVER_WIDTH,
   };
 

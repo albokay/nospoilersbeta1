@@ -891,6 +891,7 @@ export default function V2InlineThread({
       {highlightPicker && (
         <HighlightPicker
           anchorRect={highlightPicker.anchorRect}
+          anchorEl={highlightBtnRef.current}
           onClose={() => setHighlightPicker(null)}
           onConfirm={handleHighlightConfirm}
         />

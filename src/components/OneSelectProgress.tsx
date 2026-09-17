@@ -8,9 +8,14 @@ const ZERO_ID = "0-0";
 const ZERO_LABEL = "haven't started";
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-// Confirm-modal header: Header 1 (Lora bold 34, canon §16) in sentence case,
-// no trailing punctuation (Alborz 2026-08-12).
-const confirmHeader: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 34, lineHeight: 1.2, margin: 0 };
+// The confirm (2026-09-16): the yellow dialog grammar — a progress change
+// acts on the show. Subtitle-22 Lora title, Body 15, two M pills.
+const dlgTitle: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" };
+const dlgBody: React.CSSProperties = { fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1.5, opacity: 0.9, margin: "0 0 20px" };
+const dlgPill: React.CSSProperties = {
+  flex: 1, fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 700, padding: "12px 20px",
+  minHeight: 44, borderRadius: 9999, boxSizing: "border-box", cursor: "pointer",
+};
 const sentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function buildGroupedOptions(show: { seasons?: number[] }) {
@@ -171,6 +176,37 @@ export default function OneSelectProgress({
     ? (shortLabel ? "rewatched: " : "you REwatched: ")
     : (shortLabel ? "watched: " : "you've watched: ");
 
+  // One confirm for both render paths (the compact V1 picker and the pill).
+  const confirmModal = requireConfirm && confirmOpen && (
+    <Modal
+      onClose={cancelSelection}
+      width="min(360px, 92vw)"
+      cardStyle={{ borderRadius: 24, padding: 32, background: CANON.accent, color: CANON.cream, animation: "dCardRise 180ms ease-out" }}
+    >
+      {/* Backward picks warn (Alborz 2026-09-16) — going back can
+          spoil friends if you've actually watched further. Forward
+          picks (callers without the rating hand-off) keep the plain
+          confirm. */}
+      {pending?.backwards ? (
+        <>
+          <h3 style={dlgTitle}>Are you sure?</h3>
+          <p style={dlgBody}>Did you mean to turn your progress backwards? If you&rsquo;ve watched more, you could accidentally spoil things for your friends!</p>
+        </>
+      ) : (
+        <>
+          <h3 style={dlgTitle}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
+          <p style={dlgBody}>Your feed will only show posts up to your selected episode.</p>
+        </>
+      )}
+      <div style={{ display: "flex", gap: 12 }}>
+        <button className="d-btn-cream" style={{ ...dlgPill, background: "transparent", color: CANON.cream, border: `2px solid ${CANON.cream}` }} onClick={cancelSelection}>Cancel</button>
+        <button className="d-btn-identity" style={{ ...dlgPill, background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}` }} onClick={confirmSelection}>
+          {pending?.backwards ? "Yes" : "Confirm"}
+        </button>
+      </div>
+    </Modal>
+  );
+
   // Compact (mobile) button that opens a picker modal
   if (compactLabel) {
     return (
@@ -210,23 +246,7 @@ export default function OneSelectProgress({
             </select>
           </Modal>
         )}
-        {/* Backward moves get the SAME plain confirm as forward ones (Alborz
-            2026-08-11) — the red warning variant is retired; its copy is
-            preserved in HANDOFF.md in case it's reinstated. */}
-        {requireConfirm && confirmOpen && (
-          <Modal onClose={cancelSelection}>
-            <div style={{ marginBottom: 12 }}>
-              <h3 style={confirmHeader}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
-            </div>
-            <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
-              Your feed will only show posts up to your selected episode.
-            </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-              <button className="btn" onClick={cancelSelection}>Cancel</button>
-              <button className="btn" onClick={confirmSelection}>Confirm</button>
-            </div>
-          </Modal>
-        )}
+        {confirmModal}
       </>
     );
   }
@@ -281,25 +301,7 @@ export default function OneSelectProgress({
         </span>
       )}
 
-      {/* Backward moves get the SAME plain confirm as forward ones (Alborz
-          2026-08-11) — the red warning variant is retired; its copy is
-          preserved in HANDOFF.md in case it's reinstated. */}
-      {requireConfirm && confirmOpen && (
-        <Modal onClose={cancelSelection}>
-          <div style={{ marginBottom: 12 }}>
-            <h3 style={confirmHeader}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
-          </div>
-
-          <p className="muted" style={{ marginTop: 0, marginBottom: 0, fontSize: 14 }}>
-            Your feed will only show posts up to your selected episode.
-          </p>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-            <button className="btn" onClick={cancelSelection}>Cancel</button>
-            <button className="btn" onClick={confirmSelection}>Confirm</button>
-          </div>
-        </Modal>
-      )}
+      {confirmModal}
     </>
   );
 }

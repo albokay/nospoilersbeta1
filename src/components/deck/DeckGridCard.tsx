@@ -59,7 +59,6 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   // back 'down' over 150ms; state clears so the transform rests at the
   // edit-mode scale.
   const [bounce, setBounce] = useState<{ cardId: string; phase: "up" | "down" } | null>(null);
-  const [editTip, setEditTip] = useState(false);
   // Answer-to-reveal hover (Alborz §6.3): per-ROW — any covered cell in the
   // row shows the same two-line invitation; plural when 2+ answers wait.
   const [coveredHover, setCoveredHover] = useState<string | null>(null);
@@ -269,19 +268,14 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
             {saving ? <LoadingDots /> : "Save"}
           </button>
         ) : (
-          <span style={{ position: "relative", display: "inline-block" }}>
-            {/* Pass 3: pencil 15 → 20 in a 44 hit, same spot under "(me)". */}
-            <button
-              onClick={() => { setEdits({}); setUi("edit"); }}
-              onMouseEnter={() => setEditTip(true)}
-              onMouseLeave={() => setEditTip(false)}
-              style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-              <Pencil size={20} strokeWidth={2} />
-            </button>
-            {editTip && (
-              <span style={editTipBubble}>Edit answers?</span>
-            )}
-          </span>
+          /* Pencil 20 in a 44 hit under "(me)". No hover bubble (Alborz
+             2026-09-16) — the sub-row caption names the pencil. */
+          <button
+            aria-label="Edit your answers"
+            onClick={() => { setEdits({}); setUi("edit"); }}
+            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <Pencil size={20} strokeWidth={2} />
+          </button>
         )}
       </div>
       <div style={{ flexGrow: 1 }} />
@@ -296,6 +290,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
       <div
         role="button"
         title={`open ${title}`}
+        data-tip-anchor="deck-dock"
         onClick={() => setUi("open")}
         style={{
           // dockInFlow (2026-09-05): the personal dashboard anchors the
@@ -488,15 +483,6 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   }
   return openOverlay;
 }
-
-// Pass 3: both deck bubbles adopt D.hoverPop (13, radius 18, 9×14, the one
-// unified shadow) — each keeps its own fill. Anchored above the pencil.
-const editTipBubble: React.CSSProperties = {
-  ...D.hoverPop,
-  position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)",
-  background: CANON.personal, color: CANON.cream, fontWeight: 600,
-  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10,
-};
 
 // Pass 3: member names 13 → Label 14/700.
 const colName: React.CSSProperties = {

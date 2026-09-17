@@ -1758,7 +1758,7 @@ export default function DashboardPage() {
         </button>
       )}
       {inGroup && (
-        <button style={chatTab} title="open chat" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
+        <button style={chatTab} title="open chat" data-tip-anchor="chat-tab" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
           {!!activeGroupId && chatNewByGroup.get(activeGroupId) && <span style={notifDotChat} />}
           <MessageCircle size={24} color={C.green} />
         </button>
@@ -2033,8 +2033,11 @@ export default function DashboardPage() {
         const ready = completeRows.length >= 1 && completeRows.length === filledRows.length && (!creating || inviteShows.length >= 1);
         return (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeInviteModal(); }}>
-          <div style={{ ...searchCard, background: C.sky, position: "relative" }}>
-            <button style={modalClose} onClick={closeInviteModal}><X size={20} color={CANON.cream} /></button>
+          {/* The SENT state wears the "You're in!" look (Alborz 2026-09-16):
+              cream card, Identity headline, dark body, on-cream link fields.
+              Composing stays on sky. */}
+          <div style={{ ...searchCard, background: inviteLinks ? C.cream : C.sky, position: "relative" }}>
+            <button style={modalClose} onClick={closeInviteModal}><X size={20} color={inviteLinks ? CANON.dark : CANON.cream} /></button>
             {!inviteLinks && (
               <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
                 {inviteTargetGroupId ? <>Connect more friends<br />to this group:</> : <>Email friends to<br />start a watch group:</>}
@@ -2130,7 +2133,7 @@ export default function DashboardPage() {
                   </div>
                 )}
                 {inviteLinks.every((r) => !r.error && !r.emailFailed) && (
-                  <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, letterSpacing: 0, color: C.cream, textAlign: "center", margin: "8px 0 24px" }}>
+                  <h1 style={{ ...D.type.display, color: CANON.identity, textAlign: "center", margin: "8px 0 24px" }}>
                     Invites sent!
                   </h1>
                 )}
@@ -2139,12 +2142,12 @@ export default function DashboardPage() {
                     Email-failed rows keep their copy-link treatment below. */}
                 {inviteLinks.some((r) => !r.error && !r.emailFailed && r.link) && (
                   <div style={{ margin: "0 0 20px" }}>
-                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "0 0 8px" }}>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 15, lineHeight: 1.6, color: CANON.dark, margin: "0 0 10px" }}>
                       {preventLastWordOrphan("You can also text them an invite link.")}
                     </p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {inviteLinks.filter((r) => !r.error && !r.emailFailed && r.link).map((r) => (
-                        <InviteLinkRow key={r.link} name={r.name || r.email} link={r.link as string} tone="sky" />
+                        <InviteLinkRow key={r.link} name={r.name || r.email} link={r.link as string} tone="cream" />
                       ))}
                     </div>
                   </div>
@@ -2154,14 +2157,18 @@ export default function DashboardPage() {
                     hand it to the sender instead of a false "sent!". */}
                 {inviteLinks.some((r) => !r.error && r.emailFailed) && (
                   <>
-                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.5, color: C.cream, margin: "8px 0 12px" }}>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 15, lineHeight: 1.6, color: CANON.dark, margin: "8px 0 12px" }}>
                       {preventLastWordOrphan(inviteLinks.filter((r) => !r.error && r.emailFailed).length === 1
                         ? "Sidebar is having an issue and couldn't email this invite right now. You can copy the link and send it to your friend yourself. It works the same. Or log out, log back in, and try one more time. Sorry for the inconvenience."
                         : "Sidebar is having an issue and couldn't email these invites right now. You can copy the links and send them to your friends yourself. They work the same. Or log out, log back in, and try one more time. Sorry for the inconvenience.")}
                     </p>
-                    {inviteLinks.filter((r) => !r.error && r.emailFailed).map((r, i) => (
-                      <CopyRow key={i} email={r.email} link={r.link} />
-                    ))}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {inviteLinks.filter((r) => !r.error && r.emailFailed).map((r, i) => (
+                        r.link
+                          ? <InviteLinkRow key={i} name={r.name || r.email} link={r.link} tone="cream" />
+                          : <CopyRow key={i} email={r.email} link={r.link} />
+                      ))}
+                    </div>
                   </>
                 )}
                 <div style={{ textAlign: "center", marginTop: 12 }}>

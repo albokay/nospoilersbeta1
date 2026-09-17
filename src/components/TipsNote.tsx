@@ -12,7 +12,7 @@
  * flag on dismiss (so first-visit auto-open never returns). Parenthetical
  * asides render italic + muted, the retired sticky's grammar.
  */
-import { useState, type CSSProperties } from "react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import StickyNote from "./StickyNote";
 import TipText from "./TipText";
@@ -65,6 +65,22 @@ export default function TipsNote({ page, onDismiss }: {
     setIdx((i) => Math.max(0, Math.min(GROUP_ROOM_TIPS.length - 1, i + delta)));
   }
 
+  // Tips about a viewport-fixed control measure that control (tagged
+  // data-tip-anchor) and pin beside it. Re-measured per step and on resize;
+  // layout effect so the first paint is already in place.
+  const anchorKey = page === "groupRoom" ? GROUP_ROOM_TIPS[idx]?.anchor : undefined;
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    if (!anchorKey) { setAnchorRect(null); return; }
+    const measure = () => {
+      const el = document.querySelector(`[data-tip-anchor="${anchorKey}"]`);
+      setAnchorRect(el ? el.getBoundingClientRect() : null);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [anchorKey]);
+
   // The shell's >=1160px gate is skipped throughout: these only exist when
   // the user pressed "?" (or first-visit auto-open) — hiding them then
   // would make the button feel dead on narrow desktop windows.
@@ -72,13 +88,21 @@ export default function TipsNote({ page, onDismiss }: {
     const t = GROUP_ROOM_TIPS[idx];
     const atStart = idx === 0;
     const atEnd = idx === GROUP_ROOM_TIPS.length - 1;
-    return (
-      <div style={scrollFrame}>
+    // Deck tip: its bottom edge 16px above the docked tab, left edge on the
+    // tab's title text. Chat tip: its right edge 16px left of the edge tab,
+    // top level with it. Both FIXED — the controls are. No target found
+    // (e.g. the deck dock self-hides) → the static page placement.
+    const pinned: CSSProperties | null = t.anchor && anchorRect
+      ? t.anchor === "deck-dock"
+        ? { position: "fixed", left: anchorRect.left + 24, bottom: window.innerHeight - anchorRect.top + 16 }
+        : { position: "fixed", right: window.innerWidth - anchorRect.left + 16, top: anchorRect.top }
+      : null;
+    const note = (
       <StickyNote
         key={idx}
         tilt={t.tilt}
         width={300}
-        centered
+        centered={!pinned}
         onDismiss={onDismiss}
         ariaLabel="Tips"
         ignoreViewportGate
@@ -88,7 +112,7 @@ export default function TipsNote({ page, onDismiss }: {
         entranceDelayMs={0}
         // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
         boxShadow="0 4px 14px rgba(0,0,0,0.13)"
-        style={{ position: "absolute", top: t.top, left: t.left, pointerEvents: "auto" }}
+        style={pinned ? { ...pinned, pointerEvents: "auto" } : { position: "absolute", top: t.top, left: t.left, pointerEvents: "auto" }}
       >
         <TipBody tip={t} />
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 10 }}>
@@ -103,8 +127,8 @@ export default function TipsNote({ page, onDismiss }: {
           </button>
         </div>
       </StickyNote>
-      </div>
     );
+    return pinned ? note : <div style={scrollFrame}>{note}</div>;
   }
   const tips = tipsFor(page, "desktop");
   return (

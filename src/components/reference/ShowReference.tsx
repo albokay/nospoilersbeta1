@@ -308,7 +308,9 @@ export default function ShowReference({
           {/* Pass 3: "Cast for [picker]:" → "Cast" head, then the episode
               picker on its own line as an M cream-outline pill (14/700,
               16 chevron). */}
-          <h2 style={sectionH}>{episodeCast ? "Cast" : "Cast so far"}</h2>
+          {/* First heading on the page — no top margin (Alborz 2026-09-16):
+              the control row's own spacing is enough; 32 more read empty. */}
+          <h2 style={{ ...sectionH, marginTop: 0 }}>{episodeCast ? "Cast" : "Cast so far"}</h2>
           {episodeCast && (
             <div style={{ margin: "0 0 16px" }}>
               <span style={{ position: "relative", display: "inline-block" }}>
@@ -348,17 +350,17 @@ export default function ShowReference({
                 key={p.name}
                 onClick={() => openActorImdb(p)}
                 title={`${p.name} on IMDb`}
-                style={{ width: mobile ? 132 : 150, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: CREAM, fontFamily: "inherit" }}
+                style={{ width: mobile ? 132 : 150, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "center", color: CREAM, fontFamily: "inherit" }}
               >
                 {p.img ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w185${p.img}`}
                     alt=""
                     loading="lazy"
-                    style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover" }}
+                    style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", display: "block", margin: "0 auto" }}
                   />
                 ) : (
-                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
+                  <div style={{ width: 72, height: 72, margin: "0 auto", borderRadius: "50%", background: "rgba(254,248,234,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: LORA, fontWeight: 700, fontSize: 24 }}>
                     {p.name[0]}
                   </div>
                 )}
@@ -399,7 +401,7 @@ export default function ShowReference({
       )}
 
 
-      <h2 style={sectionH}>So far on {ref.showName}</h2>
+      <h2 style={visiblePeople.length > 0 ? sectionH : { ...sectionH, marginTop: 0 }}>So far on {ref.showName}</h2>
       {/* The essentials sticky (mobile: in-flow; desktop: first rail cell of
           the grid below) — X'd out per show, re-summoned by the dashboard's
           pick-essentials prompt. */}

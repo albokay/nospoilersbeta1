@@ -667,6 +667,10 @@ header.site{
 .reply-card{ background:var(--canon-cream,#fef8ea) !important; }
 .reply-card .btn:not(.btn-danger){ color:var(--canon-dark,#1a3a4a) !important; border-color:var(--dos-bg) !important; background:transparent !important; } /* dark text on cream (2026-09-15 contrast fix; border keeps the room's ink) */
 .reply-card .btn:not(.btn-danger):hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
+/* Response Edit + Quote… (Alborz 2026-09-16): Friend blue text + outline;
+   fill Friend with cream text on hover. */
+.reply-card .btn.sb-reply-friend:not(.btn-danger){ color:var(--canon-friend,#adc8d7) !important; border-color:var(--canon-friend,#adc8d7) !important; }
+.reply-card .btn.sb-reply-friend:not(.btn-danger):hover{ background:var(--canon-friend,#adc8d7) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--canon-friend,#adc8d7) !important; }
 .reply-card .likeWrap{ color:var(--dos-bg) !important; border-color:var(--dos-bg) !important; background:transparent !important; }
 .reply-card .likeWrap:hover{ background:var(--dos-bg) !important; color:var(--canon-cream,#fef8ea) !important; border-color:var(--dos-bg) !important; }
 
@@ -1079,6 +1083,7 @@ body.pwa-standalone{ background-image:none !important; }
 @media (hover:hover){
   .d-btn-alert:hover:not(:disabled){ background:var(--canon-alert,#f45028) !important; color:var(--canon-cream,#fef8ea) !important; }
   .d-btn-cream:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-accent,#dea838) !important; }
+  .d-btn-identity:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-identity,#355eb8) !important; }
 }
 
 `;

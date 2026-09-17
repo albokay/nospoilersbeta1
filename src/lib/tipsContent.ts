@@ -29,7 +29,11 @@ export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
  *  time, stepped with < > in THIS array order (welcome → gear → chat →
  *  deck) — all four at once was overwhelming. Positions are
  *  viewport-relative anchors for the centered StickyNote transform. */
-export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean };
+/** `anchor` (2026-09-16): tips about a VIEWPORT-FIXED control (the docked
+ *  deck tab, the chat edge tab) pin to that control's on-screen rect and
+ *  stay fixed with it — in the page's scroll frame they drifted away as
+ *  the page scrolled. `top`/`left` remain the fallback placement. */
+export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean; anchor?: "deck-dock" | "chat-tab" };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
     body: "Welcome to your group room. Shows you and your friends add accumulate here — you can propose more shows, vote on each others' picks, add more friends, and start a show room from this page.",
@@ -50,13 +54,13 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
     body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
-    tilt: 2, top: "80%", left: "71%", mobileOmit: true,
+    tilt: 2, top: "80%", left: "71%", mobileOmit: true, anchor: "deck-dock",
   },
   // Chat is LAST (QA rounds 3–4) — it doubles as the send-off. The caveat
   // sits mid-body ("("-paragraphs render italic); no trailing aside.
   {
     body: "You can use this 💬 button to discuss what you want to watch with your friends.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nSidebar is for you and your friends! If they're not here yet, nudge them so you can all get going!",
-    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))",
+    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", anchor: "chat-tab",
   },
 ];
 

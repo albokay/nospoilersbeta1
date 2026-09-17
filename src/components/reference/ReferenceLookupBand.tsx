@@ -929,7 +929,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 rows={5}
                 autoFocus
                 placeholder="Your take — as short or long as you like."
-                style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 12, padding: "10px 12px", marginTop: 14, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
+                style={{ width: "100%", boxSizing: "border-box", border: "none", outline: "none", borderRadius: 12, padding: "10px 12px", marginTop: 14, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
               />
               <div style={{ marginTop: 16 }}>
                 {canonCard.show ? (
