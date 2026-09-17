@@ -41,7 +41,7 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
     tilt: -2, top: "44%", left: "24%",
   },
   {
-    body: "Invited friends who haven't joined yet are listed in the ⚙️ — open it to see who's pending, nudge friends who need reminders, and do other group room maintenance.",
+    body: "Use the ⚙️ for general group maintenance. You can change your group name, nudge whoever hasn't joined yet, or leave the room (sad) from here.",
     // Re-anchored 2026-09-16 (rev 2): the group name + gear live in the
     // 96px header bar now, so the note sits UP beside them — level with
     // the bar, just right of the centered heading — rather than below,
@@ -59,7 +59,7 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   // Chat is LAST (QA rounds 3–4) — it doubles as the send-off. The caveat
   // sits mid-body ("("-paragraphs render italic); no trailing aside.
   {
-    body: "You can use this 💬 button to discuss what you want to watch with your friends.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nSidebar is for you and your friends! If they're not here yet, nudge them so you can all get going!",
+    body: "You can use this 💬 button for non-show-specific conversations.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nYou can also use it to discuss what you want to watch next. Sidebar is for you and your friends.",
     tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", anchor: "chat-tab",
   },
 ];
@@ -71,7 +71,7 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
     return [
       { body: "This is your home dashboard \u2014 where you access your friend groups." },
       { body: "Yellow circles represent invited friends who haven't joined yet. Sidebar has emailed their invite. If you're getting impatient, you can nudge anyone from inside the group." },
-      { body: "While you wait for friends to join, you can still go inside to add more shows or start writing. Everything you write will be waiting for them the moment they catch up." },
+      { body: "While you wait for friends to join, you can still go inside to add more shows or start writing. Everything you write will be waiting for them the moment they join in." },
     ];
   }
   // Mobile's sheet doesn't POINT at the chat button the way the placed
@@ -121,7 +121,7 @@ export function tipsDefaultOpen(page: TipsPage, userId: string | null | undefine
  *  progress, until X'd). The desktop sticky leads with a ← icon pointing
  *  at the picker (rendered by RoomProgressTip, not part of the string). */
 export const ROOM_PROGRESS_TIP: Tip = {
-  body: "This progress picker is the most important part of this room. Every time you enter the show room, make sure this matches your watch progress so that you can read any new writing your friends left you.",
+  body: "This progress picker is the most important part of the show room. Every time you get here, make sure this matches your watch progress so that you can read any new writing your friends left you.",
   aside: "(And so that you don't accidentally spoil them with your own writing!)",
 };
 /** Per-user, same 2026-08-01 reasoning as tipsSeenKey. */

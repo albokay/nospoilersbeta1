@@ -691,7 +691,6 @@ export default function V2InlineThread({
                   align="right"
                   useAbsolute={true}
                   width={220}
-                  variant="tip"
                 >
                   <button
                     className="btn"
@@ -708,7 +707,6 @@ export default function V2InlineThread({
                   align="right"
                   useAbsolute={true}
                   width={260}
-                  variant="tip"
                 >
                   <button
                     className="btn sb-edit-business"

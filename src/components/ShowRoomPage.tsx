@@ -629,13 +629,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
       const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
-      // Colors (Alborz 2026-09-13): RED = responses to YOUR OWN entry —
-      // readable here, hidden keeps its counted red below; GREEN =
-      // responses in threads you RESPONDED in. Your own replies are
+      // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
+      // GREEN = new responses you can READ now, on your own entry or in a
+      // thread you responded in; RED = hidden responses to your entry,
+      // waiting for you to catch up (counted, below). Your own replies are
       // excluded from the visible-latest timestamp, so posting never
-      // self-notifies; catching up flips a hidden red to the readable kind.
-      if (isOwn && hasNewReadable) { out[tid] = { kind: "red" }; continue; }
-      if (!isOwn && myReplyThreadIds.has(tid) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
+      // self-notifies; catching up turns a hidden red into green.
+      if ((isOwn || myReplyThreadIds.has(tid)) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;

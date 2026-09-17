@@ -1839,7 +1839,7 @@ export default function DashboardPage() {
           {/* Empty group → the prompt sits just below the clusters. */}
           {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
             <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
-              What shows are you watching<br />or thinking about starting?
+              What shows do you want<br />to watch with your friends?
             </h1>
           )}
           {/* The group room's two actions, side by side and sized to their

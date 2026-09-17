@@ -226,7 +226,7 @@ function ShowNameLink({
       direction="above"
       align="left"
       portal
-      tooltipStyle={{ background: "#355eb8", color: "#FEF8EA", textWrap: "balance" as React.CSSProperties["textWrap"] }}
+      tooltipStyle={{ textWrap: "balance" as React.CSSProperties["textWrap"] }}
     >
       <Tag
         onClick={() => navigate(`/journal`, { state: { activeTab: showId } })}

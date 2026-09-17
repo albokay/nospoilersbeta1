@@ -1544,7 +1544,6 @@ export default function V3JournalPage({
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: activeFilter === "all" ? 34 : -10, top: -2, zIndex: 2 }}
-                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={200}
                         >
                           <div
@@ -1561,7 +1560,6 @@ export default function V3JournalPage({
                           direction="right"
                           gap={14}
                           style={{ position: "absolute", left: activeFilter === "all" ? 34 : -10, top: -2, zIndex: 2 }}
-                          tooltipStyle={{ background: "#adc8d7", color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}
                           width={260}
                         >
                           <div

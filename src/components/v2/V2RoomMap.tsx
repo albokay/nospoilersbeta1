@@ -799,7 +799,6 @@ export default function V2RoomMap({
                       align="center"
                       width={editMode ? 240 : 160}
                       portal
-                      variant="tip"
                     >
                       {/* Pass 3: while editing, the exit is an explicit S
                           Identity "Save" pill (the deck's edit grammar) —
@@ -974,7 +973,6 @@ export default function V2RoomMap({
                       direction="left"
                       width="auto"
                       portal
-                      tooltipStyle={{ textAlign: "center" }}
                       style={positioningStyle}
                     >
                       {usernameDiv}

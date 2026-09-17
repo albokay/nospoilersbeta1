@@ -509,7 +509,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                     onClick={() => openCanonCard(show)}
                     style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontWeight: 400, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
                   >
-                    {take ? "edit your line" : "add your line"}
+                    {take ? "edit your note" : "add a note"}
                   </button>
                 </>
               );

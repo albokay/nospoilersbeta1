@@ -506,11 +506,14 @@ function cell(v: boolean | null | undefined): React.CSSProperties {
 // phantom horizontal scroll + rubber-band snap-back), and spilled below the
 // card on the bottom-most row. Up-left it sits over the grid interior,
 // always inside the card.
-// Pass 3: D.hoverPop metrics, cream fill kept.
+// D.hoverPop metrics in the site's slanted cream pop (2026-09-16): the
+// −6° lean and subtle shadow every hover bubble now shares.
 const coveredBubble: React.CSSProperties = {
   ...D.hoverPop,
   position: "absolute", right: 24, bottom: 26, zIndex: 6,
   background: CANON.cream, color: CANON.dark,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+  transform: "rotate(-6deg)", transformOrigin: "bottom right",
   whiteSpace: "nowrap", textAlign: "left", pointerEvents: "none",
 };
 

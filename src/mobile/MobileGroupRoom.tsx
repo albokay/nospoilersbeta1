@@ -969,7 +969,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
           {empty && (
             <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
-              What shows are you watching<br />or thinking about starting?
+              What shows do you want<br />to watch with your friends?
             </h1>
           )}
 

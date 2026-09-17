@@ -20,7 +20,6 @@ export default function Tooltip({
   tooltipStyle,
   disabled = false,
   portal = false,
-  variant = "default",
 }: {
   text: React.ReactNode;
   children: React.ReactNode;
@@ -40,10 +39,6 @@ export default function Tooltip({
   // ancestor that creates a stacking context (opacity, transform, filter).
   // Only valid when useAbsolute is false (fixed positioning).
   portal?: boolean;
-  // "tip" (2026-09-16) = the dashboard's slanted cream pop: cream paper,
-  // dark ink, a −6° lean and LEFT-justified text. "default" keeps the
-  // original sky bubble with centered text.
-  variant?: "default" | "tip";
 }) {
   // Hooks must always be called unconditionally — early return comes after
   const [show, setShow] = useState(false);
@@ -115,27 +110,25 @@ export default function Tooltip({
       {children}
       {show && (useAbsolute || rect) && (() => {
         const pos = useAbsolute ? getAbsoluteStyle() : getFixedStyle();
-        // The lean composes with whatever transform the placement already
-        // needs (the centering translate), so positioning still holds.
-        const tip = variant === "tip";
+        // ONE hover look site-wide (Alborz 2026-09-16): the dashboard's
+        // slanted cream pop — cream paper, dark ink, a −6° lean, subtle
+        // shadow, left-justified. The old room-colored fills (sky in
+        // friend rooms, green elsewhere, via --dos-bg) are retired. The lean
+        // composes with the placement's own translate, pivoting on the
+        // edge nearest the element.
         const bubble = (
           <div style={{
             ...pos,
-            ...(tip
-              ? {
-                  transform: `${pos.transform ? `${pos.transform} ` : ""}rotate(-6deg)`,
-                  transformOrigin: direction === "below" ? "top center" : "bottom center",
-                  background: CANON.cream,
-                  color: CANON.dark,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
-                  textAlign: "left" as const,
-                }
-              : {
-                  background: "var(--dos-bg)",
-                  color: CANON.cream,
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
-                  textAlign: "center" as const,
-                }),
+            transform: `${pos.transform ? `${pos.transform} ` : ""}rotate(-6deg)`,
+            transformOrigin:
+              direction === "below" ? "top center"
+              : direction === "left" ? "center right"
+              : direction === "right" ? "center left"
+              : "bottom center",
+            background: CANON.cream,
+            color: CANON.dark,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+            textAlign: "left",
             borderRadius: 18,
             padding: "9px 14px",
             fontSize: 13,

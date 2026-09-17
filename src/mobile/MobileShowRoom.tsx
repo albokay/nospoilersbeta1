@@ -601,12 +601,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
       const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
-      // Colors (Alborz 2026-09-13): RED = responses to YOUR OWN entry
-      // (readable here; hidden keeps its counted red below); GREEN =
-      // responses in threads you RESPONDED in. Own replies excluded, so
-      // posting never self-notifies.
-      if (isOwn && hasNewReadable) { out[tid] = { kind: "red" }; continue; }
-      if (!isOwn && myReplyThreadIds.has(tid) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
+      // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
+      // GREEN = new responses you can READ now, on your own entry or in a
+      // thread you responded in; RED = hidden responses to your entry,
+      // waiting for you to catch up (counted, below). Own replies excluded,
+      // so posting never self-notifies.
+      if ((isOwn || myReplyThreadIds.has(tid)) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;

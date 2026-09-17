@@ -1175,7 +1175,7 @@ function AppShell() {
         return (
           <span className="topHeaderPillFixed" style={{ display: "inline-flex", gap: 8 }}>
             {pillTooltipText
-              ? <Tooltip text={pillTooltipText} direction="below" align="left" tooltipStyle={{ background: CANON.friend, color: "#1a2c3a", boxShadow: "0 4px 20px rgba(0,0,0,0.18)" }}>{pillContent}</Tooltip>
+              ? <Tooltip text={pillTooltipText} direction="below" align="left">{pillContent}</Tooltip>
               : pillContent}
             {showProfilePill && (
               <button
