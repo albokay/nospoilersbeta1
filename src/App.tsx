@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import lazyWithReload from "./lib/lazyWithReload";
+import useVersionRefresh from "./lib/useVersionRefresh";
 import { isStandalone } from "./lib/installPrompt";
 import LoadingDots from "./components/LoadingDots";
 import SidebarAvatar from "./components/SidebarAvatar";
@@ -128,6 +129,10 @@ export default function App() {
   // visually on its own — nothing references the vars yet (see src/styles/canon.ts).
   useEffect(() => { injectCanonVars(); injectDOSStyles(); }, []);
   const location = useLocation();
+  // New-deploy pickup without a force-quit (2026-09-19): checks on return /
+  // navigation, applies only AT a navigation. Unconditional, fixed order —
+  // it runs before every early return below, like the two hooks above.
+  useVersionRefresh();
   const pathParts = location.pathname.split("/").filter(Boolean);
   // CP7 navigation cutover: the restructured world (dashboard / show rooms) is
   // desktop-only, so the legacy-route redirects below apply to DESKTOP only.
