@@ -145,7 +145,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [digestBusy, setDigestBusy] = useState(false);
   // Swipe-down dismiss (2026-07-28 rollout); disabled while a save is in
   // flight, matching each sheet's tap-outside guard.
-  const digestSwipe = useSheetSwipeDown(() => setDigestModalOpen(false), { enabled: !digestBusy });
+  const digestSwipe = useSheetSwipeDown(() => setDigestModalOpen(false), { enabled: !digestBusy, open: digestModalOpen });
   async function openDigestModal() {
     if (!roomId) return;
     setDigestOptOut(null);
@@ -173,7 +173,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // group, whose shelf now hides this room for the leaver only.
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
-  const leaveSwipe = useSheetSwipeDown(() => setLeaveConfirmOpen(false), { enabled: !leaveBusy });
+  const leaveSwipe = useSheetSwipeDown(() => setLeaveConfirmOpen(false), { enabled: !leaveBusy, open: leaveConfirmOpen });
   // "We're done with this one" from the gear (Alborz 2026-09-13) — parks
   // the show for the whole group (same action as the shelf long-press) and
   // returns to the group room; revivable from the finished drawer.

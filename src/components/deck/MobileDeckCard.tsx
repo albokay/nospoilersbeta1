@@ -75,7 +75,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
   // Pass 3: the answers sheet joins the M sheet grammar — grabber +
   // swipe-down (scrollRef gates the drag so the rows still scroll).
   const sheetScrollRef = useRef<HTMLDivElement>(null);
-  const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetScrollRef });
+  const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetScrollRef, open: ui !== "docked" });
   function showTapTip(cardId: string, e: React.MouseEvent) {
     if (tapTipTimer.current) window.clearTimeout(tapTipTimer.current);
     setTapTip({ plural: coveredCount(cardId) > 1, x: e.clientX, y: e.clientY });

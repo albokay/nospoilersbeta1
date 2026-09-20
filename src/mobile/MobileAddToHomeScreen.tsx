@@ -28,7 +28,7 @@ export default function MobileAddToHomeScreen() {
   const [, bump] = useState(0);
   const [guide, setGuide] = useState<InstallPath | null>(null);
   useEffect(() => onInstallPromptChange(() => bump((n) => n + 1)), []);
-  const swipe = useSheetSwipeDown(() => setGuide(null));
+  const swipe = useSheetSwipeDown(() => setGuide(null), { open: guide != null });
 
   if (isStandalone()) return null;
 

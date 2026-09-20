@@ -61,7 +61,7 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
   // scrollRef gate keeps long tip sets scrolling normally — the sheet only
   // follows the finger while the tips sit at their top (which resolves the
   // 2026-08-01 swipe-vs-scroll conflict that retired the gesture here).
-  const swipe = useSheetSwipeDown(close, { scrollRef });
+  const swipe = useSheetSwipeDown(close, { scrollRef, open });
 
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="tips" style={{ ...tabStyle, ...tabOverride }}>?</button>;

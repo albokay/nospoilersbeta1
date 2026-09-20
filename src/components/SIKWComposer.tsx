@@ -60,7 +60,7 @@ export default function SIKWComposer({
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
   const customInputRef = useRef<HTMLInputElement | null>(null);
-  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting });
+  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting, open: mobile });
 
   function handleSelectPreset(preset: string) {
     setSelectedPreset(preset);

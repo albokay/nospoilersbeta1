@@ -129,7 +129,7 @@ export default function V2InlineThread({
   // is BACK on mobile, but highlighting is selection-based (needs a mouse) —
   // tapping opens an informational bottom sheet pointing at desktop instead.
   const [mobileHlInfoOpen, setMobileHlInfoOpen] = useState(false);
-  const mobileHlSwipe = useSheetSwipeDown(() => setMobileHlInfoOpen(false));
+  const mobileHlSwipe = useSheetSwipeDown(() => setMobileHlInfoOpen(false), { open: mobileHlInfoOpen });
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(thread.titleBase);
   const [editBody, setEditBody] = useState(thread.body);

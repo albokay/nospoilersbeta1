@@ -59,7 +59,7 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
   const canDelete = confirmText.trim().toUpperCase() === "DELETE";
 
   // Mobile sheet swipe-down (hook must run unconditionally; inert on desktop).
-  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: mobile && !busy && phase === "main" });
+  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: mobile && !busy && phase === "main", open: mobile });
 
   async function doDelete() {
     setBusy(true);

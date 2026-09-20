@@ -208,9 +208,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [gearOpen, setGearOpen] = useState(false);
   // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
   // scrolls, so the drag only engages when it's scrolled to the top.
-  const gearSwipe = useSheetSwipeDown(() => setGearOpen(false));
-  const lpSheetSwipe = useSheetSwipeDown(() => setSheetFor(null));
-  const drawerSwipe = useSheetSwipeDown(() => setFinishedDrawerOpen(false));
+  const gearSwipe = useSheetSwipeDown(() => setGearOpen(false), { open: gearOpen });
+  const lpSheetSwipe = useSheetSwipeDown(() => setSheetFor(null), { open: sheetFor != null });
+  const drawerSwipe = useSheetSwipeDown(() => setFinishedDrawerOpen(false), { open: finishedDrawerOpen });
   const [renameValue, setRenameValue] = useState("");
   const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
   const [contactsSaving, setContactsSaving] = useState(false);

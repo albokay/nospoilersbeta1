@@ -58,7 +58,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
   const [error, setError]             = useState<string | null>(null);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
-  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting });
+  const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting, open: mobile });
 
   function setOption(i: number, val: string) {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)));
