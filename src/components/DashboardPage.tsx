@@ -93,6 +93,7 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster,
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import LoadingDots from "./LoadingDots";
+import { GhostCluster, GhostShowPill } from "./DashboardGhosts";
 import OneSelectProgress from "./OneSelectProgress";
 import TrailerCard from "./TrailerCard";
 import ReferenceLookupBand from "./reference/ReferenceLookupBand";
@@ -1655,11 +1656,40 @@ export default function DashboardPage() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  if (authLoading || loading) {
+  if (authLoading) {
     return (
       <div style={{ ...pageStyle, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
         {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
         <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
+  }
+  if (loading) {
+    // Cold-open ghosts (desktop twin of the 09-14 /m pass, 2026-09-19): the
+    // header bar paints immediately (logo + title depend on nothing) and two
+    // ghost clusters hold the pile geometry so the real clusters land in
+    // place instead of pushing the page down when the fetch resolves. The
+    // header's circles wait for the loaded page (they carry state/handlers).
+    return (
+      <div style={{ ...pageStyle, background: C.green, display: "flex", flexDirection: "column" }} aria-busy="true">
+        <div style={topBar}>
+          <div style={{ display: "flex", justifyContent: "flex-start" }}>
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
+          </div>
+          <div style={D.header.center}>
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your dashboard</h1>
+          </div>
+          <div />
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={clustersRow}>
+          <GhostCluster barWidth={96} />
+          <GhostCluster barWidth={128} />
+        </div>
+        <div style={{ textAlign: "center", padding: "0 0 48px" }}>
+          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+        </div>
+        <div style={{ flex: 1 }} />
       </div>
     );
   }
@@ -1801,9 +1831,21 @@ export default function DashboardPage() {
               standard loading line, NOT the empty-group prompt (which reads
               as a broken/empty room while the fetch is in flight). */}
           {groupLoading ? (
-            <div style={{ textAlign: "center", padding: 48 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
-            </div>
+            // Ghost shelf (2026-09-19, /m parity): a header-height bar + two
+            // show pills in the 1–2-show layout hold the shelf's footprint so
+            // the real rows land in place; the loading line rides beneath.
+            <>
+              <div style={{ ...shelfHeader, display: "flex", justifyContent: "center" }} aria-hidden="true">
+                <span style={{ width: 200, height: 16, borderRadius: 8, background: "rgba(253,248,236,0.25)", display: "inline-block" }} />
+              </div>
+              <div style={shelfLayout(2)}>
+                <GhostShowPill barWidth={120} />
+                <GhostShowPill barWidth={160} />
+              </div>
+              <div style={{ textAlign: "center", padding: "24px 0 0" }}>
+                <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
+              </div>
+            </>
           ) : (
           <>
           {groupShelves.watching.length > 0 && (
@@ -1903,9 +1945,17 @@ export default function DashboardPage() {
           {/* Until the rail's first resolution, dots instead of a false
               "no groups" empty flash (2026-09-01) — same arrival time. */}
           {railLoaded ? clustersEl : (
-            <div style={{ textAlign: "center", padding: 32 }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
-            </div>
+            // Ghost clusters hold the pile footprint until the rail resolves
+            // (2026-09-19; was the bare loading line) — same arrival time.
+            <>
+              <div style={clustersRow}>
+                <GhostCluster barWidth={96} />
+                <GhostCluster barWidth={128} />
+              </div>
+              <div style={{ textAlign: "center", padding: "0 0 8px" }}>
+                <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>loading<LoadingDots /></span>
+              </div>
+            </>
           )}
           <div style={{ textAlign: "center", marginTop: 40 }}>
             {/* Hidden while the onboarding flow is up — its overlays own the
