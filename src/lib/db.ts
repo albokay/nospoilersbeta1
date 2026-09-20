@@ -3283,6 +3283,10 @@ export type GroupChatActivity = {
   chatLastSeenAt: number | null;
   /** Newest OTHER member's message (own excluded), or null. */
   latestMessageAt: number | null;
+  /** Other members' messages newer than chatLastSeenAt (2026-09-19, the
+   *  chat tab's count). undefined until 20260919_group_chat_unread_count.sql
+   *  is applied — callers fall back to the plain dot. */
+  unreadCount?: number;
 };
 
 /** Per people-group chat new-message state for the caller (own msgs excluded). */
@@ -3293,7 +3297,13 @@ export async function fetchGroupChatActivity(userId: string): Promise<GroupChatA
     groupId: r.group_id,
     chatLastSeenAt: r.chat_last_seen_at ? new Date(r.chat_last_seen_at).getTime() : null,
     latestMessageAt: r.latest_message_at ? new Date(r.latest_message_at).getTime() : null,
+    unreadCount: r.unread_count == null ? undefined : Number(r.unread_count),
   }));
+}
+
+/** The chat tab's badge text: 1–9 as-is, then "9+" (Alborz 2026-09-19). */
+export function chatUnreadLabel(n: number): string {
+  return n > 9 ? "9+" : String(n);
 }
 
 /** Whether a group's chat should show a "new messages" dot. */

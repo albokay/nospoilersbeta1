@@ -45,6 +45,7 @@ import {
   roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
   chatHasNewActivity,
+  chatUnreadLabel,
   fetchMyPendingInvitesForGroup,
   fetchGroupPendingInvites,
   type MyPendingInvite,
@@ -164,6 +165,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [chatNew, setChatNew] = useState(false);
+  // Unread count for the chat tab's badge (Alborz 2026-09-19); undefined
+  // until the 09-19 RPC is applied → plain dot, as before.
+  const [chatUnread, setChatUnread] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   // Swipe-deck arc CP2: the invitee's WAVE 2 fires on entry here — but NOT
   // in the session they joined (issue (b)). Initializing TRUE from the
@@ -303,7 +307,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         .then((rv) => { if (!cancelled) setRoomVis(rv); })
         .catch(() => {});
       fetchGroupChatActivity(user.id)
-        .then((ca) => { if (!cancelled) setChatNew(ca.some((a) => a.groupId === groupId && chatHasNewActivity(a))); })
+        .then((ca) => {
+          if (cancelled) return;
+          const mine = ca.find((a) => a.groupId === groupId);
+          const isNew = !!mine && chatHasNewActivity(mine);
+          setChatNew(isNew);
+          setChatUnread(isNew ? mine?.unreadCount : (mine?.unreadCount == null ? undefined : 0));
+        })
         .catch(() => {});
     })();
     return () => { cancelled = true; };
@@ -342,6 +352,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             const r = payload.new as any;
             if (!r || r.author_id === selfUserId) return;
             setChatNew(true);
+            setChatUnread((n) => (n == null ? undefined : n + 1));
           },
         )
         .subscribe((status) => {
@@ -865,7 +876,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
-              {chatNew && <span className="m-dot-in" style={notifDotChatInline} />}
+              {chatNew && (
+                <span className="m-dot-in" style={notifDotChatInline}>
+                  {(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null}
+                </span>
+              )}
               <MessageCircle size={20} color={C.green} />
             </button>
             {/* Finished-together drawer tab (2026-09-13) — the chat tab's
@@ -1449,8 +1464,11 @@ const drawerGrid: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap
 const notifDotChatInline: React.CSSProperties = {
   // Straddles the tab's rounded left edge — desktop's placement rule (the
   // right edge is off-screen, so the dot can't live there).
-  position: "absolute", top: 6, left: 0, width: 14, height: 14, borderRadius: "50%",
+  position: "absolute", top: 6, left: 0, minWidth: 14, height: 14, padding: "0 4px", boxSizing: "border-box", borderRadius: 9999,
   background: C.blue, zIndex: 1,
+  // Holds the unread count (2026-09-19): cream 10/800, same as the map dots.
+  display: "flex", alignItems: "center", justifyContent: "center",
+  color: CANON.cream, fontSize: 10, fontWeight: 800, lineHeight: 1,
 };
 // Bottom 16 (was 40; Alborz 2026-08-18) — the browse rows follow directly.
 const contentWrap: React.CSSProperties = { padding: "8px 16px 16px" };

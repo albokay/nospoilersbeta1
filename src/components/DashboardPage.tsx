@@ -68,6 +68,7 @@ import {
   fetchRoomDnfMap,
   setRoomDnf,
   chatHasNewActivity,
+  chatUnreadLabel,
   markGroupChatSeen,
   fetchTspDemoSeen,
   markTspDemoSeen,
@@ -929,6 +930,14 @@ export default function DashboardPage() {
     for (const a of chatActivity) m.set(a.groupId, chatHasNewActivity(a));
     return m;
   }, [chatActivity]);
+  // Unread COUNT for the chat tab's own badge (Alborz 2026-09-19) — only
+  // there: the cluster/rail dots roll up other new writing too, so they stay
+  // dots. undefined until the 09-19 RPC is applied → the tab keeps its dot.
+  const chatUnreadByGroup = useMemo(() => {
+    const m = new Map<string, number | undefined>();
+    for (const a of chatActivity) m.set(a.groupId, chatHasNewActivity(a) ? a.unreadCount : 0);
+    return m;
+  }, [chatActivity]);
   // Cluster dot: blue if any room has new visible writing OR chat is new; else
   // red if any room has new invisible writing.
   const clusterDotByGroup = useMemo(() => {
@@ -1508,7 +1517,7 @@ export default function DashboardPage() {
     loadChat(chatGroupId);
     // Opening the chat clears its new-message dot (server stamp + optimistic).
     markGroupChatSeen(chatGroupId).catch(() => { /* tolerate */ });
-    setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now() } : a)));
+    setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now(), unreadCount: a.unreadCount == null ? undefined : 0 } : a)));
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups, contactNames]);
 
@@ -1545,11 +1554,12 @@ export default function DashboardPage() {
               const at = new Date(r.created_at).getTime();
               setChatActivity((prev) => {
                 const idx = prev.findIndex((a) => a.groupId === gid);
-                if (idx === -1) return [...prev, { groupId: gid, chatLastSeenAt: null, latestMessageAt: at }];
+                if (idx === -1) return [...prev, { groupId: gid, chatLastSeenAt: null, latestMessageAt: at, unreadCount: 1 }];
                 const a = prev[idx];
                 if (a.latestMessageAt != null && a.latestMessageAt >= at) return prev;
                 const next = prev.slice();
-                next[idx] = { ...a, latestMessageAt: at };
+                // Count rides along live; stays undefined (dot-only) pre-RPC.
+                next[idx] = { ...a, latestMessageAt: at, unreadCount: a.unreadCount == null ? undefined : a.unreadCount + 1 };
                 return next;
               });
             },
@@ -1759,7 +1769,11 @@ export default function DashboardPage() {
       )}
       {inGroup && (
         <button style={chatTab} title="open chat" data-tip-anchor="chat-tab" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
-          {!!activeGroupId && chatNewByGroup.get(activeGroupId) && <span style={notifDotChat} />}
+          {!!activeGroupId && chatNewByGroup.get(activeGroupId) && (
+            <span style={notifDotChat}>
+              {(chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
+            </span>
+          )}
           <MessageCircle size={24} color={C.green} />
         </button>
       )}
@@ -3136,8 +3150,11 @@ const notifDotChat: React.CSSProperties = {
   // Sit on the upper portion of the tab's rounded left edge (the curve), so the
   // dot straddles that curve — partly on the tab, partly off — rather than the
   // flat top near the icon.
-  position: "absolute", top: 10, left: 0, width: 16, height: 16, borderRadius: "50%",
+  position: "absolute", top: 10, left: 0, minWidth: 16, height: 16, padding: "0 4px", boxSizing: "border-box", borderRadius: 9999,
   background: C.blue, zIndex: 1,
+  // Holds the unread count (2026-09-19): cream 10/800, same as the map dots.
+  display: "flex", alignItems: "center", justifyContent: "center",
+  color: CANON.cream, fontSize: 10, fontWeight: 800, lineHeight: 1,
 };
 const notifDotCluster: React.CSSProperties = {
   width: 16, height: 16, borderRadius: "50%", background: C.blue, flexShrink: 0,
