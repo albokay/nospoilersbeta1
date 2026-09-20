@@ -265,12 +265,14 @@ function AnimatedLogo() {
         transition: (!animating && visible) ? "opacity 0.9s ease 0.2s" : "none",
       }}>
         <SidebarLogo scale={1} blocksOpacity={blocksOpacity} betaBadge />
+        {/* Tagline (Alborz 2026-09-19): "TV, for you and your friends" —
+            the old lowercase transform is dropped so "TV" keeps its case. */}
         <p style={{
           margin: 0, fontSize: 13, fontWeight: 700,
-          letterSpacing: "0.12em", textTransform: "lowercase",
+          letterSpacing: "0.12em",
           color: CANON.cream, opacity: taglineOpacity, flexShrink: 0,
         }}>
-          talk. together. whenever.
+          TV, for you and your friends
         </p>
       </div>
     </>

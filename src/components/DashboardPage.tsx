@@ -2560,13 +2560,23 @@ export default function DashboardPage() {
             <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
               Or call it for the whole group: the show moves to the finished drawer under &ldquo;Didn&rsquo;t finish:&rdquo;, and anyone can bring it back later.
             </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button style={{ ...D.pill.M, background: C.red, color: CANON.cream }} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>Leave</button>
-              <button style={{ ...D.pill.M, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doDnfRoom(leaveConfirm.roomId)}>We&rsquo;re done with it</button>
-              <button
-                style={{ ...D.pill.M, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
-                onClick={() => setLeaveConfirm(null)}
-              >Cancel</button>
+            {/* Odds-and-ends 2026-09-19: the two paths sit centred on one row;
+                Cancel drops to its own row, right-aligned so its right edge
+                lands on the blue pill's — the column shrink-wraps to the top
+                row's width, so flex-end IS that edge. */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div style={{ display: "inline-flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <button style={{ ...D.pill.M, background: C.red, color: CANON.cream }} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>Leave</button>
+                  <button style={{ ...D.pill.M, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doDnfRoom(leaveConfirm.roomId)}>We&rsquo;re done with it</button>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    style={{ ...D.pill.M, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                    onClick={() => setLeaveConfirm(null)}
+                  >Cancel</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

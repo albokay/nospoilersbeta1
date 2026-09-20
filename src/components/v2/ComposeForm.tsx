@@ -662,7 +662,12 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         </div>
       )}
 
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: mobileIdiom ? "56px 16px 24px" : "64px 48px 180px" }}>
+      {/* /m with the fixed top-bar caption (room + drafts composes): the top
+          padding clears the bar (safe-area + 12 + 44) plus a 12px gap — it was
+          a flat 56px, so on notched phones the eyebrow rode up under the
+          "{room} · S01 E03" caption (Alborz 2026-09-19). The onboarding compose
+          has no caption (own ← back + headingOverride) and keeps 56. */}
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: mobileIdiom ? (mobileHeaderContext ? "calc(env(safe-area-inset-top, 0px) + 68px) 16px 24px" : "56px 16px 24px") : "64px 48px 180px" }}>
         {/* === CONTEXT === */}
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           {headingOverride ?? (

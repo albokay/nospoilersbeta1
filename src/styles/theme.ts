@@ -1084,6 +1084,11 @@ body.pwa-standalone{ background-image:none !important; }
   .d-btn-alert:hover:not(:disabled){ background:var(--canon-alert,#f45028) !important; color:var(--canon-cream,#fef8ea) !important; }
   .d-btn-cream:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-accent,#dea838) !important; }
   .d-btn-identity:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-identity,#355eb8) !important; }
+  /* Progress-confirm Yes/Confirm only (Alborz 2026-09-19): on hover the ring
+     goes cream too — cream fill, cream outline, identity text — so no dark
+     ring is left over. Scoped: the RepliesList "Got it" buttons sit on cream
+     cards and keep their identity ring. */
+  .d-btn-identity--cream-ring:hover:not(:disabled){ border-color:var(--canon-cream,#fef8ea) !important; }
 }
 
 `;

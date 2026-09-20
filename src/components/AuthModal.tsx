@@ -283,7 +283,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
 
       {mode === "signup" && (
         <p style={{ marginTop: 12, fontSize: 13, lineHeight: 1.5, color: CANON.dark, opacity: 0.7 }}>
-          Sidebar only uses your email to sign you in, send your friend invites, and send an occasional digest (only if your rooms have new activity you haven't seen) — emails are never shared or sold.
+          Sidebar only uses your email to sign you in and to send a daily update of your friends&rsquo; writing (only if there&rsquo;s new writing you haven&rsquo;t seen). Emails are never shared or sold.
         </p>
       )}
 

@@ -1648,6 +1648,7 @@ export default function V2RoomMap({
                         <MapCellDot
                           kind={signal.kind}
                           redCount={signal.redCount}
+                          ring={editMode}
                           showX={cellHovered && signal.kind === "red" && !!signal.redCount}
                           onDotMouseEnter={() => setHoveredDotKey(fullCellKey)}
                           onDotMouseLeave={() => setHoveredDotKey((prev) => (prev === fullCellKey ? null : prev))}
@@ -1787,11 +1788,17 @@ function MapCellDot({
   showX = false,
   onDotMouseEnter,
   onDotMouseLeave,
+  ring = false,
 }: {
   kind: "green" | "yellow" | "red";
   redCount?: number;
   onDismiss?: () => void;
   showX?: boolean;
+  /** Map edit mode (Alborz 2026-09-19): the viewer's own reached cells go
+   *  canon-red, so a red dot on them bleeds into the cell. The dot borrows
+   *  the green dot's Friend ring in that state only — cells are red
+   *  nowhere else. */
+  ring?: boolean;
   onDotMouseEnter?: () => void;
   onDotMouseLeave?: () => void;
 }) {
@@ -1812,7 +1819,7 @@ function MapCellDot({
         background: bg,
         // Green-on-green was invisible (Alborz 2026-09-13): the green dot
         // wears a Friend-sky ring so it registers on any cell color.
-        boxShadow: kind === "green" ? `0 0 0 2px ${CANON.friend}` : undefined,
+        boxShadow: kind === "green" || (isRed && ring) ? `0 0 0 2px ${CANON.friend}` : undefined,
         color: CANON.cream,
         display: "flex",
         alignItems: "center",

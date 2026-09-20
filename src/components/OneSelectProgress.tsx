@@ -200,7 +200,7 @@ export default function OneSelectProgress({
       )}
       <div style={{ display: "flex", gap: 12 }}>
         <button className="d-btn-cream" style={{ ...dlgPill, background: "transparent", color: CANON.cream, border: `2px solid ${CANON.cream}` }} onClick={cancelSelection}>Cancel</button>
-        <button className="d-btn-identity" style={{ ...dlgPill, background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}` }} onClick={confirmSelection}>
+        <button className="d-btn-identity d-btn-identity--cream-ring" style={{ ...dlgPill, background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}` }} onClick={confirmSelection}>
           {pending?.backwards ? "Yes" : "Confirm"}
         </button>
       </div>
