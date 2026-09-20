@@ -332,6 +332,22 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     }
     prevExpandedRef.current = expandedThreadId;
   }, [expandedThreadId, onEntryExpanded, onEntryCollapsed]);
+
+  // Catch up WHILE an entry is open (2026-09-20). Advancing progress from the
+  // room's picker re-runs load() without unmounting the feed, so
+  // expandedThreadId never changes and the effect above doesn't re-fire. The
+  // open entry's responses just became readable in place — re-stamp it so the
+  // catch-up GREEN (and the server-side room BLUE, via markThreadSeen) clears
+  // for writing the user is literally looking at, instead of lighting up
+  // behind them and only settling on the next expand.
+  const prevProgRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${viewerProgress?.s ?? 0}:${viewerProgress?.e ?? 0}`;
+    const prev = prevProgRef.current;
+    prevProgRef.current = key;
+    if (prev === null || prev === key) return; // mount, or no actual move
+    if (expandedThreadId) onEntryExpanded?.(expandedThreadId);
+  }, [viewerProgress?.s, viewerProgress?.e, expandedThreadId, onEntryExpanded]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const ticketRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const highlightTimer = useRef<number | null>(null);

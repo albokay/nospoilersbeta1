@@ -3367,6 +3367,39 @@ export async function fetchThreadViewState(groupId: string): Promise<Record<stri
   return out;
 }
 
+/**
+ * The viewer's PROGRESS when they last opened each entry in a room
+ * (2026-09-20, catch-up green). Companion to fetchThreadViewState, which
+ * returns WHEN they opened it. Needed because a timestamp alone can't say
+ * "this became readable since I was last here" — a response written before
+ * your open is older than your open stamp forever.
+ *
+ * Tolerant: pre-migration the columns don't exist, the RPC returns rows
+ * without them, and every entry maps to undefined — callers then fall back
+ * to the timestamp-only rule, i.e. exactly today's behaviour.
+ */
+export async function fetchThreadSeenProgress(
+  groupId: string,
+): Promise<Record<string, { season: number; episode: number }>> {
+  const { data, error } = await supabase.rpc("get_thread_view_state", { p_group_id: groupId });
+  if (error) throw error;
+  const out: Record<string, { season: number; episode: number }> = {};
+  for (const r of (data ?? []) as Array<{ thread_id: string; seen_season: number | null; seen_episode: number | null }>) {
+    if (r.seen_season == null || r.seen_episode == null) continue;
+    out[r.thread_id] = { season: Number(r.seen_season), episode: Number(r.seen_episode) };
+  }
+  return out;
+}
+
+/** Is `reply` deeper than the progress the viewer had at their last open? */
+export function isAboveSeenProgress(
+  reply: { season: number; episode: number } | undefined,
+  seen: { season: number; episode: number } | undefined,
+): boolean {
+  if (!reply || !seen) return false;
+  return reply.season > seen.season || (reply.season === seen.season && reply.episode > seen.episode);
+}
+
 // ── Per-thread read tracking — public context (20260429) ────────────────────
 //
 // Companion to mark_thread_seen / get_thread_view_state above (which cover
@@ -3452,6 +3485,17 @@ export async function fetchGroupThreads(
    */
   hiddenCounts: Record<string, number>;
   /**
+   * Per-thread DEEPEST episode tag among chain-visible replies by OTHERS on
+   * threads the viewer is part of (2026-09-20). Compared against the
+   * viewer's progress WHEN THEY LAST OPENED the entry to answer "did
+   * something here become readable since I was last here?" — the
+   * catch-up half of the signal contract. A pure timestamp comparison
+   * can't answer it: a reply written BEFORE your last open is older than
+   * your open stamp, so it never reads as new, even though it only just
+   * became readable. Absent when the thread has no readable other-replies.
+   */
+  deepestVisibleReply: Record<string, { season: number; episode: number }>;
+  /**
    * Per-thread MAX created_at of HIDDEN replies on threads the viewer is
    * part of (authored or responded in). Used by the V2 friend-room map to decide whether a prior
    * red-dot manual dismissal is still valid: if a new hidden reply lands
@@ -3505,6 +3549,7 @@ export async function fetchGroupThreads(
   const replyCounts: Record<string, number> = {};
   const latestVisibleReplyAt: Record<string, number> = {};
   const hiddenCounts: Record<string, number> = {};
+  const deepestVisibleReply: Record<string, { season: number; episode: number }> = {};
   const latestHiddenReplyAt: Record<string, number> = {};
   const aheadCounts: Record<string, number> = {};
   const sharedAt: Record<string, number> = {};
@@ -3583,6 +3628,17 @@ export async function fetchGroupThreads(
       }
       if (hidden > 0) hiddenCounts[thread.id] = hidden;
       if (maxHiddenAt > 0) latestHiddenReplyAt[thread.id] = maxHiddenAt;
+      // Deepest READABLE other-reply tag (2026-09-20, catch-up green).
+      let dS = -1, dE = -1;
+      for (const r of allReplies) {
+        if (r.group_id !== groupId) continue;
+        if (r.is_deleted) continue;
+        if (r.author_id === viewerId) continue;
+        if (!chainVisible(r)) continue;
+        const rs = r.season ?? 0, re = r.episode ?? 0;
+        if (rs > dS || (rs === dS && re > dE)) { dS = rs; dE = re; }
+      }
+      if (dS >= 0) deepestVisibleReply[thread.id] = { season: dS, episode: dE };
     }
 
     // Ahead-count: per-thread count of replies above viewer progress on
@@ -3601,7 +3657,7 @@ export async function fetchGroupThreads(
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, aheadCounts, sharedAt, gatedThreads };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, deepestVisibleReply, aheadCounts, sharedAt, gatedThreads };
 }
 
 /** CP5 (2026-07-06): leave ONE show room in ONE group — never global. The

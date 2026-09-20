@@ -20,6 +20,7 @@ import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
+  fetchThreadSeenProgress, isAboveSeenProgress,
   fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
@@ -185,6 +186,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // 2026-09-12: a response in a conversation you're part of is for you).
   const [myReplyThreadIds, setMyReplyThreadIds] = useState<Set<string>>(new Set());
   const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
+  // Catch-up green (2026-09-20): the deepest READABLE other-reply tag per
+  // thread, and the progress the viewer had when they last opened it. A
+  // reply readable now but ABOVE that progress only just became readable
+  // → green, regardless of when it was written.
+  const [deepestVisibleReply, setDeepestVisibleReply] = useState<Record<string, { season: number; episode: number }>>({});
+  const [seenProgress, setSeenProgress] = useState<Record<string, { season: number; episode: number }>>({});
   const [firstHighlightedSet, setFirstHighlightedSet] = useState<Set<string>>(new Set());
   const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] = useState<Record<string, number>>({});
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
@@ -393,9 +400,26 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
       setPerThreadHiddenCount(gr.hiddenCounts ?? {});
       setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
+      setDeepestVisibleReply(gr.deepestVisibleReply ?? {});
       // Cross-device opens (2026-09-12): merge the server's per-entry open
       // stamps into the local map — opening on your phone clears here too.
       if (!privateOnly && roomId) {
+        // Progress-at-last-open, for the catch-up arm of green (2026-09-20).
+        fetchThreadSeenProgress(roomId)
+          .then((sp) => setSeenProgress((prev) => {
+            // MERGE, keeping the DEEPER progress per entry — never replace.
+            // markThreadSeen is fire-and-forget, so a refetch that lands
+            // before it would otherwise hand back the OLD progress and
+            // re-light the green we just cleared on expand. Same shape as
+            // the lastOpenedAt merge above (which keeps the later stamp).
+            const next = { ...prev };
+            for (const [tid, sv] of Object.entries(sp)) {
+              const cur = next[tid];
+              if (!cur || sv.season > cur.season || (sv.season === cur.season && sv.episode > cur.episode)) next[tid] = sv;
+            }
+            return next;
+          }))
+          .catch(() => { /* tolerate (pre-migration) */ });
         fetchThreadViewState(roomId).then((sv) => {
           setLastOpenedAt((prev) => {
             const next = { ...prev };
@@ -405,10 +429,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           });
         }).catch(() => { /* tolerate (migration state) */ });
       }
-      // Hydrate manual red-dot dismissals from localStorage (persist across sessions).
+      // Hydrate manual red-dot dismissals from localStorage (persist across
+      // sessions). ns_tdot_x_ = the map dot's explicit X, and ONLY that
+      // (2026-09-20): the old ns_tdot_dismiss_ namespace was also stamped by
+      // expanding an entry on /m, so every legacy key is ambiguous and is
+      // deliberately left unread — red returns for anything dismissed by an
+      // expand, which is the point. A real X re-dismisses under the new key.
       const dismisses: Record<string, number> = {};
       for (const t of gr.threads as Thread[]) {
-        const v = localStorage.getItem(`ns_tdot_dismiss_${t.id}`);
+        const v = localStorage.getItem(`ns_tdot_x_${t.id}`);
         if (v) dismisses[t.id] = parseInt(v, 10);
       }
       setRedDismissedAt(dismisses);
@@ -629,13 +658,21 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const tid = entry.threadId;
       const isOwn = !!profile?.username && entry.authorUsername === profile.username;
       const hasNewReadable = (perThreadLatestReply[tid] ?? 0) > (lastOpenedAt[tid] ?? 0);
+      // Catch-up arm (Alborz 2026-09-20): a response readable NOW but above
+      // the progress you had when you last opened this entry only just became
+      // readable — green, no matter when it was written. Without this, a
+      // response written BEFORE your last open is older than your open stamp
+      // forever, so red would drop on catch-up and nothing would light.
+      // Needs 20260920_seen_progress_catchup_green.sql; pre-migration
+      // seenProgress is empty and this is inert.
+      const becameReadable = isAboveSeenProgress(deepestVisibleReply[tid], seenProgress[tid]);
       // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
       // GREEN = new responses you can READ now, on your own entry or in a
       // thread you responded in; RED = hidden responses in those same threads,
       // waiting for you to catch up (counted, below). Your own replies are
       // excluded from the visible-latest timestamp, so posting never
       // self-notifies; catching up turns a hidden red into green.
-      if ((isOwn || myReplyThreadIds.has(tid)) && hasNewReadable) { out[tid] = { kind: "green" }; continue; }
+      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       const dismissedAt = redDismissedAt[tid] ?? 0;
@@ -646,7 +683,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
   // ── White "never opened" outline (others' entries) — Alborz 2026-09-12:
   //    it used to be "new since last visit", marked seen ON SIGHT, so an
@@ -679,11 +716,19 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       try { localStorage.setItem("ns_highlight_seen", JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
+    // Stamp progress-at-open locally too (2026-09-20) so the catch-up GREEN
+    // clears on this expand rather than waiting for the server round-trip —
+    // mark_thread_seen writes the same pair. effectiveProgress = the rewatch
+    // ceiling when rewatching, matching the SQL's CASE.
+    {
+      const effNow = effectiveProgress(progressForShow);
+      if (effNow) setSeenProgress((prev) => ({ ...prev, [threadId]: { season: effNow.s, episode: effNow.e } }));
+    }
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
     // Server stamp — makes opens CROSS-DEVICE (and feeds CP2's exact room
     // dots). Tolerant fire-and-forget.
     if (!privateOnly && roomId) markThreadSeen(roomId, threadId).catch(() => { /* tolerate */ });
-  }, [perThreadLatestReply, lastOpenedAt, privateOnly, roomId]);
+  }, [perThreadLatestReply, lastOpenedAt, privateOnly, roomId, progressForShow]);
 
   const handleEntryCollapsed = useCallback((threadId: string) => {
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
@@ -691,7 +736,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   const handleDismissRedDot = useCallback((threadId: string) => {
     const now = Date.now();
-    try { localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(now)); } catch { /* ignore */ }
+    try { localStorage.setItem(`ns_tdot_x_${threadId}`, String(now)); } catch { /* ignore */ }
     setRedDismissedAt((prev) => ({ ...prev, [threadId]: now }));
   }, []);
 
