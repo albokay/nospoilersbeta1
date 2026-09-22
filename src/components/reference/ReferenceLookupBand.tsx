@@ -608,14 +608,26 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                   )}
                 </div>
               <div style={{ display: "grid", gridTemplateColumns: `repeat(2, ${TW}px ${TW}px)`, columnGap: 20, rowGap: 36, justifyContent: "center", flex: 1, minWidth: 0 }}>
-                {[0, 1, 2, 3].map((i) => {
+                {(() => {
+                  // Does THIS page hold at least one show? Drives placeholder
+                  // alignment (see the placeholder comment below).
+                  const pageHasShow = [0, 1, 2, 3].some((i) => { const s = page * 2 + CELL_TO_SLOT[i]; return s < slots && !!canonList[s]; });
+                  return [0, 1, 2, 3].map((i) => {
                   const slotIdx = page * 2 + CELL_TO_SLOT[i];
                   if (slotIdx >= slots) return null;
                   const show = canonList[slotIdx];
                   if (!show) {
-                    // The placeholder spans its whole [thumb + text] section
-                    // and centers, so empty/part-filled states stay symmetric
-                    // instead of leaning left (Alborz 2026-09-08).
+                    // The placeholder spans its whole [thumb + text] section.
+                    // ALIGNMENT (Alborz 2026-09-21, refining his 09-08 rule):
+                    //  • page has NO shows → centred in the section, so the
+                    //    all-empty 2×2 stays symmetric instead of leaning left
+                    //    (the 09-08 intent, unchanged);
+                    //  • page has ANY show → start-aligned, i.e. exactly where
+                    //    that section's poster would sit. A filled section puts
+                    //    its poster in the first column, so a centred
+                    //    placeholder beside/below it sat ~58px to the right and
+                    //    the shelf read lopsided at 1–3 shows. Full pages are
+                    //    all posters and are untouched either way.
                     // First EMPTY slot speaks the invitation once ("Add a
                     // show"); later slots stay glyph-only at 0.8 (polish
                     // pass 2026-09-15).
@@ -625,7 +637,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                         key={`ph-${i}`}
                         onClick={openCanonSearch}
                         title="Add a show to your canon"
-                        style={{ gridColumn: "span 2", justifySelf: "center", width: TW, height: TH, borderRadius: 12, border: "2px dashed rgba(254,248,234,0.8)", background: "transparent", color: CREAM, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, opacity: isFirstEmpty ? 1 : 0.8 }}
+                        style={{ gridColumn: "span 2", justifySelf: pageHasShow ? "start" : "center", width: TW, height: TH, borderRadius: 12, border: "2px dashed rgba(254,248,234,0.8)", background: "transparent", color: CREAM, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, opacity: isFirstEmpty ? 1 : 0.8 }}
                       >
                         <Plus size={28} color={CREAM} strokeWidth={2} />
                         {isFirstEmpty && (
@@ -652,7 +664,8 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                       <div style={{ minWidth: 0, padding: "2px 8px 0 4px", color: CREAM }}>{body(show)}</div>
                     </React.Fragment>
                   );
-                })}
+                  });
+                })()}
               </div>
                 <div style={{ width: 36, flexShrink: 0 }}>
                   {page < pageCount - 1 && (

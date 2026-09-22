@@ -1464,7 +1464,10 @@ const drawerGrid: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap
 const notifDotChatInline: React.CSSProperties = {
   // Straddles the tab's rounded left edge — desktop's placement rule (the
   // right edge is off-screen, so the dot can't live there).
-  position: "absolute", top: 6, left: 0, minWidth: 14, height: 14, padding: "0 4px", boxSizing: "border-box", borderRadius: 9999,
+  // left:-5 (Alborz 2026-09-21): the 44px tab's tighter curve meant left:0 sat
+  // the dot fully on the cream; -5 centres it on the curve, half overhanging —
+  // desktop's look. Size stays 14 (it read right).
+  position: "absolute", top: 6, left: -5, minWidth: 14, height: 14, padding: "0 4px", boxSizing: "border-box", borderRadius: 9999,
   background: C.blue, zIndex: 1,
   // Holds the unread count (2026-09-19): cream 10/800, same as the map dots.
   display: "flex", alignItems: "center", justifyContent: "center",

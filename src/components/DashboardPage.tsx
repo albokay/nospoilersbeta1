@@ -3200,7 +3200,8 @@ const notifDotChat: React.CSSProperties = {
   // Sit on the upper portion of the tab's rounded left edge (the curve), so the
   // dot straddles that curve — partly on the tab, partly off — rather than the
   // flat top near the icon.
-  position: "absolute", top: 10, left: 0, minWidth: 16, height: 16, padding: "0 4px", boxSizing: "border-box", borderRadius: 9999,
+  // 20px (Alborz 2026-09-21; was 16 — the count read crowded).
+  position: "absolute", top: 10, left: 0, minWidth: 20, height: 20, padding: "0 5px", boxSizing: "border-box", borderRadius: 9999,
   background: C.blue, zIndex: 1,
   // Holds the unread count (2026-09-19): cream 10/800, same as the map dots.
   display: "flex", alignItems: "center", justifyContent: "center",

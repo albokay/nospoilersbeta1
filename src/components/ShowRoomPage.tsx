@@ -1129,6 +1129,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
               hideTopRightClose
               onCancel={() => setComposeOpen(false)}
+              // A progress advance made inside the composer refetches the room
+              // (signals, map, hidden counts) — same as the room picker's path.
+              onProgressPersisted={() => { void load(); }}
               onSubmitted={(destination, threadId) => {
                 setComposeOpen(false);
                 const toPrivate = privateOnly || destination === "private";

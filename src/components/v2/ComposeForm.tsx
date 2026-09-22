@@ -88,6 +88,12 @@ type ComposeFormProps = {
    *  (or whether to navigate at all). `destination` is the user's chosen
    *  destination: "private" / "public" / friend-group-id. */
   onSubmitted: (destination: "private" | "public" | string, threadId: string) => void;
+  /** Fired after the in-modal progress picker PERSISTS a new position
+   *  (2026-09-21). The host room refetches so its signals (red → green on
+   *  catch-up, map cells, hidden counts) update on the advance itself —
+   *  before this, a progress change made from inside the composer left the
+   *  room stale until a reload. */
+  onProgressPersisted?: (updated: ProgressEntry) => void;
   /** When true, the top-right "× not now" button doesn't render — the
    *  modal wrapper renders its own close affordance at the card's
    *  top-right corner. Default false (standalone page renders both the
@@ -184,7 +190,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext },
+  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext, onProgressPersisted },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -436,6 +442,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     try {
       const updated = await persistProgressUpdate(user.id, show.id, progress ?? undefined, target);
       setProgress(updated);
+      onProgressPersisted?.(updated);
     } catch (err) {
       console.warn("rating-flow progress write failed:", err);
     }
@@ -451,6 +458,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     try {
       const updated = await persistProgressUpdate(user.id, show.id, progress ?? undefined, target);
       setProgress(updated);
+      onProgressPersisted?.(updated);
     } catch (err) {
       console.warn("rating-flow progress write failed:", err);
     }

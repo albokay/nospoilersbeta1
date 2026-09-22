@@ -1069,6 +1069,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
             mobileHeaderContext={privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room")}
             hideTopRightClose
+            // A progress advance made inside the composer refetches the room
+            // (signals, hidden counts) — same as the room picker's path.
+            onProgressPersisted={() => { void load(); }}
             onCancel={() => setComposeOpen(false)}
             onSubmitted={(destination, threadId) => {
               setComposeOpen(false);
