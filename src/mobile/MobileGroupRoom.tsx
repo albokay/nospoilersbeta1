@@ -460,6 +460,23 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     setDrawerSeenTick((t) => t + 1);
   };
 
+  // Finished-together entry point (Alborz 2026-09-21, option C): a caption
+  // link under the "Open show rooms" heading — the finished shows are a
+  // shelf, so their door lives with the shelves, not in the header cluster
+  // (a second right-edge tab under chat read as clutter). Same drawer, same
+  // unseen dot (blue, inline). Stands alone when there are no open rooms.
+  const finishedCount = drawerItems.finished.length + drawerItems.dnf.length;
+  const finishedLink = finishedCount > 0 ? (
+    <button
+      onClick={openFinishedDrawer}
+      aria-label="shows you've finished together"
+      style={{ ...M.type.caption, color: C.cream, textDecoration: "underline", textUnderlineOffset: 3, background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "block", margin: "-8px auto 16px", textAlign: "center" }}
+    >
+      {drawerUnseen && <span className="m-dot-in" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.blue, marginRight: 6, verticalAlign: "1px" }} />}
+      {finishedCount} finished together
+    </button>
+  ) : null;
+
   // Posters for the drawer thumbnails (module-cached).
   useEffect(() => {
     let cancelled = false;
@@ -883,14 +900,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               )}
               <MessageCircle size={20} color={C.green} />
             </button>
-            {/* Finished-together drawer tab (2026-09-13) — the chat tab's
-                grammar, right below it; appears once it has contents. */}
-            {(drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
-              <button style={chatTab} aria-label="shows you've finished together" onClick={openFinishedDrawer}>
-                {drawerUnseen && <span className="m-dot-in" style={notifDotChatInline} />}
-                <MonitorCheck size={20} color={C.green} />
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -948,9 +957,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         // CP2 four-part group room (desktop parity): SHOW ROOMS shelf →
         // Proposed shelf → "Propose more shows?" → "Add more friends…".
         <div style={contentWrap}>
+          {groupShelves.watching.length === 0 && finishedLink}
           {groupShelves.watching.length > 0 && (
             <>
               <h1 style={shelfHeader}>Open show rooms</h1>
+              {finishedLink}
               <div style={shelfCol}>
                 {groupShelves.watching.map((r) => (
                   <ShowRow

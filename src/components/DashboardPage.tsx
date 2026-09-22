@@ -2495,7 +2495,11 @@ export default function DashboardPage() {
             {/* Click-outside closes the chat (Alborz 2026-08-01) — an
                 invisible backdrop under the panel, above the page. No dim:
                 the room should stay readable beside the open chat. */}
-            <div style={{ position: "fixed", inset: 0, zIndex: 69 }} onClick={() => setChatGroupId(null)} />
+            {/* Above the friend-profile drawer (its scrims sit at 1100/1200 in
+                FriendProfile.tsx) so "Chat with X about it instead" opens the
+                chat ON TOP of the still-open drawer (Alborz 2026-09-21); dialogs
+                live at 2147483000 and stay above both. */}
+            <div style={{ position: "fixed", inset: 0, zIndex: 1290 }} onClick={() => setChatGroupId(null)} />
           <div style={chatPanel}>
             <div style={chatHeader}>
               {/* Room grammar (polish pass 2026-09-15, mobile parity): the
@@ -3275,7 +3279,7 @@ const countCircle: React.CSSProperties = {
 };
 const chatPanel: React.CSSProperties = {
   position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 44vw)", background: C.green,
-  display: "flex", flexDirection: "column", zIndex: 70, boxShadow: "-12px 0 30px rgba(0,0,0,0.18)",
+  display: "flex", flexDirection: "column", zIndex: 1300, boxShadow: "-12px 0 30px rgba(0,0,0,0.18)",
 };
 const chatHeader: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
