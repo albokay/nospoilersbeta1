@@ -122,7 +122,13 @@ async function sendResendEmail(
 // (contact) name if set, else "@handle", else a graceful fallback. Already
 // formatted — no @ is added downstream.
 type DigestEntry = { threadId: string; title: string; authorName: string };
-type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[] };
+// Responses (Alborz 2026-09-22): friends' replies on threads the recipient is
+// PART OF (wrote, or responded in) — the same scope as the in-app green
+// signal. ownerName is null when the entry is the recipient's own ("your
+// entry"). Only READABLE replies are ever emailed; hidden (ahead-of-progress)
+// ones stay an in-app red dot and never leak into mail.
+type DigestResponse = { threadId: string; title: string; ownerName: string | null; responderNames: string[] };
+type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[] };
 type ProposalDigest = { groupId: string; showName: string; proposerName: string };
 type ChatDigest = { groupId: string; groupLabel: string; senderNames: string[] };
 
@@ -135,6 +141,7 @@ function buildDigestHtml(
   deckNames: string[] = [],
   proposals: ProposalDigest[] = [],
   chats: ChatDigest[] = [],
+  greetName: string | null = null,
 ): string {
   const sections = rooms
     .map((r) => {
@@ -153,11 +160,20 @@ function buildDigestHtml(
           return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-style:italic;font-weight:600">&ldquo;${escapeHtml(e.title)}&rdquo;</a>${byline}</p>`;
         })
         .join("");
+      const intro = r.entries.length
+        ? `<p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}:</p>`
+        : "";
+      const responses = r.responses
+        .map((x) => {
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
+          const whose = x.ownerName === null ? "your" : `${escapeHtml(x.ownerName)}&rsquo;s`;
+          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(formatNames(x.responderNames))} responded to ${whose} entry <span style="font-style:italic">&ldquo;${escapeHtml(x.title)}&rdquo;</span></a></p>`;
+        })
+        .join("");
       return `
   <div style="margin:0 0 28px">
     <h2 style="${SECTION_H2}">${escapeHtml(r.roomName)}</h2>
-    <p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}:</p>
-    ${items}
+    ${intro}${items}${responses}
   </div>`;
     })
     .join("");
@@ -192,6 +208,7 @@ function buildDigestHtml(
 <html>
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  ${greetName ? `<p style="margin:0 0 10px;font-size:15px;color:#1a2c3a;line-height:1.5">Hi ${escapeHtml(greetName)},</p>` : ""}
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     What your friends wrote today.
   </h1>
@@ -205,12 +222,45 @@ function buildDigestHtml(
 </html>`;
 }
 
+// Subject (Alborz 2026-09-22): ONE specific line instead of the fixed "What
+// your friends wrote today." — a subject identical for everyone every day is
+// the classic bulk-mail fingerprint Gmail files under Promotions. Names the
+// most specific item by rank — entries → responses → chat → proposals → deck —
+// and admits the rest with ", and more". The h1 stays the stable frame.
+function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[]): string {
+  const entryRooms = rooms.filter((r) => r.entries.length > 0);
+  const respRooms = rooms.filter((r) => r.responses.length > 0);
+  const kinds = [entryRooms.length > 0, respRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0].filter(Boolean).length;
+  let lead = "What your friends wrote today";
+  if (entryRooms.length) {
+    const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
+    if (entryRooms.length === 1) lead = `${formatNames(authors)} wrote about ${entryRooms[0].roomName}`;
+    else if (entryRooms.length === 2 && authors.length === 1) lead = `${authors[0]} wrote about ${entryRooms[0].roomName} and ${entryRooms[1].roomName}`;
+    else lead = `New writing in ${entryRooms.length} of your rooms`;
+  } else if (respRooms.length) {
+    const all = respRooms.flatMap((r) => r.responses);
+    if (all.length === 1) {
+      const x = all[0];
+      lead = `${formatNames(x.responderNames)} responded to ${x.ownerName === null ? "your" : `${x.ownerName}'s`} ${respRooms[0].roomName} entry`;
+    } else if (respRooms.length === 1) lead = `New responses in ${respRooms[0].roomName}`;
+    else lead = `New responses in ${respRooms.length} of your rooms`;
+  } else if (chats.length) {
+    lead = chats.length === 1 ? `${formatNames(chats[0].senderNames)} messaged you in ${chats[0].groupLabel}` : `New messages in ${chats.length} groups`;
+  } else if (proposals.length) {
+    lead = proposals.length === 1 ? `${proposals[0].proposerName} proposed ${proposals[0].showName}` : `${proposals.length} new show proposals`;
+  } else if (deckNames.length) {
+    lead = `${formatNames(deckNames)} answered more How We Watch TV questions`;
+  }
+  return kinds > 1 ? `${lead}, and more` : lead;
+}
+
 function buildDigestText(
   rooms: RoomDigest[],
   baseUrl: string,
   deckNames: string[] = [],
   proposals: ProposalDigest[] = [],
   chats: ChatDigest[] = [],
+  greetName: string | null = null,
 ): string {
   const sections = rooms
     .map((r) => {
@@ -223,7 +273,15 @@ function buildDigestText(
           return `  - "${e.title}"${byline} — ${url}`;
         })
         .join("\n");
-      return `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}`;
+      const responses = r.responses
+        .map((x) => {
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
+          const whose = x.ownerName === null ? "your" : `${x.ownerName}'s`;
+          return `  - ${formatNames(x.responderNames)} responded to ${whose} entry "${x.title}" — ${url}`;
+        })
+        .join("\n");
+      const head = r.entries.length ? `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}` : r.roomName;
+      return responses ? `${head}\n${responses}` : head;
     })
     .join("\n\n");
 
@@ -238,7 +296,7 @@ function buildDigestText(
     ? `\n\n${formatNames(deckNames)} answered more "How We Watch TV" questions.`
     : "";
   const blocks = [sections, proposalLines, chatLines].filter(Boolean).join("\n\n");
-  return `What your friends wrote today.
+  return `${greetName ? `Hi ${greetName},\n\n` : ""}What your friends wrote today.
 
 ${blocks}${deckLine}
 
@@ -330,17 +388,49 @@ serve(async (req) => {
     proposals = [...earliestByPair.values()].map((v) => ({ groupId: v.group_id, showId: v.show_id, proposerId: v.user_id }));
   }
 
-  if (!recentLinks.length && !recentChats.length && !proposals.length) {
+  // 1d. Responses (2026-09-22): friend-room replies in the window, plus the
+  //     thread each sits on and everyone who has taken part in that thread
+  //     (author + any live group-scoped reply) — the recipient must be one.
+  const { data: replyRows } = await admin
+    .from("replies")
+    .select("id, thread_id, group_id, author_id, season, episode, created_at, is_deleted")
+    .gte("created_at", since);
+  const recentReplies = ((replyRows ?? []) as any[]).filter((r) => r.group_id && !r.is_deleted);
+  const repliedThreadById = new Map<string, any>();
+  const participantsByThread = new Map<string, Set<string>>();
+  if (recentReplies.length) {
+    const rtIds = [...new Set(recentReplies.map((r) => r.thread_id as string))];
+    const { data: rtRows } = await admin
+      .from("threads")
+      .select("id, author_id, title, season, episode, is_deleted, is_public")
+      .in("id", rtIds);
+    for (const th of (rtRows ?? []) as any[]) {
+      if (!th.is_deleted && th.is_public === false) repliedThreadById.set(th.id, th);
+    }
+    const { data: partRows } = await admin
+      .from("replies")
+      .select("thread_id, author_id, group_id, is_deleted")
+      .in("thread_id", rtIds);
+    for (const [tid, th] of repliedThreadById) participantsByThread.set(tid, new Set([th.author_id]));
+    for (const pr of (partRows ?? []) as any[]) {
+      if (!pr.group_id || pr.is_deleted) continue;
+      participantsByThread.get(pr.thread_id)?.add(pr.author_id);
+    }
+  }
+
+  if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length) {
     return json({ ok: true, sent: 0, reason: "nothing new" });
   }
 
-  // 2. Index thread rows (from the embedded join). Seed/demo authors are
-  //    dropped later (not a "friend"); departed authors still resolve.
+  // 2. Index thread rows (from the embedded join, plus replied-to threads).
+  //    Seed/demo authors are dropped later (not a "friend"); departed authors
+  //    still resolve.
   const threadById = new Map<string, any>();
   for (const l of recentLinks) threadById.set(l.threads.id, l.threads);
+  for (const [tid, th] of repliedThreadById) if (!threadById.has(tid)) threadById.set(tid, th);
 
   // 3. Active rooms only (skip soft-deleted).
-  const groupIds = [...new Set(recentLinks.map((l) => l.group_id))];
+  const groupIds = [...new Set([...recentLinks.map((l) => l.group_id), ...recentReplies.map((r) => r.group_id)])];
   const activeGroups = new Map<string, { show_id: string; name: string }>();
   if (groupIds.length) {
     const { data: groups } = await admin
@@ -404,6 +494,7 @@ serve(async (req) => {
   //    authors, chat senders, proposers, and people-group members (labels).
   const identityIds = [...new Set([
     ...[...threadById.values()].map((t) => t.author_id),
+    ...recentReplies.map((r) => r.author_id),
     ...recentChats.map((c) => c.author_id),
     ...proposals.map((p) => p.proposerId),
     ...[...pgMembersByGroup.values()].flat(),
@@ -438,7 +529,7 @@ serve(async (req) => {
 
   // 6. Compute per-recipient, per-room visible-new entries.
   //    perUser: Map<userId, Map<groupId, { roomName, entries[] }>>
-  const perUser = new Map<string, Map<string, { roomName: string; entries: any[] }>>();
+  const perUser = new Map<string, Map<string, { roomName: string; entries: any[]; responses: any[] }>>();
   for (const link of recentLinks) {
     const g = activeGroups.get(link.group_id);
     if (!g) continue;
@@ -456,13 +547,46 @@ serve(async (req) => {
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(link.group_id)) {
-        rooms.set(link.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [] });
+        rooms.set(link.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [] });
       }
       rooms.get(link.group_id)!.entries.push({
         threadId: t.id,
         title: (t.title && String(t.title).trim()) || "(untitled)",
         authorId: t.author_id,
         sharedAt: link.shared_at,
+      });
+    }
+  }
+
+  // 6-resp. Per-recipient READABLE responses on threads they're part of.
+  for (const rr of recentReplies) {
+    const g = activeGroups.get(rr.group_id);
+    if (!g) continue;
+    const th = repliedThreadById.get(rr.thread_id);
+    if (!th) continue;
+    if (seedAuthors.has(rr.author_id)) continue;   // skip seed/demo content
+    const parts = participantsByThread.get(rr.thread_id);
+    const roster = membersByGroup.get(rr.group_id) ?? [];
+    for (const m of roster) {
+      if (m.user_id === rr.author_id) continue;      // not your own responses
+      if (!parts?.has(m.user_id)) continue;          // only threads you're part of
+      if (m.digest_opt_out) continue;                // opted out of this room
+      if (onlyUserId && m.user_id !== onlyUserId) continue;
+      const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
+      if (!prog) continue;
+      // Readable only — a hidden reply is the in-app red dot, never mail.
+      if (!canView(rr.season, rr.episode, effectiveProgress(prog))) continue;
+      if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
+      const rooms = perUser.get(m.user_id)!;
+      if (!rooms.has(rr.group_id)) {
+        rooms.set(rr.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [] });
+      }
+      rooms.get(rr.group_id)!.responses.push({
+        threadId: th.id,
+        title: (th.title && String(th.title).trim()) || "(untitled)",
+        threadAuthorId: th.author_id,
+        responderId: rr.author_id,
+        createdAt: rr.created_at,
       });
     }
   }
@@ -497,6 +621,15 @@ serve(async (req) => {
 
   const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys()])];
   if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new" });
+  // Greeting (Alborz 2026-09-22): the recipient's own first name opens the
+  // email — a personal first line is one of the signals that keeps a
+  // notification out of Gmail's Promotions tab. Fetched for all recipients
+  // in one query; a missing name simply drops the line.
+  const recipientFirstName = new Map<string, string>();
+  {
+    const { data: rp } = await admin.from("profiles").select("id, display_name").in("id", recipientIds);
+    for (const p of rp ?? []) if (p.display_name) recipientFirstName.set(p.id, p.display_name);
+  }
 
   // 6b. Each recipient's contact names for the authors — so the digest shows
   //     the recipient's given name for a friend (else @handle). Owner-scoped;
@@ -576,6 +709,7 @@ serve(async (req) => {
     const { data: u } = await admin.auth.admin.getUserById(userId);
     const email = u?.user?.email;
     if (!email) { report.push({ userId, skipped: "no_email" }); continue; }
+    const greetName = recipientFirstName.get(userId) ?? null;
 
     const contacts = contactByOwner.get(userId);
     const authorName = (authorId: string): string => {
@@ -588,9 +722,9 @@ serve(async (req) => {
       const uname = usernameById.get(authorId);
       return uname ? `@${uname}` : "a friend";
     };
-    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[] }>();
+    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[]; responses: any[] }>();
     const roomDigests: RoomDigest[] = [...rooms.entries()]
-      .map(([groupId, r]: [string, { roomName: string; entries: any[] }]) => {
+      .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[] }]) => {
         const entries: DigestEntry[] = r.entries
           .sort((a: any, b: any) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
           .map((e: any) => ({
@@ -599,7 +733,17 @@ serve(async (req) => {
             authorName: authorName(e.authorId),
           }));
         const authorNames = [...new Set(entries.map((e) => e.authorName))];
-        return { groupId, roomName: r.roomName, entries, authorNames };
+        // Responses grouped per thread, responders in arrival order.
+        const byThread = new Map<string, DigestResponse>();
+        for (const x of [...r.responses].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())) {
+          if (!byThread.has(x.threadId)) {
+            byThread.set(x.threadId, { threadId: x.threadId, title: x.title, ownerName: x.threadAuthorId === userId ? null : authorName(x.threadAuthorId), responderNames: [] });
+          }
+          const d = byThread.get(x.threadId)!;
+          const n = authorName(x.responderId);
+          if (!d.responderNames.includes(n)) d.responderNames.push(n);
+        }
+        return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()] };
       })
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
 
@@ -645,9 +789,9 @@ serve(async (req) => {
     const ok = await sendResendEmail(
       resendKey,
       email,
-      "What your friends wrote today.",
-      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests),
-      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests),
+      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames),
+      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName),
+      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName),
     );
     if (ok) sent++;
     report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, chats: chatDigests.length, sent: ok });
