@@ -5,7 +5,7 @@ import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
-import CelebrationBadge from "../components/CelebrationBadge";
+import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -506,8 +506,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   // Finished-together entry point (Alborz 2026-09-23, mockup A — replaces
   // the 09-21 caption link, which was easy to miss): a cream pill at the
-  // FOOT of the "Open show rooms" shelf, the drawer's icon leading, one
-  // size under the show rows. Counts only settled rooms — a celebrating one
+  // FOOT of the "Open show rooms" shelf, an accent star leading (a hint of
+  // the celebration kept), one size under the show rows. Counts only settled rooms — a celebrating one
   // is still its own row above. Stands alone when there are no open rooms.
   const settledCount = drawerItems.finished.filter((it) => celebrationState(selfUserId, it.roomId) === "done").length + drawerItems.dnf.length;
   const finishedPill = settledCount > 0 ? (
@@ -515,7 +515,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       <span className="sb-plate" />
       <button onClick={openFinishedDrawer} aria-label="shows you've finished together" style={finishedPillStyle}>
         {drawerUnseen && <span className="m-dot-in" style={rowDot} />}
-        <MonitorCheck size={18} color={C.green} />
+        <CelebrationStar size={16} color={C.yellow} />
         <span>{settledCount} finished together</span>
       </button>
     </span>
@@ -1041,7 +1041,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           )}
 
           {empty && (
-            <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
+            /* Room for the finished pill / celebration row above it
+               (Alborz 2026-09-23). */
+            <h1 style={{ ...heroH1, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 32 : 8, marginBottom: 8 }}>
               {/* Singular for a two-person group (Alborz 2026-09-23). */}
               What shows do you want<br />to watch with your {others.length === 1 ? "friend" : "friends"}?
             </h1>
@@ -1458,22 +1460,24 @@ function ShowRow({ row, dot, line2, onClick, onLongPress }: {
 }
 
 // The celebration row (Alborz 2026-09-23, mockup B): the show row's shape in
-// Accent, cream text, the star badge on the top-left curve where a room's
-// dot sits (clear of the two text lines), "You all finished it!" as the
-// second line, the finishers' avatars at the end. Tapping opens the
-// finished-together drawer — NOT the room.
+// cream with Accent ink (inverted the same day — the accent fill read like
+// the "Propose more shows?" pill; the accent star disc on cream stands
+// out), the badge on the top-left curve where a room's dot sits (clear of
+// the two text lines), "You all finished it!" as the second line, the
+// finishers' avatars at the end. Tapping opens the finished-together
+// drawer — NOT the room.
 function CelebrationRow({ name, opted, onClick }: {
   name: string;
   opted: { username: string; resolved: boolean }[];
   onClick: () => void;
 }) {
   return (
-    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.yellow }} onTouchStart={() => {}}>
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
       <span className="sb-plate" />
       <button
         onClick={onClick}
         aria-label={`${name} — you all finished it. Open the shows you've finished together`}
-        style={{ ...rowBase, background: C.yellow, border: "2px solid transparent", color: CANON.cream }}
+        style={{ ...rowBase, background: C.cream, border: "2px solid transparent", color: C.yellow }}
       >
         <CelebrationBadge style={{ position: "absolute", top: -10, left: 12 }} />
         <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>

@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "rea
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
-import CelebrationBadge from "./CelebrationBadge";
+import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -1933,15 +1933,16 @@ export default function DashboardPage() {
               {/* The finished-together pill (2026-09-23, mockup A — replaces
                   the right-edge tab, which was easy to miss): centred at the
                   FOOT of the shelf, one size under the room pills, cream with
-                  green ink and the drawer's icon. The 44px gap clears the
-                  avatars hanging off the last row. */}
+                  green ink and an accent star (a hint of the celebration
+                  kept). The 44px gap clears the avatars hanging off the last
+                  row. */}
               {settledCount > 0 && (
                 <div style={{ display: "flex", justifyContent: "center", marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 0 }}>
                   <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
                     <span className="sb-plate" />
                     <button style={finishedPillStyle} title="shows you've finished together" onClick={openFinishedDrawer}>
                       {drawerUnseen && <span style={notifDotButton} />}
-                      <MonitorCheck size={18} color={C.green} />
+                      <CelebrationStar size={16} color={C.yellow} />
                       <span>{settledCount} finished together</span>
                     </button>
                   </span>
@@ -1972,7 +1973,9 @@ export default function DashboardPage() {
           )}
           {/* Empty group → the prompt sits just below the clusters. */}
           {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
-            <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
+            /* Room for the finished pill / celebration row above it — the
+               row's avatars hang 23px below it (Alborz 2026-09-23). */
+            <h1 style={{ ...heroH1, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 8, marginBottom: 8 }}>
               {/* Singular for a two-person group (Alborz 2026-09-23). */}
               What shows do you want<br />to watch with your {(railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).filter((m) => m.userId !== selfUserId).length === 1 ? "friend" : "friends"}?
             </h1>
@@ -2921,12 +2924,14 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
 }
 
 // The celebration pill (Alborz 2026-09-23, mockup B): the room pill's shape
-// in Accent, cream text, two lines (name + "You all finished it!"), the star
-// badge on the top-left curve where a room's dot sits. Opens the
-// finished-together drawer — NOT the room.
+// in cream with Accent ink (inverted the same day — the accent fill read
+// like the "Propose more shows?" pill; the accent star disc on cream stands
+// out), two lines (name + "You all finished it!"), the badge on the
+// top-left curve where a room's dot sits. Opens the finished-together
+// drawer — NOT the room.
 function CelebrationPill({ name, onClick }: { name: string; onClick: () => void }) {
   return (
-    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.yellow }} onTouchStart={() => {}}>
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
       <span className="sb-plate" />
       <button
         onClick={onClick}
@@ -2934,7 +2939,7 @@ function CelebrationPill({ name, onClick }: { name: string; onClick: () => void 
         style={{
           position: "relative", display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", minHeight: 48,
           borderRadius: 9999, fontFamily: '"Inter", sans-serif', width: "100%", boxSizing: "border-box",
-          background: C.yellow, border: "2px solid transparent", color: CANON.cream, cursor: "pointer", textAlign: "left",
+          background: C.cream, border: "2px solid transparent", color: C.yellow, cursor: "pointer", textAlign: "left",
         }}
       >
         <CelebrationBadge style={{ position: "absolute", top: -10, left: 4 }} />
