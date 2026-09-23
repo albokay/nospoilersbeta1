@@ -1,17 +1,36 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, RefreshCw, CornerDownLeft } from "lucide-react";
 import type { PromptEntry } from "../lib/promptData";
+import { CANON } from "../styles/canon";
+import { D } from "./dashboardChrome";
 
-// Canon refresh (help-system QA round 8): the X is a bare Business-colored
-// mark in the card's top-right corner (matches the tip stickies' dismiss);
-// "another" is Business outline/text; "use this" keeps Identity fill. Card
-// colors live in theme.ts (.prompt-card / .prompt-card-btn).
+// Pass-3 grammar (Alborz 2026-09-22, mockup A): the prompt is an INFO surface,
+// so the card is cream — sky was retired as an info/overlay colour. Caption 13
+// sentence-case label (the old 11px ALL-CAPS tracked label predates the
+// "nothing under 13, one shout only" rule), the prompt itself in Lora Subtitle
+// (a statement is Lora), two S pills — "Use this" = identity fill + cream text
+// (the send flip), "Another" = the on-cream sky-outline Cancel idiom (nothing is
+// lost) — with lucide glyphs instead of typed ↻ ↵, and .d-press. The × stays:
+// neither button dismisses (Another shuffles, Use this inserts). The legacy
+// .prompt-card classes in theme.ts still serve the dormant V1/V3 pages only.
 interface PromptCardProps {
   prompt: PromptEntry;
   onClose: () => void;
   onShuffle: () => void;
   onInsert: (text: string) => void;
 }
+
+const card: React.CSSProperties = {
+  position: "relative",
+  background: CANON.cream,
+  color: CANON.dark,
+  borderRadius: 16,
+  padding: "16px 18px 14px",
+  marginBottom: 12,
+  boxSizing: "border-box",
+};
+
+const pill: React.CSSProperties = { ...D.pill.S, display: "inline-flex", alignItems: "center", gap: 6 };
 
 export default function PromptCard({
   prompt,
@@ -20,7 +39,7 @@ export default function PromptCard({
   onInsert,
 }: PromptCardProps) {
   return (
-    <div className="prompt-card" style={{ display: "flex", gap: 16, alignItems: "stretch" }}>
+    <div className="prompt-card-v2" style={card}>
       <button
         onClick={onClose}
         title="Close"
@@ -28,57 +47,35 @@ export default function PromptCard({
         style={{
           position: "absolute", top: 10, right: 10,
           background: "transparent", border: "none", cursor: "pointer",
-          color: "var(--canon-cream,#fef8ea)", padding: 4, display: "flex", lineHeight: 1,
+          color: CANON.dark, opacity: 0.6, padding: 4, display: "flex", lineHeight: 1,
         }}
       >
         <X size={16} />
       </button>
-      {/* Left: label + prompt text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            opacity: 0.55,
-            marginBottom: 10,
-          }}
-        >
-          writing prompt
-        </div>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 16,
-            fontWeight: 500,
-            lineHeight: 1.6,
-          }}
-        >
-          {prompt.text}
-        </p>
+      <div style={{ ...D.type.caption, color: CANON.dark, opacity: 0.7, marginBottom: 8, paddingRight: 28 }}>
+        Writing prompt
       </div>
-      {/* Right: buttons stacked, anchored to the card's bottom (the X owns
-          the top corner). */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          gap: 6,
-          flexShrink: 0,
-          paddingTop: 24,
-        }}
-      >
-        <button className="prompt-card-btn" onClick={onShuffle} title="Try another prompt">
-          ↻ another
+      <p style={{ ...D.type.subtitle, color: CANON.dark, margin: "0 0 14px", paddingRight: 28 }}>
+        {prompt.text}
+      </p>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+        <button
+          className="d-press"
+          onClick={onShuffle}
+          title="Try another prompt"
+          style={{ ...pill, background: "transparent", color: CANON.dark, border: `2px solid ${CANON.friend}` }}
+        >
+          <RefreshCw size={14} />
+          Another
         </button>
         <button
-          className="prompt-card-btn prompt-card-btn--use"
+          className="d-press"
           onClick={() => onInsert(prompt.text)}
           title="Insert this prompt into your post"
+          style={{ ...pill, background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}` }}
         >
-          ↵ use this
+          <CornerDownLeft size={14} />
+          Use this
         </button>
       </div>
     </div>

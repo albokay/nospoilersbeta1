@@ -446,6 +446,190 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         .ref-lookup-x:active { background: transparent; border-color: ${CREAM}; }
       `}</style>
 
+      {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
+          "shows"; mobile balance-wraps (no orphans at any width). */}
+      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: 0, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile
+          ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
+          : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
+      </h2>
+      {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
+          can't fit that line, so it balance-wraps instead — near-equal
+          lines, never an orphan word. */}
+      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
+        {mobile ? (
+          <>Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.</>
+        ) : (
+          <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
+        )}
+      </p>
+      {/* The quiet aside (Alborz 2026-09-08): the search is ALSO the way
+          shows get logged onto the shelves — set apart so the lookup pitch
+          stays the star. */}
+      <p style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: mobile ? 12 : 13, color: CREAM, opacity: 0.8, textAlign: "center", margin: "-8px auto 18px" }}>
+        Or just use it to log the shows you&rsquo;re watching.
+      </p>
+
+      {/* Search trigger — the group room's search-pill grammar (magnifying
+          glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <button
+          onClick={() => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
+          style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
+        >
+          <Search size={26} color={CREAM} strokeWidth={2} />find your show
+        </button>
+      </div>
+
+      {/* "You're watching:" — your S1E1+ shows, recent activity first.
+          Tapping goes STRAIGHT to the reference (no card — Alborz). */}
+      {watching.length > 0 && (
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            You&rsquo;re watching:
+          </div>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+            {watching.map((show) => {
+              const r = progress[show.id]!;
+              const poster = posters[show.id];
+              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
+                  <button
+                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                    <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: CREAM, marginTop: 6 }}>
+                      {r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : ""}
+                    </div>
+                  </button>
+                  {/* Per-show de-clutter X — cream outline chip; Accent fill
+                      on hover (styled via the class below: inline styles
+                      can't express hover/active). */}
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => hideShow(show.id)}
+                    aria-label={`Hide ${show.name} from this shelf`}
+                    title="Hide from this shelf"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* "You want to watch:" (CP2) — poster-only tiles; tap reopens the
+          card (trailer + set your episode); X clears the stamp. */}
+      {wantList.length > 0 && (
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            You want to watch:
+          </div>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+            {wantList.map((show) => {
+              const poster = posters[show.id];
+              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
+                  <button
+                    onClick={() => openCard(show)}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => unwantShow(show.id)}
+                    aria-label={`Remove ${show.name} from your want-to-watch list`}
+                    title="Remove from this list"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* "You've finished:" (2026-09-07) — at the latest available episode
+          (airing status irrelevant); graduate to canon from here. A new
+          episode in the catalog moves a show back to Watching by itself. */}
+      {finishedList.length > 0 && (
+        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
+          <div style={{ maxWidth: "100%", minWidth: 0 }}>
+          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
+            You&rsquo;ve finished:
+          </div>
+          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
+            {finishedList.map((show) => {
+              const poster = posters[show.id];
+              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
+              return (
+                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
+                  <button
+                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
+                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                  >
+                    {poster ? (
+                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
+                    ) : (
+                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
+                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
+                      </div>
+                    )}
+                  </button>
+                  {canonList.length < 12 && (
+                    <button
+                      onClick={() => openCanonCard(show)}
+                      title={`Add ${show.name} to your canon`}
+                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
+                    >
+                      ★ add to canon
+                    </button>
+                  )}
+                  <button
+                    className="ref-lookup-x"
+                    onClick={() => hideShow(show.id)}
+                    aria-label={`Hide ${show.name} from this shelf`}
+                    title="Hide from this shelf"
+                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                  >
+                    <X size={13} color={CREAM} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {/* Divider + breathing room between the canon world and the lookup
+          world (Alborz 2026-09-07). */}
+      <div style={{ textAlign: "center", color: CREAM, opacity: 0.7, fontSize: 16, letterSpacing: 8, marginTop: 72 }}>***</div>
       {/* "Your canon" — the zone's FEATURED opener (Alborz 2026-09-07 rev 2):
           Heading 1 + centered Header-2 subhead, always present. Empty = four
           placeholder slots as the invitation. Curated here AND on reference
@@ -454,11 +638,11 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
         {/* Display-40 opener + Body subhead (polish pass 2026-09-15 — the
             bold 14 paragraph read as a warning; a section opener on the same
             footing as "Look something up"). */}
-        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 40, lineHeight: 1.15, letterSpacing: -0.5, color: CREAM, margin: 0, textAlign: "center" }}>
+        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 28 : 40, lineHeight: 1.15, letterSpacing: -0.5, color: CREAM, margin: "36px 0 0", textAlign: "center" }}>
           Your canon
         </h2>
         <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 15, color: CREAM, textAlign: "center", margin: "12px auto 40px", maxWidth: 520, lineHeight: 1.6 }}>
-          The shows you&rsquo;d put your name behind. The shows that mean something to you. The ones you think about regularly.
+          The shows that mean the most to you. The ones you think about regularly. The ones you compare everything else to.
         </div>
         {/* Four fixed slots per row (Alborz rev): placeholders sit exactly
             where the shows will land and stay put as the shelf fills; a full
@@ -691,197 +875,13 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           })()}
       </div>
 
-      {/* Divider + breathing room between the canon world and the lookup
-          world (Alborz 2026-09-07). */}
-      <div style={{ textAlign: "center", color: CREAM, opacity: 0.7, fontSize: 16, letterSpacing: 8, marginTop: 72 }}>***</div>
-      {/* Locked pitch (Alborz 2026-09-07 rev): desktop breaks evenly after
-          "shows"; mobile balance-wraps (no orphans at any width). */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, color: CREAM, margin: "36px 0 0", textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
-        {mobile
-          ? <>Need to look something up about the shows you&rsquo;re watching without getting spoiled?</>
-          : <>Need to look something up about the shows<br />you&rsquo;re watching without getting spoiled?</>}
-      </h2>
-      {/* Sub-head split (Alborz): desktop breaks after "detail —"; mobile
-          can't fit that line, so it balance-wraps instead — near-equal
-          lines, never an orphan word. */}
-      <p style={{ fontFamily: '"Inter", sans-serif', fontSize: mobile ? 13 : 14, color: CREAM, opacity: 0.9, lineHeight: 1.5, margin: "10px auto 18px", maxWidth: 640, textAlign: "center", ...(mobile ? { textWrap: "balance" as const } : {}) }}>
-        {mobile ? (
-          <>Look up an actor, a plot point you missed, or crew detail — all of it, filtered to how far you&rsquo;ve watched.</>
-        ) : (
-          <>Look up an actor, a plot point you missed, or crew detail —<br />all of it, filtered to how far you&rsquo;ve watched.</>
-        )}
-      </p>
-      {/* The quiet aside (Alborz 2026-09-08): the search is ALSO the way
-          shows get logged onto the shelves — set apart so the lookup pitch
-          stays the star. */}
-      <p style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: mobile ? 12 : 13, color: CREAM, opacity: 0.8, textAlign: "center", margin: "-8px auto 18px" }}>
-        Or just use it to log the shows you&rsquo;re watching.
-      </p>
-
-      {/* Search trigger — the group room's search-pill grammar (magnifying
-          glass + text), Personal green on the yellow band (rev 2 2026-09-05). */}
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <button
-          onClick={() => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); }}
-          style={{ ...searchPill, background: CANON.personal, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 14 }}
-        >
-          <Search size={26} color={CREAM} strokeWidth={2} />find your show
-        </button>
-      </div>
-
-      {/* "You're watching:" — your S1E1+ shows, recent activity first.
-          Tapping goes STRAIGHT to the reference (no card — Alborz). */}
-      {watching.length > 0 && (
-        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
-          <div style={{ maxWidth: "100%", minWidth: 0 }}>
-          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
-            You&rsquo;re watching:
-          </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
-            {watching.map((show) => {
-              const r = progress[show.id]!;
-              const poster = posters[show.id];
-              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
-              return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
-                  <button
-                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
-                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-                  >
-                    {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
-                    ) : (
-                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
-                      </div>
-                    )}
-                    <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700, color: CREAM, marginTop: 6 }}>
-                      {r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : ""}
-                    </div>
-                  </button>
-                  {/* Per-show de-clutter X — cream outline chip; Accent fill
-                      on hover (styled via the class below: inline styles
-                      can't express hover/active). */}
-                  <button
-                    className="ref-lookup-x"
-                    onClick={() => hideShow(show.id)}
-                    aria-label={`Hide ${show.name} from this shelf`}
-                    title="Hide from this shelf"
-                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                  >
-                    <X size={13} color={CREAM} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          </div>
-        </div>
-      )}
-
-      {/* "You want to watch:" (CP2) — poster-only tiles; tap reopens the
-          card (trailer + set your episode); X clears the stamp. */}
-      {wantList.length > 0 && (
-        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
-          <div style={{ maxWidth: "100%", minWidth: 0 }}>
-          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
-            You want to watch:
-          </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
-            {wantList.map((show) => {
-              const poster = posters[show.id];
-              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
-              return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
-                  <button
-                    onClick={() => openCard(show)}
-                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-                  >
-                    {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
-                    ) : (
-                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
-                      </div>
-                    )}
-                  </button>
-                  <button
-                    className="ref-lookup-x"
-                    onClick={() => unwantShow(show.id)}
-                    aria-label={`Remove ${show.name} from your want-to-watch list`}
-                    title="Remove from this list"
-                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                  >
-                    <X size={13} color={CREAM} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          </div>
-        </div>
-      )}
-
-      {/* "You've finished:" (2026-09-07) — at the latest available episode
-          (airing status irrelevant); graduate to canon from here. A new
-          episode in the catalog moves a show back to Watching by itself. */}
-      {finishedList.length > 0 && (
-        <div style={{ marginTop: 34, display: "flex", justifyContent: "center" }}>
-          <div style={{ maxWidth: "100%", minWidth: 0 }}>
-          <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 10 }}>
-            You&rsquo;ve finished:
-          </div>
-          <div style={{ display: "flex", gap: mobile ? 10 : 14, overflowX: "auto", paddingBottom: 6 }}>
-            {finishedList.map((show) => {
-              const poster = posters[show.id];
-              const w = mobile ? 96 : 120, h = mobile ? 136 : 170;
-              return (
-                <div key={show.id} style={{ position: "relative", flexShrink: 0, width: w }}>
-                  <button
-                    onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } })}
-                    style={{ width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-                  >
-                    {poster ? (
-                      <img src={poster} alt={show.name} loading="lazy" style={{ width: w, height: h, objectFit: "cover", borderRadius: 12, display: "block" }} />
-                    ) : (
-                      <div style={{ width: w, height: h, borderRadius: 12, border: `2px solid ${CREAM}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", padding: 8 }}>
-                        <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 14, color: CREAM, textAlign: "center" }}>{show.name}</span>
-                      </div>
-                    )}
-                  </button>
-                  {canonList.length < 12 && (
-                    <button
-                      onClick={() => openCanonCard(show)}
-                      title={`Add ${show.name} to your canon`}
-                      style={{ display: "block", background: "transparent", border: "none", padding: 0, marginTop: 6, cursor: "pointer", color: CREAM, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, textDecoration: "underline", textAlign: "left" }}
-                    >
-                      ★ add to canon
-                    </button>
-                  )}
-                  <button
-                    className="ref-lookup-x"
-                    onClick={() => hideShow(show.id)}
-                    aria-label={`Hide ${show.name} from this shelf`}
-                    title="Hide from this shelf"
-                    style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
-                  >
-                    <X size={13} color={CREAM} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          </div>
-        </div>
-      )}
-
       {/* Browse rows — the dashboard asks the PERSONAL question. The
           umbrella heading ties them to YOUR lists (CP1); row names drop a
           tier beneath it. */}
       <div style={{ textAlign: "center", color: CREAM, opacity: 0.7, fontSize: 16, letterSpacing: 8, marginTop: 72 }}>***</div>
       <div style={{ marginTop: 36 }}>
         <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CREAM, marginBottom: 4 }}>
-          Find something to watch:
+          Find something new to watch:
         </div>
         {mobile
           ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels flush />

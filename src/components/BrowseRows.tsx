@@ -97,7 +97,7 @@ export default function BrowseRows({
   /** TVMaze ids of the group's own shows (open rooms + proposals) — hidden everywhere. */
   excludeTvmazeIds: Set<number>;
   onPick: (show: BrowseShow) => void;
-  /** Under a section heading ("Find something to watch:") the row titles
+  /** Under a section heading ("Find something new to watch:") the row titles
    *  drop a tier so they read as sub-rows (dashboard, 2026-09-07). */
   subLabels?: boolean;
 }) {
