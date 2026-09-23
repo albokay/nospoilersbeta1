@@ -1090,9 +1090,9 @@ body.pwa-standalone{ background-image:none !important; }
      cards and keep their identity ring. */
   .d-btn-identity--cream-ring:hover:not(:disabled){ border-color:var(--canon-cream,#fef8ea) !important; }
   /* Entry-ticket hover convention (Alborz 2026-09-22): a COLOUR SWAP, never a
-     lift. Writing-prompt card pills — Another: cream outline/text → cream fill,
-     Friend text; Use this: identity fill → identity outline + text, no fill. */
-  .prompt-v2-another:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; }
+     lift. Writing-prompt card pills — Another: green outline/text → green fill,
+     tan text; Use this: identity fill → identity outline + text, no fill. */
+  .prompt-v2-another:hover:not(:disabled){ background:var(--green) !important; color:#fef8ea !important; }
   .prompt-v2-use:hover:not(:disabled){ background:transparent !important; color:var(--canon-identity,#355eb8) !important; }
   /* Compose modal footer (same convention) — Not now: alert outline → alert fill,
      text in the modal's tan; Share entry (desktop): green fill → green outline +
