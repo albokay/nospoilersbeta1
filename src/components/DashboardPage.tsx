@@ -22,6 +22,8 @@
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
+import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
+import CelebrationBadge from "./CelebrationBadge";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -824,18 +826,64 @@ export default function DashboardPage() {
   }, [groupShows, roomDnf, finishedRoomIds, showsById]);
 
   const drawerSeenKey = `ns_fin_drawer_seen_${selfUserId}_${activeGroupId}`;
+  // The pill's dot (2026-09-23): DNF arrivals only — a finished show
+  // announces itself as a celebration row instead (below), so the plain
+  // pill never lights for one.
   const drawerUnseen = useMemo(() => {
     void drawerSeenTick;
     let seen: string[] = [];
     try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
     const seenSet = new Set(seen);
-    return [...drawerItems.finished, ...drawerItems.dnf].some((it) => !seenSet.has(it.roomId));
+    return drawerItems.dnf.some((it) => !seenSet.has(it.roomId));
   }, [drawerItems, drawerSeenKey, drawerSeenTick]);
+
+  // ── Celebration rows (Alborz 2026-09-23, mockup B; /m parity): a room
+  //    everyone just finished comes back to the TOP of the shelf as an
+  //    accent pill with a star badge and "You all finished it!" — the door
+  //    to the drawer. It stays until BOTH the drawer has been opened AND the
+  //    viewer has left the group room; then it folds into the plain pill's
+  //    count. Per device, like the seen list (lib/finishedCelebration). ──
+  const celebrating = useMemo(() => {
+    void drawerSeenTick;
+    return drawerItems.finished
+      .filter((it) => celebrationState(selfUserId, it.roomId) !== "done")
+      .map((it) => {
+        const gs = groupShows.find((g) => g.roomId === it.roomId);
+        const opted = (gs?.members ?? [])
+          .filter((mm) => mm.userId !== selfUserId)
+          .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote, resolved: !!memberNameById[mm.userId] }));
+        return { ...it, opted };
+      });
+  }, [drawerItems, groupShows, memberNameById, selfUserId, drawerSeenTick]);
+  const celebratingRef = useRef<string[]>([]);
+  celebratingRef.current = celebrating.map((c) => c.roomId);
+  // Leaving the room (another group, the dashboard, a show room) settles
+  // every celebration whose drawer was opened.
+  useEffect(() => () => { settleCelebrations(selfUserId, celebratingRef.current); }, [activeGroupId, selfUserId]);
+  // Rooms already seen in the drawer before this rule shipped skip the
+  // celebration (once per group per device).
+  const celebrateMigratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeGroupId || celebrateMigratedRef.current === activeGroupId || drawerItems.finished.length === 0) return;
+    celebrateMigratedRef.current = activeGroupId;
+    let seen: string[] = [];
+    try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
+    const seenSet = new Set(seen);
+    for (const it of drawerItems.finished) {
+      if (seenSet.has(it.roomId) && celebrationState(selfUserId, it.roomId) === "fresh") markCelebrationDone(selfUserId, it.roomId);
+    }
+    setDrawerSeenTick((t) => t + 1);
+  }, [drawerItems, drawerSeenKey, activeGroupId, selfUserId]);
+  // Settled rooms + DNF — what the plain pill counts (a celebrating room is
+  // still its own row).
+  const settledCount = drawerItems.finished.filter((it) => celebrationState(selfUserId, it.roomId) === "done").length + drawerItems.dnf.length;
+
   const openFinishedDrawer = () => {
     setFinishedDrawerOpen(true);
     try {
       localStorage.setItem(drawerSeenKey, JSON.stringify([...drawerItems.finished, ...drawerItems.dnf].map((it) => it.roomId)));
     } catch { /* ignore */ }
+    for (const rid of celebratingRef.current) markCelebrationOpened(selfUserId, rid);
     setDrawerSeenTick((t) => t + 1);
   };
 
@@ -1811,14 +1859,8 @@ export default function DashboardPage() {
           <MessageCircle size={24} color={C.green} />
         </button>
       )}
-      {/* Finished-together drawer tab (2026-09-13) — the chat tab's grammar,
-          one slot below; appears once the group's first show lands in it. */}
-      {inGroup && (drawerItems.finished.length > 0 || drawerItems.dnf.length > 0) && (
-        <button style={finishedTab} title="shows you've finished together" onClick={openFinishedDrawer}>
-          {drawerUnseen && <span style={notifDotChat} />}
-          <MonitorCheck size={24} color={C.green} />
-        </button>
-      )}
+      {/* (The finished-together right-edge tab, 2026-09-13 → 09-23, is
+          retired: the door is the pill at the foot of the shelf now.) */}
       {/* CP3: the bootstrap group gets the onboarding explainer instead of
           the generic one (its own copy + its own dismissal). */}
       {/* GroupRoomSticky RETIRED (help-system QA round 1) — its copy was
@@ -1852,9 +1894,23 @@ export default function DashboardPage() {
             </>
           ) : (
           <>
-          {groupShelves.watching.length > 0 && (
+          {(groupShelves.watching.length > 0 || celebrating.length > 0 || settledCount > 0) && (
             <>
-              <h1 style={shelfHeader}>Open show rooms</h1>
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Open show rooms</h1>}
+              {/* Celebration rows lead the shelf (2026-09-23), in their own
+                  row: their two-line height must never stretch a room pill's
+                  wrap (the opt-in avatars hang from the wrap's bottom). */}
+              {celebrating.length > 0 && (
+                <div style={{ ...shelfLayout(celebrating.length), marginBottom: groupShelves.watching.length ? 28 : 0 }}>
+                  {celebrating.map((c) => (
+                    <div key={c.roomId} className="group-pill-wrap">
+                      <CelebrationPill name={c.name} onClick={openFinishedDrawer} />
+                      <OptInAvatars members={c.opted} withTooltip onTip={moveTip} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {groupShelves.watching.length > 0 && (
               <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
@@ -1873,13 +1929,31 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
+              {/* The finished-together pill (2026-09-23, mockup A — replaces
+                  the right-edge tab, which was easy to miss): centred at the
+                  FOOT of the shelf, one size under the room pills, cream with
+                  green ink and the drawer's icon. The 44px gap clears the
+                  avatars hanging off the last row. */}
+              {settledCount > 0 && (
+                <div style={{ display: "flex", justifyContent: "center", marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 0 }}>
+                  <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+                    <span className="sb-plate" />
+                    <button style={finishedPillStyle} title="shows you've finished together" onClick={openFinishedDrawer}>
+                      {drawerUnseen && <span style={notifDotButton} />}
+                      <MonitorCheck size={18} color={C.green} />
+                      <span>{settledCount} finished together</span>
+                    </button>
+                  </span>
+                </div>
+              )}
             </>
           )}
 
           {/* CP2: the group room's second shelf — proposed-but-not-started
               shows (votes live here per CP1; starting a room promotes off). */}
           {groupShelves.notStarted.length > 0 && (
-            <h1 style={{ ...shelfHeader, marginTop: groupShelves.watching.length ? 56 : 0 }}>
+            <h1 style={{ ...shelfHeader, marginTop: (groupShelves.watching.length || celebrating.length || settledCount) ? 56 : 0 }}>
               Proposed shows
             </h1>
           )}
@@ -1907,7 +1981,7 @@ export default function DashboardPage() {
               labels (polish pass 2026-09-15; was two stacked 384px pills).
               The shadow rides "Propose more shows?" — proposing is the
               room's one act. */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: groupShelves.watching.length || groupShelves.notStarted.length ? 72 : 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: (groupShelves.watching.length || groupShelves.notStarted.length || celebrating.length || settledCount) ? 72 : 32 }}>
             <button
               style={{ ...D.pill.L, background: C.yellow, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}
               onClick={openSearch}
@@ -2846,6 +2920,33 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
   );
 }
 
+// The celebration pill (Alborz 2026-09-23, mockup B): the room pill's shape
+// in Accent, cream text, two lines (name + "You all finished it!"), the star
+// badge on the top-left curve where a room's dot sits. Opens the
+// finished-together drawer — NOT the room.
+function CelebrationPill({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.yellow }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
+      <button
+        onClick={onClick}
+        title="You all finished it — open the shows you've finished together"
+        style={{
+          position: "relative", display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", minHeight: 48,
+          borderRadius: 9999, fontFamily: '"Inter", sans-serif', width: "100%", boxSizing: "border-box",
+          background: C.yellow, border: "2px solid transparent", color: CANON.cream, cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <CelebrationBadge style={{ position: "absolute", top: -10, left: 4 }} />
+        <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+          <span style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.45, opacity: 0.9 }}>You all finished it!</span>
+        </span>
+      </button>
+    </span>
+  );
+}
+
 function PillRightSide({ right }: { right: PillData["right"] }) {
   if (right.kind === "none") return null;
   if (right.kind === "progress") {
@@ -3356,11 +3457,13 @@ const identityBtn: React.CSSProperties = {
   border: `2px solid ${C.blue}`, background: C.blue, color: CANON.cream, fontWeight: 700, fontSize: 14,
   padding: "10px 32px", borderRadius: 65, cursor: "pointer",
 };
-const finishedTab: React.CSSProperties = {
-  // The chat tab's grammar, one slot below it — the finished-together drawer.
-  position: "fixed", right: 0, top: EDGE_TAB_TOP + 112, background: C.cream, border: "none", cursor: "pointer",
-  borderTopLeftRadius: 48, borderBottomLeftRadius: 48, padding: "32px 24px 32px 40px",
-  display: "inline-flex", alignItems: "center", boxShadow: "-6px 6px 18px rgba(0,0,0,0.15)", zIndex: 45,
+// The finished-together pill (2026-09-23): one shelf column wide, the room
+// pill's shape one size down, cream fill, green ink.
+const finishedPillStyle: React.CSSProperties = {
+  position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+  width: SHELF_COL, minHeight: 40, padding: "0 20px", boxSizing: "border-box",
+  borderRadius: 9999, border: "2px solid transparent", background: C.cream, color: C.green,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer",
 };
 const finishedPanel: React.CSSProperties = {
   // The chat panel's geometry.

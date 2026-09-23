@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search, ChevronRight } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
+import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
+import CelebrationBadge from "../components/CelebrationBadge";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -445,36 +447,78 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   }, [groupShows, roomDnf, finishedRoomIds, showsById]);
 
   const drawerSeenKey = `ns_fin_drawer_seen_${selfUserId}_${groupId}`;
+  // The pill's dot (2026-09-23): DNF arrivals only — a finished show
+  // announces itself as a celebration row instead (below), so the plain
+  // pill never lights for one.
   const drawerUnseen = useMemo(() => {
     void drawerSeenTick;
     let seen: string[] = [];
     try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
     const seenSet = new Set(seen);
-    return [...drawerItems.finished, ...drawerItems.dnf].some((it) => !seenSet.has(it.roomId));
+    return drawerItems.dnf.some((it) => !seenSet.has(it.roomId));
   }, [drawerItems, drawerSeenKey, drawerSeenTick]);
+
+  // ── Celebration rows (Alborz 2026-09-23, mockup B): a room everyone just
+  //    finished comes back to the TOP of the shelf as an accent row with a
+  //    star badge and "You all finished it!" — the door to the drawer. It
+  //    stays until BOTH the drawer has been opened AND the viewer has left
+  //    the group room; then it folds into the plain pill's count. Per
+  //    device, like the seen list (lib/finishedCelebration). ──
+  const celebrating = useMemo(() => {
+    void drawerSeenTick;
+    return drawerItems.finished
+      .filter((it) => celebrationState(selfUserId, it.roomId) !== "done")
+      .map((it) => {
+        const gs = groupShows.find((g) => g.roomId === it.roomId);
+        const opted = (gs?.members ?? [])
+          .filter((mm) => mm.userId !== selfUserId)
+          .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote, resolved: !!memberNameById[mm.userId] }));
+        return { ...it, opted };
+      });
+  }, [drawerItems, groupShows, memberNameById, selfUserId, drawerSeenTick]);
+  const celebratingRef = useRef<string[]>([]);
+  celebratingRef.current = celebrating.map((c) => c.roomId);
+  // Leaving the room settles every celebration whose drawer was opened.
+  useEffect(() => () => { settleCelebrations(selfUserId, celebratingRef.current); }, [groupId, selfUserId]);
+  // Rooms already seen in the drawer before this rule shipped skip the
+  // celebration (once per group per device).
+  const celebrateMigratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (celebrateMigratedRef.current === groupId || drawerItems.finished.length === 0) return;
+    celebrateMigratedRef.current = groupId;
+    let seen: string[] = [];
+    try { seen = JSON.parse(localStorage.getItem(drawerSeenKey) || "[]"); } catch { /* ignore */ }
+    const seenSet = new Set(seen);
+    for (const it of drawerItems.finished) {
+      if (seenSet.has(it.roomId) && celebrationState(selfUserId, it.roomId) === "fresh") markCelebrationDone(selfUserId, it.roomId);
+    }
+    setDrawerSeenTick((t) => t + 1);
+  }, [drawerItems, drawerSeenKey, groupId, selfUserId]);
+
   const openFinishedDrawer = () => {
     setFinishedDrawerOpen(true);
     try {
       localStorage.setItem(drawerSeenKey, JSON.stringify([...drawerItems.finished, ...drawerItems.dnf].map((it) => it.roomId)));
     } catch { /* ignore */ }
+    for (const rid of celebratingRef.current) markCelebrationOpened(selfUserId, rid);
     setDrawerSeenTick((t) => t + 1);
   };
 
-  // Finished-together entry point (Alborz 2026-09-21, option C): a caption
-  // link under the "Open show rooms" heading — the finished shows are a
-  // shelf, so their door lives with the shelves, not in the header cluster
-  // (a second right-edge tab under chat read as clutter). Same drawer, same
-  // unseen dot (blue, inline). Stands alone when there are no open rooms.
-  const finishedCount = drawerItems.finished.length + drawerItems.dnf.length;
-  const finishedLink = finishedCount > 0 ? (
-    <button
-      onClick={openFinishedDrawer}
-      aria-label="shows you've finished together"
-      style={{ ...M.type.caption, color: C.cream, textDecoration: "underline", textUnderlineOffset: 3, background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "block", margin: "-8px auto 16px", textAlign: "center" }}
-    >
-      {drawerUnseen && <span className="m-dot-in" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.blue, marginRight: 6, verticalAlign: "1px" }} />}
-      {finishedCount} finished together
-    </button>
+  // Finished-together entry point (Alborz 2026-09-23, mockup A — replaces
+  // the 09-21 caption link, which was easy to miss): a cream pill at the
+  // FOOT of the "Open show rooms" shelf, the drawer's icon leading, one
+  // size under the show rows. Counts only settled rooms — a celebrating one
+  // is still its own row above. Stands alone when there are no open rooms.
+  const settledCount = drawerItems.finished.filter((it) => celebrationState(selfUserId, it.roomId) === "done").length + drawerItems.dnf.length;
+  const finishedPill = settledCount > 0 ? (
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
+      <button onClick={openFinishedDrawer} aria-label="shows you've finished together" style={finishedPillStyle}>
+        {drawerUnseen && <span className="m-dot-in" style={rowDot} />}
+        <MonitorCheck size={18} color={C.green} />
+        <span>{settledCount} finished together</span>
+      </button>
+    </span>
   ) : null;
 
   // Posters for the drawer thumbnails (module-cached).
@@ -957,12 +1001,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         // CP2 four-part group room (desktop parity): SHOW ROOMS shelf →
         // Proposed shelf → "Propose more shows?" → "Add more friends…".
         <div style={contentWrap}>
-          {groupShelves.watching.length === 0 && finishedLink}
-          {groupShelves.watching.length > 0 && (
+          {(groupShelves.watching.length > 0 || celebrating.length > 0 || finishedPill) && (
             <>
-              <h1 style={shelfHeader}>Open show rooms</h1>
-              {finishedLink}
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Open show rooms</h1>}
               <div style={shelfCol}>
+                {/* Celebration rows lead the shelf (2026-09-23). */}
+                {celebrating.map((c) => (
+                  <CelebrationRow key={c.roomId} name={c.name} opted={c.opted} onClick={openFinishedDrawer} />
+                ))}
                 {groupShelves.watching.map((r) => (
                   <ShowRow
                     key={r.pill.showId}
@@ -974,6 +1020,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   />
                 ))}
               </div>
+              {finishedPill && <div style={{ marginTop: 16 }}>{finishedPill}</div>}
             </>
           )}
 
@@ -982,7 +1029,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               {/* Vertical rhythm tightened from here down (Alborz 2026-08-18)
                   so the first browse row peeks clearly above the docked deck
                   card — an invitation to scroll, not a covered-up glitch. */}
-              <h1 style={{ ...shelfHeader, marginTop: groupShelves.watching.length ? 32 : 0 }}>
+              <h1 style={{ ...shelfHeader, marginTop: (groupShelves.watching.length || celebrating.length || settledCount) ? 32 : 0 }}>
                 Proposed shows
               </h1>
               <div style={shelfCol}>
@@ -1410,6 +1457,43 @@ function ShowRow({ row, dot, line2, onClick, onLongPress }: {
   );
 }
 
+// The celebration row (Alborz 2026-09-23, mockup B): the show row's shape in
+// Accent, cream text, the star badge on the top-left curve where a room's
+// dot sits (clear of the two text lines), "You all finished it!" as the
+// second line, the finishers' avatars at the end. Tapping opens the
+// finished-together drawer — NOT the room.
+function CelebrationRow({ name, opted, onClick }: {
+  name: string;
+  opted: { username: string; resolved: boolean }[];
+  onClick: () => void;
+}) {
+  return (
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.yellow }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
+      <button
+        onClick={onClick}
+        aria-label={`${name} — you all finished it. Open the shows you've finished together`}
+        style={{ ...rowBase, background: C.yellow, border: "2px solid transparent", color: CANON.cream }}
+      >
+        <CelebrationBadge style={{ position: "absolute", top: -10, left: 12 }} />
+        <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+          <span style={{ fontWeight: 400, fontSize: 13, lineHeight: 1.45, opacity: 0.9 }}>You all finished it!</span>
+        </span>
+        {opted.length > 0 && (
+          <span style={{ display: "inline-flex", flexShrink: 0 }}>
+            {opted.map((m, i) => (
+              <span key={`${m.username}-${i}`} style={{ ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }}>
+                {m.resolved ? (m.username[0] ?? "?").toUpperCase() : ""}
+              </span>
+            ))}
+          </span>
+        )}
+      </button>
+    </span>
+  );
+}
+
 // ── Styles (canon tokens; sky group-context; 44px targets; 100dvh) ──────────
 const page: React.CSSProperties = {
   minHeight: "100dvh",
@@ -1505,6 +1589,15 @@ const rowBase: React.CSSProperties = {
   width: "100%", minHeight: 64, padding: "12px 22px", boxSizing: "border-box",
   borderRadius: 65, cursor: "pointer", textAlign: "left",
   fontFamily: '"Inter", sans-serif',
+};
+// The finished-together pill (2026-09-23): the row's shape one size down,
+// cream fill, green ink.
+const finishedPillStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex", alignItems: "center", gap: 10,
+  width: "100%", minHeight: 48, padding: "8px 22px", boxSizing: "border-box",
+  borderRadius: 65, border: "2px solid transparent", background: C.cream, color: C.green,
+  fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, cursor: "pointer", textAlign: "left",
 };
 const rowDot: React.CSSProperties = {
   // On the pill shape the dot sits on the top-left curve (left 14; was 6
