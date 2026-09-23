@@ -43,10 +43,13 @@ const HEADER_HEIGHT = 120;
 
 // ── Mobile idiom (2026-09-23, the /m season-map sheet) ──────────────────────
 // The sheet's own scroller hosts the grid: no season-label column (the
-// season is a full-width strip above its rows), a 52px episode column that
-// stays put under a sideways pan, and 72px member columns with the 32px
-// cell centred — avatar + name above instead of the rotated handle.
-const M_EP_LABEL_W = 52;   // 20px sheet gutter + "E12"
+// season is a full-width strip above its rows), a "S1 E7" label column that
+// stays put under a sideways pan (the season named on every row, so a
+// scrolled-past strip is never needed — Alborz 2026-09-23), and 72px member
+// columns with the 32px cell centred — avatar + name above instead of the
+// rotated handle. The grid is max-content wide and centred in the sheet
+// until it outgrows it; then it pans.
+const M_EP_LABEL_W = 76;   // 20px sheet gutter + "S12 E24" + 8
 const M_COL_W = 72;
 const M_COL_GAP = 8;
 const M_STRIP_H = 40;
@@ -678,7 +681,11 @@ export default function V2RoomMap({
           // continue to sit within the column tracks; this padding is
           // dead space on the right of every body row, picked up only by
           // the sticky header (via width: calc(100% + 24px) below).
-          paddingRight: mobile ? 0 : 24,
+          paddingRight: mobile ? 20 : 24,
+          // Mobile: centred while narrower than the sheet (a two-friend room
+          // sat lopsided against the left edge); auto margins fall to 0 once
+          // the tracks outgrow the sheet, and the scroller takes over.
+          ...(mobile ? { width: "max-content", margin: "0 auto" } : null),
         }}
       >
         {/* ── Mobile header (2026-09-23): avatar + name per column, sticky
@@ -1289,8 +1296,8 @@ export default function V2RoomMap({
                   {/* Episode label: sticky against the sheet's left edge,
                       aligned to the cell (not the row's gap). */}
                   <div style={{ position: "sticky", left: 0, zIndex: 2, background: CANON.cream, height: ROW_HEIGHT, paddingLeft: 20, boxSizing: "border-box" }}>
-                    <div style={{ height: CELL, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13, color: withAlpha(CANON.dark, 0.7) }}>
-                      E{row.episode}
+                    <div style={{ height: CELL, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13, color: withAlpha(CANON.dark, 0.7), whiteSpace: "nowrap" }}>
+                      S{row.season} E{row.episode}
                     </div>
                   </div>
                 </>
