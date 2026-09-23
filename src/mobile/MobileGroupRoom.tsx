@@ -995,7 +995,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
           {empty && (
             <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
-              What shows do you want<br />to watch with your friends?
+              {/* Singular for a two-person group (Alborz 2026-09-23). */}
+              What shows do you want<br />to watch with your {others.length === 1 ? "friend" : "friends"}?
             </h1>
           )}
 

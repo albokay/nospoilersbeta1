@@ -462,15 +462,15 @@ export default function FriendProfile({
 
   return (
     <div style={{ width: "100%", maxWidth: slim ? undefined : 1178, margin: "0 auto" }}>
-      {/* ── {Name}'s canon — the featured block, view-only ── */}
-      <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 28 : 28, letterSpacing: 0, lineHeight: 1.2, color: CREAM, margin: 0, textAlign: "center" }}>
-        {ownerName}&rsquo;s canon
-      </h2>
-      {canonList.length === 0 ? (
-        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, color: CREAM, opacity: 0.85, textAlign: "center", marginTop: 14 }}>
-          {ownerName} hasn&rsquo;t picked a canon yet.
-        </div>
-      ) : (() => {
+      {/* ── {Name}'s canon — the featured block, view-only. Absent
+             entirely until they've picked one (Alborz 2026-09-23: the
+             heading over a "hasn't picked" caption read as a hole). ── */}
+      {canonList.length > 0 && (
+        <h2 style={{ fontFamily: LORA, fontWeight: 700, fontSize: slim ? 28 : 28, letterSpacing: 0, lineHeight: 1.2, color: CREAM, margin: 0, textAlign: "center" }}>
+          {ownerName}&rsquo;s canon
+        </h2>
+      )}
+      {canonList.length === 0 ? null : (() => {
         // Canon past four (Alborz 2026-09-09): drawer = pages of four with
         // chevrons + dots; mobile = first four behind a "show all N".
         const pageCount = narrow ? Math.max(1, Math.ceil(canonList.length / 4)) : 1;
@@ -621,9 +621,10 @@ export default function FriendProfile({
       {shelf(`${ownerName} wants to watch:`, wantList)}
       {shelf(`${ownerName} has finished:`, finishedList)}
 
+      {/* Nothing anywhere — canon or shelves (Alborz 2026-09-23 copy). */}
       {nothingYet && (
-        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, color: CREAM, opacity: 0.85, textAlign: "center", marginTop: 40 }}>
-          Nothing on the shelves yet.
+        <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 13, color: CREAM, opacity: 0.85, textAlign: "center", marginTop: 8 }}>
+          {ownerName} hasn&rsquo;t filled out their personal dashboard yet.
         </div>
       )}
 

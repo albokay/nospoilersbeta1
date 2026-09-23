@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { UserPen, MessageCircleWarning, CornerRightUp, CornerLeftDown } from "lucide-react";
+import { UserPen, MessageCircleWarning, ArrowUp, ArrowDown } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M } from "./m";
 import { markJoinedThisSession } from "../lib/joinSession";
+import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { useAuth } from "../lib/auth";
 import AccountModal from "../components/AccountModal";
 import MobileFeedbackSheet from "./MobileFeedbackSheet";
@@ -92,6 +93,9 @@ function inviteNames(inv: PendingGroupInvite, contactNames: Record<string, strin
 
 export default function MobileDashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
+  // Border signposts retire after a handful of visits (Alborz 2026-09-23).
+  const [signpostsVisible, setSignpostsVisible] = useState(true);
+  useEffect(() => { if (user?.id) setSignpostsVisible(dashboardSignpostsVisible(user.id)); }, [user?.id]);
   const navigate = useNavigate();
   const selfUserId = user?.id ?? "";
 
@@ -524,16 +528,25 @@ export default function MobileDashboard() {
             <>
               {/* Border signposts (Alborz 2026-09-07; polish pass 2026-09-14:
                   normal flow — the absolute/negative-margin positioning was
-                  fragile if the copy ever wraps on small phones). Green-side
-                  label above the border, the collect/log copy just inside. */}
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap", margin: "32px 0 12px" }}>
-                Your friend groups <CornerRightUp size={18} strokeWidth={1} />
-              </div>
-              <div style={{ background: C.yellow, padding: "20px 16px 120px" }}>
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 6, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, textAlign: "left", whiteSpace: "nowrap", margin: "0 0 24px" }}>
-                  <CornerLeftDown size={18} strokeWidth={1} style={{ marginTop: 5, flexShrink: 0 }} />
-                  <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+                  fragile if the copy ever wraps on small phones). Desktop's
+                  arrows, leading, 8px off the border on both sides (Alborz
+                  2026-09-23); gone after the first handful of visits, the
+                  green's 32px of room above the border kept. */}
+              {signpostsVisible ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, whiteSpace: "nowrap", margin: "32px 0 8px" }}>
+                  <ArrowUp size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                  <span>Your friend groups</span>
                 </div>
+              ) : (
+                <div aria-hidden style={{ height: 32 }} />
+              )}
+              <div style={{ background: C.yellow, padding: `${signpostsVisible ? 8 : 20}px 16px 120px` }}>
+                {signpostsVisible && (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 8, color: C.cream, opacity: 0.85, fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, textAlign: "left", whiteSpace: "nowrap", margin: "0 0 24px" }}>
+                    <ArrowDown size={16} strokeWidth={1.5} style={{ marginTop: 2, flexShrink: 0 }} />
+                    <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+                  </div>
+                )}
                 <ReferenceLookupBand mobile />
               </div>
             </>

@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
+import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -175,6 +176,9 @@ function tipAnchorBelowLabel(e: React.MouseEvent): { x: number; y: number; below
 
 export default function DashboardPage() {
   const { user, profile, loading: authLoading, signOut } = useAuth() as any;
+  // Border signposts retire after a handful of visits (Alborz 2026-09-23).
+  const [signpostsVisible, setSignpostsVisible] = useState(true);
+  useEffect(() => { if (user?.id) setSignpostsVisible(dashboardSignpostsVisible(user.id)); }, [user?.id]);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1895,7 +1899,8 @@ export default function DashboardPage() {
           {/* Empty group → the prompt sits just below the clusters. */}
           {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
             <h1 style={{ ...heroH1, textAlign: "center", marginTop: 8, marginBottom: 8 }}>
-              What shows do you want<br />to watch with your friends?
+              {/* Singular for a two-person group (Alborz 2026-09-23). */}
+              What shows do you want<br />to watch with your {(railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).filter((m) => m.userId !== selfUserId).length === 1 ? "friend" : "friends"}?
             </h1>
           )}
           {/* The group room's two actions, side by side and sized to their
@@ -1989,14 +1994,20 @@ export default function DashboardPage() {
           <div aria-hidden style={{ flex: "0 1 270px", minWidth: 0 }} />
           <DeckGridCard mode="personal" viewerId={user.id} dockInFlow />
           <div style={{ flex: "0 1 270px", minWidth: 0, alignSelf: "stretch", position: "relative", zIndex: 3, display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingLeft: 48, paddingBottom: 40, boxSizing: "border-box" }}>
-            <div style={signpost}>
-              <ArrowUp size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
-              <span>Your friend groups</span>
-            </div>
-            <div style={{ ...signpost, position: "absolute", left: 48, top: "calc(100% - 8px)", alignItems: "flex-start" }}>
-              <ArrowDown size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
-            </div>
+            {/* The column stays (it centres the card); only its signposts
+                retire after the first handful of visits (2026-09-23). */}
+            {signpostsVisible && (
+              <>
+                <div style={signpost}>
+                  <ArrowUp size={16} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                  <span>Your friend groups</span>
+                </div>
+                <div style={{ ...signpost, position: "absolute", left: 48, top: "calc(100% - 8px)", alignItems: "flex-start" }}>
+                  <ArrowDown size={16} strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>Your space to collect and log.<br />This becomes the profile your<br />friends see.</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

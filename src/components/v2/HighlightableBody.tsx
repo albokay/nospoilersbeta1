@@ -219,6 +219,18 @@ function HighlightSpan({
       ref={spanRef}
       onMouseEnter={enterSpan}
       onMouseLeave={leave}
+      // Touch (Alborz 2026-09-23): a tap fires mouseenter only the FIRST
+      // time — the emulated cursor then "stays" on the span, so after a
+      // tap-away closed the bubble a second tap never re-entered and it
+      // stayed shut. A click while the bubble is closed opens it at the tap
+      // point; on desktop the span is already hovered when clicked, so this
+      // is inert there.
+      onClick={(e) => {
+        if (hovered) return;
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        setAnchor({ x: e.clientX, y: e.clientY });
+        setHovered(true);
+      }}
       style={{ background: color, padding: "2px 2px", borderRadius: 3 }}
     >
       {children}
