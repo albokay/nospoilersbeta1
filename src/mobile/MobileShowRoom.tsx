@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, ChevronUp, Minus, Settings, SquarePen, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, LayoutGrid, Minus, Settings, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
-  persistProgressUpdate, upsertEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
+  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
   fetchThreadSeenProgress, isAboveSeenProgress,
   fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
   leaveShowRoom, setRoomDnf, fetchContactNames,
@@ -15,12 +15,11 @@ import {
 import { joinNames } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { effectiveProgress } from "../lib/utils";
-import { linearIndex } from "../lib/groupPills";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
 import RoomProgressTip from "../components/RoomProgressTip";
 import LoadingDots from "../components/LoadingDots";
-import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
+import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -43,9 +42,13 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
  * (rating capture on forward progress — the ONLY rating affordance on mobile).
  *
  * Per the mobile rebuild spec:
- *   • SEASON MAP CUT — replaced by an expandable ROSTER dropdown at the top:
- *     collapsed = member count + avatars; expanded = every member INCLUDING
- *     the viewer, ordered by watch progress, raw S/E (no relative math).
+ *   • SEASON MAP — the desktop map in a cream bottom sheet (2026-09-23,
+ *     direction A; a tester asked for it), opened from the control card's
+ *     Map pill: same V2RoomMap in its `mobile` idiom (avatar + name
+ *     headers, season strips, Friend-blue lines on the cream), same
+ *     folding, signals and rating edit mode. Tapping a cell closes the
+ *     sheet and scrolls the feed to that entry. Its header replaced the
+ *     roster dropdown that stood in for the map from CP6 to here.
  *   • Notification signals — desktop's full set since 2026-08-21 (the red
  *     cut was reversed): white "new since last visit" outline (newly-visible
  *     entry), green (new response on your entry), yellow (new highlight on
@@ -117,7 +120,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // it so a half-written entry survives a guide/room check.
   const [composeMinimized, setComposeMinimized] = useState(false);
   useEffect(() => { if (!composeOpen) setComposeMinimized(false); }, [composeOpen]);
-  const [rosterOpen, setRosterOpen] = useState(false);
+  // Season map sheet (2026-09-23): the sheet's inner div scrolls (both
+  // ways — wide rooms pan sideways), so the swipe hook gates on it.
+  const [mapSheetOpen, setMapSheetOpen] = useState(false);
+  const [mapEditing, setMapEditing] = useState(false);
+  const mapScrollRef = useRef<HTMLDivElement>(null);
+  const mapSwipe = useSheetSwipeDown(() => setMapSheetOpen(false), { scrollRef: mapScrollRef, open: mapSheetOpen });
   // Byline tap → the member's pool as an OVERLAY on the still-mounted room
   // (stable back swipe): opening pushes a same-path history entry, so the
   // iOS edge-swipe / back button pops it → popstate → overlay closes and
@@ -574,6 +582,35 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     setComposeMinimized(false);
   }
 
+  // Map edit mode's Save (desktop's commitRatings, ported 2026-09-23): batch
+  // the writes, then patch the viewer's own map cells in place — no room
+  // reload for a ratings-only change.
+  async function commitRatings(changes: { s: number; e: number; rating: number | null }[]): Promise<{ ok: boolean }> {
+    if (!user || !show) return { ok: false };
+    if (!changes.length) return { ok: true };
+    try {
+      await Promise.all(changes.map((c) => c.rating === null
+        ? deleteEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e })
+        : upsertEpisodeRating({ userId: user.id, showId: show.id, season: c.s, episode: c.e, rating: c.rating })));
+      setMapMembers((prev) => prev.map((m) => {
+        if (m.userId !== user.id) return m;
+        let ratings = m.ratings;
+        for (const c of changes) {
+          if (c.rating === null) {
+            ratings = ratings.filter((r) => !(r.s === c.s && r.e === c.e));
+          } else {
+            const idx = ratings.findIndex((r) => r.s === c.s && r.e === c.e);
+            ratings = idx >= 0
+              ? ratings.map((r, i) => (i === idx ? { ...r, rating: c.rating as number } : r))
+              : [...ratings, { s: c.s, e: c.e, rating: c.rating as number }];
+          }
+        }
+        return { ...m, ratings };
+      }));
+      return { ok: true };
+    } catch (e) { console.warn("batch rating commit failed", e); return { ok: false }; }
+  }
+
   // ── Yellow signal: unseen highlights on the viewer's writing ──────────────
   useEffect(() => {
     if (privateOnly || !roomId || !user?.id || feedEntries.length === 0) {
@@ -776,13 +813,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const displayNames: Record<string, string> = {};
   for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
 
-  // Roster ordering: by watch progress (furthest first), raw S/E, viewer included.
-  const rosterRows = [...mapMembers].sort((a, b) => {
-    const ai = linearIndex(a.progress?.s ?? 0, a.progress?.e ?? 0, show?.seasons);
-    const bi = linearIndex(b.progress?.s ?? 0, b.progress?.e ?? 0, show?.seasons);
-    return (bi - ai) || a.username.localeCompare(b.username);
-  });
-
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
       {/* Fit the reused OneSelectProgress pill to the phone: the select sizes
@@ -854,64 +884,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             first-entrance, X-able, any progress. */}
         {tab === "friend" && user && <RoomProgressTip idiom="mobile" userId={user.id} />}
 
-        {/* ── Control card (polish pass 2026-09-14): roster · sort +
-               progress · Write in ONE cream card, dark ink — replaces the
-               separate roster shell + the controls floating on the sky.
+        {/* ── Control card (polish pass 2026-09-14; map pass 2026-09-23):
+               sort + progress · Map · Write in ONE cream card, dark ink.
                Friend tab = all rows; drafts = picker + Write; guide =
-               picker only. ── */}
+               picker only. (The roster row that led the card until the
+               map sheet arrived is gone — the map's header is the roster.) ── */}
         <div style={controlCard}>
-          {/* Row 1 — roster head (friend tab), unchanged behavior. */}
-          {tab === "friend" && !privateOnly && mapMembers.length > 0 && (
-          <div>
-            <button style={rosterHead} onClick={() => setRosterOpen((o) => !o)}>
-              <span style={{ display: "inline-flex" }}>
-                {rosterRows.slice(0, 6).map((m) => (
-                  // Departed member: opaque accent fill. Viewer: green + cream.
-                  <span key={m.userId} style={{ ...rosterAvatar, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : m.userId === user?.id ? { background: C.green, color: C.cream } : {}) }}>
-                    {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
-                  </span>
-                ))}
-              </span>
-              <span style={{ flex: 1, textAlign: "left", marginLeft: 10, fontWeight: 700, fontSize: 14, color: C.midnight }}>
-                {mapMembers.length} {mapMembers.length === 1 ? "member" : "members"}
-              </span>
-              {rosterOpen ? <ChevronUp size={18} color={C.midnight} /> : <ChevronDown size={18} color={C.midnight} />}
-            </button>
-            {rosterOpen && (
-              <div style={{ padding: "4px 14px 12px" }}>
-                {rosterRows.map((m) => {
-                  const isSelf = m.userId === user?.id;
-                  const p = m.progress;
-                  return (
-                    <div key={m.userId} style={rosterRow}>
-                      <span style={{ ...rosterAvatar, marginRight: 10, ...(m.isDeparted ? { background: C.yellow, color: C.cream } : isSelf ? { background: C.green, color: C.cream } : {}) }}>
-                        {((displayNames[m.username] ?? m.username)[0] ?? "?").toUpperCase()}
-                      </span>
-                      {/* Non-self names open the friend profile as the same
-                          overlay bylines use (2026-09-08 pt 4). */}
-                      <span
-                        style={{ flex: 1, fontWeight: isSelf ? 700 : 600, fontSize: 14, color: C.midnight, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                        onClick={isSelf ? undefined : () => openPool(m.username)}
-                      >
-                        {isSelf ? "(you)" : (
-                          <span style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{displayNames[m.username] ?? m.username}</span>
-                        )}{m.isDeparted ? " (left show)" : ""}
-                      </span>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: C.midnight, opacity: 0.8, flexShrink: 0 }}>
-                        s{p?.s ?? 0} e{p?.e ?? 0}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-          {/* Row 2 — sort/filter as text-with-chevron · "you've watched"
-              picker (the <select>s stay; only the chrome changed). The
-              divider only draws when the roster row sits above it. */}
-          <div style={{ ...controlRow, ...(tab === "friend" && !privateOnly && mapMembers.length > 0 ? { borderTop: `1px solid ${withAlpha(CANON.dark, 0.1)}` } : null) }}>
+          {/* Row 1 — sort/filter as text-with-chevron · "you've watched"
+              picker (the <select>s stay; only the chrome changed). */}
+          <div style={controlRow}>
             {tab === "friend" && !privateOnly && feedEntries.length > 0 ? (
               <span style={{ position: "relative", display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <select
@@ -971,11 +952,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
             ) : null}
           </div>
-          {/* Row 3 — Write, full width inside the card (friend tab; the
-              drafts tab's Write sits in its one-row card above, pass 3).
-              No write on the reference tab (Alborz 2026-09-05). */}
+          {/* Rows 2 + 3 — Map, then Write, full width inside the card
+              (friend tab; the drafts tab's Write sits in its one-row card
+              above, pass 3). Map leads (Alborz 2026-09-23: "I want to
+              emphasize the map feature") in Identity, sized and weighted
+              exactly like Write. No write on the reference tab (2026-09-05). */}
           {tab === "friend" && (
-            <div style={{ padding: "4px 12px 12px" }}>
+            <div style={{ padding: "4px 12px 12px", display: "grid", gap: 10 }}>
+              {!privateOnly && roomId && mapMembers.length > 0 && (
+                <button style={mapBtn} onClick={() => setMapSheetOpen(true)}><LayoutGrid size={16} /> Map</button>
+              )}
               <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             </div>
           )}
@@ -1098,6 +1084,51 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <MobilePool username={poolUser} overlay onBack={() => window.history.back()} />
       )}
 
+      {/* ── Season map sheet (2026-09-23, direction A): cream, grabber +
+             swipe-down + tap-out, a fixed 80dvh so folding a season never
+             moves the sheet. Title + caption stay put; the map scrolls
+             inside (and pans sideways for wide rooms). Tap a cell → the
+             sheet closes and the feed scrolls to that entry, highlighted;
+             tap a friend → their profile over the still-open sheet; tap
+             your own icon → the rating edit mode (Save commits; closing
+             the sheet mid-edit drops unsaved taps). Red dots have no
+             dismiss here (Alborz 2026-09-23). ── */}
+      {mapSheetOpen && roomId && show && user && (
+        <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setMapSheetOpen(false); }}>
+          <div
+            style={{ ...sheetShell, background: C.cream, padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px)", height: "80dvh", display: "flex", flexDirection: "column", overflowY: "hidden", ...mapSwipe.style }}
+            {...mapSwipe.handlers}
+          >
+            <div style={OVERLAY.grabber(CANON.dark)} />
+            <div style={{ ...M.type.title, color: C.midnight, padding: "0 20px" }}>Season map</div>
+            <div style={{ ...M.type.caption, color: withAlpha(CANON.dark, 0.7), padding: "0 20px", marginTop: 4 }}>
+              {mapEditing
+                ? "Tap your cells to rate them — each tap adds a star. Save when you're done."
+                : "Tap a cell to open its entry. Tap your own icon to rate the episodes you've watched."}
+            </div>
+            <div ref={mapScrollRef} style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", marginTop: 14, WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
+              <V2RoomMap
+                mobile
+                members={mapMembers}
+                displayNames={displayNames}
+                seasons={show.seasons ?? []}
+                viewerProgress={progressForShow}
+                viewerUserId={user.id}
+                groupId={roomId}
+                onEntryClick={(tid) => { setMapSheetOpen(false); feedRef.current?.scrollToEntry(tid); }}
+                onCommitRatings={commitRatings}
+                onPollOpened={() => {}}
+                cellSignals={cellSignals}
+                isNewMap={isNewMap}
+                filteredUserId={userFilter}
+                onMemberClick={openPool}
+                onEditModeChange={setMapEditing}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Rate the episode you just finished (forward progress pick) ── */}
       {pendingRating && (
         <RatingCaptureModal
@@ -1216,22 +1247,12 @@ const controlRow: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
   minHeight: 48, padding: "0 14px", boxSizing: "border-box",
 };
-const rosterHead: React.CSSProperties = {
-  display: "flex", alignItems: "center", width: "100%", minHeight: 52,
-  padding: "8px 14px", border: "none", background: "transparent", cursor: "pointer", boxSizing: "border-box",
-};
-const rosterAvatar: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: "50%", background: C.sky, color: C.cream,
-  border: `2px solid ${C.cream}`, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
-  display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -6, boxSizing: "border-box",
-};
-const rosterRow: React.CSSProperties = {
-  display: "flex", alignItems: "center", minHeight: 44, borderTop: "1px solid rgba(26,58,74,0.08)",
-};
 const writeBtn: React.CSSProperties = {
   ...M.pill.M, display: "flex", width: "100%", alignItems: "center", justifyContent: "center", gap: 8,
   background: C.yellow, color: CANON.cream,
 };
+// The map's door (2026-09-23): Write's exact pill in Identity.
+const mapBtn: React.CSSProperties = { ...writeBtn, background: CANON.identity };
 // Drafts tab: the same pill one size down, sitting IN the control row.
 const writeBtnInline: React.CSSProperties = {
   ...M.pill.S, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,

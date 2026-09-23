@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { CANON } from "../../styles/canon";
+import { CANON, withAlpha } from "../../styles/canon";
 import { createPortal } from "react-dom";
-import { ChartBar, ChevronDown, ChevronUp, SquarePen } from "lucide-react";
+import { ChartBar, ChevronDown, ChevronRight, ChevronUp, SquarePen } from "lucide-react";
 import Tooltip from "../Tooltip";
 import LoadingDots from "../LoadingDots";
 import { D } from "../dashboardChrome";
+import { M } from "../../mobile/m";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
@@ -40,6 +41,31 @@ const SEASON_LABEL_W = 112;
 const EPISODE_LABEL_W = 24;
 const HEADER_HEIGHT = 120;
 
+// ── Mobile idiom (2026-09-23, the /m season-map sheet) ──────────────────────
+// The sheet's own scroller hosts the grid: no season-label column (the
+// season is a full-width strip above its rows), a 52px episode column that
+// stays put under a sideways pan, and 72px member columns with the 32px
+// cell centred — avatar + name above instead of the rotated handle.
+const M_EP_LABEL_W = 52;   // 20px sheet gutter + "E12"
+const M_COL_W = 72;
+const M_COL_GAP = 8;
+const M_STRIP_H = 40;
+const mAvatar: React.CSSProperties = {
+  width: 28, height: 28, borderRadius: "50%", color: CANON.cream, flexShrink: 0,
+  fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 16,
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+};
+const mCluster: React.CSSProperties = {
+  display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: "100%", minWidth: 0,
+};
+const mClusterBtn: React.CSSProperties = {
+  background: "transparent", border: "none", padding: 0, margin: 0, cursor: "pointer", fontFamily: "inherit",
+};
+const mName: React.CSSProperties = {
+  fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 600, lineHeight: 1.3, color: CANON.dark,
+  maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+};
+
 // Module-scoped canvas for one-shot text measurement. Used by the
 // dynamic header-height calculation so the rating-edit icon at the top
 // of the self column always sits clear of the rotated username
@@ -70,6 +96,13 @@ const seasonToggleBtn: React.CSSProperties = {
   background: "transparent", border: "none", padding: 0, margin: 0,
   fontFamily: "inherit", fontSize: 14, whiteSpace: "nowrap", color: CANON.cream,
   cursor: "pointer",
+};
+// Mobile: the strip's label, sticky against the sheet's left edge so it stays
+// readable while the member columns pan underneath.
+const mStripBtn: React.CSSProperties = {
+  ...seasonToggleBtn, gap: 6, height: M_STRIP_H, paddingLeft: 20, paddingRight: 12,
+  fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 700, color: CANON.dark,
+  position: "sticky", left: 0, background: CANON.cream,
 };
 
 // Rating phrase copy — per spec §"The rating system" and the dice-display
@@ -182,6 +215,18 @@ export type V2RoomMapProps = {
       the feed is also filtered to this user's entries by the page-
       level component. Null/undefined = no filter. */
   filteredUserId?: string | null;
+  /** Mobile idiom (2026-09-23, the /m season-map sheet): the sheet's scroller
+   *  hosts the grid (no own overflow), avatar + name column headers instead
+   *  of rotated names, full-width season strips as the fold control, Friend
+   *  blue for every line / outline / unseen cell on the cream, and no hover
+   *  affordances (tooltips, nudges, polls). Everything else — cell states,
+   *  signals, folding, the rating edit mode — is the desktop logic. */
+  mobile?: boolean;
+  /** Mobile only: a friend's header cluster (avatar + name) opens their
+   *  profile — the retired roster's job, moved here. */
+  onMemberClick?: (username: string) => void;
+  /** Mobile only: lets the sheet's caption follow the edit mode. */
+  onEditModeChange?: (editing: boolean) => void;
 };
 
 // Direction + count of a member's progress relative to the viewer. Ported
@@ -267,6 +312,9 @@ export default function V2RoomMap({
   firstHighlightedSet,
   onCommitRatings,
   filteredUserId,
+  mobile = false,
+  onMemberClick,
+  onEditModeChange,
 }: V2RoomMapProps) {
   // Predicate for the user-filter dim treatment. When a filter is
   // active, columns belonging to other members render at opacity 0.35
@@ -326,7 +374,8 @@ export default function V2RoomMap({
   // ── Launcher state (pings / polls / SIKW). Only meaningful when
   // groupId is provided — V2FriendRoomPage always supplies it; other
   // hypothetical callers without a room context get plain headers.
-  const launcherMode = !!groupId;
+  // Mobile has no hover and no nudge/poll launchers — plain headers.
+  const launcherMode = !!groupId && !mobile;
   const [nudgeOpenFor, setNudgeOpenFor] = useState<{
     recipientId: string;
     recipientUsername: string;
@@ -380,6 +429,7 @@ export default function V2RoomMap({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const saveErrorTimerRef = useRef<number | null>(null);
+  useEffect(() => { onEditModeChange?.(editMode); }, [editMode]); // eslint-disable-line react-hooks/exhaustive-deps
   const triggerBounce = (cellKey: string) => {
     setBouncingState({ cellKey, phase: "up" });
     requestAnimationFrame(() => {
@@ -536,6 +586,9 @@ export default function V2RoomMap({
   // user's scroll position back to where they started.
   const initialScrollDoneRef = useRef(false);
   useEffect(() => {
+    // Mobile: the sheet opens at the top (Alborz 2026-09-23) — the fold
+    // defaults already put the viewer's season within reach.
+    if (mobile) return;
     if (initialScrollDoneRef.current) return;
     const container = scrollRef.current;
     if (!container || !viewerProgress) return;
@@ -565,7 +618,7 @@ export default function V2RoomMap({
     const delta = targetEl.getBoundingClientRect().top - firstEl.getBoundingClientRect().top;
     container.scrollTop = Math.max(0, delta - (GAP_BELOW * 2 + GAP_BELOW));
     initialScrollDoneRef.current = true;
-  }, [viewerProgress, rows, foldDefaultsReady]);
+  }, [viewerProgress, rows, foldDefaultsReady, mobile]);
 
   // Pre-compute per-member: last reached row index (-1 if none), and a map
   // from `${s}-${e}` → entry / rating, for O(1) cell lookups.
@@ -602,11 +655,14 @@ export default function V2RoomMap({
   }, [members, rows]);
 
   const viewerEff = effectiveProgress(viewerProgress);
+  // Every spine / stub / terminal dot: Business on desktop's dark surface,
+  // Friend blue on the mobile sheet's cream (Alborz 2026-09-23).
+  const lineColor = mobile ? CANON.friend : CANON.business;
 
   return (
     <div
       ref={scrollRef}
-      style={{
+      style={mobile ? { position: "relative" } : {
         overflowY: "auto",
         // Extend to the bottom edge of the viewport: viewport height minus
         // the sticky-top offset (--site-header-h + 60px from V2FriendRoom-
@@ -623,17 +679,91 @@ export default function V2RoomMap({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
-          columnGap: COL_GAP,
+          gridTemplateColumns: mobile
+            ? `${M_EP_LABEL_W}px repeat(${members.length}, ${M_COL_W}px)`
+            : `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
+          columnGap: mobile ? M_COL_GAP : COL_GAP,
           alignItems: "start",
           // 24px of trailing padding on the grid so the sticky-header
           // divider can extend that far past the column tracks. Body rows
           // continue to sit within the column tracks; this padding is
           // dead space on the right of every body row, picked up only by
           // the sticky header (via width: calc(100% + 24px) below).
-          paddingRight: 24,
+          paddingRight: mobile ? 0 : 24,
         }}
       >
+        {/* ── Mobile header (2026-09-23): avatar + name per column, sticky
+            against the sheet's top. Your own cluster is one tap target that
+            enters the rating edit mode, and becomes the Save pill while
+            editing; friends' clusters open their profile; a departed member
+            reads at 55% and is inert. */}
+        {mobile && (
+          <div style={{ gridColumn: "1 / -1", position: "sticky", top: 0, zIndex: 3, background: CANON.cream }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `${M_EP_LABEL_W}px repeat(${members.length}, ${M_COL_W}px)`,
+                columnGap: M_COL_GAP, alignItems: "start", paddingTop: 4, paddingBottom: 12,
+              }}
+            >
+              <div />
+              {members.map((m) => {
+                const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
+                const dimmed = isDimmed(m.userId);
+                const initial = (dn(m.username)[0] ?? "?").toUpperCase();
+                const avatar = (
+                  <span aria-hidden style={{ ...mAvatar, background: isSelfCol ? CANON.identity : m.isDeparted ? CANON.friend : CANON.personal }}>
+                    {initial}
+                  </span>
+                );
+                const wrap: React.CSSProperties = {
+                  ...mCluster,
+                  opacity: dimmed ? 0.35 : m.isDeparted ? 0.55 : undefined,
+                  pointerEvents: dimmed ? "none" : undefined,
+                  transition: "opacity 180ms ease-out",
+                };
+                if (isSelfCol) {
+                  return editMode ? (
+                    <div key={m.userId} style={{ ...wrap, paddingTop: 8 }}>
+                      <button
+                        aria-label="Save rating changes"
+                        onClick={() => { void handleToggleEditMode(); }}
+                        style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: committing ? "wait" : "pointer" }}
+                      >
+                        {committing ? <LoadingDots /> : "Save"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button key={m.userId} aria-label="Rate the episodes you've watched" onClick={() => { void handleToggleEditMode(); }} style={{ ...wrap, ...mClusterBtn }}>
+                      {avatar}
+                      <span style={{ ...mName, color: CANON.identity, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {SELF_LABEL}<SquarePen size={14} />
+                      </span>
+                    </button>
+                  );
+                }
+                if (m.isDeparted || !onMemberClick) {
+                  return (
+                    <div key={m.userId} style={wrap}>
+                      {avatar}
+                      <span style={mName}>{dn(m.username)}</span>
+                    </div>
+                  );
+                }
+                return (
+                  <button key={m.userId} onClick={() => onMemberClick(m.username)} style={{ ...wrap, ...mClusterBtn }}>
+                    {avatar}
+                    <span style={{ ...mName, textDecoration: "underline", textUnderlineOffset: 2 }}>{dn(m.username)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {saveError && (
+              <div style={{ padding: "0 20px 8px", fontFamily: "Inter, sans-serif", fontSize: 12, lineHeight: 1.3, color: CANON.alert }}>{saveError}</div>
+            )}
+            <div aria-hidden style={{ height: 1, background: withAlpha(CANON.dark, 0.12) }} />
+          </div>
+        )}
         {/* ── Sticky header — wraps the username row + the zigzag SVG.
             Outer wrapper has NO background so the SVG's V-notches stay
             transparent (the username row's bg covers only itself; the
@@ -641,6 +771,7 @@ export default function V2RoomMap({
             Cells scrolling up appear THROUGH the V-notches and disappear
             behind the teeth, so the visible top edge of the scroll area
             follows the zigzag contour rather than a straight line. */}
+        {!mobile && (
         <div
           style={{
             gridColumn: "1 / -1",
@@ -990,6 +1121,7 @@ export default function V2RoomMap({
               the visible chrome boundary. */}
           <div aria-hidden style={{ height: 2, background: CANON.cream }} />
         </div>
+        )}
 
         {/* ── 12px breathing spacer between sticky header and body rows.
             Non-sticky — sits in the grid's flow at content position
@@ -1009,7 +1141,7 @@ export default function V2RoomMap({
           // both sides. Emits one child per grid column (season placeholder,
           // episode placeholder, then N member spines) so nothing auto-places
           // a column left.
-          const seasonBreak = showSeasonBreak && (
+          const seasonBreak = !mobile && showSeasonBreak && (
             <>
               <div style={{ height: GAP_BELOW * 2 }} />
               <div /> {/* episode-label column placeholder */}
@@ -1044,6 +1176,37 @@ export default function V2RoomMap({
             </>
           );
 
+          // ── Mobile (2026-09-23): the season is a full-width strip above
+          //    its rows — the fold control on a screen with no room for a
+          //    label column. Folded = the strip alone (no per-column fold
+          //    lines), its signal dot beside the label; the spines stop at
+          //    the strip rather than running through it.
+          const folded = collapsedSeasons.has(row.season);
+          const mobileStrip = mobile && row.isFirstOfSeason && (
+            <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", height: M_STRIP_H }}>
+              <button
+                onClick={() => toggleSeason(row.season)}
+                aria-label={`${folded ? "Expand" : "Collapse"} season ${row.season}`}
+                aria-expanded={!folded}
+                style={mStripBtn}
+              >
+                {folded
+                  ? <ChevronRight size={14} color={CANON.dark} strokeWidth={2.5} />
+                  : <ChevronDown size={14} color={CANON.dark} strokeWidth={2.5} />}
+                Season {row.season}
+                {folded && seasonSignal[row.season] && (
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 12, height: 12, borderRadius: "50%", flexShrink: 0, marginLeft: 2,
+                      background: seasonSignal[row.season] === "green" ? CANON.personal : CANON.alert,
+                    }}
+                  />
+                )}
+              </button>
+            </div>
+          );
+
           // ── Folded season (2026-08-21): the season's rows collapse into
           //    ONE row-height strip — label + down chevron, and on every
           //    member column a horizontal fold line in the thread color.
@@ -1052,8 +1215,9 @@ export default function V2RoomMap({
           //    top-to-fold-line when their last episode is INSIDE it (their
           //    thread enters and stops; a departed member's end-dot folds
           //    away with the cells), nothing when they haven't reached it.
-          if (collapsedSeasons.has(row.season)) {
+          if (folded) {
             if (!row.isFirstOfSeason) return null;
+            if (mobile) return <React.Fragment key={rowKey}>{mobileStrip}</React.Fragment>;
             const range = seasonRowRange[row.season];
             // Stacked folds read as crosses (Alborz 2026-08-21): when the
             // season BELOW is folded too, this strip's marker is the
@@ -1130,6 +1294,19 @@ export default function V2RoomMap({
               {/* Season-break spacer — built above (shared with the fold strip). */}
               {seasonBreak}
 
+              {mobile ? (
+                <>
+                  {mobileStrip}
+                  {/* Episode label: sticky against the sheet's left edge,
+                      aligned to the cell (not the row's gap). */}
+                  <div style={{ position: "sticky", left: 0, zIndex: 2, background: CANON.cream, height: ROW_HEIGHT, paddingLeft: 20, boxSizing: "border-box" }}>
+                    <div style={{ height: CELL, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13, color: withAlpha(CANON.dark, 0.7) }}>
+                      E{row.episode}
+                    </div>
+                  </div>
+                </>
+              ) : (
+              <>
               {/* Season label — only on the first row of each season */}
               <div
                 ref={(el) => {
@@ -1174,6 +1351,8 @@ export default function V2RoomMap({
               >
                 e{row.episode}
               </div>
+              </>
+              )}
 
               {/* One cell per member */}
               {members.map((m, mIdx) => {
@@ -1208,7 +1387,9 @@ export default function V2RoomMap({
                 // the dot lives in this gap instead.
                 const nextReached =
                   rowIdx + 1 <= mMap.lastReachedIdx; // next row also reached
-                const showSpineBelow = isReached && nextReached;
+                // Mobile: the season strip is the divider — no spine runs
+                // out of a season's last row into it.
+                const showSpineBelow = isReached && nextReached && !(mobile && !!rows[rowIdx + 1]?.isFirstOfSeason);
                 const showTerminalDot = m.isDeparted && isLastReached;
 
                 // Build tooltip body
@@ -1470,6 +1651,7 @@ export default function V2RoomMap({
                       width: CELL,
                       height: ROW_HEIGHT,
                       position: "relative",
+                      justifySelf: mobile ? "center" : undefined,
                       // User-filter dim: cells in non-filtered columns
                       // fade out and disable interaction. Matches the
                       // header column treatment so the whole column reads
@@ -1489,7 +1671,7 @@ export default function V2RoomMap({
                       // entries, so the new-indicator doesn't belong there
                       // and would visually contaminate the grey hidden-cell
                       // fill with a contrasting outline color.
-                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer);
+                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer, mobile);
                       // Identity blue since 2026-09-13 — one rule everywhere:
                       // blue outline = an entry you haven't opened.
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
@@ -1569,7 +1751,7 @@ export default function V2RoomMap({
                             // UNRATED cells only — a rating keeps its star
                             // (Alborz's adjustment; ratings aren't spoilers,
                             // so the star is the more informative mark).
-                            <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>?</span>
+                            <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: mobile ? CANON.cream : CANON.friend, userSelect: "none" }}>?</span>
                           ) : isReached && rating && (
                             // Pass the CONTENT area size, not the cell's
                             // declared width. theme.ts sets a global
@@ -1589,8 +1771,13 @@ export default function V2RoomMap({
                       // reached the episode they wrote on, so isMultiEntry
                       // and !isReached are mutually exclusive — backLayers
                       // are null here.)
-                      if (!isReached) {
-                        return cellInner;
+                      if (!isReached || mobile) {
+                        return (
+                          <>
+                            {backLayers}
+                            {cellInner}
+                          </>
+                        );
                       }
                       const front = (
                         <Tooltip
@@ -1624,7 +1811,10 @@ export default function V2RoomMap({
                         directly shows "Turn this notification off." (red
                         only); the cell's standard tooltip continues to show
                         when the user hovers cellInner. */}
-                    {signal && entry && (
+                    {signal && entry && mobile && (
+                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={CANON.cream} />
+                    )}
+                    {signal && entry && !mobile && (
                       <Tooltip
                         text="Turn this notification off."
                         direction="left"
@@ -1672,7 +1862,7 @@ export default function V2RoomMap({
                           width: 2,
                           height: GAP_BELOW,
                           // Flat canon greyblue (Alborz 2026-08-21).
-                          background: CANON.business,
+                          background: lineColor,
                         }}
                       />
                     )}
@@ -1694,9 +1884,15 @@ export default function V2RoomMap({
                             height: 10,
                             // Canon greyblue — flat, no opacity, so the line +
                             // dot don't darken where they overlap.
-                            background: CANON.business,
+                            background: lineColor,
                           }}
                         />
+                        {mobile ? (
+                          <div
+                            aria-hidden
+                            style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8, borderRadius: "50%", background: lineColor }}
+                          />
+                        ) : (
                         <Tooltip
                           text={`${dn(m.username)} left the room`}
                           direction="left"
@@ -1715,6 +1911,7 @@ export default function V2RoomMap({
                             }}
                           />
                         </Tooltip>
+                        )}
                       </>
                     )}
                   </div>
@@ -1789,6 +1986,7 @@ function MapCellDot({
   onDotMouseEnter,
   onDotMouseLeave,
   ring = false,
+  ringColor = CANON.friend,
 }: {
   kind: "green" | "yellow" | "red";
   redCount?: number;
@@ -1799,6 +1997,9 @@ function MapCellDot({
    *  the green dot's Friend ring in that state only — cells are red
    *  nowhere else. */
   ring?: boolean;
+  /** The ring's colour — Friend on desktop's dark map, cream on the mobile
+   *  sheet so it matches the surface (Alborz 2026-09-23). */
+  ringColor?: string;
   onDotMouseEnter?: () => void;
   onDotMouseLeave?: () => void;
 }) {
@@ -1819,7 +2020,7 @@ function MapCellDot({
         background: bg,
         // Green-on-green was invisible (Alborz 2026-09-13): the green dot
         // wears a Friend-sky ring so it registers on any cell color.
-        boxShadow: kind === "green" || (isRed && ring) ? `0 0 0 2px ${CANON.friend}` : undefined,
+        boxShadow: kind === "green" || (isRed && ring) ? `0 0 0 2px ${ringColor}` : undefined,
         color: CANON.cream,
         display: "flex",
         alignItems: "center",
@@ -1858,7 +2059,11 @@ function MapCellDot({
 // goes canon-red fill (regardless of entry/rating state). White dice
 // dots on top still render normally for rated cells. Not-reached self
 // cells stay dashed-circle (can't rate them).
-function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false): React.CSSProperties {
+// Mobile (2026-09-23): the soft colour — others' outlines, the hidden-entry
+// fill, every unseen dashed ring — is Friend blue on the sheet's cream
+// instead of desktop's Business.
+function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false, mobile: boolean = false): React.CSSProperties {
+  const soft = mobile ? CANON.friend : CANON.business;
   if (editMode && isSelf && isReached) {
     return {
       background: CANON.alert,
@@ -1870,7 +2075,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   // Full-opacity outline color (2026-07-07): the non-self border used the
   // translucent var(--dos-border) (rgba .3), which read as washed-out; the
   // opaque greyblue equivalent keeps the look but at full opacity.
-  const outlineColor = isSelf ? CANON.identity : CANON.business;
+  const outlineColor = isSelf ? CANON.identity : soft;
   // Hidden-entry cell: the member authored at (s, e) but the viewer
   // hasn't reached it yet — the entry is invisible to them. OPAQUE canon
   // greyblue fill (var(--canon-business,#8daaba), flat — no opacity) so a multi-entry stack's
@@ -1880,7 +2085,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   // (keep the fill flat). Notification dots still render on top.
   if (isReached && hasEntry && aboveViewer) {
     return {
-      background: CANON.business,
+      background: soft,
       borderRadius: "50%",
     };
   }
@@ -1904,7 +2109,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   // carry the identity/personal distinction.
   return {
     background: "transparent",
-    border: `2px dashed ${CANON.business}`,
+    border: `2px dashed ${soft}`,
     borderRadius: "50%",
   };
 }

@@ -31,6 +31,11 @@
  * `open` defaults to true (a sheet that mounts only while open). A component
  * that stays mounted with the sheet closed (page-level hooks, the tips tab)
  * MUST pass its open state, or the page stays frozen.
+ *
+ * 2026-09-23 (the /m season-map sheet pans SIDEWAYS): the first-move
+ * decision also reads the horizontal travel — a gesture that is more across
+ * than down hands off to native scrolling exactly like an upward one, so a
+ * pan through a wide map never reads as a swipe-down.
  */
 import { useEffect, useRef, useState } from "react";
 import type * as React from "react";
@@ -45,6 +50,7 @@ export default function useSheetSwipeDown(
 ): { handlers: React.DOMAttributes<HTMLElement>; style: React.CSSProperties } {
   const [dragY, setDragY] = useState(0);
   const startY = useRef<number | null>(null);
+  const startX = useRef<number | null>(null);
   // Decided once per gesture by the native listener: true = downward sheet
   // drag (native scroll blocked); a decided-upward gesture nulls startY so
   // every handler below early-returns for the rest of it.
@@ -71,13 +77,16 @@ export default function useSheetSwipeDown(
       if (scroller.scrollTop > 0) return;
       if ((e.target as HTMLElement).closest?.("textarea, input, select")) return;
       startY.current = e.touches[0].clientY;
+      startX.current = e.touches[0].clientX;
       engaged.current = false;
       const el = e.currentTarget;
       const block = (ev: TouchEvent) => {
         if (startY.current == null) return;
         if (!engaged.current) {
           const d = ev.touches[0].clientY - startY.current;
-          if (d < -DIRECTION_SLOP) { startY.current = null; return; } // up → native scroll
+          const dx = Math.abs(ev.touches[0].clientX - (startX.current ?? ev.touches[0].clientX));
+          // Up, or more across than down → native scrolling owns the gesture.
+          if (d < -DIRECTION_SLOP || (dx > DIRECTION_SLOP && dx >= Math.abs(d))) { startY.current = null; return; }
           if (d < DIRECTION_SLOP) return;                              // undecided yet
           engaged.current = true;
         }
