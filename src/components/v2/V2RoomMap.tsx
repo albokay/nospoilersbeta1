@@ -1898,12 +1898,13 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
       borderRadius: "50%",
     };
   }
-  // Not reached: same outline COLOR as the reached-no-entry cell above
-  // (identity for the viewer, greyblue for others — 2026-07-28), so the
-  // two read as one family; only the DASH distinguishes them.
+  // Not reached: Business dashed for EVERY column, the viewer's included
+  // (Alborz 2026-09-22 — was identity for self since 2026-07-28). Unseen
+  // episodes are unseen regardless of whose column; only reached cells
+  // carry the identity/personal distinction.
   return {
     background: "transparent",
-    border: `2px dashed ${outlineColor}`,
+    border: `2px dashed ${CANON.business}`,
     borderRadius: "50%",
   };
 }
