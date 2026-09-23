@@ -1089,6 +1089,16 @@ body.pwa-standalone{ background-image:none !important; }
      ring is left over. Scoped: the RepliesList "Got it" buttons sit on cream
      cards and keep their identity ring. */
   .d-btn-identity--cream-ring:hover:not(:disabled){ border-color:var(--canon-cream,#fef8ea) !important; }
+  /* Entry-ticket hover convention (Alborz 2026-09-22): a COLOUR SWAP, never a
+     lift. Writing-prompt card pills — Another: cream outline/text → cream fill,
+     Friend text; Use this: identity fill → identity outline + text, no fill. */
+  .prompt-v2-another:hover:not(:disabled){ background:var(--canon-cream,#fef8ea) !important; color:var(--canon-friend,#adc8d7) !important; }
+  .prompt-v2-use:hover:not(:disabled){ background:transparent !important; color:var(--canon-identity,#355eb8) !important; }
+  /* Compose modal footer (same convention) — Not now: alert outline → alert fill,
+     text in the modal's tan; Share entry (desktop): green fill → green outline +
+     text, fill in the modal's tan (#fef8ea = ComposeModal CREAM_BG). */
+  .v2-compose-notnow:hover:not(:disabled){ background:var(--canon-alert,#f45028) !important; color:#fef8ea !important; }
+  .v2-compose-submit:hover:not(:disabled){ background:#fef8ea !important; color:var(--green) !important; border-color:var(--green) !important; }
 }
 
 `;

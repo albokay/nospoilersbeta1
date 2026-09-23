@@ -922,6 +922,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           >
             {!hideCancel && (
             <button
+              className="v2-compose-notnow"
               onClick={attemptDiscard}
               disabled={submitting}
               style={{
@@ -946,11 +947,16 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               // keeps the green fill; /m goes Identity per its board.
               return (
                 <button
+                  // Desktop hover = green outline + text on the modal's tan
+                  // (theme .v2-compose-submit); the rest-state border matches
+                  // the fill so the outline doesn't change the pill's size.
+                  className={mobileIdiom ? undefined : "v2-compose-submit"}
                   onClick={submitPost}
                   disabled={!canSubmit}
                   style={{
                     ...(mobileIdiom ? M.pill.M : D.pill.M),
                     background: mobileIdiom ? CANON.identity : "var(--green)",
+                    border: mobileIdiom ? "none" : "2px solid var(--green)",
                     color: CANON.cream,
                     display: "inline-flex",
                     alignItems: "center",
