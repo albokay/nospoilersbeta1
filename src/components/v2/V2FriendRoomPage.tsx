@@ -869,11 +869,8 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
     });
   }, []);
 
-  const handleDismissRedDot = useCallback((threadId: string) => {
-    const now = Date.now();
-    try { localStorage.setItem(`ns_tdot_dismiss_${threadId}`, String(now)); } catch { /* ignore */ }
-    setRedDismissedAt(prev => ({ ...prev, [threadId]: now }));
-  }, []);
+  // (The map dot's X dismiss was retired 2026-09-23 — this dormant page
+  // just stops passing the handler; its localStorage hydration stays as is.)
 
   // Per-thread notification signals for the map. Precedence (per Q4):
   // GREEN > YELLOW > RED. One signal per cell at a time.
@@ -1245,7 +1242,6 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
               onRateOwnCell={handleRateOwnCell}
               onPollOpened={() => setPollRefreshKey((k) => k + 1)}
               cellSignals={cellSignals}
-              onDismissRedDot={handleDismissRedDot}
               isNewMap={isNewMap}
               firstHighlightedSet={firstHighlightedSet}
               onCommitRatings={handleCommitRatings}

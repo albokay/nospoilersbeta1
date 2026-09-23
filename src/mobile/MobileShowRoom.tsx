@@ -54,8 +54,8 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
  *     entry), green (new response on your entry), yellow (new highlight on
  *     your writing), RED = the expand chevron's 32px circle in Alert red on
  *     your own entries with hidden ahead-of-progress responses (the green
- *     badge's grammar, red; desktop's map carries this signal instead) —
- *     cleared by EXPANDING the entry, not an X.
+ *     badge's grammar, red; the map sheet carries it too) — never
+ *     dismissed by hand; it clears when catching up reveals the responses.
  *     Same localStorage keys as desktop, so seen-state stays consistent
  *     across surfaces.
  *   • Pings / polls / SIKW stickies: cut (no launchers, no receive-side).
@@ -221,17 +221,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   //    Alborz 2026-08-21). Same localStorage keys as desktop so seen-state is
   //    shared across surfaces. Red = hidden (ahead-of-progress) responses on
   //    the viewer's OWN entries, shown as the expand chevron's circle in
-  //    Alert red (no map on mobile to carry it); cleared by EXPANDING the
-  //    entry — unlike desktop's map-dot X — or naturally when catching up
-  //    reveals the responses.
+  //    Alert red (and as the map sheet's dot since 2026-09-23); never
+  //    dismissed by hand — it clears when catching up reveals the responses.
   const prevVisibleThreadIdsRef = useRef<Set<string>>(new Set());
   const [lastOpenedAt, setLastOpenedAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_last_opened") || "{}"); } catch { return {}; }
   });
   const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
   const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
-  const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
-  const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
   // Catch-up green (2026-09-20): the deepest READABLE other-reply tag per
   // thread, and the progress the viewer had when they last opened it. A
   // reply readable now but ABOVE that progress only just became readable
@@ -455,19 +452,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         }).catch(() => { /* tolerate (migration state) */ });
       }
       // Red-layer data: hidden-response counts for threads the viewer is
-      // part of, plus explicit dismissals. The ns_tdot_x_<id> key is written
-      // ONLY by desktop's map-dot X (2026-09-20 — the retired
-      // ns_tdot_dismiss_ namespace was also written by EXPANDING, which is
-      // why legacy stamps are deliberately not read here).
+      // part of. (2026-09-23: no manual dismissals anywhere any more — the
+      // desktop map dot's X is gone, so the ns_tdot_x_ / ns_tdot_dismiss_
+      // stamps are no longer read. Red persists until catch-up.)
       setPerThreadHiddenCount(gr.hiddenCounts ?? {});
-      setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
       setDeepestVisibleReply(gr.deepestVisibleReply ?? {});
-      const dismisses: Record<string, number> = {};
-      for (const t of gr.threads as Thread[]) {
-        const v = localStorage.getItem(`ns_tdot_x_${t.id}`);
-        if (v) dismisses[t.id] = parseInt(v, 10);
-      }
-      setRedDismissedAt(dismisses);
       // Store the re-entry snapshot (plan 3a) — display-only staleness.
       if (!privateOnly && roomId) {
         try {
@@ -680,12 +669,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
-      const dismissedAt = redDismissedAt[tid] ?? 0;
-      const dismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
-      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0 && !dismissed) out[tid] = { kind: "red", redCount: hiddenCount };
+      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0) out[tid] = { kind: "red", redCount: hiddenCount };
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
   // The red signal's render home: the expand chevron in an Alert-red 32px
   // circle — the green new-responses badge's exact grammar, red (Alborz

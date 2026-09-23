@@ -180,12 +180,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   });
   const [perThreadLatestReply, setPerThreadLatestReply] = useState<Record<string, number>>({});
   const [perThreadHiddenCount, setPerThreadHiddenCount] = useState<Record<string, number>>({});
-  const [perThreadLatestHidden, setPerThreadLatestHidden] = useState<Record<string, number>>({});
   const [engagedSet, setEngagedSet] = useState<Set<string>>(new Set());
   // Threads the viewer has RESPONDED in — green also fires there (Alborz
   // 2026-09-12: a response in a conversation you're part of is for you).
   const [myReplyThreadIds, setMyReplyThreadIds] = useState<Set<string>>(new Set());
-  const [redDismissedAt, setRedDismissedAt] = useState<Record<string, number>>({});
   // Catch-up green (2026-09-20): the deepest READABLE other-reply tag per
   // thread, and the progress the viewer had when they last opened it. A
   // reply readable now but ABOVE that progress only just became readable
@@ -399,7 +397,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // Per-thread freshness data driving the map notification signals.
       setPerThreadLatestReply(gr.latestVisibleReplyAt ?? {});
       setPerThreadHiddenCount(gr.hiddenCounts ?? {});
-      setPerThreadLatestHidden(gr.latestHiddenReplyAt ?? {});
       setDeepestVisibleReply(gr.deepestVisibleReply ?? {});
       // Cross-device opens (2026-09-12): merge the server's per-entry open
       // stamps into the local map — opening on your phone clears here too.
@@ -429,18 +426,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           });
         }).catch(() => { /* tolerate (migration state) */ });
       }
-      // Hydrate manual red-dot dismissals from localStorage (persist across
-      // sessions). ns_tdot_x_ = the map dot's explicit X, and ONLY that
-      // (2026-09-20): the old ns_tdot_dismiss_ namespace was also stamped by
-      // expanding an entry on /m, so every legacy key is ambiguous and is
-      // deliberately left unread — red returns for anything dismissed by an
-      // expand, which is the point. A real X re-dismisses under the new key.
-      const dismisses: Record<string, number> = {};
-      for (const t of gr.threads as Thread[]) {
-        const v = localStorage.getItem(`ns_tdot_x_${t.id}`);
-        if (v) dismisses[t.id] = parseInt(v, 10);
-      }
-      setRedDismissedAt(dismisses);
+      // (2026-09-23: nothing dismisses a red dot by hand any more — the
+      // map dot's X is gone, so the ns_tdot_x_ / ns_tdot_dismiss_ stamps are
+      // no longer read. Red persists until catching up reveals the
+      // responses, on every surface.)
       // Store the re-entry snapshot (plan 3a) — display-only staleness.
       if (!privateOnly && roomId) {
         try {
@@ -675,15 +664,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "green" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
-      const dismissedAt = redDismissedAt[tid] ?? 0;
-      const manuallyDismissed = dismissedAt > 0 && dismissedAt >= (perThreadLatestHidden[tid] ?? 0);
-      // Hidden red (with count) revives on every NEWER hidden response.
-      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0 && !manuallyDismissed) {
+      // Hidden red (with count) stays until the viewer catches up — no
+      // manual dismissal anywhere (Alborz 2026-09-23).
+      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0) {
         out[tid] = { kind: "red", redCount: hiddenCount };
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, perThreadLatestHidden, redDismissedAt, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
 
   // ── White "never opened" outline (others' entries) — Alborz 2026-09-12:
   //    it used to be "new since last visit", marked seen ON SIGHT, so an
@@ -732,12 +720,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   const handleEntryCollapsed = useCallback((threadId: string) => {
     setEngagedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
-  }, []);
-
-  const handleDismissRedDot = useCallback((threadId: string) => {
-    const now = Date.now();
-    try { localStorage.setItem(`ns_tdot_x_${threadId}`, String(now)); } catch { /* ignore */ }
-    setRedDismissedAt((prev) => ({ ...prev, [threadId]: now }));
   }, []);
 
   // Map cell click: scroll the feed to the entry + register the first-highlight
@@ -1096,7 +1078,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 onPollOpened={() => setPollRefreshKey((k) => k + 1)}
                 cellSignals={cellSignals}
                 isNewMap={isNewMap}
-                onDismissRedDot={handleDismissRedDot}
                 firstHighlightedSet={firstHighlightedSet}
                 filteredUserId={userFilter}
               />

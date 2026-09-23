@@ -189,8 +189,6 @@ export type V2RoomMapProps = {
       have a reply in someone else's entry) — unlike red/green which only
       appear on the viewer's own column. */
   cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
-  /** Manual X-click dismissal of the red dot on a cell. */
-  onDismissRedDot?: (threadId: string) => void;
   /** Per-thread "this entry is new since your last room visit" flag. Drives
       the white outline on the cell. Same flag drives the entry-card's
       white outline (handled in V2RoomFeed). */
@@ -307,7 +305,6 @@ export default function V2RoomMap({
   onRateOwnCell,
   onPollOpened,
   cellSignals,
-  onDismissRedDot,
   isNewMap,
   firstHighlightedSet,
   onCommitRatings,
@@ -406,14 +403,6 @@ export default function V2RoomMap({
   const [cycleStateByCellKey, setCycleStateByCellKey] = useState<
     Record<string, { idx: number; lastHighlightedThreadId: string }>
   >({});
-
-  // Hover tracking for notification dots (spec #4).
-  // hoveredCellKey = full per-cell key currently hovered (cellInner or dot).
-  // hoveredDotKey  = full per-cell key whose dot specifically is hovered.
-  // Single value at a time — only one cell can be under the cursor.
-  // Driven by mouseEnter/Leave on the cell wrapper + the dot.
-  const [hoveredCellKey, setHoveredCellKey] = useState<string | null>(null);
-  const [hoveredDotKey, setHoveredDotKey] = useState<string | null>(null);
 
   // ── Rating-edit mode ──────────────────────────────────────────────────
   // editMode: when true, the viewer's own column-header shows a list-check
@@ -1579,11 +1568,10 @@ export default function V2RoomMap({
                 // red tooltip line. Only one signal per cell at a time.
                 const signal = entry ? cellSignals?.[entry.threadId] ?? null : null;
                 const cellIsNew = entry ? !!isNewMap?.[entry.threadId] : false;
-                // Per-cell unique key for hover tracking (spec #4). Cell key
+                // Per-cell unique key (the receding-layers cycle). Cell key
                 // alone (season-episode) collides across members; need to
-                // include member id for hover uniqueness.
+                // include member id for uniqueness.
                 const fullCellKey = `${m.userId}-${cellKey}`;
-                const cellHovered = hoveredCellKey === fullCellKey || hoveredDotKey === fullCellKey;
                 let signalLine: React.ReactNode = null;
                 if (signal) {
                   const text =
@@ -1714,8 +1702,6 @@ export default function V2RoomMap({
                       const cellInner = (
                         <div
                           onClick={clickAction ?? undefined}
-                          onMouseEnter={() => setHoveredCellKey(fullCellKey)}
-                          onMouseLeave={() => setHoveredCellKey((prev) => (prev === fullCellKey ? null : prev))}
                           data-rating={rating ?? undefined}
                           style={{
                             width: CELL,
@@ -1806,49 +1792,12 @@ export default function V2RoomMap({
                     {/* Notification dot for this cell's entry, if any.
                         Sits half-overlapping the LEFT edge of the cell,
                         vertically centered. Green-over-red precedence is
-                        handled upstream — only one signal per cell.
-                        Wrapped in its own Tooltip so hovering the dot
-                        directly shows "Turn this notification off." (red
-                        only); the cell's standard tooltip continues to show
-                        when the user hovers cellInner. */}
-                    {signal && entry && mobile && (
-                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={CANON.cream} />
-                    )}
-                    {signal && entry && !mobile && (
-                      <Tooltip
-                        text="Turn this notification off."
-                        direction="left"
-                        width="auto"
-                        portal
-                        disabled={!(signal.kind === "red" && signal.redCount)}
-                        // Anchor the Tooltip wrapper at the outer cell's
-                        // top-left with 0 footprint so the inner dot's
-                        // absolute positioning (left:-8, top:CELL/2-8)
-                        // still resolves to the cell-relative position.
-                        style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
-                        tooltipStyle={{
-                          background: CANON.cream,
-                          color: CANON.alert,
-                          fontSize: 11,
-                          fontWeight: 500,
-                          textAlign: "left",
-                          lineHeight: 1.25,
-                        }}
-                      >
-                        <MapCellDot
-                          kind={signal.kind}
-                          redCount={signal.redCount}
-                          ring={editMode}
-                          showX={cellHovered && signal.kind === "red" && !!signal.redCount}
-                          onDotMouseEnter={() => setHoveredDotKey(fullCellKey)}
-                          onDotMouseLeave={() => setHoveredDotKey((prev) => (prev === fullCellKey ? null : prev))}
-                          onDismiss={
-                            signal.kind === "red" && !!signal.redCount && onDismissRedDot
-                              ? () => onDismissRedDot(entry.threadId)
-                              : undefined
-                          }
-                        />
-                      </Tooltip>
+                        handled upstream — only one signal per cell. Inert
+                        on every idiom (Alborz 2026-09-23): the red dot's
+                        hover-X was the last way to dismiss one by hand —
+                        red now stays until you catch up, everywhere. */}
+                    {signal && entry && (
+                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={mobile ? CANON.cream : CANON.friend} />
                     )}
 
                     {/* Spine segment below the cell — only when both this
@@ -1970,28 +1919,19 @@ export default function V2RoomMap({
 }
 
 // MapCellDot — 16px circular notification dot that sits half-overlapping
-// the left edge of a map cell. Green = visible-new responses (no count,
-// pointerEvents: none); Red = own-entry hidden responses (numeric count,
-// click dismisses). No drop shadow per spec.
-//
-// X-on-cell-hover (spec #4): the number→X swap is now driven by the OUTER
-// `showX` prop (parent owns cell-hover state) rather than the dot's own
-// hover. Dot-specific hover is reported up via onDotMouseEnter/Leave so the
-// parent can swap the tooltip text to "Turn this notification off."
+// the left edge of a map cell. Green = visible-new responses (no count);
+// Red = hidden responses in a thread of yours (numeric count). No drop
+// shadow per spec. Purely a display: pointer-events none on every kind —
+// the red dot's hover-X dismiss was retired 2026-09-23 (red clears only
+// when catching up reveals the responses).
 function MapCellDot({
   kind,
   redCount,
-  onDismiss,
-  showX = false,
-  onDotMouseEnter,
-  onDotMouseLeave,
   ring = false,
   ringColor = CANON.friend,
 }: {
   kind: "green" | "yellow" | "red";
   redCount?: number;
-  onDismiss?: () => void;
-  showX?: boolean;
   /** Map edit mode (Alborz 2026-09-19): the viewer's own reached cells go
    *  canon-red, so a red dot on them bleeds into the cell. The dot borrows
    *  the green dot's Friend ring in that state only — cells are red
@@ -2000,13 +1940,10 @@ function MapCellDot({
   /** The ring's colour — Friend on desktop's dark map, cream on the mobile
    *  sheet so it matches the surface (Alborz 2026-09-23). */
   ringColor?: string;
-  onDotMouseEnter?: () => void;
-  onDotMouseLeave?: () => void;
 }) {
   const isRed = kind === "red";
-  // Yellow inherits green's "non-interactive, no count, no dismiss" shape —
-  // it's an attention signal that clears on entry expand, not on a manual
-  // X-click. Color is canon-yellow.
+  // Yellow inherits green's no-count shape — an attention signal that
+  // clears on entry expand. Color is canon-yellow.
   const bg = isRed ? "var(--danger)" : kind === "yellow" ? CANON.accent : "var(--green)";
   return (
     <div
@@ -2028,22 +1965,14 @@ function MapCellDot({
         fontSize: 10,
         fontWeight: 800,
         lineHeight: 1,
-        cursor: isRed ? "pointer" : "default",
         // Below the sticky header (zIndex 2) so a dot on a cell scrolling up
         // disappears behind the header instead of floating over the usernames;
         // still above the cells (zIndex auto) so it overlaps the left edge.
         zIndex: 1,
-        pointerEvents: isRed ? "auto" : "none",
-      }}
-      onMouseEnter={isRed ? onDotMouseEnter : undefined}
-      onMouseLeave={isRed ? onDotMouseLeave : undefined}
-      onClick={(e) => {
-        if (!isRed || !onDismiss) return;
-        e.stopPropagation();
-        onDismiss();
+        pointerEvents: "none",
       }}
     >
-      {isRed ? (showX ? "✕" : redCount) : null}
+      {isRed ? redCount : null}
     </div>
   );
 }
