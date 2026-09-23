@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, MonitorCheck, Search, ChevronRight } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, Search, ChevronRight } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
@@ -1332,7 +1332,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           <div {...drawerSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...drawerSwipe.style }}>
             <div style={OVERLAY.grabber(C.midnight)} />
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <MonitorCheck size={20} color={C.green} />
+              {/* The celebration's star as the drawer's mark (2026-09-23; was the monitor). */}
+              <CelebrationStar size={20} color={C.yellow} />
               <div style={{ ...M.type.title, color: C.midnight }}>Finished together</div>
             </div>
             {drawerItems.finished.length > 0 && (

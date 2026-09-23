@@ -29,7 +29,7 @@ import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { X, Settings, Triangle, ArrowUp, ArrowDown, ArrowLeft, MessageCircle, MonitorCheck, Plus, Search, UserPen } from "lucide-react";
+import { X, Settings, Triangle, ArrowUp, ArrowDown, ArrowLeft, MessageCircle, Plus, Search, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import AccountModal from "./AccountModal";
 import FeedbackWidget from "./FeedbackWidget";
@@ -2660,8 +2660,11 @@ export default function DashboardPage() {
         <>
         <div style={{ position: "fixed", inset: 0, zIndex: 69, background: "transparent" }} onClick={() => setFinishedDrawerOpen(false)} />
         <div style={finishedPanel}>
-          <div style={chatHeader}>
-            <MonitorCheck size={20} color={C.green} />
+          {/* The celebration's star as the drawer's mark (Alborz 2026-09-23;
+              was the monitor), centred on the band — the chat header's
+              flex-start left it riding high beside the 44px close. */}
+          <div style={{ ...chatHeader, alignItems: "center" }}>
+            <CelebrationStar size={20} color={C.yellow} />
             <button style={{ ...D.iconBtn, margin: "-8px -8px 0 0" }} onClick={() => setFinishedDrawerOpen(false)} aria-label="Close"><X size={20} color={C.midnight} /></button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
