@@ -110,7 +110,9 @@ export function lettersSegment(l: RoomLetters, nameOf: NameOf): string | null {
 export function lettersSentence(l: RoomLetters, nameOf: NameOf): string | null {
   if (l.waiting > 0) {
     const from = l.waitingFrom.length === 1 ? nameOf(l.waitingFrom[0]) : undefined;
-    return `There ${l.waiting === 1 ? "is 1 letter" : `are ${l.waiting} letters`} waiting for you from ${from ?? "your friends"}.`;
+    // Carries the catch-up sentiment itself (Alborz 2026-09-25), so the
+    // room's "…for when you catch up" notif line can stand down.
+    return `${letters(l.waiting)} waiting for you from ${from ?? "your friends"}\u2026for when you catch up.`;
   }
   if (l.forThem > 0) {
     const who = l.forWhom.length === 1 ? nameOf(l.forWhom[0]) : undefined;

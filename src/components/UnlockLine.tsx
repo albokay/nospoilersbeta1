@@ -40,7 +40,7 @@ export default function UnlockLine({ note, nameOf }: { note: UnlockNote; nameOf:
     <div
       role="status"
       style={{
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 8,
         color: CANON.cream, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.45, opacity: 0.9,
         margin: "0 0 16px",
       }}

@@ -467,27 +467,7 @@ export default function DashboardPage() {
     const dot = roomId ? roomDotByRoomId.get(roomId) : undefined;
     return dot === "red" ? NOTIF_INVISIBLE : dot === "blue" ? NOTIF_VISIBLE : undefined;
   }
-  // Currently-watching gap line: your progress vs the OTHER watchers (the N
-  // matches the pill's ▲/▼ arrow). Null when there's no one to compare against,
-  // or you're even with the leader.
   type WatchRow = { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null };
-  function watchGapLine(r: WatchRow): string | null {
-    const seasons = showsById[r.pill.showId]?.seasons;
-    const others = r.opted.filter((o) => (o.s ?? 0) > 0 || (o.e ?? 0) > 0);
-    if (!others.length) return null;
-    const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
-    const eps = (n: number) => (n === 1 ? "1 episode" : `${n} episodes`);
-    if (others.length === 1) {
-      const o = others[0];
-      const n = selfIdx - linearIndex(o.s ?? 0, o.e ?? 0, seasons);
-      if (n === 0) return null;
-      return n > 0 ? `You're ${eps(n)} ahead of ${o.username}.` : `You're ${eps(-n)} behind ${o.username}.`;
-    }
-    const maxOther = Math.max(...others.map((o) => linearIndex(o.s ?? 0, o.e ?? 0, seasons)));
-    if (selfIdx < maxOther) return `You're ${eps(maxOther - selfIdx)} behind the furthest watcher.`;
-    if (selfIdx > maxOther) return `You're ${eps(selfIdx - maxOther)} ahead of your next friend.`;
-    return null; // even with the furthest watcher
-  }
   // Currently-watching pill tooltip: progress, gap line, then new-activity notif
   // — each separated by a thin cream divider.
   // Letters in transit (2026-09-25): the room's positions + mail, shared
@@ -511,12 +491,14 @@ export default function DashboardPage() {
   function watchingTipProps(r: WatchRow) {
     const lines: React.ReactNode[] = [];
     if (r.selfProg) lines.push(`You've watched: S${r.selfProg.s} E${r.selfProg.e}`);
+    // Trimmed (Alborz 2026-09-25): no gap sentence — the pill's arrow and
+    // number say it — and the mail line replaces the notif line when both
+    // would show (it carries "…for when you catch up" itself).
     const road = roomRoad(r);
-    const gap = road.sync ?? watchGapLine(r);
-    if (gap) lines.push(gap);
-    if (road.mail) lines.push(road.mail);
+    if (road.sync) lines.push(road.sync);
     const notif = roomNotif(r.pill.roomId);
-    if (notif) lines.push(notif);
+    if (road.mail) lines.push(road.mail);
+    else if (notif) lines.push(notif);
     if (!lines.length) return {};
     const [primary, ...rest] = lines;
     const sub = rest.length
@@ -2691,13 +2673,17 @@ export default function DashboardPage() {
               was the monitor), centred on the band — the chat header's
               flex-start left it riding high beside the 44px close. */}
           <div style={{ ...chatHeader, alignItems: "center" }}>
-            <CelebrationStar size={20} color={C.yellow} />
+            {/* "Finished watching:" rides the band beside the star (Alborz
+                2026-09-25); only "Didn't finish:" keeps a heading in the body. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CelebrationStar size={20} color={C.yellow} />
+              <span style={{ ...drawerHeading, color: C.midnight, marginBottom: 0 }}>Finished watching:</span>
+            </div>
             <button style={{ ...D.iconBtn, margin: "-8px -8px 0 0" }} onClick={() => setFinishedDrawerOpen(false)} aria-label="Close"><X size={20} color={C.midnight} /></button>
           </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
             {drawerItems.finished.length > 0 && (
               <>
-                <div style={drawerHeading}>Finished watching:</div>
                 <div style={drawerGrid}>{drawerItems.finished.map((it) => drawerThumb(it, false))}</div>
               </>
             )}
@@ -3011,10 +2997,13 @@ function PillRightSide({ right }: { right: PillData["right"] }) {
 
 // ── Group clusters (top of the dashboard body) ───────────────────────────────
 function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pending" | "invited" }) {
-  // accepted = cream/green · pending (invite sent) = yellow/cream · invited-to-you = red/green
-  const bg = state === "accepted" ? C.cream : state === "pending" ? C.yellow : C.red;
+  // accepted = cream/green · pending (invite sent) = green fill, cream
+  // outline + letter (Alborz 2026-09-25; was yellow — "outlined circles"
+  // in the tips) · invited-to-you = red/green
+  const bg = state === "accepted" ? C.cream : state === "pending" ? C.green : C.red;
   const fg = state === "accepted" ? C.green : state === "pending" ? CANON.cream : C.cream;
-  return <span style={{ ...avatarCircle, background: bg, color: fg }}>{(letter ?? "?").toUpperCase()}</span>;
+  const outline = state === "pending" ? { border: `2px solid ${CANON.cream}`, boxSizing: "border-box" as const } : {};
+  return <span style={{ ...avatarCircle, background: bg, color: fg, ...outline }}>{(letter ?? "?").toUpperCase()}</span>;
 }
 
 /** Interest list (Alborz 2026-08-12; parentheses dropped in the 2026-09-15

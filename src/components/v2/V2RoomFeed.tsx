@@ -327,7 +327,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     if (!positions?.length) return [] as { username: string; s: number; e: number; idx: number }[];
     return positions
       .map((p) => ({ ...p, idx: idxOf(p.s, p.e) }))
-      .filter((p) => p.idx > 0 && p.idx <= viewerIdx);
+      // Strictly behind you: a friend level with you (or everyone finished)
+      // would only mark the very top of the letters (Alborz 2026-09-25).
+      .filter((p) => p.idx > 0 && p.idx < viewerIdx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positions, seasons, viewerIdx]);
   type RoadMarker = { s: number; e: number; idx: number; usernames: string[] };
@@ -1101,15 +1103,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           alignItems: "center",
                           gap: 4,
                           color: CANON.cream,
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: 500,
                           userSelect: "none",
+                          // Tightened (Alborz 2026-09-25): 3/9 padding, 14px
+                          // glyph, 13px count — the pill sat against the
+                          // preview's last line.
                           ...(pillKind
-                            ? { background: pillKind === "blue" ? CANON.identity : CANON.alert, borderRadius: 65, padding: "5px 11px" }
+                            ? { background: pillKind === "blue" ? CANON.identity : CANON.alert, borderRadius: 65, padding: "3px 9px" }
                             : {}),
                         }}
                       >
-                        <Mails size={16} color={CANON.cream} />
+                        <Mails size={14} color={CANON.cream} />
                         {entry.replyCount}
                       </span>
                     );

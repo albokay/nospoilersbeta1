@@ -463,7 +463,7 @@ export default function MobileDashboard() {
                         </span>
                       ))}
                       {groupPending.map((p, i) => (
-                        <span key={`p${i}`} style={{ ...avatarCircle, background: C.yellow, color: C.cream }}>
+                        <span key={`p${i}`} style={{ ...avatarCircle, background: C.green, color: C.cream, border: `2px solid ${C.cream}` }}>
                           {(p.name[0] ?? "?").toUpperCase()}
                         </span>
                       ))}

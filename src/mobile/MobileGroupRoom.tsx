@@ -1349,11 +1349,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               {/* The celebration's star as the drawer's mark (2026-09-23; was the monitor). */}
               <CelebrationStar size={20} color={C.yellow} />
-              <div style={{ ...M.type.title, color: C.midnight }}>Finished together</div>
+              {/* Star + "Finished watching:" as the header row (desktop's
+                  band, mirrored 2026-09-25); "Didn't finish:" keeps its heading. */}
+              <div style={{ ...M.type.title, color: C.midnight }}>Finished watching:</div>
             </div>
             {drawerItems.finished.length > 0 && (
               <>
-                <div style={drawerHeading}>Finished watching:</div>
                 <div style={drawerGrid}>
                   {drawerItems.finished.map((it) => drawerThumb(it, false))}
                 </div>
