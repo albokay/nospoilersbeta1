@@ -3167,6 +3167,30 @@ export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboa
   }));
 }
 
+/** Letters in transit (2026-09-25): every non-deleted entry's author + tag
+ *  for a set of show rooms, keyed by room — the light read the group room's
+ *  "letters waiting / to open" lines count against members' progress
+ *  (lib/letters). Tolerant: a failure returns {} and the lines omit the mail. */
+export async function fetchRoomEntryTags(roomIds: string[]): Promise<Record<string, { authorId: string; s: number; e: number }[]>> {
+  const out: Record<string, { authorId: string; s: number; e: number }[]> = {};
+  if (!roomIds.length) return out;
+  try {
+    const { data, error } = await supabase
+      .from("group_threads")
+      .select("group_id, threads!inner(author_id, season, episode, is_deleted)")
+      .in("group_id", roomIds);
+    if (error) throw error;
+    for (const row of (data ?? []) as any[]) {
+      const t = row.threads;
+      if (!t || t.is_deleted) continue;
+      (out[row.group_id] ??= []).push({ authorId: t.author_id, s: t.season ?? 0, e: t.episode ?? 0 });
+    }
+  } catch (err) {
+    console.warn("fetchRoomEntryTags failed (recoverable):", err);
+  }
+  return out;
+}
+
 // ── Mobile: per-room last-seen + new-activity visibility ─────────────────────
 //
 // Backed by 20260425_room_last_seen.sql. Mobile renders an indicator dot on

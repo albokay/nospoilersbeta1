@@ -25,6 +25,7 @@ import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
+import { computeRoomLetters, summarizeGap, syncLine, lettersSentence, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -43,7 +44,7 @@ import {
   upsertRewatchStatus,
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
-  fetchGroupDashboard,
+  fetchGroupDashboard, fetchRoomEntryTags,
   createPeopleGroup,
   setShowVote,
   startShowRoom,
@@ -265,6 +266,9 @@ export default function DashboardPage() {
   // Group context
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [groupShows, setGroupShows] = useState<GroupDashboardShow[]>([]);
+  // Letters in transit (2026-09-25): each room's entry tags, for the pill
+  // tooltip's mail sentence (lib/letters).
+  const [entryTags, setEntryTags] = useState<Record<string, RoomEntryTag[]>>({});
   // True while the active group's FIRST shelf read of the session is in
   // flight (no snapshot to paint from) — the shelf area shows the standard
   // loading line instead of a false empty room.
@@ -486,11 +490,31 @@ export default function DashboardPage() {
   }
   // Currently-watching pill tooltip: progress, gap line, then new-activity notif
   // — each separated by a thin cream divider.
+  // Letters in transit (2026-09-25): the room's positions + mail, shared
+  // with the pill's sync mark below.
+  function roomRoad(r: WatchRow) {
+    const seasons = showsById[r.pill.showId]?.seasons;
+    const gs = groupShows.find((g) => g.showId === r.pill.showId);
+    const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
+    const others = members
+      .filter((m) => m.userId !== selfUserId && (m.s > 0 || m.e > 0))
+      .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
+    const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
+    const nameOf = (id: string) => memberNameById[id];
+    const gap = summarizeGap(selfIdx, others);
+    const optedIn = !!r.selfProg || r.pill.right.kind !== "none";
+    return {
+      sync: optedIn && others.length ? syncLine(gap, others, nameOf) : null,
+      mail: optedIn && others.length ? lettersSentence(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf) : null,
+    };
+  }
   function watchingTipProps(r: WatchRow) {
     const lines: React.ReactNode[] = [];
     if (r.selfProg) lines.push(`You've watched: S${r.selfProg.s} E${r.selfProg.e}`);
-    const gap = watchGapLine(r);
+    const road = roomRoad(r);
+    const gap = road.sync ?? watchGapLine(r);
     if (gap) lines.push(gap);
+    if (road.mail) lines.push(road.mail);
     const notif = roomNotif(r.pill.roomId);
     if (notif) lines.push(notif);
     if (!lines.length) return {};
@@ -614,6 +638,8 @@ export default function DashboardPage() {
     try {
       const rows = await fetchGroupDashboard(groupId);
       setGroupShows(rows);
+      // The rooms' entry tags for the letters lines — non-blocking, tolerant.
+      fetchRoomEntryTags(rows.filter((r) => r.roomId).map((r) => r.roomId as string)).then(setEntryTags).catch(() => {});
       try { sessionStorage.setItem(groupSnapKey(groupId), JSON.stringify(rows)); } catch { /* quota — instant paint just won't happen */ }
       // A group room exposes progress dropdowns for every show in the group —
       // including ones you haven't pooled yet — and they read the same catalog
@@ -1920,7 +1946,7 @@ export default function DashboardPage() {
                         (watching or wrote). Non-opted-in shows another member
                         pooled get no show tooltip; the avatars keep their own. */}
                     <div {...(r.selfProg || r.selfWrote ? watchingTipProps(r) : tipProps(undefined, roomNotif(r.pill.roomId)))}>
-                      <GroupPill pill={r.pill} name={r.name} onClick={() => onPillClick(r.pill, r.name)} />
+                      <GroupPill pill={r.pill} name={r.name} sync={!!roomRoad(r).sync} onClick={() => onPillClick(r.pill, r.name)} />
                     </div>
                     {/* CP5: leave THIS room only — shown on rooms you're in. */}
                     {r.pill.inRoom && r.pill.roomId && (
@@ -2884,7 +2910,7 @@ function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 }
 
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
-function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; onClick: () => void }) {
+function GroupPill({ pill, name, furthestFriend, sync = false, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; /** Letters in transit (2026-09-25): level with every watching friend → a small cream star + "in sync" in the right slot. */ sync?: boolean; onClick: () => void }) {
   // Fill = your relationship to the show (2026-07-07, see groupPills.ts):
   //   green    = open show room       → solid green fill, cream text
   //   cream    = proposal you're in   → cream fill, green text
@@ -2918,6 +2944,10 @@ function GroupPill({ pill, name, furthestFriend, onClick }: { pill: PillData; na
       {furthestFriend ? (
         <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", opacity: 0.9 }}>
           furthest progress: S{furthestFriend.s} E{furthestFriend.e}
+        </span>
+      ) : sync ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500, fontSize: 13, whiteSpace: "nowrap" }}>
+          <CelebrationStar size={12} color={C.cream} />in sync
         </span>
       ) : (
         <PillRightSide right={pill.right} />

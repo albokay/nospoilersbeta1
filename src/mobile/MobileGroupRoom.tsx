@@ -7,6 +7,7 @@ import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
 import LetterDisc from "../components/LetterDisc";
+import { computeRoomLetters, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -31,7 +32,7 @@ import {
   fetchMyGroupJoinOrder,
   fetchContactNames,
   setContactName,
-  fetchGroupDashboard,
+  fetchGroupDashboard, fetchRoomEntryTags,
   fetchFriendGroupMembers,
   fetchRoomDnfMap,
   setRoomDnf,
@@ -151,6 +152,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [members, setMembers] = useState<PeopleGroupMember[]>([]);
   const [groupShows, setGroupShows] = useState<GroupDashboardShow[]>([]);
+  // Letters in transit (2026-09-25): each room's entry tags, for the row's
+  // "letters waiting / to open" segment (lib/letters).
+  const [entryTags, setEntryTags] = useState<Record<string, RoomEntryTag[]>>({});
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [outOfPool, setOutOfPool] = useState<Set<string>>(new Set());
@@ -234,6 +238,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     try {
       const rows = await fetchGroupDashboard(groupId);
       setGroupShows(rows);
+      // The rooms' entry tags for the letters lines — non-blocking, tolerant.
+      fetchRoomEntryTags(rows.filter((r) => r.roomId).map((r) => r.roomId as string)).then(setEntryTags).catch(() => {});
       // Keep this group's shows' episode lists fresh (12h cadence). Perf
       // (2026-07-07): FULLY non-blocking — the catalog read + TVMaze sync no
       // longer delay refreshGroup resolving (the shelves are already up).
@@ -648,9 +654,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   }, [user?.id, roomDotsKey]);
 
   // The quiet line-2 gap text — desktop's hover tooltip copy, inline.
-  function gapLine(r: { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null }): string | null {
+  // The row's second line (letters in transit, 2026-09-25 — replaces the
+  // sentence gaps): the gap, terse and nearest-first ("3 behind Adam, 1
+  // ahead of Sam"), then the mail ("2 letters waiting for you" / "2 letters
+  // for Sam to open"); or, when nobody's ahead or behind, the sync line
+  // with the small cream star. Unchanged rules: no one else watching →
+  // your own tag (or nothing); not opted in → nothing.
+  function gapLine(r: { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null }): React.ReactNode {
     const seasons = showsById[r.pill.showId]?.seasons;
-    const others = r.opted.filter((o) => (o.s ?? 0) > 0 || (o.e ?? 0) > 0);
+    const gs = groupShows.find((g) => g.showId === r.pill.showId);
+    const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
+    const others = members
+      .filter((m) => m.userId !== selfUserId && (m.s > 0 || m.e > 0))
+      .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
     if (!others.length) {
       // Mirror the pill's right side: written-but-unwatched shows "s0 e0".
       return r.pill.right.kind === "progress" ? `s${r.pill.right.s} e${r.pill.right.e}` : null;
@@ -658,17 +674,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     // Not opted in (didn't watch, didn't write) → blank, same as the pill face.
     if (!r.selfProg && r.pill.right.kind === "none") return null;
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
-    const eps = (n: number) => (n === 1 ? "1 episode" : `${n} episodes`);
-    if (others.length === 1) {
-      const o = others[0];
-      const n = selfIdx - linearIndex(o.s ?? 0, o.e ?? 0, seasons);
-      if (n === 0) return r.selfProg ? `s${r.selfProg.s} e${r.selfProg.e}` : null;
-      return n > 0 ? `You're ${eps(n)} ahead of ${o.username}.` : `You're ${eps(-n)} behind ${o.username}.`;
+    const nameOf = (id: string) => memberNameById[id];
+    const gap = summarizeGap(selfIdx, others);
+    const sync = syncLine(gap, others, nameOf);
+    if (sync) {
+      return <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CelebrationStar size={12} color={C.cream} />{sync}</span>;
     }
-    const maxOther = Math.max(...others.map((o) => linearIndex(o.s ?? 0, o.e ?? 0, seasons)));
-    if (selfIdx < maxOther) return `You're ${eps(maxOther - selfIdx)} behind the furthest watcher.`;
-    if (selfIdx > maxOther) return `You're ${eps(selfIdx - maxOther)} ahead of your next friend.`;
-    return r.selfProg ? `s${r.selfProg.s} e${r.selfProg.e}` : null;
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    const text = [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ");
+    return text || null;
   }
 
   // ── Actions (same DB calls as desktop) ─────────────────────────────────────
@@ -1382,7 +1396,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 function ShowRow({ row, dot, line2, onClick, onLongPress }: {
   row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean }[] };
   dot: "blue" | "red" | undefined;
-  line2: string | null;
+  line2: React.ReactNode;
   onClick: () => void;
   /** Long-press (500ms hold) opens the organizing sheet (2026-09-13) —
    *  only rooms the viewer is IN pass one. Any pointer movement cancels,
