@@ -6,6 +6,7 @@ import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
+import LetterDisc from "../components/LetterDisc";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -1430,7 +1431,9 @@ function ShowRow({ row, dot, line2, onClick, onLongPress }: {
       onContextMenu={(e) => { if (onLongPress) e.preventDefault(); }}
       style={{ ...rowBase, background: bg, border, color: fg, ...(onLongPress ? ({ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties) : {}) }}
     >
-      {dot && <span className="m-dot-in" style={{ ...rowDot, background: dot === "red" ? C.red : C.blue }} />}
+      {/* The letters disc (2026-09-25): open = new to read, sealed = waiting
+          for you to catch up; sits on the top-left curve where the dot did. */}
+      {dot && <LetterDisc kind={dot === "red" ? "sealed" : "open"} className="m-dot-in" style={{ position: "absolute", top: -9, left: 12, zIndex: 2 }} />}
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontWeight: 700, fontSize: 15, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {row.name}

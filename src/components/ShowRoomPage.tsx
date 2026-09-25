@@ -639,9 +639,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     return () => { cancelled = true; };
   }, [user?.id, roomId, privateOnly, feedEntries, progressForShow, profile?.username]);
 
-  // ── Per-entry map signal (precedence GREEN > YELLOW > RED, one per cell) ────
+  // ── Per-entry map signal (precedence BLUE > YELLOW > RED, one per cell) ────
   const cellSignals = useMemo(() => {
-    const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }> = {};
+    const out: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }> = {};
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
@@ -656,12 +656,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // seenProgress is empty and this is inert.
       const becameReadable = isAboveSeenProgress(deepestVisibleReply[tid], seenProgress[tid]);
       // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
-      // GREEN = new responses you can READ now, on your own entry or in a
+      // BLUE (2026-09-25; was green) = new responses you can READ now, on your own entry or in a
       // thread you responded in; RED = hidden responses in those same threads,
       // waiting for you to catch up (counted, below). Your own replies are
       // excluded from the visible-latest timestamp, so posting never
       // self-notifies; catching up turns a hidden red into green.
-      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "green" }; continue; }
+      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "blue" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       // Hidden red (with count) stays until the viewer catches up — no

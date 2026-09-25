@@ -5,6 +5,7 @@ import { CANON } from "../styles/canon";
 import { M } from "./m";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
+import LetterDisc from "../components/LetterDisc";
 import { useAuth } from "../lib/auth";
 import AccountModal from "../components/AccountModal";
 import MobileFeedbackSheet from "./MobileFeedbackSheet";
@@ -470,8 +471,9 @@ export default function MobileDashboard() {
                     <span style={groupRowName}>
                       {groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}
                     </span>
-                    {anyNew && <span className="m-dot-in" style={writingDot} />}
-                    {invisibleOnly && <span className="m-dot-in" style={{ ...writingDot, background: C.red }} />}
+                    {/* The letters disc (2026-09-25): open = new to read, sealed = waiting. */}
+                    {anyNew && <LetterDisc kind="open" className="m-dot-in" />}
+                    {invisibleOnly && <LetterDisc kind="sealed" className="m-dot-in" />}
                   </button>
                   </span>
                 );
@@ -666,9 +668,6 @@ const avatarCircle: React.CSSProperties = {
 const groupRowName: React.CSSProperties = {
   flex: 1, marginLeft: 8, fontWeight: 700, fontSize: 15,
   color: C.cream, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-};
-const writingDot: React.CSSProperties = {
-  width: 14, height: 14, borderRadius: "50%", background: C.blue, display: "inline-block", flexShrink: 0,
 };
 const invitePill: React.CSSProperties = {
   ...M.pill.L, background: C.blue, color: C.cream,

@@ -367,13 +367,13 @@ export default function V2UserAggregatePage({ username, showId }: { username: st
   // Green = new VISIBLE responses since last visit, for any signed-in viewer
   // (measured against their own progress; never their own replies). Rendered
   // as V2RoomFeed's canon-green circle behind the entry's expand chevron.
-  const cellSignals = useMemo<Record<string, { kind: "green" }>>(() => {
+  const cellSignals = useMemo<Record<string, { kind: "blue" }>>(() => {
     if (!user || !visitorProgress || lastSeenAt == null) return {};
-    const out: Record<string, { kind: "green" }> = {};
+    const out: Record<string, { kind: "blue" }> = {};
     for (const r of replyMeta) {
       if (r.authorId === user.id || greenDismissed.has(r.threadId)) continue;
       if (r.createdAt > lastSeenAt && canView({ season: r.season, episode: r.episode }, visitorProgress)) {
-        out[r.threadId] = { kind: "green" };
+        out[r.threadId] = { kind: "blue" };
       }
     }
     return out;

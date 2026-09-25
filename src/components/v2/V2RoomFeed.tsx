@@ -9,7 +9,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { CANON } from "../../styles/canon";
-import { ChevronDown, ChevronUp, Lock, Mail, Users, Sparkles, Flag } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Mails, Users, Sparkles, Flag } from "lucide-react";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
@@ -150,10 +150,10 @@ export type V2RoomFeedProps = {
   isNewMap?: Record<string, boolean>;
   /** Per-thread notification signal (green = visible-new responses;
       yellow = unseen highlight on viewer's writing in this entry;
-      red = own-entry hidden responses). Only "green" matters for the
+      red = own-entry hidden responses). Only "blue" matters for the
       entry card — drives the A2 green-filled circle behind the expand
       chevron on collapsed cards. Yellow + red are map-only. */
-  cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
+  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }>;
   /** Per-thread red "hidden responses" dot on the entry card (public-rooms
       scope, 2026). Used by the single-user public room, which has no map to
       carry the friend-room red signal. count = responses hidden from the owner
@@ -681,7 +681,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // engagedThreadIds.has(...) → A4 dim to 50% opacity.
         const isNew = !!isNewMap?.[entry.threadId];
         const signal = cellSignals?.[entry.threadId] ?? null;
-        const pillKind = signal?.kind === "green" || signal?.kind === "red" ? signal.kind : null;
+        const pillKind = signal?.kind === "blue" || signal?.kind === "red" ? signal.kind : null;
         const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         return (
@@ -973,9 +973,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   >
                     <ChevronDown size={20} color={CANON.cream} />
                   </button>
-                  {/* Mail icon + reply count. When the entry carries a
-                      signal, the WHOLE envelope + number gets a green/red
-                      pill behind it (Alborz 2026-09-13 — restored from the
+                  {/* Mails glyph + reply count (the letters grammar, 2026-09-25:
+                      responses are the two-envelope glyph, never open — letters
+                      own the single envelope). With a signal the WHOLE glyph +
+                      number gets a blue/red pill behind it (Alborz 2026-09-13 — restored from the
                       pre-circle design). Renders only with at least one
                       visible reply (count includes ahead-of-progress stubs,
                       so a hidden-response signal always has a number). */}
@@ -992,18 +993,18 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           fontWeight: 500,
                           userSelect: "none",
                           ...(pillKind
-                            ? { background: pillKind === "green" ? CANON.personal : CANON.alert, borderRadius: 65, padding: "5px 11px" }
+                            ? { background: pillKind === "blue" ? CANON.identity : CANON.alert, borderRadius: 65, padding: "5px 11px" }
                             : {}),
                         }}
                       >
-                        <Mail size={16} color={CANON.cream} />
+                        <Mails size={16} color={CANON.cream} />
                         {entry.replyCount}
                       </span>
                     );
                     if (!pillKind) return countInner;
                     return (
                       <Tooltip
-                        text={pillKind === "green"
+                        text={pillKind === "blue"
                           ? "There is new writing in here for you."
                           : signal?.redCount
                             ? "There is new writing in here for when you catch up."

@@ -24,6 +24,7 @@ import { CANON } from "../styles/canon";
 import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
+import LetterDisc from "./LetterDisc";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -1914,7 +1915,7 @@ export default function DashboardPage() {
               <div style={shelfLayout(groupShelves.watching.length)}>
                 {groupShelves.watching.map((r) => (
                   <div key={r.pill.showId} className="group-pill-wrap">
-                    {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
+                    {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
                     {/* Show tooltip (progress/gap/notif) only once you've opted in
                         (watching or wrote). Non-opted-in shows another member
                         pooled get no show tooltip; the avatars keep their own. */}
@@ -1962,7 +1963,7 @@ export default function DashboardPage() {
             <div style={shelfLayout(groupShelves.notStarted.length)}>
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
-                  {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <span style={{ ...notifDotButton, background: roomDotByRoomId.get(r.pill.roomId) === "red" ? C.red : C.blue }} />}
+                  {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
                   <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
@@ -3197,7 +3198,7 @@ function GroupClusters({
           >
             <AvatarPile avatars={avatars} minHeight={pileMinHeight} />
             <div style={clusterName} data-cluster-label>
-              {dot && <span style={{ ...notifDotCluster, background: dot === "red" ? C.red : C.blue }} />}
+              {dot && <LetterDisc kind={dot === "red" ? "sealed" : "open"} />}
               <span>{groupDisplayName(group, others, contactNames, groupPending.map((p) => p.name || "a friend"), groupNumberById[group.id])}</span>
             </div>
           </button>
@@ -3330,9 +3331,6 @@ const notifDotChat: React.CSSProperties = {
   // Holds the unread count (2026-09-19): cream 10/800, same as the map dots.
   display: "flex", alignItems: "center", justifyContent: "center",
   color: CANON.cream, fontSize: 10, fontWeight: 800, lineHeight: 1,
-};
-const notifDotCluster: React.CSSProperties = {
-  width: 16, height: 16, borderRadius: "50%", background: C.blue, flexShrink: 0,
 };
 // Border signposts: caption type in cream, an arrow leading each line.
 // The three-line collect/log split is Alborz's (nowrap keeps it exact).

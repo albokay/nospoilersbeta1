@@ -183,7 +183,7 @@ export type V2RoomMapProps = {
   /** Fires after the asker successfully opens a poll. Parent bumps
       PollSticky's refreshKey so the asker sees their poll immediately. */
   onPollOpened?: () => void;
-  /** Per-thread notification dot lookup. Green = new visible response(s);
+  /** Per-thread notification dot lookup. Blue = new visible response(s) (was green until 2026-09-25);
       Yellow = unseen highlight on viewer's writing in this entry;
       Red = own entry with hidden responses (number shown). Precedence:
       green > yellow > red; only one dot per cell. Dot sits half-overlapping
@@ -191,7 +191,7 @@ export type V2RoomMapProps = {
       drop shadow. Yellow can appear on any user's column (viewer might
       have a reply in someone else's entry) — unlike red/green which only
       appear on the viewer's own column. */
-  cellSignals?: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }>;
+  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }>;
   /** Per-thread "this entry is new since your last room visit" flag. Drives
       the white outline on the cell. Same flag drives the entry-card's
       white outline (handled in V2RoomFeed). */
@@ -557,14 +557,14 @@ export default function V2RoomMap({
   // cells' own precedence; yellow highlight signals don't surface here).
   // Expanded seasons keep their per-cell dots; the strip dot is fold-only.
   const seasonSignal = useMemo(() => {
-    const out: Record<number, "green" | "red"> = {};
+    const out: Record<number, "blue" | "red"> = {};
     if (!cellSignals) return out;
     for (const m of members) {
       for (const entry of m.entries) {
         const sig = cellSignals[entry.threadId];
         if (!sig) continue;
-        if (sig.kind === "green") out[entry.s] = "green";
-        else if (sig.kind === "red" && out[entry.s] !== "green") out[entry.s] = "red";
+        if (sig.kind === "blue") out[entry.s] = "blue";
+        else if (sig.kind === "red" && out[entry.s] !== "blue") out[entry.s] = "red";
       }
     }
     return out;
@@ -708,7 +708,7 @@ export default function V2RoomMap({
                 const dimmed = isDimmed(m.userId);
                 const initial = (dn(m.username)[0] ?? "?").toUpperCase();
                 const avatar = (
-                  <span aria-hidden style={{ ...mAvatar, background: isSelfCol ? CANON.identity : m.isDeparted ? CANON.friend : CANON.personal }}>
+                  <span aria-hidden style={{ ...mAvatar, background: isSelfCol ? CANON.personal : m.isDeparted ? CANON.friend : CANON.identity }}>
                     {initial}
                   </span>
                 );
@@ -732,7 +732,7 @@ export default function V2RoomMap({
                   ) : (
                     <button key={m.userId} aria-label="Rate the episodes you've watched" onClick={() => { void handleToggleEditMode(); }} style={{ ...wrap, ...mClusterBtn }}>
                       {avatar}
-                      <span style={{ ...mName, color: CANON.identity, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ ...mName, display: "inline-flex", alignItems: "center", gap: 4 }}>
                         {SELF_LABEL}<SquarePen size={14} />
                       </span>
                     </button>
@@ -1042,7 +1042,7 @@ export default function V2RoomMap({
                     textOverflow: "ellipsis",
                     fontSize: 13,
                     fontWeight: 400,
-                    color: isSelfCol ? CANON.identity : CANON.cream,
+                    color: CANON.cream, // "(you)" matches the friends' names (2026-09-25)
                     fontStyle: isClickable ? "italic" : undefined,
                     borderBottom: isClickable ? "1px dotted var(--canon-cream,#fef8ea)" : undefined,
                     cursor: isClickable ? "pointer" : undefined,
@@ -1195,7 +1195,7 @@ export default function V2RoomMap({
                     aria-hidden
                     style={{
                       width: 12, height: 12, borderRadius: "50%", flexShrink: 0, marginLeft: 2,
-                      background: seasonSignal[row.season] === "green" ? CANON.personal : CANON.alert,
+                      background: seasonSignal[row.season] === "blue" ? CANON.identity : CANON.alert,
                     }}
                   />
                 )}
@@ -1241,7 +1241,7 @@ export default function V2RoomMap({
                         aria-hidden
                         style={{
                           width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                          background: seasonSignal[row.season] === "green" ? CANON.personal : CANON.alert,
+                          background: seasonSignal[row.season] === "blue" ? CANON.identity : CANON.alert,
                         }}
                       />
                     )}
@@ -1582,7 +1582,7 @@ export default function V2RoomMap({
                 let signalLine: React.ReactNode = null;
                 if (signal) {
                   const text =
-                    signal.kind === "green"
+                    signal.kind === "blue"
                       ? "There is new writing for you."
                       : signal.kind === "yellow"
                         ? "Someone reacted to your writing."
@@ -1670,7 +1670,11 @@ export default function V2RoomMap({
                       // Identity blue since 2026-09-13 — one rule everywhere:
                       // blue outline = an entry you haven't opened.
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        ? { border: "2px solid var(--canon-identity,#355eb8)" }
+                        // A never-opened friend entry: the ring is cream on
+                        // the sky page and Friend on the cream sheet (2026-09-25 —
+                        // identity blue would vanish on the now-blue cell; the
+                        // ticket outline stays blue).
+                        ? { border: `2px solid ${mobile ? CANON.friend : CANON.cream}` }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
@@ -1937,7 +1941,7 @@ function MapCellDot({
   ring = false,
   ringColor = CANON.friend,
 }: {
-  kind: "green" | "yellow" | "red";
+  kind: "blue" | "yellow" | "red";
   redCount?: number;
   /** Map edit mode (Alborz 2026-09-19): the viewer's own reached cells go
    *  canon-red, so a red dot on them bleeds into the cell. The dot borrows
@@ -1951,7 +1955,9 @@ function MapCellDot({
   const isRed = kind === "red";
   // Yellow inherits green's no-count shape — an attention signal that
   // clears on entry expand. Color is canon-yellow.
-  const bg = isRed ? "var(--danger)" : kind === "yellow" ? CANON.accent : "var(--green)";
+  // Blue = "for you now" (2026-09-25; was Personal green — green is the
+  // structural colour and the dot needed a ring to survive on a green cell).
+  const bg = isRed ? "var(--danger)" : kind === "yellow" ? CANON.accent : CANON.identity;
   return (
     <div
       style={{
@@ -1964,7 +1970,7 @@ function MapCellDot({
         background: bg,
         // Green-on-green was invisible (Alborz 2026-09-13): the green dot
         // wears a Friend-sky ring so it registers on any cell color.
-        boxShadow: kind === "green" || (isRed && ring) ? `0 0 0 2px ${ringColor}` : undefined,
+        boxShadow: kind === "blue" || (isRed && ring) ? `0 0 0 2px ${ringColor}` : undefined,
         color: CANON.cream,
         display: "flex",
         alignItems: "center",
@@ -2007,11 +2013,13 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
       borderRadius: "50%",
     };
   }
-  const filledBg = isSelf ? CANON.identity : CANON.personal;
+  // Flipped 2026-09-25 (Alborz): the viewer's column is Personal green, a
+  // friend's readable entry is Identity blue — blue = a letter you can open.
+  const filledBg = isSelf ? CANON.personal : CANON.identity;
   // Full-opacity outline color (2026-07-07): the non-self border used the
   // translucent var(--dos-border) (rgba .3), which read as washed-out; the
   // opaque greyblue equivalent keeps the look but at full opacity.
-  const outlineColor = isSelf ? CANON.identity : soft;
+  const outlineColor = isSelf ? CANON.personal : soft;
   // Hidden-entry cell: the member authored at (s, e) but the viewer
   // hasn't reached it yet — the entry is invisible to them. OPAQUE canon
   // greyblue fill (var(--canon-business,#8daaba), flat — no opacity) so a multi-entry stack's

@@ -641,13 +641,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return () => { cancelled = true; };
   }, [user?.id, roomId, privateOnly, feedEntries, progressForShow, profile?.username]);
 
-  // ── Per-entry signals — GREEN > YELLOW > RED, desktop's precedence (the
+  // ── Per-entry signals — BLUE > YELLOW > RED, desktop's precedence (the
   //    red layer joined mobile 2026-08-21). Red = hidden responses on the
   //    viewer's OWN entry; suppressed once the entry is expanded (the stamp
   //    below) until a NEWER hidden response lands. When catching up reveals
   //    a response, green naturally takes over. ────────────────────────────
   const cellSignals = useMemo(() => {
-    const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number }> = {};
+    const out: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }> = {};
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
@@ -662,11 +662,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       // seenProgress is empty and this is inert.
       const becameReadable = isAboveSeenProgress(deepestVisibleReply[tid], seenProgress[tid]);
       // Colors (Alborz 2026-09-16 — supersedes the 09-13 own-entry red):
-      // GREEN = new responses you can READ now, on your own entry or in a
+      // BLUE (2026-09-25; was green) = new responses you can READ now, on your own entry or in a
       // thread you responded in; RED = hidden responses in those same threads,
       // waiting for you to catch up (counted, below). Own replies excluded,
       // so posting never self-notifies.
-      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "green" }; continue; }
+      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "blue" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const hiddenCount = perThreadHiddenCount[tid] ?? 0;
       if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0) out[tid] = { kind: "red", redCount: hiddenCount };

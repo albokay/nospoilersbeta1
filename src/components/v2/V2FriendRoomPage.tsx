@@ -884,7 +884,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
   // load (greenDismissedSet check). Yellow doesn't have a parallel
   // dismissal — it clears via expand → lastHighlightSeenAt bump.
   const cellSignals = useMemo(() => {
-    const out: Record<string, { kind: "green" | "yellow" | "red"; redCount?: number } > = {};
+    const out: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number } > = {};
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
@@ -892,7 +892,7 @@ export default function V2FriendRoomPage({ groupId }: { groupId: string }) {
       const opened = lastOpenedAt[tid] ?? 0;
       const hasVisibleNew = latest > opened;
       if (hasVisibleNew) {
-        out[tid] = { kind: "green" };
+        out[tid] = { kind: "blue" };
         continue;
       }
       const latestHL = latestHighlightOnViewerWriting[tid] ?? 0;
