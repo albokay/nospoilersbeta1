@@ -1670,11 +1670,12 @@ export default function V2RoomMap({
                       // Identity blue since 2026-09-13 — one rule everywhere:
                       // blue outline = an entry you haven't opened.
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        // A never-opened friend entry: the ring is cream on
-                        // the sky page and Friend on the cream sheet (2026-09-25 —
-                        // identity blue would vanish on the now-blue cell; the
-                        // ticket outline stays blue).
-                        ? { border: `2px solid ${mobile ? CANON.friend : CANON.cream}` }
+                        // A never-opened friend entry wears the ticket's blue
+                        // outline, doubled for the map (Alborz 2026-09-25): the
+                        // solid Identity cell, a Friend ring, then an Identity
+                        // ring outside — blue-on-blue alone would vanish. Same
+                        // on the cream sheet.
+                        ? { boxShadow: `0 0 0 2px ${CANON.friend}, 0 0 0 4px ${CANON.identity}` }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
