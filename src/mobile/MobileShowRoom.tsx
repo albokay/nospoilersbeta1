@@ -20,6 +20,8 @@ import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../comp
 import RoomProgressTip from "../components/RoomProgressTip";
 import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
+import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
+import { linearIndex } from "../lib/groupPills";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -98,6 +100,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
+  // The unlock line (2026-09-25): what the last progress move opened. See
+  // load() for the detection; UnlockLine for the copy.
+  const [unlockNote, setUnlockNote] = useState<UnlockNote | null>(null);
+  const unlockRef = useRef<{ idx: number; gated: Set<string>; hidden: Record<string, number> } | null>(null);
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
   // The dashboard band arrives ON the reference tab (nav state, CP2).
   const [tab, setTab] = useState<Tab>(() =>
@@ -415,6 +421,28 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
 
+      // The unlock line (letters in transit, 2026-09-25): when this load
+      // lands with the viewer further along than the last one, the entries
+      // that were sealed stubs and the responses that were hidden a moment
+      // ago are what just opened. Every path that moves progress (the
+      // picker, the compose picker, the rating flow, even another device)
+      // reloads through here. In-session only — the ref dies with the page.
+      {
+        const effNow = effectiveProgress(progress);
+        const idxNow = effNow ? linearIndex(effNow.s, effNow.e, showRow?.seasons) : 0;
+        const prev = unlockRef.current;
+        if (prev && effNow && idxNow > prev.idx) {
+          const opened = entries.filter((en) => prev.gated.has(en.threadId) && !en.isDeleted);
+          let responses = 0;
+          for (const [tid, was] of Object.entries(prev.hidden)) responses += Math.max(0, was - ((gr.hiddenCounts ?? {})[tid] ?? 0));
+          // A move that opens nothing clears the last line rather than
+          // leaving it stale.
+          setUnlockNote(opened.length || responses
+            ? { s: effNow.s, e: effNow.e, entries: opened.length, authors: [...new Set(opened.map((en) => en.authorUsername))], responses }
+            : null);
+        }
+        unlockRef.current = { idx: idxNow, gated: new Set(gatedStubs.map((g) => g.threadId)), hidden: (gr.hiddenCounts ?? {}) as Record<string, number> };
+      }
       setShow(showRow);
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
@@ -971,6 +999,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             (Alborz 2026-09-08). */}
         {!privateOnly && (
         <div style={{ display: tab === "friend" ? undefined : "none" }}>
+          {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
