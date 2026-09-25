@@ -693,6 +693,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return out;
   }, [feedEntries, lastOpenedAt, profile?.username]);
 
+  // The road (2026-09-25): the other current members' reading positions
+  // for the feed's markers + countdowns. Effective progress (rewatch-aware
+  // ceiling); friends who haven't started stay off the road.
+  const roadPositions = useMemo(() => mapMembers
+    .filter((m) => m.userId !== user?.id && !m.isDeparted)
+    .map((m) => { const eff = effectiveProgress(m.progress); return eff && (eff.s > 0 || eff.e > 0) ? { username: m.username, s: eff.s, e: eff.e } : null; })
+    .filter((p): p is { username: string; s: number; e: number } => p !== null), [mapMembers, user?.id]);
+
   const handleEntryExpanded = useCallback((threadId: string) => {
     const latestSeenAt = perThreadLatestReply[threadId] ?? 0;
     setLastOpenedAt((prev) => {
@@ -995,6 +1003,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               // don't count; desktop parity).
               gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
               seasons={show?.seasons}
+              positions={roadPositions}
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
           )}

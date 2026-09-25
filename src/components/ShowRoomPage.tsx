@@ -724,6 +724,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   // Map cell click: scroll the feed to the entry + register the first-highlight
   // (so a self-cell with a notification highlights before it rotates a rating).
+  // The road (2026-09-25): the other current members' reading positions
+  // for the feed's markers + countdowns. Effective progress (rewatch-aware
+  // ceiling); friends who haven't started stay off the road.
+  const roadPositions = useMemo(() => mapMembers
+    .filter((m) => m.userId !== user?.id && !m.isDeparted)
+    .map((m) => { const eff = effectiveProgress(m.progress); return eff && (eff.s > 0 || eff.e > 0) ? { username: m.username, s: eff.s, e: eff.e } : null; })
+    .filter((p): p is { username: string; s: number; e: number } => p !== null), [mapMembers, user?.id]);
+
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
     setFirstHighlightedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
@@ -1010,6 +1018,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   // OTHER current member → "you"; two or more → "the room".
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
                   seasons={show?.seasons}
+                  positions={roadPositions}
                   viewerProgress={progressForShow}
                   userId={user?.id ?? ""}
                   onVisibleEntriesChange={setVisibleEntryIds}

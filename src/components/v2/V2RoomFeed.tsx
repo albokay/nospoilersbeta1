@@ -9,7 +9,8 @@ import React, {
   type ReactNode,
 } from "react";
 import { CANON } from "../../styles/canon";
-import { ChevronDown, ChevronUp, Lock, Mails, Users, Sparkles, Flag } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Mail, Mails, Users, Sparkles, Flag } from "lucide-react";
+import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag from "../EpisodeTag";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
@@ -114,6 +115,15 @@ export type V2RoomFeedProps = {
    *  ahead" instead of the raw tag (polish pass 2026-09-15). Optional; the
    *  stub falls back to the s/e tag without it. */
   seasons?: number[];
+  /** The road (letters in transit, 2026-09-25): the other CURRENT members'
+   *  reading positions — effective progress, the highest point each can
+   *  read to. Drives two things: the "Sam is here · S1 E4" MARKER between
+   *  entries (one per distinct position; friends at the same spot share
+   *  one; a friend ahead of the viewer gets none — Alborz), and the
+   *  COUNTDOWN on the viewer's own entries ("Sam opens this in 2
+   *  episodes."). Departed members are never passed. Needs `seasons` for
+   *  real distances; without it the tag order still holds. */
+  positions?: { username: string; s: number; e: number }[];
   viewerProgress: ProgressEntry | null;
   /** Caller's user id. May be null for logged-out visitors viewing
    *  public threads; interactive controls route through onAuthRequired. */
@@ -252,6 +262,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     groupId,
     gatedStubAudience = "the room",
     seasons,
+    positions,
     viewerProgress,
     userId,
     onAuthRequired,
@@ -300,6 +311,92 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       return b.updatedAt - a.updatedAt;
     });
   }, [entries, sortOrder, preserveOrder]);
+
+  // ── The road (letters in transit, 2026-09-25) ──────────────────────────
+  // Where each friend stands, expressed as the entry their marker sits
+  // before. In episode-desc order (newest at the top) a friend at S1E4 sits
+  // above the first entry they can read, i.e. the first entry at or below
+  // their position; in asc order, after the last one. Friends past the
+  // viewer's own position get no marker; friends below every entry pool at
+  // the end. Distinct positions get distinct markers; friends sharing a
+  // position share one.
+  const idxOf = (s: number, e: number) => linearIndex(s, e, seasons);
+  const viewerEff = effectiveProgress(viewerProgress);
+  const viewerIdx = viewerEff ? idxOf(viewerEff.s, viewerEff.e) : 0;
+  const roadFriends = useMemo(() => {
+    if (!positions?.length) return [] as { username: string; s: number; e: number; idx: number }[];
+    return positions
+      .map((p) => ({ ...p, idx: idxOf(p.s, p.e) }))
+      .filter((p) => p.idx > 0 && p.idx <= viewerIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, seasons, viewerIdx]);
+  type RoadMarker = { s: number; e: number; idx: number; usernames: string[] };
+  const { markerBefore, endMarkers } = useMemo(() => {
+    const before = new Map<string, RoadMarker[]>();
+    const end: RoadMarker[] = [];
+    if (!roadFriends.length) return { markerBefore: before, endMarkers: end };
+    const desc = sortOrder === "desc";
+    const slotOf = (idx: number): string | null => {
+      for (const en of sorted) {
+        const ei = idxOf(en.s, en.e);
+        if (desc ? ei <= idx : ei > idx) return en.threadId;
+      }
+      return null;
+    };
+    // Group by position first so co-located friends share a marker.
+    const byPos = new Map<string, RoadMarker>();
+    for (const f of roadFriends) {
+      const k = `${f.s}-${f.e}`;
+      const m = byPos.get(k) ?? { s: f.s, e: f.e, idx: f.idx, usernames: [] };
+      m.usernames.push(f.username);
+      byPos.set(k, m);
+    }
+    const order = [...byPos.values()].sort((a, b) => (desc ? b.idx - a.idx : a.idx - b.idx));
+    for (const m of order) {
+      const slot = slotOf(m.idx);
+      if (slot === null) end.push(m);
+      else before.set(slot, [...(before.get(slot) ?? []), m]);
+    }
+    return { markerBefore: before, endMarkers: end };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roadFriends, sorted, sortOrder, seasons]);
+  // "Sam opens this in 2 episodes." — for the viewer's own entries, the
+  // friends still short of it, nearest first. One friend: named. Exactly
+  // two: both named. Three or more: the nearest only (Alborz 2026-09-25).
+  // "open", not "read" — it's the anticipation that matters.
+  const countdownFor = (entry: V2RoomFeedEntry): string | null => {
+    if (!userId || entry.authorId !== userId || entry.gatedStub || entry.isDeleted || !positions?.length) return null;
+    const ei = idxOf(entry.s, entry.e);
+    const behind = positions
+      .map((p) => ({ name: dn(p.username), n: ei - idxOf(p.s, p.e) }))
+      .filter((p) => p.n > 0)
+      .sort((a, b) => a.n - b.n);
+    if (!behind.length) return null;
+    const eps = (n: number) => `${n} episode${n === 1 ? "" : "s"}`;
+    if (behind.length === 2) return `${behind[0].name} opens this in ${eps(behind[0].n)}, ${behind[1].name} in ${behind[1].n}.`;
+    return `${behind[0].name} opens this in ${eps(behind[0].n)}.`;
+  };
+  const renderMarkers = (items: RoadMarker[]) => items.map((m) => {
+    const names = m.usernames.map(dn);
+    const who = names.length === 1 ? `${names[0]} is here`
+      : names.length === 2 ? `${names[0]} and ${names[1]} are here`
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} are here`;
+    return (
+      <div key={`road-${m.s}-${m.e}`} aria-label={`${who}, season ${m.s} episode ${m.e}`} style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "4px 0 16px" }}>
+        <div aria-hidden style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 2, background: CANON.cream, opacity: 0.6 }} />
+        <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", background: "var(--dos-bg)" }}>
+          <span style={{ display: "inline-flex" }}>
+            {names.map((n, i) => (
+              <span key={m.usernames[i]} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--canon-friend,#adc8d7)", background: CANON.personal, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", marginLeft: i ? -6 : 0 }}>
+                {(n[0] ?? "?").toUpperCase()}
+              </span>
+            ))}
+          </span>
+          <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: CANON.cream, whiteSpace: "nowrap" }}>{who} &middot; S{m.s} E{m.e}</span>
+        </div>
+      </div>
+    );
+  });
 
   // Single-expansion: at most one thread expanded at a time. Expanding
   // another quietly collapses the previously-open one (no scroll-jump —
@@ -633,6 +730,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   return (
     <div>
       {sorted.map((entry) => {
+        const roadHere = markerBefore.get(entry.threadId);
+        return (<React.Fragment key={`slot-${entry.threadId}`}>{roadHere ? renderMarkers(roadHere) : null}{(() => {
         // CP4: a spoiler-gated entry renders as a one-line non-interactive
         // stub — the entry-level twin of RepliesList's ahead-of-progress
         // reply stub (same `card redacted` shell). One stub per gated entry;
@@ -941,6 +1040,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 )}
               </div>
 
+              {/* Bottom-left (the road, 2026-09-25): on your own entries, how
+                  far the nearest friends are from opening this letter — a
+                  sealed envelope, the responses badge's mirror. */}
+              {!isExpanded && !entry.isDeleted && (() => {
+                const cd = countdownFor(entry);
+                if (!cd) return null;
+                return (
+                  <div style={{ position: "absolute", left: mobileIdiom ? 16 : 20, bottom: 12, maxWidth: "calc(100% - 110px)", display: "inline-flex", alignItems: "center", gap: 6, color: CANON.cream, fontSize: 13, fontWeight: 500, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <Mail size={14} color={CANON.cream} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{cd}</span>
+                  </div>
+                );
+              })()}
               {/* Bottom-right: expand indicator on collapsed cards only.
                   The whole card is clickable to expand, so this is a
                   subtle affordance — just a white down chevron, no button
@@ -1023,7 +1135,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             </div>
           </div>
         );
+        })()}</React.Fragment>);
       })}
+      {endMarkers.length > 0 && renderMarkers(endMarkers)}
 
       {/* Discard-draft confirm — gates collapse and cross-thread expansion
           when the current composer has unsaved text. Same modal for both
