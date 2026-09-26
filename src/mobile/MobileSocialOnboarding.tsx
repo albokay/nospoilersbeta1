@@ -453,9 +453,17 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           onSubmitted={() => {}}
           initialTitle="Let's do this!"
           headingOverride={
-            <h1 style={{ ...M.type.title, color: C.blue, margin: "40px 0 10px" }}>
-              Tell your friend why you&rsquo;re excited about <b>{show.name}</b>:
-            </h1>
+            <>
+              <h1 className="sb-balance" style={{ ...M.type.title, color: C.blue, margin: "40px auto 10px" }}>
+                Tell your friend why you&rsquo;re excited about <b>{show.name}</b>:
+              </h1>
+              {/* The letters subhead (Alborz 2026-09-26, verbatim) — the
+                  onboarding compose only; the regular compose is untouched.
+                  One balanced block on the phone, no forced break. */}
+              <p className="sb-balance" style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, lineHeight: 1.5, color: CANON.dark, opacity: 0.85, maxWidth: 330, margin: "0 auto 10px" }}>
+                On Sidebar, everything you write is stamped with the episode it was written from — like a letter that will stay sealed until your friends catch up.
+              </p>
+            </>
           }
           promptButton={{ label: "Want help with what to write?", background: `var(--canon-identity, ${CANON.identity})` }}
           // Onboarding-only prompt batch (2026-07-08), split on the

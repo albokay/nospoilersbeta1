@@ -19,6 +19,7 @@ import type { ProgressEntry, FriendGroup } from "../../types";
 import type { PromptEntry } from "../../lib/promptData";
 import { getPromptSuggestion } from "../../lib/prompts";
 import PromptCard from "../PromptCard";
+import Stamp from "../Stamp";
 import LoadingDots from "../LoadingDots";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 import { CANON } from "../../styles/canon";
@@ -594,6 +595,12 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // Natural-number season/episode (no zero-padding); the rewatcher note at
   // the top of the page still uses tagShort.
   const tagLong = `Season ${tag.s} / Episode ${tag.e}`;
+  // The send moment (letters, 2026-09-26): the instant Send is pressed the
+  // letter's stamp appears on the paper's corner in Friend blue and leaves
+  // with the modal — every send, both composes, no animation. A rewatch
+  // letter's stamp wears the rewatch tag, like its ticket will.
+  const isRewatchTag = !!progress.isRewatching && progress.rewatchS != null && progress.rewatchE != null;
+  const stampLabel = isRewatchTag ? `S${progress.rewatchS} E${progress.rewatchE}` : `S${tag.s} E${tag.e}`;
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", animation: "v2-compose-fade-in 350ms linear" }}>
@@ -690,7 +697,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 }}
               >
                 {autoPrompt
-                  ? <>Write down your immediate thoughts<br />before reading your friends&rsquo;:</>
+                  ? <span className="sb-balance" style={{ display: "inline-block", maxWidth: 300 }}>Write down your immediate thoughts before reading your friends&rsquo;:</span>
                   : <>Capture your thoughts on</>}
               </div>
               {/* Pass 3: Lora 36 UPPERCASE 0.02em → Display Identity,
@@ -787,8 +794,14 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             margin: mobileIdiom ? "0 -16px 16px" : "0 0 16px",
             display: "flex",
             flexDirection: "column",
+            position: "relative",
           }}
         >
+          {submitting && (
+            <div aria-hidden style={{ position: "absolute", top: mobileIdiom ? 10 : 14, right: mobileIdiom ? 12 : 16, pointerEvents: "none" }}>
+              <Stamp label={stampLabel} variant={0} ink={CANON.friend} scale={mobileIdiom ? 0.8 : 1} rewatch={isRewatchTag} style={{ transform: "rotate(-4deg)" }} />
+            </div>
+          )}
           <input
             className="v2-compose-title-input"
             type="text"
@@ -804,6 +817,9 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               border: "none",
               background: "transparent",
               width: "100%",
+              boxSizing: "border-box",
+              // While the stamp sits on the corner, the title clears it.
+              paddingRight: submitting ? (mobileIdiom ? 92 : 112) : undefined,
               marginBottom: 14,
               outline: "none",
               letterSpacing: "-0.015em",
