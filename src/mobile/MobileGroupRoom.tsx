@@ -1108,7 +1108,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         const showRead = !!gs?.roomId && visibleWriters.length >= 1;
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
         // Display names, bare (naming arc: no "@" where a given name renders).
-        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what ${readName} has written?`;
+        const readText = visibleWriters.length > 1 ? "Read your friends' letters?" : `Read ${readName}'s letters?`;
         const interestedNames = (gs?.members ?? [])
           .filter((m) => m.userId !== selfUserId)
           .map((m) => memberNameById[m.userId] ?? "someone");
@@ -1330,7 +1330,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </button>
             <button style={sheetRow} onClick={() => doLeaveRoom(sheetFor.roomId, sheetFor.showId)}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Leave this room (just you)</span>
-              <span style={sheetSub}>Your writing stays. Everyone else keeps going.</span>
+              <span style={sheetSub}>Your letters stay. Everyone else keeps going.</span>
             </button>
             <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doDnfRoom(sheetFor.roomId)}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.blue }}>We&rsquo;re done with this one</span>

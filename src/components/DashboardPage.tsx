@@ -146,8 +146,8 @@ const C = {
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 // New-activity tooltip copy (matches the live site's room/feed notification text).
-const NOTIF_VISIBLE = "There is new writing for you in here.";
-const NOTIF_INVISIBLE = "There is new writing for you in here… for when you catch up.";
+const NOTIF_VISIBLE = "New letters for you in here.";
+const NOTIF_INVISIBLE = "Letters waiting for you in here… for when you catch up.";
 
 type RailGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: GroupPendingInvite[] };
 
@@ -2375,7 +2375,7 @@ export default function DashboardPage() {
         );
         const showRead = !!gs?.roomId && visibleWriters.length >= 1;
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
-        const readText = visibleWriters.length > 1 ? "Read what your friends have written?" : `Read what ${readName} has written?`;
+        const readText = visibleWriters.length > 1 ? "Read your friends' letters?" : `Read ${readName}'s letters?`;
         return (
           // Dedicated scrollable two-layer overlay (NOT the shared `overlay`):
           // centers [modal + 8px gap + trailer card] as one pair and lets the
@@ -2727,7 +2727,7 @@ export default function DashboardPage() {
                 grammar (polish pass 2026-09-15): Subtitle + Body, no ×. */}
             <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Leaving, or done watching?</div>
             <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 10 }}>
-              Leaving takes you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your writing stays, and everyone else keeps going.
+              Leaving takes you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your letters stay, and everyone else keeps going.
             </div>
             <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
               Or call it for the whole group: the show moves to the finished drawer under &ldquo;Didn&rsquo;t finish:&rdquo;, and anyone can bring it back later.

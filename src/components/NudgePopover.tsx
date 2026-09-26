@@ -59,7 +59,7 @@ const SENT_TOTAL_MS = 1000;
 const VOCAB_AHEAD_TO_BEHIND = [
   "miss you in here 👋",
   "no rush, but it just got good",
-  "piling up takes for you",
+  "letters piling up for you",
   "still planning to watch or did you give up?",
 ];
 const VOCAB_SAME = [
