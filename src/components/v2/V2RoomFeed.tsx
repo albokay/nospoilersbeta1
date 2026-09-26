@@ -762,8 +762,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   </div>
                   <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9, marginTop: 2 }}>
                     {aheadBy != null && aheadBy > 0
-                      ? <>Written to {gatedStubAudience} from {aheadBy} episode{aheadBy === 1 ? "" : "s"} ahead. You can read it once you catch up.</>
-                      : <>Written to {gatedStubAudience} from s{entry.s} e{entry.e}. You can read it once you catch up.</>}
+                      ? <>A letter to {gatedStubAudience} from {aheadBy} episode{aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.</>
+                      : <>A letter to {gatedStubAudience} from s{entry.s} e{entry.e}. It opens when you catch up.</>}
                   </div>
                 </div>
               </div>
@@ -936,7 +936,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       <Flag size={18} color={CANON.cream} />
                     </span>
                   )}
-                  {entry.isDeleted ? "(deleted entry)" : demoMode ? keepTailTogether(entry.title) : entry.title}
+                  {entry.isDeleted ? "(deleted letter)" : demoMode ? keepTailTogether(entry.title) : entry.title}
                 </h2>
                 {/* Entry star RETIRED (help-system QA round 7): the surface
                     starred entries populated is gone, so the button is too.
@@ -962,7 +962,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                               <div key={r.id} style={{ ...D.gatedStub(16), padding: "12px 16px", cursor: "default" }}>
                                 <Lock size={18} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
                                 <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
-                                  <b>{r.author}</b> responded from s{r.season} e{r.episode}. You&rsquo;ll see it when you catch up.
+                                  <b>{r.author}</b> responded from s{r.season} e{r.episode}. It opens when you catch up.
                                 </div>
                               </div>
                             );
@@ -1122,10 +1122,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     return (
                       <Tooltip
                         text={pillKind === "blue"
-                          ? "There is new writing in here for you."
+                          ? "New responses in here for you."
                           : signal?.redCount
-                            ? "There is new writing in here for when you catch up."
-                            : "Someone responded to your writing."}
+                            ? "Responses in here for when you catch up."
+                            : "Someone responded to your letter."}
                         direction="above"
                         align="right"
                         width={180}
@@ -1184,7 +1184,7 @@ function EntryRedDot({ count, onDismiss }: { count: number; onDismiss: () => voi
   const [hover, setHover] = useState(false);
   return (
     <Tooltip
-      text={<>There is new writing in here<br />for when you catch up.</>}
+      text={<>Responses in here<br />for when you catch up.</>}
       direction="above"
       align="right"
       width="auto"

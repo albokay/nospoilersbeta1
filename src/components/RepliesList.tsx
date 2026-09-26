@@ -888,7 +888,7 @@ export default function RepliesList({
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardStyle={hintCard}>
           <div>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
-              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any letter that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this letter and vice-versa.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               The thread stays linear, but the connections between ideas are visible.
@@ -1018,7 +1018,7 @@ export default function RepliesList({
               >
                 <Lock size={18} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
                 <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
-                  <b>{dn(r.author)}</b> responded from {tag.toLowerCase()}. You&rsquo;ll see it when you catch up.
+                  <b>{dn(r.author)}</b> responded from {tag.toLowerCase()}. It opens when you catch up.
                 </div>
               </div>
             );

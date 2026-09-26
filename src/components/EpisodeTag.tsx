@@ -52,7 +52,7 @@ export default function EpisodeTag({
   // both labels render at the same size/weight.
   const rewatchLabel = `S${fmt(rewatchS)}${sep}E${fmt(rewatchE)}`;
   const tooltipText =
-    "A rewatch post. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
+    "Written on a rewatch. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
 
   return (
     <Tooltip

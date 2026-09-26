@@ -635,7 +635,7 @@ export default function V2InlineThread({
               <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
                 Your progress has moved to{" "}
                 <strong>S{String(editTagS).padStart(2, "0")} E{String(editTagE).padStart(2, "0")}</strong>.
-                {" "}Saving will retag this post to your current progress — readers below that point who could see it before will no longer see it.
+                {" "}Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it.
               </div>
               <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
                 <button
@@ -686,7 +686,7 @@ export default function V2InlineThread({
             <>
               {replyCount > 0 ? (
                 <Tooltip
-                  text="This entry can't be edited because others have responded to it."
+                  text="This letter can't be edited because others have responded to it."
                   direction="above"
                   align="right"
                   useAbsolute={true}
@@ -702,7 +702,7 @@ export default function V2InlineThread({
                 </Tooltip>
               ) : (
                 <Tooltip
-                  text="Just a heads up: if you've watched more episodes since you first wrote this, editing will update this entry's progress tag to your current progress."
+                  text="Just a heads up: if you've watched more episodes since you first wrote this, editing will update this letter's progress tag to your current progress."
                   direction="above"
                   align="right"
                   useAbsolute={true}
@@ -916,7 +916,7 @@ export default function V2InlineThread({
         <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
           <div>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
-              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any entry that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this entry and vice-versa.
+              <MessageSquare size={14} color="currentColor" /> Highlight the portion of any letter that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this letter and vice-versa.
             </p>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
               The thread stays linear, but the connections between ideas are visible.
@@ -935,9 +935,9 @@ export default function V2InlineThread({
         // Yellow dialog (polish pass 2026-09-15): acting on a room's entry.
         <Modal onClose={cancelDelete} width="min(360px, 92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: "var(--canon-accent,#dea838)", color: CANON.cream, animation: "dCardRise 180ms ease-out" }}>
           <div>
-            <h3 style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" }}>Delete this entry?</h3>
+            <h3 style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" }}>Delete this letter?</h3>
             <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.9, margin: "0 0 18px" }}>
-              If it has responses, they'll stay visible in the room as a tombstone. Otherwise the entry disappears from the feed.
+              If it has responses, they'll stay visible in the room as a tombstone. Otherwise the letter disappears from the room.
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <button

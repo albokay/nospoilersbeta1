@@ -1031,8 +1031,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
                   <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-                  <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
-                  <p style={emptyCopy}>Think of it as sending them a letter from the future!</p>
+                  <p style={emptyCopy}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
+                  <p style={emptyCopy}>Think of it as sending them letters from the future!</p>
                 </div>
               ) : (
                 <V2RoomFeed
@@ -1081,7 +1081,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
                   <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
-                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
+                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
                 </div>
             </div>
 

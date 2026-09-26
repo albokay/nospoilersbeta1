@@ -271,7 +271,7 @@ export default function ResponseComposer({
       if (profile.username !== threadAuthor) onExternalReplyAdded?.();
       onSubmitted();
     } catch (e: any) {
-      setError(e?.message ?? "Failed to post. Please try again.");
+      setError(e?.message ?? "Couldn't send. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -464,7 +464,7 @@ export default function ResponseComposer({
               disabled={submitting || !body.trim()}
               style={mPillGeom}
             >
-              {submitting ? "Posting…" : label}
+              {submitting ? "Sending…" : label}
             </button>
           );
         })()}

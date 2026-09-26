@@ -195,7 +195,7 @@ export default function OneSelectProgress({
       ) : (
         <>
           <h3 style={dlgTitle}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
-          <p style={dlgBody}>Your feed will only show posts up to your selected episode.</p>
+          <p style={dlgBody}>You&rsquo;ll only see letters up to your selected episode.</p>
         </>
       )}
       <div style={{ display: "flex", gap: 12 }}>

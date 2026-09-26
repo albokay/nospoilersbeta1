@@ -1003,8 +1003,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-              <p style={emptyCopy}>You're the first one in here. Start writing so that your friends have your thoughts ready when they finish episodes.</p>
-              <p style={emptyCopy}>Think of it as sending them a letter from the future!</p>
+              <p style={emptyCopy}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
+              <p style={emptyCopy}>Think of it as sending them letters from the future!</p>
             </div>
           ) : (
             <V2RoomFeed
@@ -1056,7 +1056,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
               <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
-              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into the friend room.</p>
+              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
             </div>
         </div>
       </div>
@@ -1129,7 +1129,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div style={{ ...M.type.caption, color: withAlpha(CANON.dark, 0.7), padding: "0 20px", marginTop: 4 }}>
               {mapEditing
                 ? "Tap your cells to rate them — each tap adds a star. Save when you're done."
-                : "Tap a cell to open its entry. Tap your own icon to rate the episodes you've watched."}
+                : "Tap a cell to open its letter. Tap your own icon to rate the episodes you've watched."}
             </div>
             <div ref={mapScrollRef} style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", marginTop: 14, WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
               <V2RoomMap
@@ -1197,7 +1197,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div style={digestDivider} />
             <div style={digestLabel}>Leaving, or done watching?</div>
             <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>Leave (just you)</button>
-            <div style={{ ...digestSub, margin: "10px 0 16px" }}>Your writing stays. Re-propose the show to rejoin.</div>
+            <div style={{ ...digestSub, margin: "10px 0 16px" }}>Your letters stay. Re-propose the show to rejoin.</div>
             <button style={identityBtnM} disabled={dnfBusy} onClick={doDnfRoom}>{dnfBusy ? "one moment…" : "We’re done with this one"}</button>
             <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group. Anyone can bring it back later.</div>
           </div>
@@ -1213,7 +1213,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div style={OVERLAY.grabber(CANON.cream)} />
             <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Leave this show room?</div>
             <div style={{ color: C.cream, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
-              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list. Your writing stays intact; re-propose the show to rejoin.
+              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list. Your letters stay; re-propose the show to rejoin.
             </div>
             <div style={{ display: "flex", justifyContent: "flex-start", gap: 12, alignItems: "center" }}>
               <button style={{ ...M.pill.M, background: CANON.alert, color: CANON.cream, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>Leave</button>

@@ -1583,12 +1583,12 @@ export default function V2RoomMap({
                 if (signal) {
                   const text =
                     signal.kind === "blue"
-                      ? "There is new writing for you."
+                      ? "New responses in here for you."
                       : signal.kind === "yellow"
-                        ? "Someone reacted to your writing."
+                        ? "Someone reacted to your letter."
                         : signal.redCount
-                          ? "There is new writing in here for you… for when you catch up."
-                          : "Someone responded to your writing.";
+                          ? "Responses in here for when you catch up."
+                          : "Someone responded to your letter.";
                   signalLine = (
                     <span style={{
                       display: "block",
