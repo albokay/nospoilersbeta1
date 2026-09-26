@@ -146,7 +146,7 @@ function buildDigestHtml(
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
-      const verb = r.entries.length === 1 ? "wrote a new entry" : "wrote new entries";
+      const verb = r.entries.length === 1 ? "left a new letter" : "left new letters";
       const items = r.entries
         .map((e) => {
           // CP7: point at the restructured show room. The id lines up (a
@@ -167,7 +167,7 @@ function buildDigestHtml(
         .map((x) => {
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
           const whose = x.ownerName === null ? "your" : `${escapeHtml(x.ownerName)}&rsquo;s`;
-          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(formatNames(x.responderNames))} responded to ${whose} entry <span style="font-style:italic">&ldquo;${escapeHtml(x.title)}&rdquo;</span></a></p>`;
+          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(formatNames(x.responderNames))} responded to ${whose} letter <span style="font-style:italic">&ldquo;${escapeHtml(x.title)}&rdquo;</span></a></p>`;
         })
         .join("");
       return `
@@ -236,12 +236,12 @@ function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: Propo
     const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
     if (entryRooms.length === 1) lead = `${formatNames(authors)} wrote about ${entryRooms[0].roomName}`;
     else if (entryRooms.length === 2 && authors.length === 1) lead = `${authors[0]} wrote about ${entryRooms[0].roomName} and ${entryRooms[1].roomName}`;
-    else lead = `New writing in ${entryRooms.length} of your rooms`;
+    else lead = `New letters in ${entryRooms.length} of your rooms`;
   } else if (respRooms.length) {
     const all = respRooms.flatMap((r) => r.responses);
     if (all.length === 1) {
       const x = all[0];
-      lead = `${formatNames(x.responderNames)} responded to ${x.ownerName === null ? "your" : `${x.ownerName}'s`} ${respRooms[0].roomName} entry`;
+      lead = `${formatNames(x.responderNames)} responded to ${x.ownerName === null ? "your" : `${x.ownerName}'s`} ${respRooms[0].roomName} letter`;
     } else if (respRooms.length === 1) lead = `New responses in ${respRooms[0].roomName}`;
     else lead = `New responses in ${respRooms.length} of your rooms`;
   } else if (chats.length) {
@@ -265,7 +265,7 @@ function buildDigestText(
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
-      const verb = r.entries.length === 1 ? "wrote a new entry" : "wrote new entries";
+      const verb = r.entries.length === 1 ? "left a new letter" : "left new letters";
       const items = r.entries
         .map((e) => {
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
@@ -277,7 +277,7 @@ function buildDigestText(
         .map((x) => {
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
           const whose = x.ownerName === null ? "your" : `${x.ownerName}'s`;
-          return `  - ${formatNames(x.responderNames)} responded to ${whose} entry "${x.title}" — ${url}`;
+          return `  - ${formatNames(x.responderNames)} responded to ${whose} letter "${x.title}" — ${url}`;
         })
         .join("\n");
       const head = r.entries.length ? `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}` : r.roomName;

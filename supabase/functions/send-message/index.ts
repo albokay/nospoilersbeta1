@@ -322,7 +322,7 @@ async function handlePing(
     ${escapeHtml(senderHandle)} wants you in the room.
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> has been piling up takes. ${escapeHtml(senderHandle)} sent you a little nudge:
+    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> has letters piling up for you. ${escapeHtml(senderHandle)} sent you a little nudge:
   </p>
   <p style="margin:0 0 28px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
     ${escapeHtml(trimmedMessage)}
@@ -342,7 +342,7 @@ async function handlePing(
 
   const text = `${senderHandle} wants you in the room.
 
-Your friend room for ${showName} has been piling up takes. ${senderHandle} sent you a little nudge:
+Your friend room for ${showName} has letters piling up for you. ${senderHandle} sent you a little nudge:
 
   ${trimmedMessage}
 
