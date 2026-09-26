@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { UsersRound, ListChecks, Road, MessageSquareText, ShieldCheck } from "lucide-react";
+import { UsersRound, ListChecks, Road, Mail, ShieldCheck } from "lucide-react";
 
 // ── Homepage copy — single source of truth ──────────────────────────────
 //
@@ -30,12 +30,15 @@ export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 // 2026-08-31 rewrite (Alborz, verbatim): steps 3–5 recast — agree-on-a-show
 // leads into writing, the shield explains the filter, pace closes; icons
 // reassigned to match (speech bubble → 3, shield → 4, road → 5).
+// 2026-09-25 (Alborz, verbatim): the letters framing is taught here first —
+// step 3 wears the sealed envelope (the letters glyph) instead of the speech
+// bubble, and steps 3–4 are reworded around sealed letters from the future.
 export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
   { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
   { Icon: ListChecks,        text: "Each friend lists what they would like to watch together." },
-  { Icon: MessageSquareText, text: "Once you agree on a show, start a room and leave letters about it without worrying about spoilers. Write as if everyone’s caught up to exactly where you are." },
-  { Icon: ShieldCheck,       text: "Sidebar filters every room to each person’s progress. Nothing you read is ever ahead of where you are." },
-  { Icon: Road,              text: "Watch at your own pace. If you binge ahead, your letters will be waiting for your friends. If you savor the episodes, you’ll always have letters waiting for you." },
+  { Icon: Mail,              text: "Once you agree on a show, start a room and write to your friends without worrying about spoilers. Write as if everyone’s caught up to exactly where you are. If they’re behind, your writing will wait for them — sealed letters from the future." },
+  { Icon: ShieldCheck,       text: "Likewise, nothing you read will spoil you because Sidebar filters every room to each person’s progress." },
+  { Icon: Road,              text: "Watch at your own pace. If you binge ahead, your letters will be waiting for your friends. If you savor the episodes, you’ll always have writing waiting for you." },
 ];
 
 export const CTA_JOIN_LABEL = "Join / sign in";
