@@ -97,14 +97,19 @@ function Look({ variant, label, ink, w, h }: { variant: StampVariant; label: str
           <Tag x={44} y={32} text={label} ink={ink} size={18} />
         </svg>
       );
-    case 1:
+    case 1: {
+      // "Season\nEpisode" (the letter from Sidebar) stacks two words.
+      const two = label.includes("\n") ? label.split("\n", 2) : null;
       return (
         <svg {...common} viewBox="0 0 92 68">
           <path d={P_FRAME} fill="none" stroke={ink} strokeWidth={2} />
           <rect x={11} y={11} width={70} height={46} fill="none" stroke={ink} strokeWidth={2} />
-          <Tag x={46} y={34} text={label} ink={ink} size={17} />
+          {two
+            ? (<><Tag x={46} y={25} text={two[0]} ink={ink} size={14} /><Tag x={46} y={43} text={two[1]} ink={ink} size={14} /></>)
+            : <Tag x={46} y={34} text={label} ink={ink} size={17} />}
         </svg>
       );
+    }
     case 2:
       return (
         <svg {...common} viewBox="0 0 136 68">
@@ -160,7 +165,7 @@ export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, se
   const tilt = TILT[variant];
   const disc = Math.round(44 * scale);
   return (
-    <span role="img" aria-label={sealed ? `sealed letter, ${label}` : label} style={{ position: "relative", display: "inline-block", width: w, height: h, verticalAlign: "top", ...style }}>
+    <span role="img" aria-label={sealed ? `sealed letter, ${label.replace("\n", " ")}` : label.replace("\n", " ")} style={{ position: "relative", display: "inline-block", width: w, height: h, verticalAlign: "top", ...style }}>
       <span style={{ display: "block", width: w, height: h, transform: tilt ? `rotate(${tilt}deg)` : undefined, transformOrigin: "center" }}>
         <Look variant={variant} label={label} ink={ink} w={w} h={h} />
       </span>

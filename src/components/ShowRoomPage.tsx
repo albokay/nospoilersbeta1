@@ -29,7 +29,7 @@ import { joinNames } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
 import { ensureShowReference } from "../lib/reference";
-import { roomTipKey } from "../lib/tipsContent";
+import { roomLetterKey } from "../lib/tipsContent";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
@@ -43,7 +43,7 @@ import ShowReference from "./reference/ShowReference";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
-import RoomProgressTip from "./RoomProgressTip";
+import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
@@ -140,22 +140,22 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [location.pathname]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
-  // The progress-picker sticky, now header-"?"-toggleable (2026-09-15 —
-  // dashboard tips parity; it used to be gone forever once X'd). null =
-  // auth not resolved yet; first resolution honors the per-account flag.
-  const [progressTipOpen, setProgressTipOpen] = useState<boolean | null>(null);
+  // The letter from Sidebar (2026-09-26; replaced the progress-picker
+  // sticky) — header-"?"-toggleable like the dashboard tips. null = auth
+  // not resolved yet; first resolution honors the per-account flag.
+  const [letterOpen, setLetterOpen] = useState<boolean | null>(null);
   useEffect(() => {
     if (!user) return;
-    setProgressTipOpen((cur) => {
+    setLetterOpen((cur) => {
       if (cur !== null) return cur;
-      try { return !localStorage.getItem(roomTipKey(user.id)); } catch { return true; }
+      try { return !localStorage.getItem(roomLetterKey(user.id)); } catch { return true; }
     });
   }, [user?.id]);
-  function closeProgressTip() {
-    // Same contract as the sticky's own X: closing re-arms the
+  function closeLetter() {
+    // Same contract as the letter's own "got it": closing re-arms the
     // per-account "don't auto-show on entrance" flag.
-    try { if (user) localStorage.setItem(roomTipKey(user.id), "1"); } catch { /* tolerate */ }
-    setProgressTipOpen(false);
+    try { if (user) localStorage.setItem(roomLetterKey(user.id), "1"); } catch { /* tolerate */ }
+    setLetterOpen(false);
   }
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -904,17 +904,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             ) : null}
           </div>
           <div style={D.header.right}>
-            {/* Tips "?" (2026-09-15, dashboard parity): toggles the
-                progress-picker sticky back after dismissal. Friend tab
-                only — that's where the picker (and the sticky) lives.
-                Sticky OFF → cream fill + green "?" (the invitation). */}
+            {/* Tips "?" (2026-09-15, dashboard parity): toggles the letter
+                from Sidebar back after "got it" (2026-09-26; it was the
+                progress-picker sticky). Friend tab only — that's where the
+                letter leads the feed. Letter OFF → cream fill + green "?"
+                (the invitation). */}
             {!privateOnly && tab === "friend" && user && (
               <button
-                style={{ ...D.circleBtn(C.cream), ...(progressTipOpen ? {} : { background: C.cream, border: `2px solid ${C.cream}` }) }}
+                style={{ ...D.circleBtn(C.cream), ...(letterOpen ? {} : { background: C.cream, border: `2px solid ${C.cream}` }) }}
                 title="tips"
-                onClick={() => (progressTipOpen ? closeProgressTip() : setProgressTipOpen(true))}
+                onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))}
               >
-                <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: progressTipOpen ? C.cream : C.green }}>?</span>
+                <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: letterOpen ? C.cream : C.green }}>?</span>
               </button>
             )}
             <button style={D.circleBtn(C.cream)} title="account" onClick={() => setShowAccount(true)}>
@@ -1027,6 +1028,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 check (Alborz 2026-09-08). */}
             {!privateOnly && (
             <div style={{ display: tab === "friend" ? undefined : "none" }}>
+              {/* The letter from Sidebar leads the feed (2026-09-26). */}
+              {user && letterOpen === true && (
+                <SidebarLetter idiom="desktop" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
+              )}
               {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
               {feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
@@ -1234,13 +1239,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* Swipe-deck arc CP4 — the drip / catch-up modal fires wherever the
           user is (once per session; self-skipping when nothing is owed). */}
       {user && <DeckWave wave="drip" heading="none" idiom="desktop" onComplete={() => {}} />}
-
-      {/* Help-system QA round 3: the progress-picker sticky — right of the
-          dropdown, ← pointing at it; first-entrance, X-able. Now controlled
-          by the header "?" (2026-09-15) so a dismissed sticky can come back. */}
-      {tab === "friend" && !privateOnly && user && (
-        <RoomProgressTip idiom="desktop" userId={user.id} open={progressTipOpen === true} onDismiss={closeProgressTip} />
-      )}
 
       {/* Help-system arc CP3 — the guided sample-room tour, re-entry
           context (the header's "how does this room work?" button). */}

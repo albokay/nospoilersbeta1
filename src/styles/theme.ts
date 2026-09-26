@@ -422,6 +422,9 @@ header.site{
 .threadCard{ border:none; }
 .replyBarNew{ background:var(--green); height:6px; }
 .clamp3{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+/* Balanced wrapping for headings + short subheads (Alborz 2026-09-26): even
+   lines at any width, never a hand-placed <br>. Pair with a max-width. */
+.sb-balance{ text-wrap:balance; }
 .redacted{ background:#e8e4dc; color:#888; border:2px solid #ccc; border-radius:23px; }
 
 /* mode toggle */

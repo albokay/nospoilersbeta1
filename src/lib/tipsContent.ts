@@ -11,9 +11,10 @@
  * Behavior (locked): accounts created AFTER the feature shipped see a
  * page's tips OPEN on their first visit; dismissing closes them; the "?"
  * affordance reopens them anytime. Pre-existing accounts start closed. The
- * show room has NO tips toggle — its help affordance is the "how does this
- * room work?" tour button; the contextual zero-progress tip below is its
- * one pointer (renders at "haven't started" until dismissed).
+ * show room's help is the "how does this room work?" tour button; its one
+ * pointer is the LETTER FROM SIDEBAR (ROOM_LETTER below, 2026-09-26 — it
+ * replaced the progress-picker sticky): leads the feed on entrance until
+ * "got it"; the desktop "?" brings it back.
  */
 
 export type TipsPage = "dashboard" | "groupRoom";
@@ -118,15 +119,21 @@ export function tipsDefaultOpen(page: TipsPage, userId: string | null | undefine
   return new Date(createdAtIso).getTime() >= TIPS_LAUNCH_MS;
 }
 
-/** The show room's progress-picker sticky (QA round 3 — replaced the
- *  zero-progress ticket; shows on first room entrance regardless of
- *  progress, until X'd). The desktop sticky leads with a ← icon pointing
- *  at the picker (rendered by RoomProgressTip, not part of the string). */
-export const ROOM_PROGRESS_TIP: Tip = {
-  body: "This progress picker is the most important part of the show room. Every time you get here, make sure this matches your watch progress so that you can open any letters your friends left you.",
-  aside: "(And so that you don't accidentally spoil them with your own writing!)",
+/** The letter from Sidebar (Alborz 2026-09-26, copy from the letters
+ *  canvas): the show room's explainer, leading the feed. It says the
+ *  letters framing out loud and folds in what the progress-picker sticky
+ *  used to say (the sticky and its copy retired with it). Rendered by
+ *  SidebarLetter; "Dear {first name}," is the component's. */
+export const ROOM_LETTER = {
+  headline: "On Sidebar, you write your friends letters.",
+  p1: "Every letter in this room wears a stamp: the episode it was written from. A letter stamped ahead of you stays sealed until you get there, and yours stay sealed for friends who are behind. Write as if everyone’s right where you are.",
+  p2: "The progress picker up top is the most important part of this room. Every time you come in, make sure it matches how far you’ve watched, so the letters your friends leave you can open in time (and so your own writing doesn’t spoil them).",
+  signoff: "— Sidebar",
+  cta: "got it",
 };
-/** Per-user, same 2026-08-01 reasoning as tipsSeenKey. */
-export function roomTipKey(userId: string): string {
-  return `ns_tip_room_progress_${userId}`;
+/** Per-user, same 2026-08-01 reasoning as tipsSeenKey. A NEW key (not the
+ *  old sticky's), so everyone — testers who dismissed the sticky included —
+ *  meets the letter once. */
+export function roomLetterKey(userId: string): string {
+  return `ns_letter_room_${userId}`;
 }

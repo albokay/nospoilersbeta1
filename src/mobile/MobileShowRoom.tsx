@@ -17,7 +17,7 @@ import { M, OVERLAY } from "./m";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
-import RoomProgressTip from "../components/RoomProgressTip";
+import SidebarLetter from "../components/SidebarLetter";
 import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
@@ -902,11 +902,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       </div>
 
       <div style={{ padding: "16px 16px 120px" }}>
-        {/* Help-system QA round 8: the progress-picker pointer sits ABOVE
-            the control card, its ↓ pointing at the picker row inside it;
-            first-entrance, X-able, any progress. */}
-        {tab === "friend" && user && <RoomProgressTip idiom="mobile" userId={user.id} />}
-
         {/* ── Control card (polish pass 2026-09-14; map pass 2026-09-23):
                sort + progress · Map · Write in ONE cream card, dark ink.
                Friend tab = all rows; drafts = picker + Write; guide =
@@ -999,6 +994,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             (Alborz 2026-09-08). */}
         {!privateOnly && (
         <div style={{ display: tab === "friend" ? undefined : "none" }}>
+          {/* The letter from Sidebar leads the feed (2026-09-26; it replaced
+              the progress-picker pointer above the control card). Self-
+              managed here — /m has no "?" — so "got it" puts it away. */}
+          {user && <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} />}
           {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
