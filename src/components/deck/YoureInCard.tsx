@@ -119,7 +119,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
               <p style={{ margin: 0 }}>
                 You&rsquo;ve now created a show room for <span style={alertSpan}>{variant.showName}</span>,
                 invited <span style={alertSpan}>{variant.friendName}</span>, and{" "}
-                <span style={alertSpan}>left some writing</span> for them to read.
+                <span style={alertSpan}>left them a letter</span> to open.
               </p>
               {/* Text-a-link (Alborz 2026-08-18): the same invite, offered as
                   a link the inviter can send themselves. */}
@@ -140,7 +140,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
           ) : (
             <p style={{ margin: 0 }}>
               Your friend, <span style={alertSpan}>{variant.friendName}</span> is waiting for you inside
-              your group room. See what they&rsquo;ve written you already and let them know what you want
+              your group room. See the letters they&rsquo;ve already left you and let them know what you want
               to watch together.
             </p>
           )}

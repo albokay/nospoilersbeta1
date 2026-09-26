@@ -78,7 +78,7 @@ export default function PromptCard({
           type="button"
           className="prompt-v2-use"
           onClick={() => onInsert(prompt.text)}
-          title="Insert this prompt into your post"
+          title="Insert this prompt into your letter"
           style={{ ...pill, background: CANON.identity, color: CANON.cream, border: `2px solid ${CANON.identity}` }}
         >
           <CornerDownLeft size={14} />

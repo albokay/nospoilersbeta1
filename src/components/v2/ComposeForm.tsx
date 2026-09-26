@@ -559,7 +559,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
       onSubmitted(destination, t.id);
     } catch (err: any) {
       console.warn("submit failed:", err);
-      setSubmitError(err?.message || "Post failed. Try again.");
+      setSubmitError(err?.message || "Couldn't send. Try again.");
       setSubmitting(false);
     }
   }
@@ -744,7 +744,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 lineHeight: 1.5,
               }}
             >
-              Your post is automatically marked to {tagShort} — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.
+              Your letter is automatically marked to {tagShort} — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.
             </div>
           )}
         </div>
@@ -967,8 +967,8 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                   }}
                 >
                   {submitting
-                    ? <>{externalSubmit?.submittingLabel ?? "posting"}<LoadingDots /></>
-                    : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "Share entry"}<ArrowRight size={14} /></>}
+                    ? <>{externalSubmit?.submittingLabel ?? "sending"}<LoadingDots /></>
+                    : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "Send letter"}<ArrowRight size={14} /></>}
                 </button>
               );
             })()}

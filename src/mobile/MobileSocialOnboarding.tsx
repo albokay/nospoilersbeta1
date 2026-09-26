@@ -464,7 +464,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           // First-message placeholder (Alborz 2026-09-02, verbatim) —
           // friend/friends tracks how many they invited on screen 2.
           bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${completeRows.length > 1 ? "friends" : "friend"}?`}
-          externalSubmit={{ label: "publish & invite", submittingLabel: "sending invite", onSubmit: publishAndInvite }}
+          externalSubmit={{ label: "send & invite", submittingLabel: "sending", onSubmit: publishAndInvite }}
         />
       </div>
     );
@@ -490,7 +490,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
     return (
       <div style={{ ...fullScreen, background: C.yellow }}>
         <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>
-          <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Your writing is published!</div>
+          <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Your letter is sent!</div>
           <div style={{ color: C.cream, fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
             But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
             Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.

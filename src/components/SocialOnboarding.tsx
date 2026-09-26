@@ -528,7 +528,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
             // First-message placeholder (Alborz 2026-09-02, verbatim) —
             // friend/friends tracks how many they invited on screen 2.
             bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${completeRows.length > 1 ? "friends" : "friend"}?`}
-            externalSubmit={{ label: "publish & invite", submittingLabel: "sending invite", onSubmit: publishAndInvite }}
+            externalSubmit={{ label: "send & invite", submittingLabel: "sending", onSubmit: publishAndInvite }}
           />
         </div>
       </div>
@@ -557,7 +557,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
     return (
       <div style={overlay}>
         <div style={{ ...yellowCard, width: "min(460px, 88vw)", textAlign: "left" }}>
-          <div style={{ ...yellowTitle, marginBottom: 12 }}>Your writing is published!</div>
+          <div style={{ ...yellowTitle, marginBottom: 12 }}>Your letter is sent!</div>
           <div style={{ color: CANON.cream, fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
             But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
             Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
