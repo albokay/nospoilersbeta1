@@ -41,17 +41,17 @@ export const panelCaptions: React.ReactNode[] = [
   <>
     Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
-    You watch the first episode, log your watch progress, and write a post about your first impressions. There are a handful of posts to read in the room {"\u2014"} these were all written when your friends were also on episode 1.
+    You watch the first episode, log your watch progress, and write a letter about your first impressions. There are a handful of letters to read in the room {"\u2014"} these were all written when your friends were also on episode 1.
     {"\n\n"}
     <em>But in reality{"\u2026"}</em>
   </>,
   <>
     There is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your post gets replies (even though you don{"\u2019"}t know it yet).
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets responses (even though you don{"\u2019"}t know it yet).
   </>,
   <>
-    A few days later you watch episode 2 and more activity is revealed to you. Those replies to your episode 1 post feel like your friends just finished watching episode 2 along with you (because they wrote it after <em>they</em> watched episode 2).
+    A few days later you watch episode 2 and more activity is revealed to you. Those responses to your episode 1 letter feel like your friends just finished watching episode 2 along with you (because they wrote it after <em>they</em> watched episode 2).
   </>,
   <>
     No one ever writes {"\u201C"}I can{"\u2019"}t wait for you to watch{"\u2026\u201D"} or censors their excitement in any way. You all write as if you{"\u2019"}re watching together {"\u2014"} and the site makes that experience real.
@@ -70,12 +70,12 @@ export const panelCaptionsMobile: React.ReactNode[] = [
   <>
     Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
-    You watch the first episode, log your watch progress, and write a post about your first impressions. There are a handful of posts to read in the room {"\u2014"} these were all written when your friends were also on episode 1:
+    You watch the first episode, log your watch progress, and write a letter about your first impressions. There are a handful of letters to read in the room {"\u2014"} these were all written when your friends were also on episode 1:
   </>,
   <>
     But in reality, there is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your post gets replies {"\u2014"} even though you can{"\u2019"}t see them yet:
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets responses {"\u2014"} even though you can{"\u2019"}t see them yet:
   </>,
   panelCaptions[2],
   <>
@@ -135,10 +135,10 @@ function injectKeyframes() {
 
 export function pillLabel(type: PillType) {
   switch (type) {
-    case "your-post": return "YOUR POST";
-    case "post": return "POST";
-    case "reply": return "REPLY";
-    case "invisible": return "INVISIBLE";
+    case "your-post": return "YOUR LETTER";
+    case "post": return "LETTER";
+    case "reply": return "RESPONSE";
+    case "invisible": return "SEALED";
   }
 }
 
