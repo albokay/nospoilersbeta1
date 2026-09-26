@@ -11,7 +11,8 @@ import React, {
 import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Lock, Mail, Mails, Users, Sparkles, Flag } from "lucide-react";
 import { effectiveProgress } from "../../lib/utils";
-import EpisodeTag from "../EpisodeTag";
+import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
+import Stamp, { stampVariantFor, STAMP_BOX } from "../Stamp";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
 import Tooltip from "../Tooltip";
@@ -754,19 +755,37 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               data-thread-id={entry.threadId}
               style={{ position: "relative", margin: "0 0 12px 0", scrollMarginTop: 72 }}
             >
-              <div style={{ ...D.gatedStub(24), padding: "16px 20px", cursor: "default" }}>
-                <Lock size={20} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.45 }}>
-                    {dn(entry.authorUsername)} &middot; s{entry.s} e{entry.e}
+              {/* Sealed letter (2026-09-26): the live dashed idiom plus a faded
+                  cream fill so it stands out a little; its stamp at the
+                  top-right with the red lock riding the stamp's left edge; the
+                  name alone in the byline — the tag lives on the stamp. */}
+              {(() => {
+                const sv = stampVariantFor(entry.threadId);
+                const sc = mobileIdiom ? 0.78 : 1;
+                return (
+                  <div style={{ ...D.gatedStub(24), display: "block", position: "relative", background: "rgba(254,248,234,0.2)", padding: mobileIdiom ? "16px 16px" : "16px 20px", cursor: "default" }}>
+                    <div style={{ position: "absolute", top: 14, right: mobileIdiom ? 14 : 18 }}>
+                      <Stamp label={`S${entry.s} E${entry.e}`} variant={sv} scale={sc} sealed />
+                    </div>
+                    <div style={{ paddingRight: Math.round(STAMP_BOX[sv].w * sc) + 30, minHeight: Math.round(STAMP_BOX[sv].h * sc), boxSizing: "border-box" }}>
+                      <div className="muted" style={{ fontSize: 13, lineHeight: 1.45, color: CANON.cream, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Username
+                          name={entry.authorUsername}
+                          displayName={dn(entry.authorUsername)}
+                          userId={entry.authorId}
+                          onClickProfile={onClickProfile ?? (() => {})}
+                          bold
+                        />
+                      </div>
+                      <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9, marginTop: 8 }}>
+                        {aheadBy != null && aheadBy > 0
+                          ? <>A letter to {gatedStubAudience} from {aheadBy} episode{aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.</>
+                          : <>A letter to {gatedStubAudience} from s{entry.s} e{entry.e}. It opens when you catch up.</>}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9, marginTop: 2 }}>
-                    {aheadBy != null && aheadBy > 0
-                      ? <>A letter to {gatedStubAudience} from {aheadBy} episode{aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.</>
-                      : <>A letter to {gatedStubAudience} from s{entry.s} e{entry.e}. It opens when you catch up.</>}
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           );
         }
@@ -785,6 +804,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         const pillKind = signal?.kind === "blue" || signal?.kind === "red" ? signal.kind : null;
         const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
+        // The stamp (letters, 2026-09-26): the episode tag as a postage stamp
+        // at the ticket's top-right — one of six looks, chosen by the
+        // letter's id. A rewatch letter's stamp wears the rewatch tag with
+        // the rewatch glyph and keeps the tag's hover explanation.
+        const stampVariant = stampVariantFor(entry.threadId);
+        const stampScale = mobileIdiom ? 0.78 : 1;
+        const stampBox = STAMP_BOX[stampVariant];
+        const isRewatchTag = !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
+        const stampLabel = isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
+        const stampEl = entry.isDeleted ? null : <Stamp label={stampLabel} variant={stampVariant} scale={stampScale} rewatch={isRewatchTag} />;
+        const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
+        const stampReserve = stampEl ? Math.round(stampBox.w * stampScale) + 12 : 0;
+        const stampMinH = stampEl ? Math.round(stampBox.h * stampScale) : 0;
         return (
           <div
             key={entry.threadId}
@@ -844,9 +876,17 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
             >
               {redDot && <EntryRedDot count={redDot.count} onDismiss={redDot.onDismiss} />}
+              {stamp && (
+                <div style={{ position: "absolute", top: mobileIdiom ? 14 : 16, right: mobileIdiom ? 14 : 18 }}>
+                  {stamp}
+                </div>
+              )}
+              {/* The header block (byline + title) reserves the stamp's box so
+                  nothing runs under it; the preview below runs full width. */}
+              <div style={{ paddingRight: stampReserve, minHeight: stampMinH, boxSizing: "border-box" }}>
               {/* Byline ABOVE the title (polish pass 2026-09-15): one cream
-                  caption line — author · episode tag · time; the " • s1 e4"
-                  suffix moved here from the title. */}
+                  caption line — author · time; the episode tag lives on the
+                  stamp (2026-09-26). */}
               <div
                 className="muted"
                 style={{
@@ -880,20 +920,6 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 )}
                 {entry.isDeparted && (
                   <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>has left the room</span>
-                )}
-                {!entry.isDeleted && (
-                  <span style={{ whiteSpace: "nowrap" }}>
-                    •{" "}
-                    <EpisodeTag
-                      season={entry.s}
-                      episode={entry.e}
-                      isRewatch={entry.isRewatch}
-                      rewatchS={entry.rewatchS}
-                      rewatchE={entry.rewatchE}
-                      naturalNumbers
-                      parens={false}
-                    />
-                  </span>
                 )}
                 <span>• {timeAgo(entry.updatedAt)}</span>
                 {!entry.isDeleted && entry.isEdited && (
@@ -942,6 +968,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     starred entries populated is gone, so the button is too.
                     The like plumbing (expandedLikeState etc.) stays dormant
                     for a future revival. */}
+              </div>
               </div>
 
               <div style={{ marginTop: 6 }}>

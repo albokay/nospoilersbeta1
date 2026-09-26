@@ -5,6 +5,10 @@ import { CANON } from "../styles/canon";
 
 const CANON_RED = CANON.alert;
 
+/** The rewatch explanation — shared with the ticket's stamp (2026-09-26). */
+export const REWATCH_TOOLTIP =
+  "Written on a rewatch. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -51,8 +55,7 @@ export default function EpisodeTag({
   // Rewatch: (rewatchEp [icon] highestEp). Icon replaces the "/" separator;
   // both labels render at the same size/weight.
   const rewatchLabel = `S${fmt(rewatchS)}${sep}E${fmt(rewatchE)}`;
-  const tooltipText =
-    "Written on a rewatch. The lower episode number is where they are on their rewatch. The higher episode number is how far they got the first time they watched the show.";
+  const tooltipText = REWATCH_TOOLTIP;
 
   return (
     <Tooltip
