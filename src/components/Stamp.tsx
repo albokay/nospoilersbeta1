@@ -63,8 +63,8 @@ const FAM: Fam[] = [
  *  the frame sits inside it — for layout that must clear the stamp. */
 export function stampBox(spec: StampSpec): { w: number; h: number; frameLeft: number; frameBottom: number } {
   const f = FAM[spec.family];
-  const extL = spec.cancel === 2 ? 48 : 0;
-  const extR = spec.cancel === 1 ? 48 : spec.cancel === 3 ? 46 : spec.cancel === 4 ? 9 : 0;
+  const extL = spec.cancel === 2 ? 12 : 0;
+  const extR = spec.cancel === 1 ? 12 : spec.cancel === 3 ? 28 : spec.cancel === 4 ? 9 : 0;
   const extT = spec.cancel === 3 || spec.cancel === 4 ? 9 : 0;
   return { w: f.W + extL + extR + 2 * f.bleed, h: f.H + extT + 2 * f.bleed, frameLeft: extL + f.bleed, frameBottom: f.bleed };
 }
@@ -100,8 +100,10 @@ const P_HEART = "M0 4 c -4 -8 -14 -3 -10 5 c 3 5 10 9 10 9 s 7 -4 10 -9 c 4 -8 -
 const P_STAR = "M0 -9 L2.6 -3 L9 -2.6 L4.2 1.8 L5.6 8 L0 4.8 L-5.6 8 L-4.2 1.8 L-9 -2.6 L-2.6 -3 z";
 const P_DIAMOND = "M0 -9 L8 0 L0 9 L-8 0 z";
 const baseWave = (y: number) => `M4 ${y} c 6 -6 12 6 18 0 s 12 6 18 0 s 12 6 18 0 s 12 6 18 0 s 12 6 18 0`;
-const cancelWave = (x: number, y: number) => `M${x} ${y} c 8 -7 16 7 24 0 s 16 7 24 0 s 16 7 24 0`;
-const shortWave = (x: number, y: number) => `M${x} ${y} c 6 -5 12 5 18 0 s 12 5 18 0`;
+// Half-length waves (Alborz 2026-09-26): 36 long, 2 crests — the long ones
+// made the whole stamp too big.
+const cancelWave = (x: number, y: number) => `M${x} ${y} c 6 -7 12 7 18 0 s 12 7 18 0`;
+const shortWave = (x: number, y: number) => `M${x} ${y} c 3 -5 6 5 9 0 s 6 5 9 0`;
 const LORA = '"Lora", Georgia, serif';
 
 function Tag({ x, y, text, ink, size }: { x: number; y: number; text: string; ink: string; size: number }) {
@@ -125,7 +127,7 @@ function Cancel({ kind, W, H, ink, lw }: { kind: number; W: number; H: number; i
   const line = { fill: "none", stroke: ink, strokeWidth: lw, strokeLinecap: "round" as const };
   switch (kind) {
     case 1: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(W - 24, H / 2 - 12 + i * 12)} />)}</g>;
-    case 2: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(-48, H / 2 - 12 + i * 12)} />)}</g>;
+    case 2: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(-12, H / 2 - 12 + i * 12)} />)}</g>;
     case 3: return <g {...line}><circle cx={W - 6} cy={6} r={15} /><path d={shortWave(W + 10, 2)} /><path d={shortWave(W + 10, 12)} /></g>;
     case 4: return <g {...line}><circle cx={W - 6} cy={6} r={15} /></g>;
     default: return null;
