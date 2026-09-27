@@ -79,21 +79,21 @@ function Tag({ x, y, text, ink, size }: { x: number; y: number; text: string; in
     <text x={x} y={y} textAnchor="middle" dominantBaseline="middle" fill={ink} fontFamily={LORA} fontSize={size} fontWeight={700}>{text}</text>
   );
 }
-function Waves({ x, y, ink, n = 3, gap = 12, seg = 22, reps = 3 }: { x: number; y: number; ink: string; n?: number; gap?: number; seg?: number; reps?: number }) {
+function Waves({ x, y, ink, lw, n = 3, gap = 12, seg = 22, reps = 3 }: { x: number; y: number; ink: string; lw: number; n?: number; gap?: number; seg?: number; reps?: number }) {
   return (
-    <g fill="none" stroke={ink} strokeOpacity={0.85} strokeWidth={2} strokeLinecap="round">
+    <g fill="none" stroke={ink} strokeOpacity={0.85} strokeWidth={lw} strokeLinecap="round">
       {Array.from({ length: n }, (_, i) => <path key={i} d={wave(x, y + i * gap, seg, reps)} />)}
     </g>
   );
 }
 
-function Look({ variant, label, ink, w, h }: { variant: StampVariant; label: string; ink: string; w: number; h: number }) {
+function Look({ variant, label, ink, w, h, lw }: { variant: StampVariant; label: string; ink: string; w: number; h: number; lw: number }) {
   const common = { width: w, height: h, "aria-hidden": true as const, style: { display: "block", overflow: "visible" } as React.CSSProperties };
   switch (variant) {
     case 0:
       return (
         <svg {...common} viewBox="-6 -6 100 76">
-          <path d={P_SCALLOP} fill="none" stroke={ink} strokeWidth={2} />
+          <path d={P_SCALLOP} fill="none" stroke={ink} strokeWidth={lw} />
           <Tag x={44} y={32} text={label} ink={ink} size={18} />
         </svg>
       );
@@ -102,8 +102,8 @@ function Look({ variant, label, ink, w, h }: { variant: StampVariant; label: str
       const two = label.includes("\n") ? label.split("\n", 2) : null;
       return (
         <svg {...common} viewBox="0 0 92 68">
-          <path d={P_FRAME} fill="none" stroke={ink} strokeWidth={2} />
-          <rect x={11} y={11} width={70} height={46} fill="none" stroke={ink} strokeWidth={2} />
+          <path d={P_FRAME} fill="none" stroke={ink} strokeWidth={lw} />
+          <rect x={11} y={11} width={70} height={46} fill="none" stroke={ink} strokeWidth={lw} />
           {two
             ? (<><Tag x={46} y={25} text={two[0]} ink={ink} size={14} /><Tag x={46} y={43} text={two[1]} ink={ink} size={14} /></>)
             : <Tag x={46} y={34} text={label} ink={ink} size={17} />}
@@ -113,17 +113,17 @@ function Look({ variant, label, ink, w, h }: { variant: StampVariant; label: str
     case 2:
       return (
         <svg {...common} viewBox="0 0 136 68">
-          <path d={P_FRAME} fill="none" stroke={ink} strokeWidth={2} />
-          <rect x={11} y={11} width={70} height={46} fill="none" stroke={ink} strokeWidth={2} />
+          <path d={P_FRAME} fill="none" stroke={ink} strokeWidth={lw} />
+          <rect x={11} y={11} width={70} height={46} fill="none" stroke={ink} strokeWidth={lw} />
           <Tag x={40} y={34} text={label} ink={ink} size={17} />
-          <Waves x={62} y={22} ink={ink} />
+          <Waves x={62} y={22} ink={ink} lw={lw} />
         </svg>
       );
     case 3: {
       const [a, b] = label.includes(" ") ? label.split(" ", 2) : [label, ""];
       return (
         <svg {...common} viewBox="0 0 66 90">
-          <path d={P_TALL} fill="none" stroke={ink} strokeWidth={2} />
+          <path d={P_TALL} fill="none" stroke={ink} strokeWidth={lw} />
           {b ? (<><Tag x={33} y={33} text={a} ink={ink} size={18} /><Tag x={33} y={58} text={b} ink={ink} size={18} /></>) : <Tag x={33} y={45} text={a} ink={ink} size={18} />}
         </svg>
       );
@@ -131,26 +131,26 @@ function Look({ variant, label, ink, w, h }: { variant: StampVariant; label: str
     case 4:
       return (
         <svg {...common} viewBox="0 0 118 70">
-          <Waves x={4} y={18} ink={ink} n={2} gap={12} seg={16} reps={2} />
+          <Waves x={4} y={18} ink={ink} lw={lw} n={2} gap={12} seg={16} reps={2} />
           <Tag x={70} y={36} text={label} ink={ink} size={19} />
-          <path d={P_HEART} fill="none" stroke={ink} strokeWidth={2} strokeLinejoin="round" />
-          <path d={P_BASE} fill="none" stroke={ink} strokeWidth={2} strokeLinecap="round" />
+          <path d={P_HEART} fill="none" stroke={ink} strokeWidth={lw} strokeLinejoin="round" />
+          <path d={P_BASE} fill="none" stroke={ink} strokeWidth={lw} strokeLinecap="round" />
         </svg>
       );
     case 5:
     default:
       return (
         <svg {...common} viewBox="0 0 120 72">
-          <circle cx={34} cy={36} r={31} fill="none" stroke={ink} strokeWidth={2} />
-          <circle cx={34} cy={36} r={24} fill="none" stroke={ink} strokeOpacity={0.5} strokeWidth={1.5} />
+          <circle cx={34} cy={36} r={31} fill="none" stroke={ink} strokeWidth={lw} />
+          <circle cx={34} cy={36} r={24} fill="none" stroke={ink} strokeOpacity={0.5} strokeWidth={lw * 0.75} />
           <Tag x={34} y={36} text={label} ink={ink} size={16} />
-          <Waves x={70} y={24} ink={ink} n={3} gap={12} seg={22} reps={2} />
+          <Waves x={70} y={24} ink={ink} lw={lw} n={3} gap={12} seg={22} reps={2} />
         </svg>
       );
   }
 }
 
-export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, sealed = false, rewatch = false, style }: {
+export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, sealed = false, rewatch = false, lineWidth, style }: {
   /** The tag, e.g. "S1 E2". */
   label: string;
   variant: StampVariant;
@@ -158,16 +158,21 @@ export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, se
   scale?: number;
   sealed?: boolean;
   rewatch?: boolean;
+  /** Line weight in the drawing's units. Default (Alborz 2026-09-26): 1.25 at
+   *  full size — 2 read overbearing on desktop — and 2 for a shrunk box (/m at
+   *  0.78 draws it at ~1.5px, so the lines stay a full pixel). */
+  lineWidth?: number;
   style?: React.CSSProperties;
 }) {
   const box = STAMP_BOX[variant];
   const w = Math.round(box.w * scale), h = Math.round(box.h * scale);
   const tilt = TILT[variant];
   const disc = Math.round(44 * scale);
+  const lw = lineWidth ?? (scale < 1 ? 2 : 1.25);
   return (
     <span role="img" aria-label={sealed ? `sealed letter, ${label.replace("\n", " ")}` : label.replace("\n", " ")} style={{ position: "relative", display: "inline-block", width: w, height: h, verticalAlign: "top", ...style }}>
       <span style={{ display: "block", width: w, height: h, transform: tilt ? `rotate(${tilt}deg)` : undefined, transformOrigin: "center" }}>
-        <Look variant={variant} label={label} ink={ink} w={w} h={h} />
+        <Look variant={variant} label={label} ink={ink} w={w} h={h} lw={lw} />
       </span>
       {rewatch && (
         <HatGlasses size={Math.round(15 * scale)} color={CANON.alert} aria-hidden style={{ position: "absolute", left: Math.round(4 * scale), bottom: Math.round(2 * scale) }} />
