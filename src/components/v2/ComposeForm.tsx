@@ -19,7 +19,7 @@ import type { ProgressEntry, FriendGroup } from "../../types";
 import type { PromptEntry } from "../../lib/promptData";
 import { getPromptSuggestion } from "../../lib/prompts";
 import PromptCard from "../PromptCard";
-import Stamp from "../Stamp";
+import Stamp, { stampSpecFor } from "../Stamp";
 import LoadingDots from "../LoadingDots";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 import { CANON } from "../../styles/canon";
@@ -799,7 +799,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         >
           {submitting && (
             <div aria-hidden style={{ position: "absolute", top: mobileIdiom ? 10 : 14, right: mobileIdiom ? 12 : 16, pointerEvents: "none" }}>
-              <Stamp label={stampLabel} variant={0} ink={CANON.friend} scale={mobileIdiom ? 0.8 : 1} rewatch={isRewatchTag} style={{ transform: "rotate(-4deg)" }} />
+              <Stamp spec={stampSpecFor(user?.id ?? "")} label={stampLabel} initial={(profile?.display_name || profile?.username || "").trim().charAt(0).toUpperCase()} ink={CANON.friend} scale={mobileIdiom ? 0.8 : 1} rewatch={isRewatchTag} />
             </div>
           )}
           <input

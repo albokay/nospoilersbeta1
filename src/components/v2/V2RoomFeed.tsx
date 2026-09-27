@@ -12,7 +12,7 @@ import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Lock, Mail, Mails, Users, Sparkles, Flag } from "lucide-react";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
-import Stamp, { stampVariantFor, STAMP_BOX } from "../Stamp";
+import Stamp, { stampSpecFor, stampBox } from "../Stamp";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
 import Tooltip from "../Tooltip";
@@ -760,14 +760,16 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   top-right with the red lock riding the stamp's left edge; the
                   name alone in the byline — the tag lives on the stamp. */}
               {(() => {
-                const sv = stampVariantFor(entry.threadId);
+                // The writer's own stamp (one per account), sealed.
+                const sv = stampSpecFor(entry.authorId || entry.authorUsername);
+                const sb = stampBox(sv);
                 const sc = mobileIdiom ? 0.78 : 1;
                 return (
                   <div style={{ ...D.gatedStub(24), display: "block", position: "relative", background: "rgba(254,248,234,0.2)", padding: mobileIdiom ? "16px 16px" : "16px 20px", cursor: "default" }}>
                     <div style={{ position: "absolute", top: 14, right: mobileIdiom ? 14 : 18 }}>
-                      <Stamp label={`S${entry.s} E${entry.e}`} variant={sv} scale={sc} sealed />
+                      <Stamp spec={sv} label={`S${entry.s} E${entry.e}`} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={sc} sealed />
                     </div>
-                    <div style={{ paddingRight: Math.round(STAMP_BOX[sv].w * sc) + 30, minHeight: Math.round(STAMP_BOX[sv].h * sc), boxSizing: "border-box" }}>
+                    <div style={{ paddingRight: Math.round(sb.w * sc) + 30, minHeight: Math.round(sb.h * sc), boxSizing: "border-box" }}>
                       <div className="muted" style={{ fontSize: 13, lineHeight: 1.45, color: CANON.cream, display: "flex", alignItems: "center", gap: 6 }}>
                         <Username
                           name={entry.authorUsername}
@@ -805,18 +807,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         const redDot = entryRedDots?.[entry.threadId] ?? null;
         const isEngaged = !!engagedThreadIds?.has(entry.threadId);
         // The stamp (letters, 2026-09-26): the episode tag as a postage stamp
-        // at the ticket's top-right — one of six looks, chosen by the
-        // letter's id. A rewatch letter's stamp wears the rewatch tag with
-        // the rewatch glyph and keeps the tag's hover explanation.
-        const stampVariant = stampVariantFor(entry.threadId);
+        // at the ticket's top-right — the WRITER'S stamp, one per account,
+        // generated from their id. A rewatch letter's stamp wears the rewatch
+        // tag with the rewatch glyph and keeps the tag's hover explanation.
+        const stampSpec = stampSpecFor(entry.authorId || entry.authorUsername);
         const stampScale = mobileIdiom ? 0.78 : 1;
-        const stampBox = STAMP_BOX[stampVariant];
+        const stampSize = stampBox(stampSpec);
+        const stampInitial = dn(entry.authorUsername).trim().charAt(0).toUpperCase();
         const isRewatchTag = !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
         const stampLabel = isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
-        const stampEl = entry.isDeleted ? null : <Stamp label={stampLabel} variant={stampVariant} scale={stampScale} rewatch={isRewatchTag} />;
+        const stampEl = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={stampScale} rewatch={isRewatchTag} />;
         const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
-        const stampReserve = stampEl ? Math.round(stampBox.w * stampScale) + 12 : 0;
-        const stampMinH = stampEl ? Math.round(stampBox.h * stampScale) : 0;
+        const stampReserve = stampEl ? Math.round(stampSize.w * stampScale) + 12 : 0;
+        const stampMinH = stampEl ? Math.round(stampSize.h * stampScale) : 0;
         return (
           <div
             key={entry.threadId}

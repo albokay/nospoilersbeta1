@@ -49,7 +49,7 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
       }}
     >
       <div style={{ position: "absolute", right: m ? 16 : 34, top: m ? 16 : 28 }}>
-        <Stamp label={"Season\nEpisode"} variant={1} ink={CANON.friend} scale={m ? 0.72 : 1} />
+        <Stamp spec={{ family: 2, ornament: 5, cancel: 0, tilt: 3 }} label={"Season\nEpisode"} ink={CANON.friend} scale={m ? 0.72 : 1} />
       </div>
       {/* The greeting + headline clear the stamp; the paragraphs start
           below it and run the card's width. */}
