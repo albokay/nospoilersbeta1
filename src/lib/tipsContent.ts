@@ -46,14 +46,19 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   },
   {
     body: "Use the ⚙️ for general group maintenance. You can change your group name, nudge whoever hasn't joined yet, or leave the room from here.",
-    // Re-anchored 2026-09-16 (rev 2): the group name + gear live in the
-    // 96px header bar, so the note sits up by them rather than down by the
-    // shelves. 2026-09-27 (Alborz): halfway closer to the gear (center
-    // 50%+340 → 50%+284, left edge ~50%+134) and hanging just UNDER the
-    // gear's line (top edge ~74px, below the ~58px glyph), so a long group
-    // name's gear can't land on it. `top` is the note's CENTER (~170px tall
-    // note). Clamped to stay on screen.
-    tilt: 2, top: "160px", left: "min(calc(50% + 284px), calc(100vw - 180px))",
+    // 2026-09-27 (Alborz, rev 2): the note's ⚙ sits DIRECTLY UNDER the
+    // header's gear, tuned for the default "Group 1" title. Geometry: the
+    // title row (Display 40 "Group 1" + 4 + the 44px gear) is centred in
+    // the 96px bar, so the gear glyph is at x ≈ 50%+73, y ≈ 38, and the
+    // "with …" caption ends at y ≈ 81. The note is 300×~167 (border-box),
+    // tilted 2°, and `top`/`left` are its CENTER: its ⚙ lands ≈ 61px left
+    // of centre on the first line (≈ 60px above centre), and its top-left
+    // corner ≈ 147 left / 89 above. So centre x = 50%+134 puts the ⚙ under
+    // the gear, and centre y = 178 clears the caption by ~8px (⚙ ≈ 80px
+    // below the gear). While open it sits over the right half of "Open
+    // show rooms" and the first show. Re-derive if the header changes; a
+    // longer group name moves the gear right of the note's ⚙.
+    tilt: 2, top: "178px", left: "min(calc(50% + 134px), calc(100vw - 180px))",
   },
   // DESKTOP-ONLY as of 2026-08-11 (Alborz sign-off): the mobile sheet drops
   // this tip entirely — self-explanatory there, and it made the sheet too

@@ -577,6 +577,18 @@ export default function V2InlineThread({
       <ChevronUp size={16} color={CANON.cream} /> Close
     </button>
   );
+  // "Write back" — the letter's reply CTA (cream outline + text,
+  // cream-fill/Sky-text hover; M pill 14/700).
+  const writeBackButton = (
+    <button
+      className="btn sb-cream-outline"
+      onClick={openComposer}
+      style={{ fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
+    >
+      Write back
+    </button>
+  );
+  const showWriteBack = !isTombstone && !composerOpen;
 
   return (
     <>
@@ -757,10 +769,10 @@ export default function V2InlineThread({
       {/* First collapse button — above the replies. Only rendered when
           there are ≥3 replies to skip past; with fewer the bottom-row
           collapse is sufficient (scrolling past 1-2 replies isn't enough
-          friction to need a second collapse trigger up top). Left-aligned
-          to match the bottom-row collapse position. */}
+          friction to need a second collapse trigger up top). Centred, like
+          the bottom-row Close (Alborz 2026-09-27). */}
       {replyCount >= 3 && (
-        <div style={{ display: "flex", justifyContent: "flex-start", marginTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
           {collapseButton}
         </div>
       )}
@@ -863,26 +875,27 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Shared bottom row — collapse + "Write a response" RIGHT-aligned
-          and adjacent (collapse immediately left of write). The CTA is
-          hidden on tombstones (no replies allowed) and when the composer
-          is open (replaced by the composer above). When the composer is
-          open and only the collapse is left, it still sits on the right
-          edge (consistent placement across states). */}
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 20 }}>
-        {collapseButton}
-        {!isTombstone && !composerOpen && (
-          // Cream outline + text, cream-fill/Sky-text hover (Alborz
-          // 2026-08-13 tweak); M pill 14/700 (polish pass — was 17/500).
-          <button
-            className="btn sb-cream-outline"
-            onClick={openComposer}
-            style={{ fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
-          >
-            Write back
-          </button>
-        )}
-      </div>
+      {/* Shared bottom row (Alborz 2026-09-27): "Close" sits in the
+          MIDDLE of the ticket, "Write back" stays at the right edge.
+          Desktop = one row (a 1fr · auto · 1fr grid keeps Close truly
+          centred); /m = Write back on its own row with Close centred
+          beneath it — a phone ticket is too narrow for both on one line
+          without them colliding. The CTA is hidden on tombstones and while
+          the composer is open; Close stays centred either way. */}
+      {mobileIdiom ? (
+        <>
+          {showWriteBack && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>{writeBackButton}</div>
+          )}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: showWriteBack ? 8 : 20 }}>{collapseButton}</div>
+        </>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", columnGap: 12, marginTop: 20 }}>
+          <span aria-hidden />
+          {collapseButton}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>{showWriteBack && writeBackButton}</div>
+        </div>
+      )}
 
       {/* Highlight picker — anchored below the Highlight button. Opens when
           the user has a non-empty selection and clicks Highlight. */}
