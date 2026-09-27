@@ -18,6 +18,7 @@ import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
 import SidebarLetter from "../components/SidebarLetter";
+import { roomLetterKey } from "../lib/tipsContent";
 import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
@@ -87,6 +88,23 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       null,
   );
   const feedRef = useRef<V2RoomFeedHandle>(null);
+  // The letter from Sidebar, header-"?"-toggleable like desktop (Alborz
+  // 2026-09-26). null = auth not resolved yet; first resolution honors the
+  // per-account flag.
+  const [letterOpen, setLetterOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    setLetterOpen((cur) => {
+      if (cur !== null) return cur;
+      try { return !localStorage.getItem(roomLetterKey(user.id)); } catch { return true; }
+    });
+  }, [user?.id]);
+  function closeLetter() {
+    // Same contract as the letter's own "got it": closing re-arms the
+    // per-account "don't auto-show on entrance" flag.
+    try { if (user) localStorage.setItem(roomLetterKey(user.id), "1"); } catch { /* tolerate */ }
+    setLetterOpen(false);
+  }
   const composeFormRef = useRef<ComposeFormHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
 
@@ -891,6 +909,20 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
             ) : null}
           </div>
+          {/* Tips "?" (desktop parity, Alborz 2026-09-26): toggles the letter
+              from Sidebar back after "got it". Friend tab only — that's
+              where the letter leads the feed. Letter OFF → cream fill +
+              green "?" (the invitation); ON → cream outline + cream "?". */}
+          {!privateOnly && tab === "friend" && user && (
+            <button
+              aria-label="tips"
+              title="tips"
+              onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))}
+              style={{ ...iconBtn, width: 40, height: 40, borderRadius: "50%", border: `2px solid ${C.cream}`, background: letterOpen ? "transparent" : C.cream }}
+            >
+              <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: letterOpen ? C.cream : C.green }}>?</span>
+            </button>
+          )}
         </div>
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>
@@ -995,9 +1027,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {!privateOnly && (
         <div style={{ display: tab === "friend" ? undefined : "none" }}>
           {/* The letter from Sidebar leads the feed (2026-09-26; it replaced
-              the progress-picker pointer above the control card). Self-
-              managed here — /m has no "?" — so "got it" puts it away. */}
-          {user && <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} />}
+              the progress-picker pointer above the control card). Controlled
+              by the header "?" like desktop. */}
+          {user && letterOpen === true && (
+            <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
+          )}
           {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>

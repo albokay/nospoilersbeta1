@@ -7,9 +7,9 @@ import { ROOM_LETTER, roomLetterKey } from "../lib/tipsContent";
 // explainer, leading the feed — where Sidebar says the letters framing
 // out loud and folds in what the progress sticky used to say. It replaced
 // the progress-picker sticky: shows on entrance for everyone until
-// "got it" (one flag per account, per device, like every tip); on desktop
-// the header "?" brings it back (controlled via `open`/`onDismiss`); on
-// /m it is self-managed (no "?" there) — once put away, it's gone.
+// "got it" (one flag per account, per device, like every tip); the room
+// header's "?" brings it back on both platforms (controlled via
+// `open`/`onDismiss`; self-managed when `open` is omitted).
 // Its stamp is the perforated frame in Friend blue reading Season /
 // Episode: a stamp, never the logo.
 const LORA = '"Lora", Georgia, serif';
