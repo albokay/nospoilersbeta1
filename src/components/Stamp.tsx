@@ -11,8 +11,9 @@ import { CANON } from "../styles/canon";
 // tell apart at a glance: family (8 silhouettes) × ornament (6 marks, the
 // first-name initial among them) × cancel mark (5) × tilt (3) = 720. Ink
 // and size never vary, so every result stays a stamp and the tag keeps its
-// room. Rule: the single-wave frameless look is never bare — it carries an
-// ornament and/or a mark. Lines are 1.5 at full size, 2 on a shrunk box
+// room. Rules: the frameless looks take no wave marks and no corner
+// postmark (none or the corner circle only); the single-wave frameless look
+// is never bare — it carries an ornament and/or a mark. Lines are 1.5 at full size, 2 on a shrunk box
 // (/m at 0.78 draws ~1.5px). `sealed` adds the red lock riding the frame's
 // left edge; `rewatch` adds the rewatch glyph; `scale` shrinks the drawn
 // box for /m as a real smaller box, not a CSS transform.
@@ -36,6 +37,10 @@ function fnv(s: string): number {
 export function stampSpecFor(accountId: string): StampSpec {
   const h = fnv(accountId);
   const spec: StampSpec = { family: h % FAMILY_COUNT, ornament: (h >>> 3) % ORNAMENT_COUNT, cancel: (h >>> 6) % CANCEL_COUNT, tilt: TILTS[(h >>> 9) % 3] };
+  // The frameless looks (their own waves already) never take the wave marks
+  // or the corner postmark — too many wavy lines (Alborz 2026-09-26): only
+  // none or the corner circle, from a spare bit.
+  if (spec.family >= 6 && (spec.cancel === 1 || spec.cancel === 2 || spec.cancel === 3)) spec.cancel = ((h >>> 15) & 1) ? 4 : 0;
   // Never bare: the single-wave frameless look takes an ornament from a
   // spare bit when it would draw with neither ornament nor mark.
   if (spec.family === 6 && spec.ornament === 5 && spec.cancel === 0) spec.ornament = (h >>> 12) % 5;
