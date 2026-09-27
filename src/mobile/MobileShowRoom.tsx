@@ -934,6 +934,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       </div>
 
       <div style={{ padding: "16px 16px 120px" }}>
+        {/* The letter from Sidebar (2026-09-26) sits ABOVE the control card on
+            /m — the old progress pointer's slot (Alborz: mobile only; desktop
+            keeps it at the top of the feed). Its picker sentence says "just
+            below" here. Controlled by the header "?" like desktop. */}
+        {tab === "friend" && user && letterOpen === true && (
+          <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
+        )}
         {/* ── Control card (polish pass 2026-09-14; map pass 2026-09-23):
                sort + progress · Map · Write in ONE cream card, dark ink.
                Friend tab = all rows; drafts = picker + Write; guide =
@@ -1026,12 +1033,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             (Alborz 2026-09-08). */}
         {!privateOnly && (
         <div style={{ display: tab === "friend" ? undefined : "none" }}>
-          {/* The letter from Sidebar leads the feed (2026-09-26; it replaced
-              the progress-picker pointer above the control card). Controlled
-              by the header "?" like desktop. */}
-          {user && letterOpen === true && (
-            <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
-          )}
           {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
