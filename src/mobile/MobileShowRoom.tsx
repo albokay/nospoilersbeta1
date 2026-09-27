@@ -12,7 +12,7 @@ import {
   leaveShowRoom, setRoomDnf, fetchContactNames,
   type Show,
 } from "../lib/db";
-import { joinNames } from "../lib/groupNames";
+import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
@@ -111,6 +111,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null);
+  // The people behind an UNNAMED group's "with …" line (2026-09-27): each
+  // name opens that friend's profile, in the room's own profile overlay (the map's). null
+  // when the group has a custom name (the line reads "with {name}") or no
+  // one else is in the room yet.
+  const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
   // The viewer's contact names (naming arc 2026-07-07, desktop parity) —
   // drives the displayNames map for the reused feed components, the roster,
   // and the member filter. Display-only; ids/keys stay real handles.
@@ -313,6 +318,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (!snap?.show) return;
       setShow(snap.show);
       setGroupName(snap.groupName ?? null);
+      setGroupPeople(snap.groupPeople ?? null);
       setProgressForShow(snap.progress ?? null);
       setFeedEntries(snap.feedEntries ?? []);
       setMapMembers(snap.mapMembers ?? []);
@@ -395,15 +401,18 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       // → the viewer's given names for those members; else "Group N". (No
       // extra fetch — roomMapData is already loaded.)
       let derivedGroupName: string | null = null;
+      let derivedPeople: { username: string; label: string }[] | null = null;
       if (pg) {
         if (pg.name) derivedGroupName = pg.name;
         else {
-          const optedNames = roomMapData
+          const opted = roomMapData
             .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
-            .map((m) => cn[m.userId] ?? m.displayName ?? (m.username as string));
+            .map((m) => ({ username: m.username as string, label: cn[m.userId] ?? m.displayName ?? (m.username as string) }));
+          const optedNames = opted.map((o) => o.label);
           // No one else in the room yet → no "with" line at all (cleaner than
           // "with Group N" for a solo/awaiting-accept room).
           derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
+          derivedPeople = opted.length ? opted : null;
         }
       }
 
@@ -464,6 +473,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       setShow(showRow);
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
+      setGroupPeople(derivedPeople);
       setProgressForShow(progress);
       setFeedEntries([...entries, ...gatedStubs]);
       setMapMembers(members);
@@ -507,7 +517,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (!privateOnly && roomId) {
         try {
           sessionStorage.setItem(`ns_m_room_snap_${user.id}_${roomId}`, JSON.stringify({
-            show: showRow, groupName: derivedGroupName, progress,
+            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, progress,
             feedEntries: [...entries, ...gatedStubs], mapMembers: members,
             privateEntries: priv, parentGroupId: parentGid,
           }));
@@ -905,7 +915,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             </div>
             {(tab === "reference" && refCreatedBy.length > 0) || groupName ? (
               <div style={{ fontFamily: '"Inter", system-ui, sans-serif', fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {tab === "reference" && refCreatedBy.length > 0 ? <>created by {refCreatedBy.join(" & ")}</> : <>with {groupName}</>}
+                {tab === "reference" && refCreatedBy.length > 0 ? <>created by {refCreatedBy.join(" & ")}</> : (
+                  <>with {groupPeople?.length
+                    ? joinNameNodes(groupPeople.map((p) => (
+                        <span key={p.username} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openPool(p.username)}>{p.label}</span>
+                      )))
+                    : groupName}</>
+                )}
               </div>
             ) : null}
           </div>

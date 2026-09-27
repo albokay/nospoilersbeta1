@@ -17,6 +17,17 @@ export function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
 }
 
+/** joinNames' separators around rendered name nodes — the show room's
+ *  clickable "with …" names read exactly like the plain string did. */
+export function joinNameNodes<T>(nodes: T[]): (T | string)[] {
+  const out: (T | string)[] = [];
+  nodes.forEach((n, i) => {
+    if (i > 0) out.push(i === nodes.length - 1 ? " & " : ", ");
+    out.push(n);
+  });
+  return out;
+}
+
 export function groupDisplayName(
   group: PeopleGroup,
   others: PeopleGroupMember[],

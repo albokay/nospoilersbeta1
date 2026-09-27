@@ -5,8 +5,9 @@
  * MobileTipsSheet). Copy approved by Alborz 2026-07-26 (QA round 1 rewrote
  * the group-room set and split it into four placed stickies, absorbing the
  * old GroupRoomSticky's text) — locked; edit only with sign-off.
- * 2026-09-25 letters pass (Alborz's sign-off, his wording): three lines
- * say letters — the welcome aside, dashboard tip 3, the picker sticky's body.
+ * 2026-09-25 letters pass (Alborz's sign-off, his wording). 2026-09-27 (his
+ * wording): the welcome aside says "write to your friends", the gear tip
+ * drops "(sad)", dashboard tip 3 ends at "start writing."
  *
  * Behavior (locked): accounts created AFTER the feature shipped see a
  * page's tips OPEN on their first visit; dismissing closes them; the "?"
@@ -40,16 +41,19 @@ export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
     body: "Welcome to your group room. Shows you and your friends add accumulate here — you can propose more shows, vote on each others' picks, add more friends, and start a show room from this page.",
-    aside: "(The show room is where you write letters.)",
+    aside: "(The show room is where you write to your friends.)",
     tilt: -2, top: "44%", left: "24%",
   },
   {
-    body: "Use the ⚙️ for general group maintenance. You can change your group name, nudge whoever hasn't joined yet, or leave the room (sad) from here.",
+    body: "Use the ⚙️ for general group maintenance. You can change your group name, nudge whoever hasn't joined yet, or leave the room from here.",
     // Re-anchored 2026-09-16 (rev 2): the group name + gear live in the
-    // 96px header bar now, so the note sits UP beside them — level with
-    // the bar, just right of the centered heading — rather than below,
-    // where it read as belonging to the shelves. Clamped to stay on screen.
-    tilt: 2, top: "130px", left: "min(calc(50% + 340px), calc(100vw - 180px))",
+    // 96px header bar, so the note sits up by them rather than down by the
+    // shelves. 2026-09-27 (Alborz): halfway closer to the gear (center
+    // 50%+340 → 50%+284, left edge ~50%+134) and hanging just UNDER the
+    // gear's line (top edge ~74px, below the ~58px glyph), so a long group
+    // name's gear can't land on it. `top` is the note's CENTER (~170px tall
+    // note). Clamped to stay on screen.
+    tilt: 2, top: "160px", left: "min(calc(50% + 284px), calc(100vw - 180px))",
   },
   // DESKTOP-ONLY as of 2026-08-11 (Alborz sign-off): the mobile sheet drops
   // this tip entirely — self-explanatory there, and it made the sheet too
@@ -74,7 +78,7 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
     return [
       { body: "This is your home dashboard \u2014 where you access your friend groups." },
       { body: "Outlined circles represent invited friends who haven't joined yet. Sidebar has emailed their invite. If you're getting impatient, you can nudge anyone from inside the group." },
-      { body: "While you wait for friends to join, you can still go inside to add more shows or start writing letters. Everything you write will be waiting for them the moment they join in." },
+      { body: "While you wait for friends to join, you can still go inside to add more shows or start writing." },
     ];
   }
   // Mobile's sheet doesn't POINT at the chat button the way the placed

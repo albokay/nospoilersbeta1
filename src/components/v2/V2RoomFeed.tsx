@@ -1013,7 +1013,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     )}
                     <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
                       <button style={demoCollapseBtn} onClick={() => handleCollapseTop(entry.threadId)}>
-                        <ChevronUp size={13} color={CANON.cream} /> collapse
+                        <ChevronUp size={13} color={CANON.cream} /> close
                       </button>
                     </div>
                   </div>

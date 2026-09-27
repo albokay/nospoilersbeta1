@@ -17,9 +17,9 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
 
 // onSignOut (opt-in; mobile polish 2026-09-14): when passed, a "Signed in"
-// section with a Sign out button renders between the name and delete
-// sections — /m's dashboard dropped its sign-out circle and routes the
-// action here. Desktop callers pass nothing and are unchanged.
+// section with a Sign out button renders — LAST, after the delete section
+// (Alborz 2026-09-27; it sat between the name and delete). Every caller
+// passes it now (/m dashboard, desktop dashboard + show room).
 // mobile (Part-2 overlay 9): renders the /m idiom instead of the desktop
 // Modal — a cream bottom sheet (grabber + swipe + tap-out), with the
 // type-DELETE step as a centered cream DIALOG (Cancel is the exit; it's one
@@ -163,16 +163,6 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
           </div>
           {nameError && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.red, fontWeight: 600 }}>{nameError}</p>}
 
-          {onSignOut && (
-            <>
-              <div style={mDivider} />
-              <div style={{ ...mLabel, marginBottom: 12 }}>Signed in</div>
-              <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
-                <LogOut size={16} /> Sign out
-              </button>
-            </>
-          )}
-
           <div style={mDivider} />
           <div style={{ ...mLabel, color: C.red }}>Delete account</div>
           <div style={{ ...mCaption, marginBottom: 12 }}>
@@ -182,6 +172,16 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
           <button onClick={() => setPhase("confirm")} style={{ ...M.pill.M, background: "transparent", color: C.red, border: `2px solid ${C.red}` }}>
             Delete my account&hellip;
           </button>
+
+          {onSignOut && (
+            <>
+              <div style={mDivider} />
+              <div style={{ ...mLabel, marginBottom: 12 }}>Signed in</div>
+              <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
+                <LogOut size={16} /> Sign out
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -245,16 +245,6 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
         </div>
       )}
 
-      {phase === "main" && onSignOut && (
-        <div>
-          <div style={D.divider(C.midnight)} />
-          <p style={{ ...D.type.label, margin: "0 0 12px", color: C.midnight }}>Signed in</p>
-          <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
-            <LogOut size={16} /> Sign out
-          </button>
-        </div>
-      )}
-
       {phase === "main" && (
         <div>
           <div style={D.divider(C.midnight)} />
@@ -264,6 +254,16 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
             stay, shown as &ldquo;(deleted user)&rdquo;. This can&rsquo;t be undone.
           </p>
           <button onClick={() => setPhase("confirm")} style={dangerOutline}>Delete my account&hellip;</button>
+        </div>
+      )}
+
+      {phase === "main" && onSignOut && (
+        <div>
+          <div style={D.divider(C.midnight)} />
+          <p style={{ ...D.type.label, margin: "0 0 12px", color: C.midnight }}>Signed in</p>
+          <button onClick={() => { void onSignOut(); }} style={signOutBtn}>
+            <LogOut size={16} /> Sign out
+          </button>
         </div>
       )}
 

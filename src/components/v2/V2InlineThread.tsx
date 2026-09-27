@@ -574,7 +574,7 @@ export default function V2InlineThread({
         boxSizing: "border-box",
       }}
     >
-      <ChevronUp size={16} color={CANON.cream} /> Collapse
+      <ChevronUp size={16} color={CANON.cream} /> Close
     </button>
   );
 
@@ -677,7 +677,7 @@ export default function V2InlineThread({
       )}
 
       {/* Action row — edit/delete (owner) + Quote…
-          The "Write a response" trigger moved below the replies. Star
+          The "Write back" trigger (was "Write a response") moved below the replies. Star
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
       {!isTombstone && !editing && (
@@ -879,7 +879,7 @@ export default function V2InlineThread({
             onClick={openComposer}
             style={{ fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
           >
-            Write a response
+            Write back
           </button>
         )}
       </div>

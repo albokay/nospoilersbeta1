@@ -451,7 +451,7 @@ export default function ResponseComposer({
           // identity fill + cream text — the site's one primary-button
           // grammar; the cream-fill/sky-text version was ≈1.7:1.
           const label = inGroupContext
-            ? "Send to the room"
+            ? "Send"
             : threadIsPublic
               ? "Share response"
               : "Add your thoughts";

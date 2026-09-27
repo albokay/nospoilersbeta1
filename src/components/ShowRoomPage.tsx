@@ -25,7 +25,7 @@ import {
   type Show,
 } from "../lib/db";
 import { effectiveProgress } from "../lib/utils";
-import { joinNames } from "../lib/groupNames";
+import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
 import { ensureShowReference } from "../lib/reference";
@@ -86,6 +86,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null); // "[show] with [group]" header
+  // The people behind an UNNAMED group's "with …" line (2026-09-27): each
+  // name opens that friend's profile, like the group room's header. null
+  // when the group has a custom name (the line reads "with {name}") or no
+  // one else is in the room yet.
+  const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
   // Email-digest subscription for THIS room + viewer. Lazy — fetched only when
   // the gear modal opens (no extra room-load egress). null = loading/unknown.
   // digestOptOut=true → unsubscribed. Backed by get/set_room_digest_opt_out.
@@ -258,6 +263,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (!snap?.show) return;
       setShow(snap.show);
       setGroupName(snap.groupName ?? null);
+      setGroupPeople(snap.groupPeople ?? null);
       setProgressForShow(snap.progress ?? null);
       setFeedEntries(snap.feedEntries ?? []);
       setMapMembers(snap.mapMembers ?? []);
@@ -350,15 +356,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // roomMapData is already loaded.)
       const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
       let derivedGroupName: string | null = null;
+      let derivedPeople: { username: string; label: string }[] | null = null;
       if (pg) {
         if (pg.name) derivedGroupName = pg.name;
         else {
-          const optedNames = roomMapData
+          const opted = roomMapData
             .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
-            .map((m) => cn[m.userId] ?? m.displayName ?? (m.username as string));
+            .map((m) => ({ username: m.username as string, label: cn[m.userId] ?? m.displayName ?? (m.username as string) }));
+          const optedNames = opted.map((o) => o.label);
           // No one else in the room yet → no "with" line at all (cleaner than
           // "with Group N" for a solo/awaiting-accept room).
           derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
+          derivedPeople = opted.length ? opted : null;
         }
       }
 
@@ -418,6 +427,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setShow(showRow);
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
+      setGroupPeople(derivedPeople);
       setProgressForShow(progress);
       setFeedEntries([...entries, ...gatedStubs]);
       setMapMembers(members);
@@ -462,7 +472,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (!privateOnly && roomId) {
         try {
           sessionStorage.setItem(`ns_room_snap_${user.id}_${roomId}`, JSON.stringify({
-            show: showRow, groupName: derivedGroupName, progress,
+            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, progress,
             feedEntries: [...entries, ...gatedStubs], mapMembers: members,
             privateEntries: priv, parentGroupId: parentGid,
           }));
@@ -900,7 +910,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             {tab === "reference" && refCreatedBy.length > 0 ? (
               <span style={groupHeadingMembers}>created by {refCreatedBy.join(" & ")}</span>
             ) : groupName ? (
-              <span style={groupHeadingMembers}>with {groupName}</span>
+              <span style={groupHeadingMembers}>
+                with {groupPeople?.length
+                  ? joinNameNodes(groupPeople.map((p) => (
+                      <span key={p.username} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(p.username)}>
+                        {p.label}
+                      </span>
+                    )))
+                  : groupName}
+              </span>
             ) : null}
           </div>
           <div style={D.header.right}>
