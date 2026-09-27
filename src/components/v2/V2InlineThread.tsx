@@ -769,10 +769,10 @@ export default function V2InlineThread({
       {/* First collapse button — above the replies. Only rendered when
           there are ≥3 replies to skip past; with fewer the bottom-row
           collapse is sufficient (scrolling past 1-2 replies isn't enough
-          friction to need a second collapse trigger up top). Centred, like
-          the bottom-row Close (Alborz 2026-09-27). */}
+          friction to need a second collapse trigger up top). It follows
+          the bottom-row Close: centred on desktop, left on /m. */}
       {replyCount >= 3 && (
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: mobileIdiom ? "flex-start" : "center", marginTop: 8 }}>
           {collapseButton}
         </div>
       )}
@@ -875,20 +875,17 @@ export default function V2InlineThread({
         </div>
       )}
 
-      {/* Shared bottom row (Alborz 2026-09-27): "Close" sits in the
-          MIDDLE of the ticket, "Write back" stays at the right edge.
-          Desktop = one row (a 1fr · auto · 1fr grid keeps Close truly
-          centred); /m = Write back on its own row with Close centred
-          beneath it — a phone ticket is too narrow for both on one line
-          without them colliding. The CTA is hidden on tombstones and while
-          the composer is open; Close stays centred either way. */}
+      {/* Shared bottom row (Alborz 2026-09-27): "Write back" at the right
+          edge. Desktop: "Close" in the MIDDLE of the ticket (a 1fr · auto ·
+          1fr grid keeps it truly centred). /m: "Close" at the LEFT on the
+          same line (a centred Close collides with Write back on a phone).
+          The CTA is hidden on tombstones and while the composer is open;
+          Close keeps its place either way. */}
       {mobileIdiom ? (
-        <>
-          {showWriteBack && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>{writeBackButton}</div>
-          )}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: showWriteBack ? 8 : 20 }}>{collapseButton}</div>
-        </>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 20 }}>
+          {collapseButton}
+          {showWriteBack && writeBackButton}
+        </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto minmax(0, 1fr)", alignItems: "center", columnGap: 12, marginTop: 20 }}>
           <span aria-hidden />
