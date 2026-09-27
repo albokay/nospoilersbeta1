@@ -63,8 +63,10 @@ const FAM: Fam[] = [
  *  the frame sits inside it — for layout that must clear the stamp. */
 export function stampBox(spec: StampSpec): { w: number; h: number; frameLeft: number; frameBottom: number } {
   const f = FAM[spec.family];
-  const extL = spec.cancel === 2 ? 12 : 0;
-  const extR = spec.cancel === 1 ? 12 : spec.cancel === 3 ? 28 : spec.cancel === 4 ? 9 : 0;
+  // The wave marks sit mostly outside the frame (10 in, 26 out) so they
+  // brush the tag instead of crossing it (Alborz 2026-09-26).
+  const extL = spec.cancel === 2 ? 26 : 0;
+  const extR = spec.cancel === 1 ? 26 : spec.cancel === 3 ? 28 : spec.cancel === 4 ? 9 : 0;
   const extT = spec.cancel === 3 || spec.cancel === 4 ? 9 : 0;
   return { w: f.W + extL + extR + 2 * f.bleed, h: f.H + extT + 2 * f.bleed, frameLeft: extL + f.bleed, frameBottom: f.bleed };
 }
@@ -126,8 +128,8 @@ function Ornament({ kind, cx, cy, s, ink, lw, initial }: { kind: number; cx: num
 function Cancel({ kind, W, H, ink, lw }: { kind: number; W: number; H: number; ink: string; lw: number }) {
   const line = { fill: "none", stroke: ink, strokeWidth: lw, strokeLinecap: "round" as const };
   switch (kind) {
-    case 1: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(W - 24, H / 2 - 12 + i * 12)} />)}</g>;
-    case 2: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(-12, H / 2 - 12 + i * 12)} />)}</g>;
+    case 1: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(W - 10, H / 2 - 12 + i * 12)} />)}</g>;
+    case 2: return <g {...line}>{[0, 1, 2].map((i) => <path key={i} d={cancelWave(-26, H / 2 - 12 + i * 12)} />)}</g>;
     case 3: return <g {...line}><circle cx={W - 6} cy={6} r={15} /><path d={shortWave(W + 10, 2)} /><path d={shortWave(W + 10, 12)} /></g>;
     case 4: return <g {...line}><circle cx={W - 6} cy={6} r={15} /></g>;
     default: return null;
