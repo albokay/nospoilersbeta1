@@ -158,9 +158,9 @@ export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, se
   scale?: number;
   sealed?: boolean;
   rewatch?: boolean;
-  /** Line weight in the drawing's units. Default (Alborz 2026-09-26): 1.25 at
-   *  full size — 2 read overbearing on desktop — and 2 for a shrunk box (/m at
-   *  0.78 draws it at ~1.5px, so the lines stay a full pixel). */
+  /** Line weight in the drawing's units. Default (Alborz 2026-09-26): 1.5 at
+   *  full size — 2 read overbearing on desktop, 1.25 too faint — and 2 for a
+   *  shrunk box (/m at 0.78 draws it at ~1.5px, so the lines stay a full pixel). */
   lineWidth?: number;
   style?: React.CSSProperties;
 }) {
@@ -168,7 +168,7 @@ export default function Stamp({ label, variant, ink = CANON.cream, scale = 1, se
   const w = Math.round(box.w * scale), h = Math.round(box.h * scale);
   const tilt = TILT[variant];
   const disc = Math.round(44 * scale);
-  const lw = lineWidth ?? (scale < 1 ? 2 : 1.25);
+  const lw = lineWidth ?? (scale < 1 ? 2 : 1.5);
   return (
     <span role="img" aria-label={sealed ? `sealed letter, ${label.replace("\n", " ")}` : label.replace("\n", " ")} style={{ position: "relative", display: "inline-block", width: w, height: h, verticalAlign: "top", ...style }}>
       <span style={{ display: "block", width: w, height: h, transform: tilt ? `rotate(${tilt}deg)` : undefined, transformOrigin: "center" }}>
