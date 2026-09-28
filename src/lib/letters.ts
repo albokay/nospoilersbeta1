@@ -27,6 +27,17 @@ export type RoomLetters = {
   forWhom: string[];
 };
 
+/** Everyone else on the room's road (Alborz 2026-09-28): once ANYONE in the
+ *  room has started, a friend who hasn't sits at index 0 — "3 ahead of Sam",
+ *  "3 letters for Sam to open". Before anyone starts, nobody is on the road
+ *  (no "in sync" at zero). Departed members never reach here. */
+export function roadOthers(members: RoomMemberPos[], selfUserId: string, seasons: number[] | undefined): { userId: string; idx: number }[] {
+  if (!members.some((m) => m.s > 0 || m.e > 0)) return [];
+  return members
+    .filter((m) => m.userId !== selfUserId)
+    .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
+}
+
 export function computeRoomLetters(
   tags: RoomEntryTag[] | undefined,
   members: RoomMemberPos[],
@@ -38,9 +49,7 @@ export function computeRoomLetters(
   const idx = (s: number, e: number) => linearIndex(s, e, seasons);
   const self = members.find((m) => m.userId === selfUserId);
   const selfIdx = self ? idx(self.s, self.e) : 0;
-  const others = members
-    .filter((m) => m.userId !== selfUserId && (m.s > 0 || m.e > 0))
-    .map((m) => ({ userId: m.userId, idx: idx(m.s, m.e) }));
+  const others = roadOthers(members, selfUserId, seasons);
   const from = new Set<string>();
   const whom = new Set<string>();
   for (const t of tags) {

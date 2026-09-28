@@ -7,7 +7,7 @@ import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
 import LetterDisc from "../components/LetterDisc";
-import { computeRoomLetters, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, roadOthers, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -658,20 +658,22 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // sentence gaps): the gap, terse and nearest-first ("3 behind Adam, 1
   // ahead of Sam"), then the mail ("2 letters waiting for you" / "2 letters
   // for Sam to open"); or, when nobody's ahead or behind, the sync line
-  // with the small cream star. Unchanged rules: no one else watching →
-  // your own tag (or nothing); not opted in → nothing.
+  // with the small cream star. Unchanged rules: no one else on the road →
+  // your own tag (or nothing); not a member of the room → nothing.
   function gapLine(r: { pill: PillData; opted: { username: string; s: number | null; e: number | null }[]; selfProg: { s: number; e: number } | null }): React.ReactNode {
     const seasons = showsById[r.pill.showId]?.seasons;
     const gs = groupShows.find((g) => g.showId === r.pill.showId);
     const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
-    const others = members
-      .filter((m) => m.userId !== selfUserId && (m.s > 0 || m.e > 0))
-      .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
+    // Everyone else once anyone has started — a friend at zero included
+    // (Alborz 2026-09-28); empty while nobody has started, or when you're
+    // alone in the room.
+    const others = roadOthers(members, selfUserId, seasons);
     if (!others.length) {
       // Mirror the pill's right side: written-but-unwatched shows "s0 e0".
       return r.pill.right.kind === "progress" ? `s${r.pill.right.s} e${r.pill.right.e}` : null;
     }
-    // Not opted in (didn't watch, didn't write) → blank, same as the pill face.
+    // Not a member of this room → blank, same as the pill face. (A member
+    // at zero is on the road: "2 behind Sam · 1 letter waiting for you".)
     if (!r.selfProg && r.pill.right.kind === "none") return null;
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];

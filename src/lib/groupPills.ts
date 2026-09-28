@@ -13,12 +13,14 @@
  *             not who-wrote, which the avatars already show.)
  *   • pencil  at exactly 1 writer; people icon (replaces number) at 2+ writers
  *   • ▲N/▼N   your progress vs the room: ▲ when you're the furthest along, ▼ for
- *             how far behind the furthest watcher you are. Shown only once YOU'VE
- *             opted into the show — either by watching (progress past s0 e0) or by
- *             writing in its room; a show another member pooled that you haven't
- *             engaged with shows a blank right side (no arrow). Shows s/e (no
- *             arrow) when you ARE watching and everyone's at the same point; a
- *             written-but-unwatched room (no watchers) shows "s0 e0" with no arrow
+ *             how far behind the furthest watcher you are. Shown to every ROOM
+ *             MEMBER once anyone has started (Alborz 2026-09-28): a member who
+ *             hasn't started sits at index 0, so a friend at zero reads ▼N
+ *             behind the furthest and you read ▲N ahead of a friend at zero.
+ *             A show you're not a member of (pooled by others) shows a blank
+ *             right side (no arrow). Shows s/e (no arrow) when everyone's at
+ *             the same point; a written-but-unwatched room (no watchers)
+ *             shows "s0 e0" with no arrow
  *   • shelf   = the room decides (group-scoped model, 2026-07-06): a show with
  *             a started room is "watching" (the active-rooms shelf); a show
  *             without one is a PROPOSAL on "notStarted", no matter how far
@@ -68,7 +70,8 @@ export function computePill(
   selfUserId: string
 ): PillData {
   const members = show.members;
-  const watchers = members.filter((m) => m.s != null && ((m.s ?? 0) > 0 || (m.e ?? 0) > 0));
+  const started = (m: { s: number | null; e: number | null }) => m.s != null && ((m.s ?? 0) > 0 || (m.e ?? 0) > 0);
+  const watchers = members.filter(started);
   const writerCount = members.filter((m) => m.wrote).length;
   const count = members.length;
 
@@ -91,18 +94,22 @@ export function computePill(
     // Want-only → nothing; written-but-unwatched → "s0 e0".
     right = writerCount > 0 ? { kind: "progress", s: 0, e: 0 } : { kind: "none" };
   } else {
-    const idxs = watchers.map((w) => ({
+    // Once anyone has started, EVERY member is on the road (Alborz
+    // 2026-09-28): a member who hasn't started sits at index 0. So a friend
+    // at zero reads ▼N behind the furthest, and you read ▲N ahead of a
+    // friend at zero — the same facts the show room's markers show.
+    const idxs = members.map((w) => ({
       id: w.userId,
-      idx: linearIndex(w.s ?? 0, w.e ?? 0, seasons),
-      s: w.s ?? 0,
-      e: w.e ?? 0,
+      idx: started(w) ? linearIndex(w.s ?? 0, w.e ?? 0, seasons) : 0,
+      s: started(w) ? w.s ?? 0 : 0,
+      e: started(w) ? w.e ?? 0 : 0,
     }));
     const maxIdx = Math.max(...idxs.map((x) => x.idx));
     const minIdx = Math.min(...idxs.map((x) => x.idx));
     const spread = maxIdx !== minIdx;
 
-    if (selfWatching && spread) {
-      const selfIdx = linearIndex(self!.s ?? 0, self!.e ?? 0, seasons);
+    if (self && spread) {
+      const selfIdx = selfWatching ? linearIndex(self.s ?? 0, self.e ?? 0, seasons) : 0;
       if (selfIdx >= maxIdx) {
         // You are most-advanced (or tied at the furthest): ahead of next-most by N.
         const below = idxs.map((x) => x.idx).filter((i) => i < maxIdx);
@@ -111,20 +118,13 @@ export function computePill(
       } else {
         right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
       }
-    } else if (!selfWatching) {
-      // You haven't watched yet (s0 e0). Show the gap ONLY if you've opted into
-      // this show by WRITING in its room — otherwise a show another member
-      // pooled (that you haven't engaged with) leaves the pill's right side
-      // blank, so an invitee's group doesn't read as a wall of red gaps.
-      // (Moving your progress past s0 e0 is the other opt-in, but that makes you
-      // a watcher and is handled by the branch above.)
-      if (self?.wrote) {
-        const selfIdx = linearIndex(self?.s ?? 0, self?.e ?? 0, seasons);
-        right = { kind: "arrow", dir: "down", n: maxIdx - selfIdx };
-      }
-      // else: not opted in → leave right = { kind: "none" } (blank).
+    } else if (!self) {
+      // Not a member of this room (a show others pooled that you haven't
+      // joined) → blank, so a new invitee's group doesn't read as a wall of
+      // red gaps.
+      right = { kind: "none" };
     } else {
-      // You're watching and everyone (incl. you) is at the same point → that progress.
+      // Everyone (incl. you) is at the same point → that progress.
       right = { kind: "progress", s: idxs[0].s, e: idxs[0].e };
     }
   }

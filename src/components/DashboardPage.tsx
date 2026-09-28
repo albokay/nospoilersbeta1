@@ -25,7 +25,7 @@ import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
-import { computeRoomLetters, summarizeGap, syncLine, lettersSentence, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, roadOthers, summarizeGap, syncLine, lettersSentence, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -476,9 +476,10 @@ export default function DashboardPage() {
     const seasons = showsById[r.pill.showId]?.seasons;
     const gs = groupShows.find((g) => g.showId === r.pill.showId);
     const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
-    const others = members
-      .filter((m) => m.userId !== selfUserId && (m.s > 0 || m.e > 0))
-      .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
+    // Everyone else once anyone has started — a friend at zero included
+    // (Alborz 2026-09-28). A member at zero is opted in too: the pill's
+    // arrow says ▼N and the tooltip carries the mail.
+    const others = roadOthers(members, selfUserId, seasons);
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
     const gap = summarizeGap(selfIdx, others);
