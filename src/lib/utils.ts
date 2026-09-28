@@ -57,6 +57,22 @@ export const canView = (
 export const isZeroProgress = (p?: { s: number; e: number } | null) =>
   !!p && p.s === 0 && p.e === 0;
 
+// A season's last episode counts as the season FINISHED only when the site
+// can know it's the finale (Alborz 2026-09-28): season counts hold aired
+// episodes only, so on the newest season of a running show the last aired
+// episode may be mid-season. Known complete = a later season has aired
+// episodes, or the show has ended (status is stored as Running or Ended).
+// The picker then reads "you've finished: season 1"; the newest season of a
+// running show reads "S03 E08" until the next season's first episode airs.
+export const isSeasonEnd = (s: number, e: number, show?: { seasons?: number[]; status?: string | null } | null): boolean => {
+  const seasons = show?.seasons || [];
+  if (s < 1 || e < 1 || s > seasons.length) return false;
+  if (e !== (seasons[s - 1] || 0)) return false;
+  const laterAired = seasons.slice(s).some((n) => (n || 0) > 0);
+  const ended = !!show?.status && show.status !== "Running";
+  return laterAired || ended;
+};
+
 // Partial email mask for display surfaces where the address shouldn't be
 // flaunted but the owner should still recognize it at a glance. Keeps the
 // first character of the local part and the first character of the first

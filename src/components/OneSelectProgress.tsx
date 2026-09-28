@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CANON } from "../styles/canon";
 import { X, ChevronDown } from "lucide-react";
 import Modal from "./Modal";
-import { buildProgressOptions, isZeroProgress } from "../lib/utils";
+import { buildProgressOptions, isZeroProgress, isSeasonEnd } from "../lib/utils";
 
 const ZERO_ID = "0-0";
 const ZERO_LABEL = "haven't started";
@@ -32,8 +32,14 @@ function buildGroupedOptions(show: { seasons?: number[] }) {
   return groups;
 }
 
-function epLabel(s: number, e: number) {
+// The season's last episode reads as the season itself — "you've finished:
+// season 1" — once the site can know it's the finale (isSeasonEnd: a later
+// season has aired, or the show has ended). Alborz 2026-09-28. A native
+// select shows its chosen row's text, so the finale ROW carries the words
+// too; the other rows keep their episode numbers.
+function epLabel(s: number, e: number, show?: { seasons?: number[]; status?: string | null } | null) {
   if (s === 0 && e === 0) return ZERO_LABEL;
+  if (isSeasonEnd(s, e, show)) return `season ${s}`;
   return `S${String(s).padStart(2, "0")} E${String(e).padStart(2, "0")}`;
 }
 
@@ -71,7 +77,7 @@ export default function OneSelectProgress({
   allowZero?: boolean;
   // When the user is rewatching a show, pass the previous highest point.
   // Options ≤ this get "you rewatched: " labels; options past it revert
-  // to "you've watched: " because the user would be entering genuinely
+  // to "you've finished: " because the user would be entering genuinely
   // new territory (and crossing out of rewatch mode).
   rewatchHighest?: { s: number; e: number } | null;
   // When true, render as a minimal white select ("Season X Episode X" labels,
@@ -89,7 +95,7 @@ export default function OneSelectProgress({
   // user moves past episode 0, so the demo's free up/down picking (spec §5) can
   // return to it. Off for every live caller (zero stays monotonic in real rooms).
   forceZeroOption?: boolean;
-  // Drop the "you've" from the option/label prefix — "watched: S01 E04"
+  // Drop the "you've" from the option/label prefix — "finished: S01 E04"
   // (Alborz 2026-09-16, the /m show-room control card: the row is tight and
   // the "you" is already implied by the card it sits in). Desktop and every
   // other caller keep the long form.
@@ -115,12 +121,14 @@ export default function OneSelectProgress({
   const showZeroOption = allowZero || forceZeroOption;
 
   // Prefix helper for an option label. Rewatching users see "you rewatched: "
-  // for options within their previous highest, and "you've watched: " past it.
+  // for options within their previous highest, and "you've finished: " past
+  // it ("finished", not "watched" — Alborz 2026-09-28, so a season's end
+  // reads "you've finished: season 1").
   function optionPrefix(s: number, e: number) {
     if (rewatchHighest && isWithinPreviousHighest(s, e, rewatchHighest)) {
       return shortLabel ? "rewatched: " : "you REwatched: ";
     }
-    return shortLabel ? "watched: " : "you've watched: ";
+    return shortLabel ? "finished: " : "you've finished: ";
   }
 
   function onSelect(ev: React.ChangeEvent<HTMLSelectElement>) {
@@ -170,11 +178,11 @@ export default function OneSelectProgress({
   }
 
   const groups = buildGroupedOptions(show);
-  const shortEp = epLabel(curS, curE);
+  const shortEp = epLabel(curS, curE, show);
   const currentIsRewatch = !!rewatchHighest && isWithinPreviousHighest(curS, curE, rewatchHighest);
   const selectedLabelPrefix = currentIsRewatch
     ? (shortLabel ? "rewatched: " : "you REwatched: ")
-    : (shortLabel ? "watched: " : "you've watched: ");
+    : (shortLabel ? "finished: " : "you've finished: ");
 
   // One confirm for both render paths (the compact V1 picker and the pill).
   const confirmModal = requireConfirm && confirmOpen && (
@@ -194,7 +202,7 @@ export default function OneSelectProgress({
         </>
       ) : (
         <>
-          <h3 style={dlgTitle}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e)}`) : ""}</h3>
+          <h3 style={dlgTitle}>{pending ? sentenceCase(`${optionPrefix(pending.s, pending.e)}${epLabel(pending.s, pending.e, show)}`) : ""}</h3>
           <p style={dlgBody}>You&rsquo;ll only see letters up to your selected episode.</p>
         </>
       )}
@@ -221,7 +229,7 @@ export default function OneSelectProgress({
         {mobileOpen && (
           <Modal onClose={() => setMobileOpen(false)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{selectedLabelPrefix}{pending ? epLabel(pending.s, pending.e) : ""}</h3>
+              <h3 className="title" style={{ fontSize: 20, margin: 0 }}>{selectedLabelPrefix}{pending ? epLabel(pending.s, pending.e, show) : ""}</h3>
               <button className="close-x" onClick={() => setMobileOpen(false)}><X size={14} /></button>
             </div>
             <select
@@ -238,7 +246,7 @@ export default function OneSelectProgress({
                 <optgroup key={g.season} label={`Season ${g.season}`}>
                   {g.episodes.map((ep) => (
                     <option key={ep.id} value={ep.id}>
-                      {epLabel(ep.s, ep.e)}
+                      {epLabel(ep.s, ep.e, show)}
                     </option>
                   ))}
                 </optgroup>
@@ -278,7 +286,7 @@ export default function OneSelectProgress({
             <option key={ep.id} value={ep.id}>
               {plain
                 ? `Season ${ep.s} Episode ${ep.e}`
-                : `${optionPrefix(ep.s, ep.e)}${epLabel(ep.s, ep.e)}`}
+                : `${optionPrefix(ep.s, ep.e)}${epLabel(ep.s, ep.e, show)}`}
             </option>
           ))}
         </optgroup>
