@@ -73,6 +73,11 @@ export const isSeasonEnd = (s: number, e: number, show?: { seasons?: number[]; s
   return laterAired || ended;
 };
 
+// A position inside a sentence: "season 1" at a known finale, else "S1 E8"
+// (natural numbers — the tooltips' format).
+export const positionLabel = (s: number, e: number, show?: { seasons?: number[]; status?: string | null } | null): string =>
+  isSeasonEnd(s, e, show) ? `season ${s}` : `S${s} E${e}`;
+
 // Partial email mask for display surfaces where the address shouldn't be
 // flaunted but the owner should still recognize it at a glance. Keeps the
 // first character of the local part and the first character of the first

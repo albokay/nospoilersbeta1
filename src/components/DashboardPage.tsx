@@ -27,7 +27,7 @@ import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
 import { computeRoomLetters, roadOthers, summarizeGap, syncLine, lettersSentence, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
-import { preventLastWordOrphan } from "../lib/utils";
+import { preventLastWordOrphan, positionLabel } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
@@ -491,7 +491,7 @@ export default function DashboardPage() {
   }
   function watchingTipProps(r: WatchRow) {
     const lines: React.ReactNode[] = [];
-    if (r.selfProg) lines.push(`You've watched: S${r.selfProg.s} E${r.selfProg.e}`);
+    if (r.selfProg) lines.push(`You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}`);
     // Trimmed (Alborz 2026-09-25): no gap sentence — the pill's arrow and
     // number say it — and the mail line replaces the notif line when both
     // would show (it carries "…for when you catch up" itself).
@@ -862,7 +862,7 @@ export default function DashboardPage() {
         const opted = (gs?.members ?? [])
           .filter((mm) => mm.userId !== selfUserId)
           .map((mm) => ({ username: memberNameById[mm.userId] ?? "someone", s: mm.s, e: mm.e, wrote: !!mm.wrote, resolved: !!memberNameById[mm.userId] }));
-        return { ...it, opted };
+        return { ...it, opted, showId: gs?.showId };
       });
   }, [drawerItems, groupShows, memberNameById, selfUserId, drawerSeenTick]);
   const celebratingRef = useRef<string[]>([]);
@@ -1915,7 +1915,7 @@ export default function DashboardPage() {
                   {celebrating.map((c) => (
                     <div key={c.roomId} className="group-pill-wrap">
                       <CelebrationPill name={c.name} onClick={openFinishedDrawer} />
-                      <OptInAvatars members={c.opted} withTooltip onTip={moveTip} />
+                      <OptInAvatars members={c.opted} show={c.showId ? showsById[c.showId] : undefined} withTooltip onTip={moveTip} />
                     </div>
                   ))}
                 </div>
@@ -1935,7 +1935,7 @@ export default function DashboardPage() {
                     {r.pill.inRoom && r.pill.roomId && (
                       <button className="dash-pill-x" title="leave this show room" onClick={() => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name })}>×</button>
                     )}
-                    <OptInAvatars members={r.opted} personalFill={r.pill.fill === "green"} withTooltip onTip={moveTip} />
+                    <OptInAvatars members={r.opted} show={showsById[r.pill.showId]} personalFill={r.pill.fill === "green"} withTooltip onTip={moveTip} />
                   </div>
                 ))}
               </div>
@@ -1973,10 +1973,10 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
-                  <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've watched: S${r.selfProg.s} E${r.selfProg.e}` : undefined, roomNotif(r.pill.roomId))}>
+                  <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
                     <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
-                  <OptInAvatars members={r.opted} withTooltip onTip={moveTip} />
+                  <OptInAvatars members={r.opted} show={showsById[r.pill.showId]} withTooltip onTip={moveTip} />
                 </div>
               ))}
             </div>
@@ -3062,9 +3062,12 @@ function AvatarPile({ avatars, minHeight }: { avatars: React.ReactNode[]; minHei
 /** Opt-in member avatars overlapping a group-pill's bottom edge (the friends
  *  who have this show in the group's pool). Decorative — pointer-events off so
  *  they never block a pill click. */
-function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
+function OptInAvatars({ members, withTooltip, onTip, personalFill = false, show }: {
   members: { username: string; s: number | null; e: number | null; wrote?: boolean; resolved?: boolean }[];
   withTooltip: boolean;
+  /** The show, for the tip's position wording — "has finished: season 1"
+   *  at a known finale (Alborz 2026-09-28). */
+  show?: { seasons?: number[]; status?: string | null } | null;
   // On a Personal-filled (green) show pill, the avatar outline is Personal
   // (green) too (2026-07-09) — else cream (non-writer) / Friend-sky (writer).
   personalFill?: boolean;
@@ -3088,7 +3091,7 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false }: {
         // lives on the pill's own hover, and writer status stays visible
         // via the avatar's green fill).
         const tip: React.ReactNode = watched
-          ? `${m.username} has watched: S${m.s} E${m.e}`
+          ? `${m.username} has finished: ${positionLabel(m.s ?? 0, m.e ?? 0, show)}`
           : <>{m.username} hasn&rsquo;t started<br />watching yet.</>;
         const sub = undefined;
         return (
