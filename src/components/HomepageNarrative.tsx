@@ -132,8 +132,11 @@ function CloudBubble({ src, top, left, width, rate = 0 }: {
 }
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
-function Copy({ children, size = 32, delay = 0 }: {
+function Copy({ children, size = 32, delay = 0, balance = false }: {
   children: React.ReactNode; size?: number; delay?: number;
+  /** Balanced wrap (the invitee opening, Alborz 2026-09-28): even lines at
+   *  any width via the `.sb-balance` rule instead of a hand-placed break. */
+  balance?: boolean;
 }) {
   const { ref, visible } = useReveal(0.3);
   return (
@@ -143,7 +146,7 @@ function Copy({ children, size = 32, delay = 0 }: {
       transition: `opacity 0.8s ease ${delay}s, transform 0.8s ease ${delay}s`,
       textAlign: "center", maxWidth: 560, margin: "0 auto",
     }}>
-      <p style={{ fontSize: size, fontWeight: 800, color: CANON.cream, lineHeight: 1.25, margin: 0 }}>
+      <p className={balance ? "sb-balance" : undefined} style={{ fontSize: size, fontWeight: 800, color: CANON.cream, lineHeight: 1.25, margin: 0 }}>
         {children}
       </p>
     </div>
@@ -164,7 +167,14 @@ const UNIT_H = LOGO_H + LOGO_GAP + TAGLINE_H;
 // The in-flow placeholder is an empty invisible div — layout space + reveal hook only.
 function AnimatedLogo() {
   const placeholderRef = useRef<HTMLDivElement>(null);
-  const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, measured: false });
+  const [anim, setAnim] = useState({ progress: 0, left: 0, top: 0, inset: 0, measured: false });
+  // The phone's top inset (Alborz 2026-09-28): the home-screen app paints
+  // under the status bar (viewport-fit=cover), so a wordmark docked 14px
+  // from the viewport's top sat behind the clock. A hidden probe carries
+  // padding-top: env(safe-area-inset-top) — computed styles resolve env()
+  // to pixels — and the dock (and the snap point) add it. 0 in a browser
+  // tab and on desktop, so nothing moves there.
+  const insetRef = useRef<HTMLDivElement>(null);
   const { ref: revealRef, visible } = useReveal(0.15);
 
   useEffect(() => {
@@ -175,13 +185,14 @@ function AnimatedLogo() {
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
+      const inset = insetRef.current ? (parseFloat(getComputedStyle(insetRef.current).paddingTop) || 0) : 0;
       const centerY = rect.top + UNIT_H / 2;
       // Start when logo center is at top ~22% — snaps before logo can escape the top edge
       const startY = vh * 0.22;
-      const endY = 4 + (LOGO_H * 0.6) / 2;
+      const endY = inset + 4 + (LOGO_H * 0.6) / 2;
       const rawProgress = (startY - centerY) / (startY - endY);
       const progress = Math.min(Math.max(rawProgress, 0), 1);
-      setAnim({ progress, left: rect.left, top: rect.top, measured: true });
+      setAnim({ progress, left: rect.left, top: rect.top, inset, measured: true });
     }
     function onScroll() {
       // rAF-throttle so multiple scroll events per frame collapse into
@@ -200,7 +211,7 @@ function AnimatedLogo() {
     };
   }, []);
 
-  const { progress, left: natLeft, top: natTop, measured } = anim;
+  const { progress, left: natLeft, top: natTop, inset, measured } = anim;
   // Ease-in: barely moves at first, then snaps quickly into corner
   const eased = progress * progress;
 
@@ -221,7 +232,7 @@ function AnimatedLogo() {
   const WORDMARK_TOP_IN_CANVAS = LOGO_H - 52;  // 96
   const TARGET_CORNER = 14;
   const TARGET_LEFT = TARGET_CORNER - WORDMARK_LEFT_IN_CANVAS * TARGET_SCALE;
-  const TARGET_TOP = TARGET_CORNER - WORDMARK_TOP_IN_CANVAS * TARGET_SCALE;
+  const TARGET_TOP = inset + TARGET_CORNER - WORDMARK_TOP_IN_CANVAS * TARGET_SCALE;
 
   const scale = 1 + (TARGET_SCALE - 1) * eased;
   const taglineOpacity = (1 - eased) * 0.85;
@@ -241,6 +252,8 @@ function AnimatedLogo() {
 
   return (
     <>
+      {/* Safe-area probe — see insetRef. Out of flow, invisible, no size of its own. */}
+      <div ref={insetRef} aria-hidden style={{ position: "absolute", visibility: "hidden", width: 0, height: 0, paddingTop: "env(safe-area-inset-top, 0px)", pointerEvents: "none" }} />
       {/* Empty in-flow placeholder — reserves layout space, hosts reveal detector */}
       <div ref={placeholderRef} style={{ width: LOGO_W, height: UNIT_H, visibility: "hidden", flexShrink: 0 }}>
         <div ref={revealRef} style={{ width: "100%", height: "100%" }} />
@@ -315,9 +328,9 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
         <>
           <Screen extraTop={0}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
-              <Copy>{invitee.inviterName} wants you to join<br />them on Sidebar.</Copy>
+              <Copy balance>{invitee.inviterName} wants you to join them on Sidebar.</Copy>
               <StaticLogo />
-              <Copy delay={0.15}>It&rsquo;s a place for you and your friends<br />to talk about TV, spoiler-free.</Copy>
+              <Copy balance delay={0.15}>It&rsquo;s a place for you and your friends to talk about TV, spoiler-free.</Copy>
             </div>
           </Screen>
           <ScrollCue />

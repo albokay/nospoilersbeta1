@@ -26,7 +26,11 @@ export default function LetterDisc({ kind, size = 22, className, style }: {
         ...style,
       }}
     >
-      <Glyph size={Math.round(size * 0.6)} color={CANON.cream} strokeWidth={2.2} />
+      {/* Optical centring (Alborz 2026-09-28, the /m caught-up line): the
+          open envelope is bottom-heavy — a narrow peak over a wide base —
+          so a geometric centre reads as sitting low. A 1px lift squares it
+          up; the closed envelope is symmetric and stays put. */}
+      <Glyph size={Math.round(size * 0.6)} color={CANON.cream} strokeWidth={2.2} style={kind === "open" ? { transform: "translateY(-1px)" } : undefined} />
     </span>
   );
 }

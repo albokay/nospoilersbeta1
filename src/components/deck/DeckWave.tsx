@@ -250,7 +250,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       // corner tabs).
       // Pass 3: welcome top padding 128 → 72 — the dim covers the page and
       // /m has no top bar under the wave, so nothing to clear anymore.
-      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 72 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
+      // 72 → 104 (Alborz 2026-09-28): every /m welcome wave sits over a page
+      // with the half-size logo top-left (invite arrival, post-join, first
+      // dashboard, onboarding) — 12px down, 74px tall — and the heading ran
+      // into it. 104 clears the logo with 18px of air.
+      ...(mobile ? { alignItems: "flex-start", paddingTop: `calc(env(safe-area-inset-top, 0px) + ${heading === "welcome" ? 104 : 84}px)`, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : {}),
       // Desktop welcome (Alborz 2026-09-16): the Display-40 heading block is
       // tall enough that vertical centering rode it up UNDER the page's logo
       // (the dashboard's 96px bar sits above this dim during onboarding; the

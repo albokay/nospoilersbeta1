@@ -37,7 +37,7 @@ const LORA = '"Lora", Georgia, serif';
 type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" | "joining" | "done" | "error";
 
 export default function GroupInviteAcceptPage({ token }: { token: string }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
@@ -268,7 +268,13 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         {status === "wrong" && (
           <>
             <p style={title}>{preventLastWordOrphan("This invite was sent to a different email.")}</p>
-            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email to join, or check your email and use the invite link.")}</p>
+            <p style={muted}>It's addressed to {masked}. {preventLastWordOrphan("Sign in with that email, then try again with your email invite link.")}</p>
+            {/* Sign out (Alborz 2026-09-28): clears this session and reloads
+                the same invite link, so they land on it logged out and can
+                sign in with the invited email. A full reload, not an SPA
+                hop — the old /invite page's sign-out found SPA navigation
+                out of an invite page left a blank green. */}
+            <button style={ghost} onClick={async () => { await signOut(); window.location.reload(); }}>Sign out</button>
           </>
         )}
         {status === "already" && (
