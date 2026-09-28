@@ -20,6 +20,8 @@ import { CANON } from "../styles/canon";
 import BrowseRows from "./BrowseRows";
 import MobileBrowseRows from "../mobile/MobileBrowseRows";
 import type { BrowseShow } from "../lib/db";
+import InviteShowCard from "./InviteShowCard";
+import YesNoToggle from "./YesNoToggle";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -116,9 +118,13 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
   }
 
   // Browse rows (2026-08-18): the group room's poster shelves, under the
-  // search — a tap adds a chip like a search hit (catalog pick when Sidebar
-  // already has the show, else a TVMaze pick claimed on accept). Hidden:
-  // the inviter's shows above + anything already picked.
+  // search. Hidden: the inviter's shows above + anything already picked.
+  // A tap opens the show's card (Alborz 2026-09-28) — the trailer plus a
+  // yes/no toggle; "yes" adds the chip a tap used to add outright (catalog
+  // pick when Sidebar already has the show, else a TVMaze pick claimed on
+  // accept), "no" takes it back out. The card stays open either way (the
+  // trailer is still there to watch); the poster behind leaves the rows
+  // the moment it's picked.
   const browseExclude = useMemo(() => {
     const ids = new Set<number>(excludeTvmazeIds ?? []);
     for (const p of picks) {
@@ -127,9 +133,19 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
     }
     return ids;
   }, [excludeTvmazeIds, picks, shows]);
-  function addFromBrowse(b: BrowseShow) {
+  const [browseOpen, setBrowseOpen] = useState<BrowseShow | null>(null);
+  function pickOf(b: BrowseShow): InviteShowPick {
     const cat = shows.find((s) => s.tvmazeId === String(b.tvmazeId));
-    addPick(cat ? { kind: "catalog", id: cat.id, name: cat.name } : { kind: "tv", tvmazeId: b.tvmazeId, name: b.name });
+    return cat ? { kind: "catalog", id: cat.id, name: cat.name } : { kind: "tv", tvmazeId: b.tvmazeId, name: b.name };
+  }
+  function isPicked(b: BrowseShow): boolean {
+    const p = pickOf(b);
+    return picks.some((q) => (q.kind === "catalog" && p.kind === "catalog" && q.id === p.id) || (q.kind === "tv" && p.kind === "tv" && q.tvmazeId === p.tvmazeId));
+  }
+  function setPicked(b: BrowseShow, on: boolean) {
+    const p = pickOf(b);
+    if (on) { if (!isPicked(b)) commit([...picks, p]); }
+    else commit(picks.filter((q) => !((q.kind === "catalog" && p.kind === "catalog" && q.id === p.id) || (q.kind === "tv" && p.kind === "tv" && q.tvmazeId === p.tvmazeId))));
   }
 
   const hasResults = catalogMatches.length > 0 || tvToAdd.length > 0;
@@ -194,9 +210,25 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           run to the screen edges. */}
       <div style={{ textAlign: "left", marginTop: 28, ...(mobile && bleedX ? { marginLeft: -bleedX, marginRight: -bleedX } : {}) }}>
         {mobile
-          ? <MobileBrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />
-          : <BrowseRows excludeTvmazeIds={browseExclude} onPick={addFromBrowse} />}
+          ? <MobileBrowseRows excludeTvmazeIds={browseExclude} onPick={setBrowseOpen} />
+          : <BrowseRows excludeTvmazeIds={browseExclude} onPick={setBrowseOpen} />}
       </div>
+
+      {/* The browse thumbnail's card: trailer + the yes/no toggle. The
+          trailer key is cached under the catalog id when Sidebar has the
+          show, else a TVMaze-scoped key. */}
+      {browseOpen && (() => {
+        const p = pickOf(browseOpen);
+        const cardShow = { id: p.kind === "catalog" ? p.id : `tv-${browseOpen.tvmazeId}`, name: browseOpen.name, tvmazeId: browseOpen.tvmazeId };
+        return (
+          <InviteShowCard idiom={idiom} show={cardShow} onClose={() => setBrowseOpen(null)}>
+            <div style={{ color: CANON.cream, fontSize: 15, fontWeight: 600, textAlign: "center" }}>Do you want to watch this?</div>
+            <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+              <YesNoToggle value={isPicked(browseOpen)} onChange={(v) => setPicked(browseOpen, v)} />
+            </div>
+          </InviteShowCard>
+        );
+      })()}
     </div>
   );
 }

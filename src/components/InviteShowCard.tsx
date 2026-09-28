@@ -12,7 +12,8 @@ import { preventLastWordOrphan } from "../lib/utils";
 // own shows (they'll be on the invitee's shelf no matter what). Desktop =
 // the room's [yellow card + trailer] pair centred on a scrollable dim;
 // /m = the room's full-screen yellow sheet with the × in a top bar.
-// (A yes/no toggle for browse thumbnails arrives in the next checkpoint.)
+// A browse thumbnail's card adds the yes/no toggle under the title via
+// `children` (InviteShowSuggest owns that state).
 export type InviteCardShow = { id: string; name: string; tvmazeId?: string | number | null };
 
 export default function InviteShowCard({ idiom, show, onClose, children }: {
