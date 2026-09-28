@@ -6,7 +6,7 @@
  * (fetchPublicProgressForUser), so it works logged-out; logged-out visitors
  * get a "sign in" button where the dashboard shows "invite friends".
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../lib/auth";
@@ -18,6 +18,9 @@ import {
 import type { ProgressEntry } from "../types";
 import SidebarLogo from "./SidebarLogo";
 import InviteShowSuggest from "./InviteShowSuggest";
+import InvitePoster from "./InvitePoster";
+import InviteShowCard from "./InviteShowCard";
+import { getTrailerKeyCached } from "../lib/trailers";
 import FeedbackWidget from "./FeedbackWidget";
 import { CANON } from "../styles/canon";
 
@@ -118,6 +121,25 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
     return { watching: w.sort(byName), interested: n.sort(byName) };
   }, [pool, progress, showsById]);
 
+  // Invite arrival (Alborz 2026-09-28): the inviter's shows are poster
+  // thumbnails; a tap opens the show's trailer card — only when a trailer
+  // exists (checked ahead for these few shows), so no card ever opens empty.
+  const [trailerFor, setTrailerFor] = useState<Show | null>(null);
+  const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
+  const trailerAsked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!invite) return;
+    let cancelled = false;
+    for (const { show } of [...interested, ...watching]) {
+      if (trailerAsked.current.has(show.id)) continue;
+      trailerAsked.current.add(show.id);
+      getTrailerKeyCached(show.id, show.tvmazeId)
+        .then((k) => { if (!cancelled) setTrailerOk((p) => ({ ...p, [show.id]: !!k })); })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [interested, watching, invite]);
+
   if (loading) return <div style={{ ...pageStyle, background: C.green }} aria-busy="true" />;
 
   // How the pool's owner is named. An explicit override (the inviter's
@@ -158,9 +180,18 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
             <>
               {/* QA round 6: invitee-facing framing, singular-safe. */}
               <h2 style={inviteHeading}><span style={{ color: C.cream }}>{ownerName}</span> wants to watch {interested.length === 1 ? "this show" : "these shows"} with you:</h2>
-              <div style={inviteShelfLayout(interested.length)}>
+              {/* Posters, not pills (Alborz 2026-09-28) — the browse rows'
+                  geometry; a tap opens the trailer when there is one. */}
+              <div style={posterRow}>
                 {interested.map(({ show }) => (
-                  <div key={show.id} style={{ ...pill, ...pillWant }}><span style={pillName}>{show.name}</span></div>
+                  <InvitePoster
+                    key={show.id}
+                    idiom="desktop"
+                    tvmazeId={show.tvmazeId}
+                    name={show.name}
+                    onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}
+                    fallback={<div style={{ ...pill, ...pillWant, width: SHELF_COL }}><span style={pillName}>{show.name}</span></div>}
+                  />
                 ))}
               </div>
             </>
@@ -173,12 +204,22 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
                   ? (watching.length === 1 ? "and is already watching this:" : "and is already watching these:")
                   : <><span style={{ color: C.cream }}>{ownerName}</span> is already watching {watching.length === 1 ? "this show" : "these shows"}:</>}
               </h2>
-              <div style={inviteShelfLayout(watching.length)}>
+              <div style={posterRow}>
                 {watching.map(({ show, entry }) => (
-                  <div key={show.id} style={{ ...pill, ...pillWatching }}>
-                    <span style={pillName}>{show.name}</span>
-                    <span style={pillProg}>s{entry.s} e{entry.e}</span>
-                  </div>
+                  <InvitePoster
+                    key={show.id}
+                    idiom="desktop"
+                    tvmazeId={show.tvmazeId}
+                    name={show.name}
+                    caption={`s${entry.s} e${entry.e}`}
+                    onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}
+                    fallback={(
+                      <div style={{ ...pill, ...pillWatching, width: SHELF_COL }}>
+                        <span style={pillName}>{show.name}</span>
+                        <span style={pillProg}>s{entry.s} e{entry.e}</span>
+                      </div>
+                    )}
+                  />
                 ))}
               </div>
             </>
@@ -206,6 +247,7 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
           </InviteShowSuggest>
         )}
         <div style={{ paddingBottom: 80 }} />
+        {trailerFor && <InviteShowCard idiom="desktop" show={trailerFor} onClose={() => setTrailerFor(null)} />}
         </>
       ) : (
         <div style={contentWrap}>
@@ -295,19 +337,10 @@ const inviteHeading: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: C.cream,
   textAlign: "center", margin: "0 0 24px",
 };
-const inviteShelf: React.CSSProperties = {
-  display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px 16px", maxWidth: 880, margin: 0,
+// The invite wall's poster shelf (2026-09-28): centred, wrapping.
+const posterRow: React.CSSProperties = {
+  display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px 16px", maxWidth: 880, margin: "0 auto",
 };
-// 1–2 shows center (matching the dashboard rule); 3+ keep the left-anchored
-// 3-col grid that sits under the left-aligned invite headings.
-function inviteShelfLayout(count: number): React.CSSProperties {
-  if (count >= 3) return inviteShelf;
-  return {
-    display: "grid",
-    gridTemplateColumns: `repeat(${Math.max(count, 1)}, ${SHELF_COL}px)`,
-    gap: "24px 16px", justifyContent: "center", maxWidth: 880, margin: "0 auto",
-  };
-}
 const shelfGrid: React.CSSProperties = {
   display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", maxWidth: 880, margin: "0 auto",
 };

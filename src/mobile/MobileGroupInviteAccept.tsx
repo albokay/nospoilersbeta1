@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { CANON } from "../styles/canon";
@@ -7,6 +7,9 @@ import LoadingDots from "../components/LoadingDots";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { claimInvitePicks } from "../lib/invitePicks";
 import InviteShowSuggest from "../components/InviteShowSuggest";
+import InvitePoster from "../components/InvitePoster";
+import InviteShowCard from "../components/InviteShowCard";
+import { getTrailerKeyCached } from "../lib/trailers";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import HomepageNarrative from "../components/HomepageNarrative";
@@ -128,6 +131,25 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     }
     return { watching: w.sort(byName), interested: n.sort(byName) };
   }, [pool, poolProgress, showsById]);
+
+  // Invite arrival (Alborz 2026-09-28): the inviter's shows are poster
+  // thumbnails; a tap opens the show's trailer card — only when a trailer
+  // exists (checked ahead for these few shows), so no card ever opens empty.
+  const [trailerFor, setTrailerFor] = useState<Show | null>(null);
+  const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
+  const trailerAsked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    for (const { show } of [...interested, ...watching]) {
+      if (trailerAsked.current.has(show.id)) continue;
+      trailerAsked.current.add(show.id);
+      getTrailerKeyCached(show.id, show.tvmazeId)
+        .then((k) => { if (!cancelled) setTrailerOk((p) => ({ ...p, [show.id]: !!k })); })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [interested, watching, token]);
 
   // Onboarding changeset §5: the pre-wall wave state (see the logged-out
   // welcome below).
@@ -268,9 +290,18 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           {interested.length > 0 && (
             <>
               <h2 style={inviteHeading}><span style={{ color: C.cream }}>{inviterShown}</span>{preventLastWordOrphan(` wants to watch ${interested.length === 1 ? "this show" : "these shows"} with you:`)}</h2>
-              <div style={shelfCol}>
+              {/* Posters, not pills (Alborz 2026-09-28) — the browse strips'
+                  geometry; a tap opens the trailer when there is one. */}
+              <div style={posterRow}>
                 {interested.map(({ show }) => (
-                  <div key={show.id} style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>
+                  <InvitePoster
+                    key={show.id}
+                    idiom="mobile"
+                    tvmazeId={show.tvmazeId}
+                    name={show.name}
+                    onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}
+                    fallback={<div style={{ ...pill, background: C.cream, color: C.green }}><span style={pillName}>{show.name}</span></div>}
+                  />
                 ))}
               </div>
             </>
@@ -283,12 +314,22 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
                   ? (watching.length === 1 ? preventLastWordOrphan("and is already watching this:") : preventLastWordOrphan("and is already watching these:"))
                   : <><span style={{ color: C.cream }}>{inviterShown}</span>{preventLastWordOrphan(` is already watching ${watching.length === 1 ? "this show" : "these shows"}:`)}</>}
               </h2>
-              <div style={shelfCol}>
+              <div style={posterRow}>
                 {watching.map(({ show, entry }) => (
-                  <div key={show.id} style={{ ...pill, background: "transparent", border: `2px solid ${C.cream}`, color: C.cream }}>
-                    <span style={pillName}>{show.name}</span>
-                    <span style={{ fontWeight: 500 }}>s{entry.s} e{entry.e}</span>
-                  </div>
+                  <InvitePoster
+                    key={show.id}
+                    idiom="mobile"
+                    tvmazeId={show.tvmazeId}
+                    name={show.name}
+                    caption={`s${entry.s} e${entry.e}`}
+                    onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}
+                    fallback={(
+                      <div style={{ ...pill, background: "transparent", border: `2px solid ${C.cream}`, color: C.cream }}>
+                        <span style={pillName}>{show.name}</span>
+                        <span style={{ fontWeight: 500 }}>s{entry.s} e{entry.e}</span>
+                      </div>
+                    )}
+                  />
                 ))}
               </div>
             </>
@@ -312,6 +353,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           </InviteShowSuggest>
         </div>
         )}
+        {trailerFor && <InviteShowCard idiom="mobile" show={trailerFor} onClose={() => setTrailerFor(null)} />}
       </div>
     );
   }
@@ -379,7 +421,9 @@ const inviteHeading: React.CSSProperties = {
   fontFamily: LORA, fontWeight: 700, fontSize: 22, letterSpacing: 0, color: C.cream,
   textAlign: "center", margin: "16px 0 16px",
 };
-const shelfCol: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 12 };
+// The invite wall's poster shelf (2026-09-28): centred, wrapping (two
+// posters per row at 128px; the pill fallback spans the column).
+const posterRow: React.CSSProperties = { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "16px 12px" };
 const pill: React.CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "space-between",
   gap: 12, padding: "14px 24px", borderRadius: 65,
