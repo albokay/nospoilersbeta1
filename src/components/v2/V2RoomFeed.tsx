@@ -119,12 +119,21 @@ export type V2RoomFeedProps = {
   /** The road (letters in transit, 2026-09-25): the other CURRENT members'
    *  reading positions — effective progress, the highest point each can
    *  read to. Drives two things: the "Sam is here · S1 E4" MARKER between
-   *  entries (one per distinct position; friends at the same spot share
-   *  one; a friend ahead of the viewer gets none — Alborz), and the
-   *  COUNTDOWN on the viewer's own entries ("Sam opens this in 2
-   *  episodes."). Departed members are never passed. Needs `seasons` for
+   *  entries (one per distinct position; people at the same spot share
+   *  one), and the COUNTDOWN on the viewer's own entries ("Sam opens this
+   *  in 2 episodes."). Everyone current is marked (Alborz 2026-09-28 —
+   *  friends ahead of you and level with you included, reversing the
+   *  09-25 behind-only rule); a friend who hasn't started is passed at
+   *  s0 e0 and pools at the start of the letters as "Sam hasn't started
+   *  watching". Departed members are never passed. Needs `seasons` for
    *  real distances; without it the tag order still holds. */
   positions?: { username: string; s: number; e: number }[];
+  /** The viewer's own marker (Alborz 2026-09-28): pass their handle and the
+   *  feed marks their own position too — "You are here · S1 E4", sharing a
+   *  marker with friends at the same spot ("You and Sam are here"). The
+   *  position is `viewerProgress` (effective); the handle only names the
+   *  initial via `displayNames`. */
+  viewerUsername?: string;
   viewerProgress: ProgressEntry | null;
   /** Caller's user id. May be null for logged-out visitors viewing
    *  public threads; interactive controls route through onAuthRequired. */
@@ -264,6 +273,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     gatedStubAudience = "the room",
     seasons,
     positions,
+    viewerUsername,
     viewerProgress,
     userId,
     onAuthRequired,
@@ -314,30 +324,31 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   }, [entries, sortOrder, preserveOrder]);
 
   // ── The road (letters in transit, 2026-09-25) ──────────────────────────
-  // Where each friend stands, expressed as the entry their marker sits
-  // before. In episode-desc order (newest at the top) a friend at S1E4 sits
+  // Where each person stands, expressed as the entry their marker sits
+  // before. In episode-desc order (newest at the top) someone at S1E4 sits
   // above the first entry they can read, i.e. the first entry at or below
-  // their position; in asc order, after the last one. Friends past the
-  // viewer's own position get no marker; friends below every entry pool at
-  // the end. Distinct positions get distinct markers; friends sharing a
-  // position share one.
+  // their position; in asc order, after the last one. People below every
+  // entry pool at the end. Distinct positions get distinct markers; people
+  // sharing a position share one. Everyone current is on the road (Alborz
+  // 2026-09-28, reversing the 09-25 behind-only rule): the viewer ("You"),
+  // friends level with or ahead of them — someone past every letter marks
+  // the very top in desc order — and friends who haven't started (index 0,
+  // no episode tag, pooled at the start of the letters).
   const idxOf = (s: number, e: number) => linearIndex(s, e, seasons);
   const viewerEff = effectiveProgress(viewerProgress);
   const viewerIdx = viewerEff ? idxOf(viewerEff.s, viewerEff.e) : 0;
-  const roadFriends = useMemo(() => {
-    if (!positions?.length) return [] as { username: string; s: number; e: number; idx: number }[];
-    return positions
-      .map((p) => ({ ...p, idx: idxOf(p.s, p.e) }))
-      // Strictly behind you: a friend level with you (or everyone finished)
-      // would only mark the very top of the letters (Alborz 2026-09-25).
-      .filter((p) => p.idx > 0 && p.idx < viewerIdx);
+  type RoadPerson = { username: string; s: number; e: number; idx: number; self: boolean };
+  const roadPeople = useMemo(() => {
+    const out: RoadPerson[] = (positions ?? []).map((p) => ({ ...p, idx: idxOf(p.s, p.e), self: false }));
+    if (viewerUsername) out.push({ username: viewerUsername, s: viewerEff?.s ?? 0, e: viewerEff?.e ?? 0, idx: viewerIdx, self: true });
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, seasons, viewerIdx]);
-  type RoadMarker = { s: number; e: number; idx: number; usernames: string[] };
+  }, [positions, seasons, viewerUsername, viewerIdx]);
+  type RoadMarker = { s: number; e: number; idx: number; people: RoadPerson[] };
   const { markerBefore, endMarkers } = useMemo(() => {
     const before = new Map<string, RoadMarker[]>();
     const end: RoadMarker[] = [];
-    if (!roadFriends.length) return { markerBefore: before, endMarkers: end };
+    if (!roadPeople.length) return { markerBefore: before, endMarkers: end };
     const desc = sortOrder === "desc";
     const slotOf = (idx: number): string | null => {
       for (const en of sorted) {
@@ -346,32 +357,37 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       }
       return null;
     };
-    // Group by position first so co-located friends share a marker.
-    const byPos = new Map<string, RoadMarker>();
-    for (const f of roadFriends) {
-      const k = `${f.s}-${f.e}`;
-      const m = byPos.get(k) ?? { s: f.s, e: f.e, idx: f.idx, usernames: [] };
-      m.usernames.push(f.username);
-      byPos.set(k, m);
+    // Group by position first so co-located people share a marker — by
+    // index, not tag: every not-started row is index 0 whatever it says.
+    const byPos = new Map<number, RoadMarker>();
+    for (const p of roadPeople) {
+      const m = byPos.get(p.idx) ?? { s: p.s, e: p.e, idx: p.idx, people: [] };
+      m.people.push(p);
+      byPos.set(p.idx, m);
     }
     const order = [...byPos.values()].sort((a, b) => (desc ? b.idx - a.idx : a.idx - b.idx));
     for (const m of order) {
+      // "You" leads a shared marker.
+      m.people.sort((a, b) => Number(b.self) - Number(a.self));
       const slot = slotOf(m.idx);
       if (slot === null) end.push(m);
       else before.set(slot, [...(before.get(slot) ?? []), m]);
     }
     return { markerBefore: before, endMarkers: end };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roadFriends, sorted, sortOrder, seasons]);
+  }, [roadPeople, sorted, sortOrder, seasons]);
   // "Sam opens this in 2 episodes." — for the viewer's own entries, the
   // friends still short of it, nearest first. One friend: named. Exactly
   // two: both named. Three or more: the nearest only (Alborz 2026-09-25).
-  // "open", not "read" — it's the anticipation that matters.
+  // "open", not "read" — it's the anticipation that matters. A friend who
+  // hasn't started is on the road but not in the countdown.
   const countdownFor = (entry: V2RoomFeedEntry): string | null => {
     if (!userId || entry.authorId !== userId || entry.gatedStub || entry.isDeleted || !positions?.length) return null;
     const ei = idxOf(entry.s, entry.e);
     const behind = positions
-      .map((p) => ({ name: dn(p.username), n: ei - idxOf(p.s, p.e) }))
+      .map((p) => ({ name: dn(p.username), idx: idxOf(p.s, p.e) }))
+      .filter((p) => p.idx > 0)
+      .map((p) => ({ name: p.name, n: ei - p.idx }))
       .filter((p) => p.n > 0)
       .sort((a, b) => a.n - b.n);
     if (!behind.length) return null;
@@ -380,22 +396,29 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     return `${behind[0].name} opens this in ${eps(behind[0].n)}.`;
   };
   const renderMarkers = (items: RoadMarker[]) => items.map((m) => {
-    const names = m.usernames.map(dn);
-    const who = names.length === 1 ? `${names[0]} is here`
-      : names.length === 2 ? `${names[0]} and ${names[1]} are here`
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} are here`;
+    const names = m.people.map((p) => (p.self ? "You" : dn(p.username)));
+    const list = names.length === 1 ? names[0]
+      : names.length === 2 ? `${names[0]} and ${names[1]}`
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    const plural = names.length > 1 || m.people[0].self;
+    const started = m.idx > 0;
+    // "You are here" / "Sam is here" / "You and Sam are here";
+    // "Sam hasn't started watching" / "You haven't started watching".
+    const who = started
+      ? `${list} ${plural ? "are" : "is"} here`
+      : `${list} ${plural ? "haven't" : "hasn't"} started watching`;
     return (
-      <div key={`road-${m.s}-${m.e}`} aria-label={`${who}, season ${m.s} episode ${m.e}`} style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "4px 0 16px" }}>
+      <div key={`road-${m.idx}`} aria-label={started ? `${who}, season ${m.s} episode ${m.e}` : who} style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "4px 0 16px" }}>
         <div aria-hidden style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 2, background: CANON.cream, opacity: 0.6 }} />
         <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", background: "var(--dos-bg)" }}>
           <span style={{ display: "inline-flex" }}>
-            {names.map((n, i) => (
-              <span key={m.usernames[i]} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--canon-friend,#adc8d7)", background: CANON.personal, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", marginLeft: i ? -6 : 0 }}>
-                {(n[0] ?? "?").toUpperCase()}
+            {m.people.map((p, i) => (
+              <span key={p.username} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--canon-friend,#adc8d7)", background: CANON.personal, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", marginLeft: i ? -6 : 0 }}>
+                {(dn(p.username)[0] ?? "?").toUpperCase()}
               </span>
             ))}
           </span>
-          <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: CANON.cream, whiteSpace: "nowrap" }}>{who} &middot; S{m.s} E{m.e}</span>
+          <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: CANON.cream, whiteSpace: "nowrap" }}>{who}{started && <> &middot; S{m.s} E{m.e}</>}</span>
         </div>
       </div>
     );
