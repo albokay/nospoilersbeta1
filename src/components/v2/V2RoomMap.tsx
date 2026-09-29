@@ -1218,13 +1218,14 @@ export default function V2RoomMap({
             // Every folded season carries the dash (Alborz 2026-09-29 — the
             // 8px dot that stacked folds used to get read like a departed
             // member's end dot, and a fold above an open season looked
-            // different from a fold above a folded one): the LATEST folded
-            // season keeps the full-width dash; every earlier folded season
-            // gets a shorter one. A member's spine crosses the dash when
-            // they're past the season and stops on it when their last
-            // episode is inside.
-            const latestFolded = Math.max(...[...collapsedSeasons].filter((sn) => !!seasonRowRange[sn]));
-            const shortDash = row.season !== latestFolded;
+            // different from a fold above a folded one): the show's LAST
+            // season keeps the full-width dash when folded; every earlier
+            // season gets a shorter one — a fixed property of the season,
+            // so opening or closing its neighbours never changes its size.
+            // A member's spine crosses the dash when they're past the
+            // season and stops on it when their last episode is inside.
+            const lastSeason = Math.max(...Object.keys(seasonRowRange).map(Number));
+            const shortDash = row.season !== lastSeason;
             return (
               <React.Fragment key={rowKey}>
                 {seasonBreak}
