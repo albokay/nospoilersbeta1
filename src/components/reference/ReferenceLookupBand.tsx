@@ -369,9 +369,13 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
   // "just log my progress" (Alborz 2026-09-08): same write as look-it-up,
   // but the card just closes — the show pops onto the Watching shelf.
+  // Also at "haven't started" (Alborz 2026-09-29): moving a show back to
+  // zero was a dead end — the only button was "want to watch", or nothing
+  // at all once the show was on the want shelf — so the zero never
+  // registered. Zero logs as S0 E0 like any position.
   const [logBusy, setLogBusy] = useState(false);
   async function justLogIt() {
-    if (!user || !cardShow || !pickedReady || logBusy || confirmBusy) return;
+    if (!user || !cardShow || logBusy || confirmBusy) return;
     setLogBusy(true);
     try {
       const existing = progress[cardShow.id];
@@ -1073,13 +1077,24 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                 </div>
               )}
               {/* "haven't started" is no longer a dead end (CP2): the add is
-                  the declaration itself. Hidden once the show's already on
-                  the want shelf (the card then just offers the trailer /
-                  progress). Never a proposal to any group. */}
-              {cardShow && !pickedReady && !progress[cardShow.id]?.wantedAt && (
-                <div style={{ marginTop: 18 }}>
-                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy} onClick={wantIt}>
-                    {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
+                  the declaration itself. The want button hides once the
+                  show's already on the want shelf; "just log my progress"
+                  stays either way (Alborz 2026-09-29), so a move back to
+                  zero always has a way to register. Never a proposal to any
+                  group. */}
+              {cardShow && !pickedReady && (
+                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  {!progress[cardShow.id]?.wantedAt && (
+                    <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy || logBusy} onClick={wantIt}>
+                      {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
+                    </button>
+                  )}
+                  <button
+                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
+                    disabled={wantBusy || logBusy}
+                    onClick={justLogIt}
+                  >
+                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
                   </button>
                 </div>
               )}
