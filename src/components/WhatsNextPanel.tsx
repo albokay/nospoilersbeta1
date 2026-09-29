@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchGroupDashboard, fetchShows, fetchPeopleGroupMembers, fetchContactNames, fetchPublicProgressForUser, fetchBrowseAutoRows,
-  setShowVote, ensureProgressRow, startShowRoom, createShow,
+  setShowVote, ensureProgressRow, startShowRoom, createShow, fetchGroupShowPasses, setGroupShowPass,
   type Show, type GroupDashboardShow, type BrowseShow,
 } from "../lib/db";
+import { answerLines, indexPasses, type PassKind, type Stance } from "../lib/proposalAnswers";
+import StanceToggle from "./StanceToggle";
 import { tvmazeEpisodes, slugify, fetchTvmazePoster, tvmazeSearch, networkLabel, type TVmazeShow } from "../lib/tvmaze";
 import { getTrailerKeyCached } from "../lib/trailers";
 import { personDisplayName, joinNames } from "../lib/groupNames";
@@ -14,8 +16,9 @@ import InviteShowCard from "./InviteShowCard";
 /**
  * WhatsNextPanel (letters from Sidebar, Alborz 2026-09-28): the opt-in moment
  * under the "what's next" letter. Three parts, in his order: the group's
- * proposals (poster, "Name · trailer", who's in, the yes/no toggle, "start
- * the room" once you're in), then the members' own lists (quieter, a
+ * proposals (poster, "Name · trailer", the answers one per line, the
+ * three-way pill "I'm in · sit this out · seen it" (2026-09-29; passes in
+ * group_show_passes), "start the room" once you're in), then the members' own lists (quieter, a
  * "propose" button), then a browse strip whose posters open the trailer
  * card with a yes/no toggle — yes proposes the show here, creating its
  * catalog row when Sidebar doesn't have it yet (the invite landing's path).
@@ -48,6 +51,8 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   const [posters, setPosters] = useState<Record<string, string | null>>({});
   const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
   const [card, setCard] = useState<Card | null>(null);
+  // Proposal answers (2026-09-29): the passes, showId → userId → kind.
+  const [passes, setPasses] = useState<Record<string, Record<string, PassKind>>>({});
   const [browse, setBrowse] = useState<BrowseShow[]>([]);
   const [query, setQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
@@ -62,12 +67,13 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     let cancelled = false;
     (async () => {
       try {
-        const [d, s, m, cn] = await Promise.all([
+        const [d, s, m, cn, ps] = await Promise.all([
           fetchGroupDashboard(groupId), fetchShows(), fetchPeopleGroupMembers(groupId),
           fetchContactNames(userId).catch(() => ({} as Record<string, string>)),
+          fetchGroupShowPasses(groupId).catch(() => []),
         ]);
         if (cancelled) return;
-        setDash(d); setShows(s); setMembers(m); setContactNames(cn);
+        setDash(d); setShows(s); setMembers(m); setContactNames(cn); setPasses(indexPasses(ps));
         // The members' "You want to watch" shelves (lib/reference.ts): the
         // wanted stamp set, progress still at zero, not stopped, not hidden,
         // and not already in this group.
@@ -217,14 +223,33 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
 
   const start = (showId: string) => withBusy(`start-${showId}`, async () => {
     const { roomId } = await startShowRoom(groupId, showId);
+    // Entering after a pass flips you to "I'm in" (2026-09-29).
+    if (passes[showId]?.[userId]) setGroupShowPass(groupId, showId, userId, null).catch(() => {});
     onOpenRoom?.(roomId, showId);
   });
 
   const selfIn = (voters: string[]) => voters.includes(userId);
-  const caption = (voters: string[]) => {
-    const others = voters.filter((v) => v !== userId).map(nameOf);
-    if (selfIn(voters)) return others.length ? `${joinNames(["You", ...others])} are in` : "You proposed this";
-    return others.length ? `${joinNames(others)} ${others.length === 1 ? "is" : "are"} in` : "Proposed here";
+  /** Your answer on a proposal: in = the vote; else your pass, if any. */
+  const myStance = (showId: string, voters: string[]): Stance | null => (selfIn(voters) ? "in" : passes[showId]?.[userId] ?? null);
+  /** "I'm in" is the vote; a pass drops the vote and records its kind. */
+  const stance = (showId: string, next: Stance) => {
+    const kind: PassKind | null = next === "in" ? null : next;
+    setPasses((prev) => {
+      const forShow = { ...(prev[showId] ?? {}) };
+      if (kind) forShow[userId] = kind; else delete forShow[userId];
+      return { ...prev, [showId]: forShow };
+    });
+    setGroupShowPass(groupId, showId, userId, kind).catch((e) => console.warn("[whats-next] pass", e));
+    return vote(showId, next === "in");
+  };
+  /** The others' answers, one line each; "You proposed this" when it's only you. */
+  const captionLines = (showId: string, voters: string[]): string[] => {
+    const inIds = voters.filter((v) => v !== userId);
+    const ps = passes[showId] ?? {};
+    const passers = (kind: PassKind) => Object.entries(ps).filter(([id, k]) => id !== userId && k === kind && !inIds.includes(id)).map(([id]) => nameOf(id));
+    const lines = answerLines({ in: inIds.map(nameOf), out: passers("out"), seen: passers("seen") });
+    if (lines.length) return lines;
+    return [selfIn(voters) ? "You proposed this" : "Proposed here"];
   };
   const listCaption = (owners: string[]) => {
     const labels = owners.map((o) => (o === userId ? "your" : `${nameOf(o)}'s`));
@@ -276,14 +301,19 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
           const mine = selfIn(voters);
           const isBusy = busy.has(show.id) || busy.has(`start-${show.id}`);
           return (
-            <div key={show.id} style={{ display: "flex", alignItems: "center", gap: mobile ? 12 : 14, opacity: isBusy ? 0.6 : 1 }}>
+            <div key={show.id} style={{ display: "flex", alignItems: mobile ? "flex-start" : "center", gap: mobile ? 12 : 14, opacity: isBusy ? 0.6 : 1 }}>
               {poster(show)}
-              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: mobile ? 4 : 2 }}>
+              <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: mobile ? 6 : 2 }}>
                 {titleLine(show)}
-                <div style={captionStyle}>{caption(voters)}</div>
+                <div style={{ ...captionStyle, display: "flex", flexDirection: "column" }}>
+                  {captionLines(show.id, voters).map((l, i) => <span key={i}>{l}</span>)}
+                </div>
+                {/* The three answers (2026-09-29); on the phone the pill sits
+                    under the name so the row stays one column. */}
+                {mobile && <StanceToggle value={myStance(show.id, voters)} onChange={(v) => { if (!isBusy) stance(show.id, v); }} compact />}
                 {mobile && mine && <button type="button" style={{ ...startPill, alignSelf: "flex-start" }} disabled={isBusy} onClick={() => start(show.id)}>start the room</button>}
               </div>
-              <YesNoToggle value={mine} onChange={(v) => { if (!isBusy) vote(show.id, v); }} />
+              {!mobile && <StanceToggle value={myStance(show.id, voters)} onChange={(v) => { if (!isBusy) stance(show.id, v); }} />}
               {!mobile && (mine
                 ? <button type="button" style={startPill} disabled={isBusy} onClick={() => start(show.id)}>start the room</button>
                 : <span style={{ width: 118, flexShrink: 0 }} />)}
@@ -367,13 +397,20 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
         <InviteShowCard idiom={mobile ? "mobile" : "desktop"} show={{ id: card.id, name: card.name, tvmazeId: card.tvmazeId }} onClose={() => setCard(null)}>
           <div style={{ color: CANON.cream, fontSize: 15, fontWeight: 600, textAlign: "center" }}>Do you want to watch this?</div>
           <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-            <YesNoToggle
-              value={cardVoted}
-              onChange={(v) => {
-                if (card.catalogId) { vote(card.catalogId, v); return; }
-                if (v) proposeNew({ tvmazeId: card.tvmazeId, name: card.name, imageUrl: null, channel: null });
-              }}
-            />
+            {(() => {
+              // A show already proposed here takes the three answers; a
+              // browse or search pick isn't proposed yet, so yes = propose.
+              const prop = card.catalogId ? proposals.find((p) => p.show.id === card.catalogId) : undefined;
+              return prop
+                ? <StanceToggle value={myStance(prop.show.id, prop.voters)} onChange={(v) => stance(prop.show.id, v)} />
+                : <YesNoToggle
+                    value={cardVoted}
+                    onChange={(v) => {
+                      if (card.catalogId) { vote(card.catalogId, v); return; }
+                      if (v) proposeNew({ tvmazeId: card.tvmazeId, name: card.name, imageUrl: null, channel: null });
+                    }}
+                  />;
+            })()}
           </div>
         </InviteShowCard>
       )}
