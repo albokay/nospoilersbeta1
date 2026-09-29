@@ -2591,6 +2591,23 @@ export async function fetchGroupShowVotes(groupId: string): Promise<GroupShowVot
 /** Proposal answers (2026-09-29): the two passes on a proposal — "sit this
  *  out" / "seen it" — one row per (group, member, show). A yes-vote stays a
  *  group_show_votes row, so counts, room starts and the digest are untouched. */
+/** Cleared proposals (2026-09-29): a per-person "x" on a proposed show hides
+ *  it from YOUR shelf only (own row in group_show_dismissals; the answer rows
+ *  are untouched). `restoreGroupShow` deletes the row — the in-group search
+ *  hit on a cleared show brings the pill back as you left it. */
+export async function dismissGroupShow(groupId: string, showId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("group_show_dismissals")
+    .upsert({ group_id: groupId, user_id: userId, show_id: showId }, { onConflict: "group_id,user_id,show_id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+export async function restoreGroupShow(groupId: string, showId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("group_show_dismissals")
+    .delete().eq("group_id", groupId).eq("user_id", userId).eq("show_id", showId);
+  if (error) throw error;
+}
+
 export type GroupShowPass = { groupId: string; userId: string; showId: string; kind: "out" | "seen" };
 export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPass[]> {
   const { data, error } = await supabase
@@ -3192,6 +3209,10 @@ export type GroupDashboardShow = {
    *  goes via the in-group search. false pre-migration / for proposals /
    *  never-joined rooms. */
   viewerLeft: boolean;
+  /** Cleared proposals (2026-09-29): the viewer "x"-ed this proposal off THEIR
+   *  shelf (own group_show_dismissals row) — the client hides it for them only
+   *  while the show has no room; the in-group search brings it back. */
+  viewerDismissed: boolean;
   /** ms — newest of room writing + any member's progress update (null if none).
    *  Drives within-bucket ordering on the group dashboard. */
   lastActivityAt: number | null;
@@ -3212,6 +3233,7 @@ export async function fetchGroupDashboard(groupId: string): Promise<GroupDashboa
     roomId: s.room_id ?? null,
     inRoom: !!s.in_room,
     viewerLeft: !!s.viewer_left,
+    viewerDismissed: !!s.viewer_dismissed,
     lastActivityAt: s.last_activity_at ? new Date(s.last_activity_at).getTime() : null,
     members: (s.members ?? []).map((m: any) => ({
       userId: m.user_id,

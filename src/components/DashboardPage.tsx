@@ -92,7 +92,7 @@ import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, endOfShow, indexPasses, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
-import { fetchGroupShowPasses, setGroupShowPass } from "../lib/db";
+import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
@@ -313,6 +313,8 @@ export default function DashboardPage() {
 
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+  // Cleared proposals (2026-09-29): the proposal pill's corner "x" → confirm.
+  const [clearConfirm, setClearConfirm] = useState<{ showId: string; name: string } | null>(null);
   // Finished-together drawer (2026-09-13): per active-group room — DNF
   // marks (roomId → ms), current room members (roomId → userIds, for the
   // auto finished detection), open state, posters, and the revive modal.
@@ -964,6 +966,9 @@ export default function DashboardPage() {
       // Finished-together / DNF rooms live in the drawer, not the shelves
       // (2026-09-13). New episodes un-finish a room automatically.
       if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
+      // Cleared proposals (2026-09-29): a proposal you "x"-ed off your shelf
+      // stays hidden for you until you search it again — or a room starts.
+      if (!gs.roomId && gs.viewerDismissed) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       // Opted-in members other than you → the avatars overlapping the pill.
@@ -1057,11 +1062,15 @@ export default function DashboardPage() {
         // CP5: a room the viewer LEFT is findable again — selecting it
         // re-enters (clears the "has left" marker) and restores the button.
         const rejoin = !!gs && !!gs.roomId && gs.viewerLeft && !gs.inRoom;
+        // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
+        // selecting it brings the pill back as you left it (no new yes).
+        const restore = !!gs && !gs.roomId && gs.viewerDismissed;
         return {
           show: s,
           rejoin,
+          restore,
           inPool: activeGroupId
-            ? !!gs && !rejoin
+            ? !!gs && !rejoin && !restore
             : !!progress[s.id] && !outOfPool.has(s.id),
         };
       })
@@ -1264,6 +1273,28 @@ export default function DashboardPage() {
     closeSearch();
   }
 
+  // Cleared proposals (2026-09-29): the proposal pill's corner "x" hides it
+  // from YOUR shelf only — every answer stays for everyone; the in-group
+  // search brings it back exactly as you left it (restoreShow).
+  async function doClearShow(showId: string) {
+    if (!activeGroupId || !user) return;
+    setClearConfirm(null);
+    setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, viewerDismissed: true } : gs)));
+    try {
+      await dismissGroupShow(activeGroupId, showId, user.id);
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] clear show failed", e); }
+  }
+  async function restoreShow(show: Show) {
+    if (!activeGroupId || !user) return;
+    setGroupShows((prev) => prev.map((gs) => (gs.showId === show.id ? { ...gs, viewerDismissed: false } : gs)));
+    try {
+      await restoreGroupShow(activeGroupId, show.id, user.id);
+      await refreshGroup(activeGroupId);
+    } catch (e) { console.error("[dashboard] restore show failed", e); }
+    closeSearch();
+  }
+
   // In-group search hit on a show you already have a progress row for (in or
   // out of the personal pool): propose it here directly — no picker, your
   // saved progress is left exactly as it is.
@@ -1378,7 +1409,7 @@ export default function DashboardPage() {
     const cur = progress[pill.showId];
     // A "seen it" member (2026-09-29) opens at the end of what's aired —
     // they must land on a progress before entering; changeable in the card.
-    const seenHere = passes[pill.showId]?.[selfUserId] === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
+    const seenHere = myStanceFor(pill.showId) === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
     setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle visible in the solo modal
     // (voting is a want-to-watch concept), so a "yes" can be taken back by
@@ -2022,8 +2053,13 @@ export default function DashboardPage() {
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
                   <div {...interestedTipProps(r.pill.showId, r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
-                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} passLabel={passes[r.pill.showId]?.[selfUserId] ? passSlotLabel(passes[r.pill.showId][selfUserId]) : null} onClick={() => onPillClick(r.pill, r.name)} />
+                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} passLabel={(() => { const st = myStanceFor(r.pill.showId); return st === "out" || st === "seen" ? passSlotLabel(st) : null; })()} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
+                  {/* Cleared proposals (2026-09-29): the corner "x" the room
+                      pills have — here it clears the proposal from YOUR shelf. */}
+                  {!r.pill.roomId && (
+                    <button className="dash-pill-x" title="clear this from your shelf" onClick={() => setClearConfirm({ showId: r.pill.showId, name: r.name })}>×</button>
+                  )}
                   <OptInAvatars members={r.opted} show={showsById[r.pill.showId]} withTooltip onTip={moveTip} />
                 </div>
               ))}
@@ -2171,13 +2207,18 @@ export default function DashboardPage() {
               />
               {results.length > 0 && (
                 <div style={{ marginTop: 8 }}>
-                  {results.map(({ show: s, inPool, rejoin }) => (
+                  {results.map(({ show: s, inPool, rejoin, restore }) => (
                     inPool ? (
                       <div key={s.id} className="dash-result dash-result--inpool">{activeGroupId ? <><i>{s.name}</i> is already in this group.</> : <>You've already added <i>{s.name}</i> to your watch pool.</>}</div>
                     ) : rejoin ? (
                       // CP5: re-enter a room you'd left (marker clears server-side).
                       <button key={s.id} className="dash-result" onClick={() => rejoinRoom(s)}>
                         {s.name} · rejoin
+                      </button>
+                    ) : restore ? (
+                      // Cleared proposals (2026-09-29): the pill comes back as it was.
+                      <button key={s.id} className="dash-result" onClick={() => restoreShow(s)}>
+                        {s.name}
                       </button>
                     ) : (
                       <button key={s.id} className="dash-result" onClick={() => {
@@ -2470,7 +2511,9 @@ export default function DashboardPage() {
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                          <StanceToggle value={myStance} onChange={(v) => doStance(clicked.showId, v)} />
+                          {/* A pass closes the card at once (Alborz 2026-09-29);
+                              clicking the show again opens the seen-it flow. */}
+                          <StanceToggle value={myStance} onChange={(v) => { doStance(clicked.showId, v); if (v !== "in") setClicked(null); }} />
                         </div>
                       </>
                     )}
@@ -2778,6 +2821,26 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Cleared proposals (2026-09-29): the proposal pill's "x" — clears it
+          from YOUR shelf only (copy: Alborz's brief; the leave dialog's
+          grammar — Subtitle + Body, no ×). */}
+      {clearConfirm && (
+        <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClearConfirm(null); }}>
+          <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
+            <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Clear this from your shelf?</div>
+            <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
+              <b>{clearConfirm.name}</b> stays proposed for everyone else, and your answer stays with it. Search for it any time and it comes back just as you left it.
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+              <button style={{ ...D.pill.M, background: C.red, color: CANON.cream }} onClick={() => doClearShow(clearConfirm.showId)}>Clear it</button>
+              <button
+                style={{ ...D.pill.M, background: "transparent", color: CANON.cream, border: "2px solid var(--canon-cream,#fef8ea)" }}
+                onClick={() => setClearConfirm(null)}
+              >Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       {leaveConfirm && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(null); }}>
           <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>

@@ -65,7 +65,7 @@ import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
-import { fetchGroupShowPasses, setGroupShowPass } from "../lib/db";
+import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import { groupGenericName, personDisplayName } from "../lib/groupNames";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -147,6 +147,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+  // Cleared proposals (2026-09-29): long-press on a proposed row → its sheet.
+  const [clearSheet, setClearSheet] = useState<{ showId: string; name: string } | null>(null);
   const [chatNew, setChatNew] = useState(false);
   // Unread count for the chat tab's badge (Alborz 2026-09-19); undefined
   // until the 09-19 RPC is applied → plain dot, as before.
@@ -197,6 +199,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // scrolls, so the drag only engages when it's scrolled to the top.
   const gearSwipe = useSheetSwipeDown(() => setGearOpen(false), { open: gearOpen });
   const lpSheetSwipe = useSheetSwipeDown(() => setSheetFor(null), { open: sheetFor != null });
+  const clearSheetSwipe = useSheetSwipeDown(() => setClearSheet(null), { open: clearSheet != null });
   const drawerSwipe = useSheetSwipeDown(() => setFinishedDrawerOpen(false), { open: finishedDrawerOpen });
   const [renameValue, setRenameValue] = useState("");
   const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
@@ -588,6 +591,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       // Finished-together / DNF rooms live in the drawer, not the shelves
       // (2026-09-13). New episodes un-finish a room automatically.
       if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
+      // Cleared proposals (2026-09-29): a proposal you "x"-ed off your shelf
+      // stays hidden for you until you search it again — or a room starts.
+      if (!gs.roomId && gs.viewerDismissed) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       const opted: OptIn[] = gs.members
@@ -684,7 +690,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
     const cur = progress[pill.showId];
     // A "seen it" member (2026-09-29) opens at the end of what's aired.
-    const seenHere = passes[pill.showId]?.[selfUserId] === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
+    const seenHere = myStanceFor(pill.showId) === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
     setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle in the solo sheet (desktop
     // parity) — toggling to "no" is the per-group un-vote path.
@@ -762,7 +768,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // then your own pass.
   const proposalLine = (showId: string): string | null => {
     const line = answerRowLine(answerNamesFor(showId));
-    const mine = passes[showId]?.[selfUserId];
+    const st = myStanceFor(showId);
+    const mine = st === "out" || st === "seen" ? st : null;
     if (!line && !mine) return null;
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   };
@@ -858,6 +865,28 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       await startShowRoom(groupId, show.id);
       await refreshGroup();
     } catch (e) { console.error("[m-group] rejoin room failed", e); }
+    setSearchOpen(false);
+  }
+
+  // Cleared proposals (2026-09-29, desktop parity): the row's long-press
+  // sheet clears a proposal from YOUR shelf only — every answer stays for
+  // everyone; the search brings it back exactly as you left it.
+  async function doClearShow(showId: string) {
+    if (!user) return;
+    setClearSheet(null);
+    setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, viewerDismissed: true } : gs)));
+    try {
+      await dismissGroupShow(groupId, showId, user.id);
+      await refreshGroup();
+    } catch (e) { console.error("[m-group] clear show failed", e); }
+  }
+  async function restoreShow(show: Show) {
+    if (!user) return;
+    setGroupShows((prev) => prev.map((gs) => (gs.showId === show.id ? { ...gs, viewerDismissed: false } : gs)));
+    try {
+      await restoreGroupShow(groupId, show.id, user.id);
+      await refreshGroup();
+    } catch (e) { console.error("[m-group] restore show failed", e); }
     setSearchOpen(false);
   }
 
@@ -1071,7 +1100,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} onLongPress={r.pill.roomId ? undefined : () => setClearSheet({ showId: r.pill.showId, name: r.name })} />
                 ))}
               </div>
             </>
@@ -1181,7 +1210,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                          <StanceToggle value={myStance} onChange={(v) => doStance(clicked.showId, v)} />
+                          {/* A pass closes the sheet at once (Alborz 2026-09-29);
+                              tapping the show again opens the seen-it flow. */}
+                          <StanceToggle value={myStance} onChange={(v) => { doStance(clicked.showId, v); if (v !== "in") setClicked(null); }} />
                         </div>
                       </>
                     )}
@@ -1336,10 +1367,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           groupContext={{
             // A left room is findable again as "· rejoin" (CP5); everything
             // else already surfaced here reads "already in this group".
-            groupShowIds: new Set(groupShows.filter((gs) => !(gs.roomId && gs.viewerLeft && !gs.inRoom)).map((gs) => gs.showId)),
+            groupShowIds: new Set(groupShows.filter((gs) => !(gs.roomId && gs.viewerLeft && !gs.inRoom) && !(!gs.roomId && gs.viewerDismissed)).map((gs) => gs.showId)),
             rejoinShowIds: new Set(groupShows.filter((gs) => !!gs.roomId && gs.viewerLeft && !gs.inRoom).map((gs) => gs.showId)),
+            // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
+            // selecting it brings the row back as you left it (no new yes).
+            restoreShowIds: new Set(groupShows.filter((gs) => !gs.roomId && gs.viewerDismissed).map((gs) => gs.showId)),
             onProposeExisting: proposeExisting,
             onRejoin: rejoinRoom,
+            onRestore: restoreShow,
           }}
           onClose={() => setSearchOpen(false)}
           onAdd={addShow}
@@ -1369,6 +1404,23 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doDnfRoom(sheetFor.roomId)}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.blue }}>We&rsquo;re done with this one</span>
               <span style={sheetSub}>Parks the show for the whole group. Anyone can bring it back later.</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Cleared proposals (2026-09-29): long-press on a proposed row —
+             the rooms' sheet shell, one action: clear it from YOUR shelf
+             (copy: Alborz's brief). ── */}
+      {clearSheet && (
+        <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setClearSheet(null); }}>
+          <div {...clearSheetSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...clearSheetSwipe.style }}>
+            <div style={OVERLAY.grabber(C.midnight)} />
+            <div style={{ ...M.type.title, color: C.midnight }}>{clearSheet.name}</div>
+            <div style={{ ...sheetCaptionDark, marginBottom: 8 }}>with {groupName}</div>
+            <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doClearShow(clearSheet.showId)}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Clear from my shelf</span>
+              <span style={sheetSub}>Stays proposed for the others, and your answer stays. Search for it to bring it back.</span>
             </button>
           </div>
         </div>

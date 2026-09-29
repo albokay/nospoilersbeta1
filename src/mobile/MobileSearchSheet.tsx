@@ -36,8 +36,12 @@ export default function MobileSearchSheet({
     /** CP5: rooms the viewer LEFT — listed as "· rejoin", selecting re-enters
      *  (clears the "has left" marker via start_show_room's re-join path). */
     rejoinShowIds?: Set<string>;
+    /** Cleared proposals (2026-09-29): proposals the viewer "x"-ed off their
+     *  shelf — listed plainly, selecting brings the row back as it was. */
+    restoreShowIds?: Set<string>;
     onProposeExisting: (show: Show) => void;
     onRejoin?: (show: Show) => void;
+    onRestore?: (show: Show) => void;
   };
   /** Picker commit-button label override (default "add to my shows") — the
    *  onboarding flow reuses this sheet and advances with "next". */
@@ -141,6 +145,11 @@ export default function MobileSearchSheet({
                   // CP5: re-enter a room you'd left (marker clears server-side).
                   <button key={s.id} style={resultRow} onClick={() => groupContext.onRejoin?.(s)}>
                     {s.name} · rejoin
+                  </button>
+                ) : groupContext?.restoreShowIds?.has(s.id) ? (
+                  // Cleared proposals (2026-09-29): the row comes back as it was.
+                  <button key={s.id} style={resultRow} onClick={() => groupContext.onRestore?.(s)}>
+                    {s.name}
                   </button>
                 ) : groupContext ? (
                   // A show with an existing progress row proposes as-is (no

@@ -204,7 +204,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
         members: on
           ? (g.members.some((m) => m.userId === userId) ? g.members.map((m) => m.userId === userId ? { ...m, voted: true } : m) : [...g.members, { userId, voted: true, s: null, e: null, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }])
           : g.members.filter((m) => m.userId !== userId),
-      }) : [...cur, { showId, roomId: null, inRoom: false, viewerLeft: false, lastActivityAt: null, members: [{ userId, voted: true, s: null, e: null, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] }];
+      }) : [...cur, { showId, roomId: null, inRoom: false, viewerLeft: false, viewerDismissed: false, lastActivityAt: null, members: [{ userId, voted: true, s: null, e: null, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] }];
       return next.filter((g) => g.roomId || g.members.length > 0);
     });
     setLists((l) => { if (!l[showId]) return l; const n = { ...l }; delete n[showId]; return n; });
