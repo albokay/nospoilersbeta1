@@ -139,6 +139,10 @@ export type V2RoomFeedProps = {
    *  position is `viewerProgress` (effective); the handle only names the
    *  initial via `displayNames`. */
   viewerUsername?: string;
+  /** Letters from Sidebar (2026-09-28): the room's parent group for the
+   *  what's-next letter's proposals panel, and where "start the room" goes. */
+  parentGroupId?: string | null;
+  onOpenRoom?: (roomId: string, showId: string) => void;
   viewerProgress: ProgressEntry | null;
   /** Caller's user id. May be null for logged-out visitors viewing
    *  public threads; interactive controls route through onAuthRequired. */
@@ -279,6 +283,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     seasons,
     positions,
     viewerUsername,
+    parentGroupId = null,
+    onOpenRoom,
     viewerProgress,
     userId,
     onAuthRequired,
@@ -1080,6 +1086,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                     <V2InlineThread
                       thread={entry.thread}
                       sidebarKind={entry.sidebarKind ?? null}
+                      whatsNextGroupId={parentGroupId}
+                      onOpenRoom={onOpenRoom}
                       displayNames={displayNames}
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}

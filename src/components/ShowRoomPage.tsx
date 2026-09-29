@@ -1077,6 +1077,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   seasons={show?.seasons}
                   positions={roadPositions}
                   viewerUsername={profile?.username}
+                  parentGroupId={parentGroupId}
+                  onOpenRoom={(rid, sid) => navigate(`/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: parentGroupId } })}
                   viewerProgress={progressForShow}
                   userId={user?.id ?? ""}
                   onVisibleEntriesChange={setVisibleEntryIds}

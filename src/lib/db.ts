@@ -1880,6 +1880,7 @@ export async function fetchPublicProgressForUser(
     result[row.show_id] = {
       s: row.season,
       e: row.episode,
+      inPool:          typeof row.in_pool === "boolean" ? row.in_pool : undefined,
       isRewatching:    row.is_rewatching ?? false,
       rewatchS:        row.rewatch_season ?? undefined,
       rewatchE:        row.rewatch_episode ?? undefined,

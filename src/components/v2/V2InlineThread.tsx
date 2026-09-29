@@ -1,3 +1,4 @@
+import WhatsNextPanel from "../WhatsNextPanel";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -46,6 +47,10 @@ export type V2InlineThreadProps = {
   /** Letters from Sidebar (2026-09-28): the letter's kind — responses wear
    *  its label and are tagged S0 E0 so everyone in the room can read them. */
   sidebarKind?: SidebarLetterKind | null;
+  /** The room's parent group + where "start the room" goes — the what's-next
+   *  letter's proposals panel (2026-09-28). */
+  whatsNextGroupId?: string | null;
+  onOpenRoom?: (roomId: string, showId: string) => void;
   /** Naming arc (2026-07-07): username → the viewer's given name. Display-
    *  only; forwarded to RepliesList + HighlightableBody. */
   displayNames?: Record<string, string>;
@@ -101,6 +106,8 @@ export type V2InlineThreadProps = {
 export default function V2InlineThread({
   thread,
   sidebarKind = null,
+  whatsNextGroupId = null,
+  onOpenRoom,
   displayNames,
   groupId,
   viewerProgress,
@@ -683,6 +690,12 @@ export default function V2InlineThread({
             onDeleteHighlight={handleDeleteHighlight}
           />
         </div>
+      )}
+
+      {/* Letters from Sidebar (2026-09-28): the what's-next letter carries
+          the group's proposals under its body — the opt-in moment. */}
+      {sidebarKind === "whats_next" && whatsNextGroupId && userId && !isTombstone && !editing && (
+        <WhatsNextPanel groupId={whatsNextGroupId} userId={userId} mobile={mobileIdiom} onOpenRoom={onOpenRoom} />
       )}
 
       {/* Inline error for highlight create / delete failures (overlap /

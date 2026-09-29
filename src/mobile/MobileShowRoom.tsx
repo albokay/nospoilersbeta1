@@ -1089,6 +1089,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               seasons={show?.seasons}
               positions={roadPositions}
               viewerUsername={profile?.username}
+              parentGroupId={parentGroupId}
+              onOpenRoom={(rid, sid) => navigate(`/m/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: parentGroupId } })}
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
           )}

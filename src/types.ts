@@ -157,6 +157,9 @@ export type Ping = {
 // v2 (2026-05-08): also carries the four-status flag, canon-pin, and four shelf blurbs.
 // All v2 fields are optional so legacy callers that don't read them stay correct.
 export type ProgressEntry = {
+  /** progress.in_pool — the show is on this person's own list (a vote-made
+   *  S0 E0 row is not). Only the public-progress RPC fills it (2026-09-28). */
+  inPool?: boolean;
   s: number;
   e: number;
   isRewatching?: boolean;
