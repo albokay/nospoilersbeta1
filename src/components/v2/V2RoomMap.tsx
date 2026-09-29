@@ -1215,12 +1215,16 @@ export default function V2RoomMap({
             if (!row.isFirstOfSeason) return null;
             if (mobile) return <React.Fragment key={rowKey}>{mobileStrip}</React.Fragment>;
             const range = seasonRowRange[row.season];
-            // Stacked folds read as crosses (Alborz 2026-08-21): when the
-            // season BELOW is folded too, this strip's marker is the
-            // departed-member-style 8px dot ON the line (not terminating
-            // it) instead of the dash; only the bottom season of each
-            // folded stack keeps the dash.
-            const stackedAbove = collapsedSeasons.has(row.season + 1) && !!seasonRowRange[row.season + 1];
+            // Every folded season carries the dash (Alborz 2026-09-29 — the
+            // 8px dot that stacked folds used to get read like a departed
+            // member's end dot, and a fold above an open season looked
+            // different from a fold above a folded one): the LATEST folded
+            // season keeps the full-width dash; every earlier folded season
+            // gets a shorter one. A member's spine crosses the dash when
+            // they're past the season and stops on it when their last
+            // episode is inside.
+            const latestFolded = Math.max(...[...collapsedSeasons].filter((sn) => !!seasonRowRange[sn]));
+            const shortDash = row.season !== latestFolded;
             return (
               <React.Fragment key={rowKey}>
                 {seasonBreak}
@@ -1263,22 +1267,12 @@ export default function V2RoomMap({
                           }}
                         />
                       )}
-                      {stackedAbove ? (
-                        <div
-                          style={{
-                            position: "absolute", left: CELL / 2 - 4, top: ROW_HEIGHT / 2 - 4,
-                            width: 8, height: 8, borderRadius: "50%",
-                            background: CANON.business,
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            position: "absolute", left: 0, top: ROW_HEIGHT / 2 - 1, width: CELL, height: 2,
-                            background: CANON.business,
-                          }}
-                        />
-                      )}
+                      <div
+                        style={{
+                          position: "absolute", left: shortDash ? CELL / 4 : 0, top: ROW_HEIGHT / 2 - 1, width: shortDash ? CELL / 2 : CELL, height: 2,
+                          background: CANON.business,
+                        }}
+                      />
                     </div>
                   );
                 })}
