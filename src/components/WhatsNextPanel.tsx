@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchGroupDashboard, fetchShows, fetchPeopleGroupMembers, fetchContactNames, fetchPublicProgressForUser,
+  fetchGroupDashboard, fetchShows, fetchPeopleGroupMembers, fetchContactNames, fetchPublicProgressForUser, fetchBrowseAutoRows,
   setShowVote, ensureProgressRow, startShowRoom, createShow,
   type Show, type GroupDashboardShow, type BrowseShow,
 } from "../lib/db";
@@ -10,17 +10,20 @@ import { personDisplayName, joinNames } from "../lib/groupNames";
 import { CANON } from "../styles/canon";
 import YesNoToggle from "./YesNoToggle";
 import InviteShowCard from "./InviteShowCard";
-import BrowseRows from "./BrowseRows";
-import MobileBrowseRows from "../mobile/MobileBrowseRows";
 
 /**
  * WhatsNextPanel (letters from Sidebar, Alborz 2026-09-28): the opt-in moment
  * under the "what's next" letter. Three parts, in his order: the group's
  * proposals (poster, "Name · trailer", who's in, the yes/no toggle, "start
  * the room" once you're in), then the members' own lists (quieter, a
- * "propose" button), then the browse strip whose posters open the trailer
+ * "propose" button), then a browse strip whose posters open the trailer
  * card with a yes/no toggle — yes proposes the show here, creating its
  * catalog row when Sidebar doesn't have it yet (the invite landing's path).
+ * The strip is the panel's own (small posters, sideways scroll): the
+ * dashboard's browse rows are sized for a full page and overflowed the
+ * ticket (Alborz 2026-09-28). "Your lists" = the dashboard's "You want to
+ * watch" shelf, i.e. the wanted stamp with progress still at zero (his
+ * 09-28 note: the old in-pool rows from testing were never on a shelf).
  * Both idioms; the ticket's dark-on-sky palette.
  */
 type Member = { userId: string; username: string; displayName?: string | null };
@@ -42,6 +45,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   const [posters, setPosters] = useState<Record<string, string | null>>({});
   const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
   const [card, setCard] = useState<Card | null>(null);
+  const [browse, setBrowse] = useState<BrowseShow[]>([]);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [failed, setFailed] = useState(false);
   const asked = useRef(new Set<string>());
@@ -56,15 +60,16 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
         ]);
         if (cancelled) return;
         setDash(d); setShows(s); setMembers(m); setContactNames(cn);
-        // The members' own lists: S0 E0 rows they put there themselves
-        // (in_pool), not stopped, not hidden, and not already in this group.
+        // The members' "You want to watch" shelves (lib/reference.ts): the
+        // wanted stamp set, progress still at zero, not stopped, not hidden,
+        // and not already in this group.
         const inGroup = new Set(d.map((g) => g.showId));
         const owners: Record<string, string[]> = {};
         await Promise.all(m.map(async (mem) => {
           try {
             const prog = await fetchPublicProgressForUser(mem.userId);
             for (const [showId, p] of Object.entries(prog)) {
-              if (p.inPool !== true || (p.s ?? 0) > 0 || (p.e ?? 0) > 0 || p.stoppedWatching || p.shelfHiddenAt || inGroup.has(showId)) continue;
+              if (!p.wantedAt || (p.s ?? 0) > 0 || (p.e ?? 0) > 0 || p.stoppedWatching || p.shelfHiddenAt || inGroup.has(showId)) continue;
               (owners[showId] ??= []).push(mem.userId);
             }
           } catch { /* one member's list missing is fine */ }
@@ -76,6 +81,11 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     })();
     return () => { cancelled = true; };
   }, [groupId, userId]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchBrowseAutoRows().then((r) => { if (!cancelled) setBrowse([...r.popular, ...r.startingUp]); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const showById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -113,6 +123,17 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     for (const r of listRows) if (r.show.tvmazeId) ids.add(Number(r.show.tvmazeId));
     return ids;
   }, [dash, showById, listRows]);
+  const strip = useMemo(() => {
+    const seen = new Set<number>();
+    const out: BrowseShow[] = [];
+    for (const b of browse) {
+      if (seen.has(b.tvmazeId) || excludeTvmazeIds.has(b.tvmazeId)) continue;
+      seen.add(b.tvmazeId);
+      out.push(b);
+      if (out.length >= 14) break;
+    }
+    return out;
+  }, [browse, excludeTvmazeIds]);
 
   const withBusy = async (key: string, fn: () => Promise<void>) => {
     setBusy((b) => new Set(b).add(key));
@@ -170,6 +191,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   const heading: React.CSSProperties = { fontFamily: INTER, fontSize: 14, fontWeight: 700, color: dark };
   const captionStyle: React.CSSProperties = { fontFamily: INTER, fontSize: mobile ? 12 : 13, lineHeight: 1.45, color: "rgba(26,58,74,0.7)" };
   const posterW = mobile ? 40 : 44, posterH = mobile ? 56 : 62;
+  const stripW = mobile ? 52 : 60, stripH = mobile ? 74 : 84;
   const startPill: React.CSSProperties = { padding: mobile ? "5px 12px" : "8px 16px", minHeight: mobile ? 28 : 36, borderRadius: 9999, background: CANON.identity, color: CANON.cream, fontFamily: INTER, fontWeight: 700, fontSize: mobile ? 12 : 13, border: "none", cursor: "pointer", flexShrink: 0 };
   const ghostPill: React.CSSProperties = { padding: "6px 14px", minHeight: 32, borderRadius: 9999, background: "transparent", color: "rgba(26,58,74,0.85)", fontFamily: INTER, fontWeight: 700, fontSize: 12, border: "2px solid rgba(26,58,74,0.4)", cursor: "pointer", flexShrink: 0 };
 
@@ -237,12 +259,22 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={heading}>Or find something new</div>
-        <div style={{ textAlign: "left" }}>
-          {mobile
-            ? <MobileBrowseRows excludeTvmazeIds={excludeTvmazeIds} onPick={(b) => { const cat = catalogFor(b); setCard({ id: cat ? cat.id : `tv-${b.tvmazeId}`, name: b.name, tvmazeId: b.tvmazeId, catalogId: cat ? cat.id : null }); }} />
-            : <BrowseRows excludeTvmazeIds={excludeTvmazeIds} onPick={(b) => { const cat = catalogFor(b); setCard({ id: cat ? cat.id : `tv-${b.tvmazeId}`, name: b.name, tvmazeId: b.tvmazeId, catalogId: cat ? cat.id : null }); }} />}
+        <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+          {strip.map((b) => (
+            <button
+              key={b.tvmazeId}
+              type="button"
+              aria-label={`Open the trailer for ${b.name}`}
+              onClick={() => { const cat = catalogFor(b); setCard({ id: cat ? cat.id : `tv-${b.tvmazeId}`, name: b.name, tvmazeId: b.tvmazeId, catalogId: cat ? cat.id : null }); }}
+              style={{ flex: "0 0 auto", width: stripW, height: stripH, borderRadius: 6, overflow: "hidden", border: "none", padding: 0, background: CANON.cream, cursor: "pointer" }}
+            >
+              {b.imageUrl
+                ? <img src={b.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontFamily: INTER, fontSize: 9, lineHeight: 1.2, color: dark, padding: 4, boxSizing: "border-box", textAlign: "center" }}>{b.name}</span>}
+            </button>
+          ))}
+          {strip.length === 0 && <div style={captionStyle}>Nothing to browse right now.</div>}
         </div>
-        <div style={captionStyle}>Tap a poster for its trailer, then say yes or no.</div>
       </div>
 
       {card && (
