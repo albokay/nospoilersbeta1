@@ -4,7 +4,7 @@ import {
   setShowVote, ensureProgressRow, startShowRoom, createShow,
   type Show, type GroupDashboardShow, type BrowseShow,
 } from "../lib/db";
-import { tvmazeEpisodes, slugify, fetchTvmazePoster } from "../lib/tvmaze";
+import { tvmazeEpisodes, slugify, fetchTvmazePoster, tvmazeSearch, networkLabel, type TVmazeShow } from "../lib/tvmaze";
 import { getTrailerKeyCached } from "../lib/trailers";
 import { personDisplayName, joinNames } from "../lib/groupNames";
 import { CANON } from "../styles/canon";
@@ -31,11 +31,14 @@ type Card = { id: string; name: string; tvmazeId: number; catalogId: string | nu
 
 const INTER = '"Inter", sans-serif';
 
-export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpenRoom }: {
+export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpenRoom, searchOpen = false }: {
   groupId: string;
   userId: string;
   mobile?: boolean;
   onOpenRoom?: (roomId: string, showId: string) => void;
+  /** The letter's "Search for a show…" button (its Highlight slot): opens
+   *  the search field above the browse strip and focuses it. */
+  searchOpen?: boolean;
 }) {
   const [dash, setDash] = useState<GroupDashboardShow[] | null>(null);
   const [shows, setShows] = useState<Show[]>([]);
@@ -46,6 +49,11 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
   const [card, setCard] = useState<Card | null>(null);
   const [browse, setBrowse] = useState<BrowseShow[]>([]);
+  const [query, setQuery] = useState("");
+  const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
+  const searchRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const debounceRef = useRef<number | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [failed, setFailed] = useState(false);
   const asked = useRef(new Set<string>());
@@ -86,6 +94,26 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     fetchBrowseAutoRows().then((r) => { if (!cancelled) setBrowse([...r.popular, ...r.startingUp]); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+  // The search field: catalog matches at once, TVMaze after a short pause
+  // (the invite landing's search, minus the parking).
+  useEffect(() => {
+    if (!searchOpen) return;
+    window.setTimeout(() => {
+      searchRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      inputRef.current?.focus();
+    }, 60);
+  }, [searchOpen]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setTvResults([]); return; }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    let cancelled = false;
+    debounceRef.current = window.setTimeout(async () => {
+      try { const r = await tvmazeSearch(q); if (!cancelled) setTvResults(r); }
+      catch { if (!cancelled) setTvResults([]); }
+    }, 320);
+    return () => { cancelled = true; if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+  }, [query]);
 
   const showById = useMemo(() => {
     const m: Record<string, Show> = {};
@@ -123,6 +151,25 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     for (const r of listRows) if (r.show.tvmazeId) ids.add(Number(r.show.tvmazeId));
     return ids;
   }, [dash, showById, listRows]);
+  const inGroupIds = useMemo(() => new Set((dash ?? []).map((g) => g.showId)), [dash]);
+  const catalogMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [] as Show[];
+    return shows.filter((s) => !s.isHidden && !inGroupIds.has(s.id) && s.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [query, shows, inGroupIds]);
+  const tvMatches = useMemo(() => {
+    const known = new Set(shows.map((s) => s.id));
+    const seen = new Set<string>();
+    const out: TVmazeShow[] = [];
+    for (const tv of tvResults) {
+      const id = slugify(tv.name);
+      if (known.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(tv);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [tvResults, shows]);
   const strip = useMemo(() => {
     const seen = new Set<number>();
     const out: BrowseShow[] = [];
@@ -257,8 +304,47 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div ref={searchRef} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={heading}>Or find something new</div>
+        {searchOpen && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <input
+              ref={inputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search for a show"
+              aria-label="Search for a show"
+              style={{ width: "100%", boxSizing: "border-box", height: 40, borderRadius: 9999, border: "none", background: CANON.cream, color: dark, fontFamily: INTER, fontSize: 15, padding: "0 16px", outline: "none" }}
+            />
+            {(catalogMatches.length > 0 || tvMatches.length > 0) && (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {catalogMatches.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => { if (s.tvmazeId) setCard({ id: s.id, name: s.name, tvmazeId: Number(s.tvmazeId), catalogId: s.id }); else vote(s.id, true); }}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid rgba(26,58,74,0.15)", padding: "9px 4px", cursor: "pointer", fontFamily: INTER, color: dark }}
+                  >
+                    <span style={{ fontSize: 15, fontWeight: 600 }}>{s.name}</span>
+                    <span style={{ fontSize: 13, color: "rgba(26,58,74,0.7)", flexShrink: 0 }}>{s.tvmazeId ? "trailer" : "propose"}</span>
+                  </button>
+                ))}
+                {tvMatches.map((tv) => (
+                  <button
+                    key={tv.id}
+                    type="button"
+                    onClick={() => setCard({ id: `tv-${tv.id}`, name: tv.name, tvmazeId: tv.id, catalogId: null })}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid rgba(26,58,74,0.15)", padding: "9px 4px", cursor: "pointer", fontFamily: INTER, color: dark }}
+                  >
+                    <span style={{ fontSize: 15, fontWeight: 600 }}>{tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 400, color: "rgba(26,58,74,0.7)" }}> · {networkLabel(tv)}</span> : null}</span>
+                    <span style={{ fontSize: 13, color: "rgba(26,58,74,0.7)", flexShrink: 0 }}>trailer</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
           {strip.map((b) => (
             <button

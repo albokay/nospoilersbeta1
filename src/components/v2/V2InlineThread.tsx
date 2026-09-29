@@ -186,6 +186,9 @@ export default function V2InlineThread({
   // Ref on the Highlight button so we can capture its bounding rect at
   // click time and pass it to the picker for anchored positioning.
   const highlightBtnRef = useRef<HTMLButtonElement>(null);
+  // A what's-next letter from Sidebar (2026-09-28): the Highlight slot
+  // searches for a show instead; the field opens in the proposals panel.
+  const [sbSearchOpen, setSbSearchOpen] = useState(false);
 
   // Setting a pending reference (from the entry's Quote button OR from
   // RepliesList's per-reply quote affordance) auto-opens the composer so
@@ -695,7 +698,7 @@ export default function V2InlineThread({
       {/* Letters from Sidebar (2026-09-28): the what's-next letter carries
           the group's proposals under its body — the opt-in moment. */}
       {sidebarKind === "whats_next" && whatsNextGroupId && userId && !isTombstone && !editing && (
-        <WhatsNextPanel groupId={whatsNextGroupId} userId={userId} mobile={mobileIdiom} onOpenRoom={onOpenRoom} />
+        <WhatsNextPanel groupId={whatsNextGroupId} userId={userId} mobile={mobileIdiom} onOpenRoom={onOpenRoom} searchOpen={sbSearchOpen} />
       )}
 
       {/* Inline error for highlight create / delete failures (overlap /
@@ -756,7 +759,18 @@ export default function V2InlineThread({
               </button>
             </>
           )}
-          {groupId && (
+          {groupId && sidebarKind === "whats_next" ? (
+            // A what's-next letter from Sidebar (2026-09-28): nothing to
+            // highlight — the slot searches for a show instead, opening the
+            // search field in the proposals panel above (his ask).
+            <button
+              className="btn sb-hl-entry"
+              onClick={() => setSbSearchOpen(true)}
+              style={sPillGeom}
+            >
+              Search for a show…
+            </button>
+          ) : groupId && (
             // Accent fill kept (option B); hover = Sky fill + Accent
             // outline via the sb-hl-entry class (theme.ts, 2026-08-13).
             // On mobile (2026-09-02) the button opens the desktop-only
