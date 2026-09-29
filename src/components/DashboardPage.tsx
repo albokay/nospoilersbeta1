@@ -94,6 +94,7 @@ import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, endOfShow, indexPasses, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "./StanceToggle";
+import YesNoToggle from "./YesNoToggle";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
@@ -956,7 +957,7 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
-    type Row = { pill: PillData; name: string; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
+    type Row = { pill: PillData; name: string; passed: boolean; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
@@ -971,6 +972,11 @@ export default function DashboardPage() {
       if (!gs.roomId && gs.viewerDismissed) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
+      // Proposal answers (Alborz 2026-09-29): a proposal you passed on reads
+      // dashed and sinks to the bottom of the proposed shelf — for you only.
+      const selfVotedHere = !!gs.members.find((mm) => mm.userId === selfUserId)?.voted;
+      const myPass = passes[gs.showId]?.[selfUserId];
+      const passed = !gs.roomId && !selfVotedHere && (myPass === "out" || myPass === "seen");
       // Opted-in members other than you → the avatars overlapping the pill.
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
@@ -996,15 +1002,17 @@ export default function DashboardPage() {
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, furthestFriend, tier, lastActivityAt: gs.lastActivityAt };
+      const row = { pill, passed, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, furthestFriend, tier, lastActivityAt: gs.lastActivityAt };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
     // Currently-watching shelf: by bucket, then most recent activity within it.
     const byActivity = (a: Row, b: Row) =>
       (a.tier - b.tier) || ((b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)) || a.name.localeCompare(b.name);
-    return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byName) };
-  }, [groupShows, showsById, selfUserId, memberNameById, roomDnf, finishedRoomIds]);
+    // Passed-on proposals last (2026-09-29), then by name.
+    const byPassThenName = (a: Row, b: Row) => (Number(a.passed) - Number(b.passed)) || byName(a, b);
+    return { watching: watching.sort(byActivity), notStarted: notStarted.sort(byPassThenName) };
+  }, [groupShows, showsById, selfUserId, memberNameById, roomDnf, finishedRoomIds, passes]);
 
   // ── New-activity dots ──────────────────────────────────────────────────────
   // Per room: blue = new VISIBLE writing; red = new INVISIBLE (ahead-of-progress)
@@ -1410,7 +1418,10 @@ export default function DashboardPage() {
     // A "seen it" member (2026-09-29) opens at the end of what's aired —
     // they must land on a progress before entering; changeable in the card.
     const seenHere = myStanceFor(pill.showId) === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
-    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
+    // Your current progress whenever you have any (2026-09-29: a friend's
+    // proposal you'd finished elsewhere defaulted to zero — a button press
+    // without touching the picker would have written zero over it).
+    setDeclaredProgress(cur && (cur.s > 0 || cur.e > 0) ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle visible in the solo modal
     // (voting is a want-to-watch concept), so a "yes" can be taken back by
     // toggling — the second un-vote path besides remove-from-pool.
@@ -2053,7 +2064,7 @@ export default function DashboardPage() {
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
                   <div {...interestedTipProps(r.pill.showId, r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
-                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} passLabel={(() => { const st = myStanceFor(r.pill.showId); return st === "out" || st === "seen" ? passSlotLabel(st) : null; })()} onClick={() => onPillClick(r.pill, r.name)} />
+                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} dashed={r.passed} passLabel={(() => { const st = myStanceFor(r.pill.showId); return st === "out" || st === "seen" ? passSlotLabel(st) : null; })()} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   {/* Cleared proposals (2026-09-29): the corner "x" the room
                       pills have — here it clears the proposal from YOUR shelf. */}
@@ -2497,6 +2508,11 @@ export default function DashboardPage() {
                   toggle) keeps the full content unconditionally. */}
               {(clicked.mode === "solo" || clicked.mode === "vote") && (() => {
                 const withToggle = clicked.mode === "vote" || !!clicked.voteToggle;
+                // Finished already (Alborz 2026-09-29): a proposal you've logged to
+                // the end of what's aired gets no progress step ("watched more?"
+                // made no sense) — the show room is where progress changes.
+                const end = endOfShow(showsById[clicked.showId]);
+                const atEnd = withToggle && curVal.s > 0 && curVal.s === end.s && curVal.e === end.e;
                 return (
                   <>
                     {withToggle && (
@@ -2513,13 +2529,18 @@ export default function DashboardPage() {
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           {/* A pass closes the card at once (Alborz 2026-09-29);
                               clicking the show again opens the seen-it flow. */}
-                          <StanceToggle value={myStance} onChange={(v) => { doStance(clicked.showId, v); if (v !== "in") setClicked(null); }} />
+                          {/* The three answers belong to a PROPOSAL; a browse pick nobody
+                              has answered yet keeps the plain yes/no (Alborz 2026-09-29). */}
+                          {gs
+                            ? <StanceToggle value={myStance} onChange={(v) => { doStance(clicked.showId, v); if (v !== "in") setClicked(null); }} />
+                            : <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />}
                         </div>
                       </>
                     )}
                     {(!withToggle || optedIn || seenIt) && (
                       <>
                         {withToggle && <div style={yellowDivider} />}
+                        {!atEnd && (<>
                         <div style={yellowTitle}>{seenIt && curVal.s === 0 && curVal.e === 0 ? "How far did you get?" : curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
                         {seenIt && curVal.s === 0 && curVal.e === 0 && (
                           <div style={{ marginTop: 8, color: CANON.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
@@ -2538,6 +2559,7 @@ export default function DashboardPage() {
                           />
                         </div>
                         <div style={yellowDivider} />
+                        </>)}
                         {/* Verb model (Alborz 2026-08-12): room exists →
                             "Enter show room"; no room → "Open a show room";
                             visible friend writing keeps the Read pull. The
@@ -2550,7 +2572,7 @@ export default function DashboardPage() {
                           ) : !gs?.roomId && optedCount <= 1 && (
                             <div style={modalJoinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
-                          <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
+                          {!atEnd && <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>}
                         </div>
                       </>
                     )}
@@ -2566,7 +2588,7 @@ export default function DashboardPage() {
                   <div className="d-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                     <OneSelectProgress
                       show={showsById[clicked.showId] ?? { seasons: [] }}
-                      value={{ s: 0, e: 0 }}
+                      value={curVal}
                       allowZero
                       requireConfirm={false}
                       pillBg="transparent"
@@ -2996,7 +3018,7 @@ function CopyRow({ email, link, error }: { email: string; link?: string; error?:
 
 // A simple no/yes pill toggle (used for the vote question).
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
-function GroupPill({ pill, name, furthestFriend, sync = false, passLabel = null, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; /** Letters in transit (2026-09-25): level with every watching friend → a small cream star + "in sync" in the right slot. */ sync?: boolean; /** Proposal answers (2026-09-29): your own pass — "seen it" / "sitting this out" — in the right slot. */ passLabel?: string | null; onClick: () => void }) {
+function GroupPill({ pill, name, furthestFriend, sync = false, passLabel = null, dashed = false, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; /** Letters in transit (2026-09-25): level with every watching friend → a small cream star + "in sync" in the right slot. */ sync?: boolean; /** Proposal answers (2026-09-29): your own pass — "seen it" / "sitting this out" — in the right slot. */ passLabel?: string | null; /** A proposal you passed on (Alborz 2026-09-29): dashed cream outline. */ dashed?: boolean; onClick: () => void }) {
   // Fill = your relationship to the show (2026-07-07, see groupPills.ts):
   //   green    = open show room       → solid green fill, cream text
   //   cream    = proposal you're in   → cream fill, green text
@@ -3010,7 +3032,7 @@ function GroupPill({ pill, name, furthestFriend, sync = false, passLabel = null,
     // Outlined tier is filled with the page's sky (was transparent) so the
     // pressable plate behind it can't show through (2026-08-18).
     background: isGreen ? C.green : isCream ? C.cream : C.sky,
-    border: (isGreen || isCream) ? "2px solid transparent" : "2px solid var(--canon-cream,#fef8ea)",
+    border: (isGreen || isCream) ? "2px solid transparent" : `2px ${dashed ? "dashed" : "solid"} var(--canon-cream,#fef8ea)`,
     color: isGreen ? CANON.cream : isCream ? C.green : CANON.cream,
     cursor: "pointer", textAlign: "left",
   };
