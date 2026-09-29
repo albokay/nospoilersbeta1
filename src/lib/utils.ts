@@ -61,21 +61,28 @@ export const isZeroProgress = (p?: { s: number; e: number } | null) =>
 // can know it's the finale (Alborz 2026-09-28): season counts hold aired
 // episodes only, so on the newest season of a running show the last aired
 // episode may be mid-season. Known complete = a later season has aired
-// episodes, or the show has ended (status is stored as Running or Ended).
-// The picker then reads "you've finished: season 1"; the newest season of a
-// running show reads "S03 E08" until the next season's first episode airs.
-export const isSeasonEnd = (s: number, e: number, show?: { seasons?: number[]; status?: string | null } | null): boolean => {
+// episodes, or the show has ended (status is stored as Running or Ended),
+// or — since the refresh stores what TVMaze lists (letters from Sidebar,
+// same day) — every listed episode of the season has aired and no further
+// episode of it is scheduled. The picker then reads "you've finished:
+// season 1"; without the listing, the newest season of a running show
+// reads "S03 E08" until the next season's first episode airs.
+export type SeasonShape = { seasons?: number[]; status?: string | null; seasonsPlanned?: number[] | null; nextAirAt?: string | null; nextAirSeason?: number | null };
+export const isSeasonEnd = (s: number, e: number, show?: SeasonShape | null): boolean => {
   const seasons = show?.seasons || [];
   if (s < 1 || e < 1 || s > seasons.length) return false;
   if (e !== (seasons[s - 1] || 0)) return false;
   const laterAired = seasons.slice(s).some((n) => (n || 0) > 0);
   const ended = !!show?.status && show.status !== "Running";
-  return laterAired || ended;
+  const planned = show?.seasonsPlanned?.[s - 1];
+  const moreScheduled = show?.nextAirSeason === s && !!show?.nextAirAt;
+  const listedAllAired = planned != null && planned > 0 && (seasons[s - 1] || 0) >= planned && !moreScheduled;
+  return laterAired || ended || listedAllAired;
 };
 
 // A position inside a sentence: "season 1" at a known finale, else "S1 E8"
 // (natural numbers — the tooltips' format).
-export const positionLabel = (s: number, e: number, show?: { seasons?: number[]; status?: string | null } | null): string =>
+export const positionLabel = (s: number, e: number, show?: SeasonShape | null): string =>
   isSeasonEnd(s, e, show) ? `season ${s}` : `S${s} E${e}`;
 
 // Partial email mask for display surfaces where the address shouldn't be

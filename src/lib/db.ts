@@ -49,6 +49,15 @@ export type Show = {
   lastSyncedAt?: string;
   genres?: string[];
   tvmazeType?: string;
+  /** Letters from Sidebar (2026-09-28): what TVMaze lists per season, aired
+   *  or not — so a season's last AIRED episode can be known as its finale
+   *  (seasons[] holds aired counts only). Filled by the refresh. */
+  seasonsPlanned?: number[] | null;
+  /** The next unaired regular episode's airstamp + season (null when none
+   *  is scheduled) — the returning-season letter's clock, and a "this
+   *  season isn't over" signal for the finale rule. */
+  nextAirAt?: string | null;
+  nextAirSeason?: number | null;
 };
 
 // ── Shows catalog cache (egress) ────────────────────────────────────────────
@@ -74,6 +83,9 @@ const _rowToShow = (row: any): Show => ({
   lastSyncedAt: row.last_synced_at ?? undefined,
   genres: row.genres ?? [],
   tvmazeType: row.tvmaze_type ?? undefined,
+  seasonsPlanned: row.seasons_planned ?? null,
+  nextAirAt: row.next_air_at ?? null,
+  nextAirSeason: row.next_air_season ?? null,
 });
 const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
 
@@ -110,7 +122,7 @@ export async function fetchShows(): Promise<Show[]> {
   _showsInflight = (async () => {
     const { data, error } = await supabase
       .from("shows")
-      .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type")
+      .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type, seasons_planned, next_air_at, next_air_season")
       .order("name");
     if (error) throw error;
     _showsCache = (data ?? []).map(_rowToShow);
@@ -1056,6 +1068,11 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   const episodes: any[] = await epRes.json();
   const nowIso = new Date().toISOString();
   const bySeason: Record<number, number> = {};
+  // Letters from Sidebar (2026-09-28): alongside the aired counts, what
+  // TVMaze LISTS per season (aired or not) and the next unaired episode —
+  // the same list, nothing extra fetched.
+  const plannedBySeason: Record<number, number> = {};
+  let nextAir: { at: string; season: number } | null = null;
   for (const ep of episodes) {
     const isRegular = ep.type === "regular" || !ep.type;
     // Only count episodes that have actually aired. airstamp is ISO 8601
@@ -1064,11 +1081,21 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
     if (isRegular && hasAired) {
       bySeason[ep.season] = (bySeason[ep.season] ?? 0) + 1;
     }
+    if (isRegular && typeof ep.season === "number") {
+      plannedBySeason[ep.season] = (plannedBySeason[ep.season] ?? 0) + 1;
+      if (typeof ep.airstamp === "string" && ep.airstamp > nowIso && (!nextAir || ep.airstamp < nextAir.at)) {
+        nextAir = { at: ep.airstamp, season: ep.season };
+      }
+    }
   }
   const seasonKeys = Object.keys(bySeason).map(Number);
   const maxSeason = seasonKeys.length ? Math.max(...seasonKeys) : 0;
   const seasons: number[] = [];
   for (let i = 1; i <= maxSeason; i++) seasons.push(bySeason[i] ?? 0);
+  const plannedKeys = Object.keys(plannedBySeason).map(Number);
+  const maxPlanned = plannedKeys.length ? Math.max(...plannedKeys) : 0;
+  const seasonsPlanned: number[] = [];
+  for (let i = 1; i <= maxPlanned; i++) seasonsPlanned.push(plannedBySeason[i] ?? 0);
   // seasons may be empty for unreleased shows — that's a valid state. Still
   // proceed with the update so last_synced_at + status get refreshed and the
   // next weekly check picks up the show's transition to airing.
@@ -1093,11 +1120,14 @@ export async function refreshShowIfStale(show: Show): Promise<Show | null> {
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("shows")
-    .update({ seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null, status: normalizedStatus })
+    .update({
+      seasons, last_synced_at: now, genres, tvmaze_type: tvmazeType ?? null, status: normalizedStatus,
+      seasons_planned: seasonsPlanned, next_air_at: nextAir?.at ?? null, next_air_season: nextAir?.season ?? null,
+    })
     .eq("id", show.id);
   if (error) return null;
 
-  const refreshed = { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus };
+  const refreshed: Show = { ...show, seasons, lastSyncedAt: now, genres, tvmazeType, status: normalizedStatus, seasonsPlanned, nextAirAt: nextAir?.at ?? null, nextAirSeason: nextAir?.season ?? null };
   upsertShowInCache(refreshed);
   return refreshed;
 }
