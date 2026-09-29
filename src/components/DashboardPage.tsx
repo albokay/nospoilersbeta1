@@ -91,6 +91,9 @@ import PendingInvitesPanel, { isInviteStale, staleInviteLine, type OtherPendingI
 import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
+import { answerLines, endOfShow, indexPasses, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { fetchGroupShowPasses, setGroupShowPass } from "../lib/db";
+import StanceToggle from "./StanceToggle";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
 import { groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
@@ -514,17 +517,37 @@ export default function DashboardPage() {
   // interested; falls back to the standard progress/notif tip. (showName /
   // selfOpted params kept for the callers — the 2026-08-12 copy no longer
   // uses them.)
-  function interestedTipProps(opted: { username: string }[], _showName: string, _selfOpted: boolean, selfProgText?: string, notif?: string) {
-    if (!opted.length) return tipProps(selfProgText, notif);
-    const names = opted.map((o) => o.username);
+  function interestedTipProps(showId: string, opted: { username: string }[], _showName: string, _selfOpted: boolean, selfProgText?: string, notif?: string) {
+    // Proposal answers (2026-09-29): one line per answer — who's in, who's
+    // sitting this out, who's already seen it (the others only).
+    const lines = answerLines(answerNamesFor(showId));
+    if (!lines.length) return tipProps(selfProgText, notif);
     return {
-      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `i:${names.join(",")}`, text: preventLastWordOrphan(interestedNode(names) ?? ""), wrap: true, ...tipAnchor(e) }),
+      onMouseMove: (e: React.MouseEvent) => moveTip({ key: `i:${showId}:${lines.join("|")}`, text: <>{lines.map((l, i) => <div key={i}>{preventLastWordOrphan(l)}</div>)}</>, wrap: true, ...tipAnchor(e) }),
       onMouseLeave: () => setTip(null),
     };
   }
 
   const selfUserId = user?.id ?? "";
   const inGroup = !!activeGroupId;
+
+  // Proposal answers (2026-09-29): the passes on this group's proposals,
+  // showId → userId → kind. Loaded with the group; a yes-vote is still the
+  // members' `voted` flag.
+  const [passes, setPasses] = useState<Record<string, Record<string, PassKind>>>({});
+  const myStanceFor = (showId: string): Stance | null => {
+    const gs = groupShows.find((s) => s.showId === showId);
+    if (gs?.members.find((m) => m.userId === selfUserId)?.voted) return "in";
+    return passes[showId]?.[selfUserId] ?? null;
+  };
+  const answerNamesFor = (showId: string) => {
+    const gs = groupShows.find((s) => s.showId === showId);
+    const inIds = (gs?.members ?? []).filter((m) => m.voted && m.userId !== selfUserId).map((m) => m.userId);
+    const ps = passes[showId] ?? {};
+    const name = (id: string) => memberNameById[id] ?? "someone";
+    const passers = (kind: PassKind) => Object.entries(ps).filter(([id, k]) => id !== selfUserId && k === kind && !inIds.includes(id)).map(([id]) => name(id));
+    return { in: inIds.map(name), out: passers("out"), seen: passers("seen") };
+  };
 
   // ── Rail (people-groups). Isolated + tolerant so the dashboard works before
   //    the CP1 migration is applied. ─────────────────────────────────────────
@@ -623,6 +646,8 @@ export default function DashboardPage() {
       setGroupShows(rows);
       // The rooms' entry tags for the letters lines — non-blocking, tolerant.
       fetchRoomEntryTags(rows.filter((r) => r.roomId).map((r) => r.roomId as string)).then(setEntryTags).catch(() => {});
+      // Proposal answers (2026-09-29): the passes, tolerant.
+      fetchGroupShowPasses(groupId).then((ps) => setPasses(indexPasses(ps))).catch(() => {});
       try { sessionStorage.setItem(groupSnapKey(groupId), JSON.stringify(rows)); } catch { /* quota — instant paint just won't happen */ }
       // A group room exposes progress dropdowns for every show in the group —
       // including ones you haven't pooled yet — and they read the same catalog
@@ -1351,7 +1376,10 @@ export default function DashboardPage() {
     // Default the picker to your current progress (solo) so a button press
     // without touching the dropdown can't reset it; 0 for vote/watchq.
     const cur = progress[pill.showId];
-    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
+    // A "seen it" member (2026-09-29) opens at the end of what's aired —
+    // they must land on a progress before entering; changeable in the card.
+    const seenHere = passes[pill.showId]?.[selfUserId] === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
+    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle visible in the solo modal
     // (voting is a want-to-watch concept), so a "yes" can be taken back by
     // toggling — the second un-vote path besides remove-from-pool.
@@ -1399,6 +1427,20 @@ export default function DashboardPage() {
     } catch (e) { console.error("[dashboard] vote failed", e); }
   }
 
+  // Proposal answers (2026-09-29): "I'm in" is the yes-vote; a pass drops the
+  // vote and records its kind. Passes update at once; doVote re-syncs.
+  async function doStance(showId: string, stance: Stance) {
+    if (!activeGroupId || !user) return;
+    const kind: PassKind | null = stance === "in" ? null : stance;
+    setPasses((prev) => {
+      const forShow = { ...(prev[showId] ?? {}) };
+      if (kind) forShow[user.id] = kind; else delete forShow[user.id];
+      return { ...prev, [showId]: forShow };
+    });
+    try { await setGroupShowPass(activeGroupId, showId, user.id, kind); } catch (e) { console.error("[dashboard] pass failed", e); }
+    await doVote(showId, stance === "in");
+  }
+
   async function goToRoom(showId: string) {
     if (!activeGroupId) return;
     try {
@@ -1417,6 +1459,12 @@ export default function DashboardPage() {
       await upsertRewatchStatus(user.id, showId, entry);
       setProgress((prev) => ({ ...prev, [showId]: entry }));
       setOutOfPool((prev) => { const n = new Set(prev); n.delete(showId); return n; }); // mirror in_pool=true
+      // Entering after a pass flips you to "I'm in" (2026-09-29): the pass
+      // row goes; room membership is the "in" from here.
+      if (activeGroupId && passes[showId]?.[user.id]) {
+        setPasses((prev) => { const forShow = { ...(prev[showId] ?? {}) }; delete forShow[user.id]; return { ...prev, [showId]: forShow }; });
+        setGroupShowPass(activeGroupId, showId, user.id, null).catch(() => {});
+      }
       await goToRoom(showId);
     } catch (e) { console.error("[dashboard] declare+start failed", e); }
   }
@@ -1973,8 +2021,8 @@ export default function DashboardPage() {
               {groupShelves.notStarted.map((r) => (
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
-                  <div {...interestedTipProps(r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
-                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} onClick={() => onPillClick(r.pill, r.name)} />
+                  <div {...interestedTipProps(r.pill.showId, r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
+                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} passLabel={passes[r.pill.showId]?.[selfUserId] ? passSlotLabel(passes[r.pill.showId][selfUserId]) : null} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   <OptInAvatars members={r.opted} show={showsById[r.pill.showId]} withTooltip onTip={moveTip} />
                 </div>
@@ -2357,11 +2405,14 @@ export default function DashboardPage() {
         const optedIn = !!gs?.members.find((m) => m.userId === selfUserId)?.voted;
         // "Solo" only when you're the sole opt-in; 2+ opted in → plain show room.
         const optedCount = gs?.members.length ?? 0;
-        // Interest list for the vote question's parenthetical (2026-08-12 —
-        // mirrors the mobile sheet; viewer excluded).
-        const interestedNames = (gs?.members ?? [])
-          .filter((m) => m.userId !== selfUserId)
-          .map((m) => memberNameById[m.userId] ?? "someone");
+        // Proposal answers (2026-09-29): your answer + the others', one line
+        // per answer (viewer excluded). "seen it" opens the progress step at
+        // once, defaulted to the end of what's aired.
+        const myStance = myStanceFor(clicked.showId);
+        const seenIt = myStance === "seen";
+        const answers = answerNamesFor(clicked.showId);
+        const answerText = answerLines(answers);
+        const interestedNames = answers.in;
         const cur = progress[clicked.showId];
         const curVal = cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 };
         // "Read what … have written?" — other members whose earliest ENTRY is
@@ -2412,25 +2463,30 @@ export default function DashboardPage() {
                         {/* Copy pass (Alborz 2026-08-12): the title above
                             names the show; "too" only when someone else is
                             actually interested. */}
-                        <div style={yellowTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
-                        {interestedNames.length > 0 && (
-                          <div style={{ marginTop: 10, color: CANON.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
-                            {preventLastWordOrphan(interestedNode(interestedNames) ?? "")}
+                        <div style={yellowTitle}>{seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`}</div>
+                        {answerText.length > 0 && (
+                          <div style={{ marginTop: 10, color: CANON.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.55, textAlign: "center", opacity: 0.85, display: "flex", flexDirection: "column" }}>
+                            {answerText.map((l, i) => <span key={i}>{preventLastWordOrphan(l)}</span>)}
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                          <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />
+                          <StanceToggle value={myStance} onChange={(v) => doStance(clicked.showId, v)} />
                         </div>
                       </>
                     )}
-                    {(!withToggle || optedIn) && (
+                    {(!withToggle || optedIn || seenIt) && (
                       <>
                         {withToggle && <div style={yellowDivider} />}
-                        <div style={yellowTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        <div style={yellowTitle}>{seenIt && curVal.s === 0 && curVal.e === 0 ? "How far did you get?" : curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        {seenIt && curVal.s === 0 && curVal.e === 0 && (
+                          <div style={{ marginTop: 8, color: CANON.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
+                            {preventLastWordOrphan("Your progress is defaulted to the end of the show. Change it if you stopped earlier — only writing up to your episode will unseal for you.")}
+                          </div>
+                        )}
                         <div className="d-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           <OneSelectProgress
                             show={showsById[clicked.showId] ?? { seasons: [] }}
-                            value={curVal}
+                            value={seenIt && curVal.s === 0 && curVal.e === 0 ? endOfShow(showsById[clicked.showId]) : curVal}
                             allowZero
                             requireConfirm={false}
                             pillBg="transparent"
@@ -2446,7 +2502,9 @@ export default function DashboardPage() {
                         {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                         <div style={modalBtnCol}>
                           <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
-                          {!gs?.roomId && optedCount <= 1 && (
+                          {seenIt ? (
+                            <div style={modalJoinNote}>{gs?.roomId ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : "Starting the room flips your status to \u201cI\u2019m in\u201d"}</div>
+                          ) : !gs?.roomId && optedCount <= 1 && (
                             <div style={modalJoinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
                           <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
@@ -2874,30 +2932,8 @@ function CopyRow({ email, link, error }: { email: string; link?: string; error?:
 }
 
 // A simple no/yes pill toggle (used for the vote question).
-function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  // Colored sliding dot carries the active label only: "no" = yellow dot left,
-  // "yes" = green dot right. The inactive label is not shown.
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      style={{
-        // 96×40 (polish pass 2026-09-15; was 84×32) — the knob is a target.
-        border: "none", cursor: "pointer", borderRadius: 9999, padding: 4, width: 96, height: 40,
-        background: C.cream, position: "relative", display: "flex", alignItems: "center",
-      }}
-    >
-      <span style={{
-        position: "absolute", left: value ? 50 : 4, top: 4, width: 42, height: 32, borderRadius: 9999,
-        background: value ? C.green : C.yellow, transition: "left 120ms, background 120ms",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 700, color: C.cream,
-      }}>{value ? "yes" : "no"}</span>
-    </button>
-  );
-}
-
 // ── Group pill (§7) ──────────────────────────────────────────────────────────
-function GroupPill({ pill, name, furthestFriend, sync = false, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; /** Letters in transit (2026-09-25): level with every watching friend → a small cream star + "in sync" in the right slot. */ sync?: boolean; onClick: () => void }) {
+function GroupPill({ pill, name, furthestFriend, sync = false, passLabel = null, onClick }: { pill: PillData; name: string; furthestFriend?: { s: number; e: number } | null; /** Letters in transit (2026-09-25): level with every watching friend → a small cream star + "in sync" in the right slot. */ sync?: boolean; /** Proposal answers (2026-09-29): your own pass — "seen it" / "sitting this out" — in the right slot. */ passLabel?: string | null; onClick: () => void }) {
   // Fill = your relationship to the show (2026-07-07, see groupPills.ts):
   //   green    = open show room       → solid green fill, cream text
   //   cream    = proposal you're in   → cream fill, green text
@@ -2932,6 +2968,8 @@ function GroupPill({ pill, name, furthestFriend, sync = false, onClick }: { pill
         <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", opacity: 0.9 }}>
           furthest progress: S{furthestFriend.s} E{furthestFriend.e}
         </span>
+      ) : passLabel ? (
+        <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", opacity: 0.9 }}>{passLabel}</span>
       ) : sync ? (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 500, fontSize: 13, whiteSpace: "nowrap" }}>
           <CelebrationStar size={12} color={C.cream} />in sync
@@ -3011,14 +3049,6 @@ function Avatar({ letter, state }: { letter?: string; state: "accepted" | "pendi
  *  polish): first names only, viewer excluded, no show name — the
  *  pill/headline already names the show. "A is interested." / "A and B are
  *  interested." Serves both the pill tooltip and the vote modal's line. */
-function interestedNode(names: string[]): string | null {
-  if (!names.length) return null;
-  const list = names.length === 1 ? names[0]
-    : names.length === 2 ? `${names[0]} and ${names[1]}`
-    : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-  return `${list} ${names.length === 1 ? "is" : "are"} interested.`;
-}
-
 /** Per-count icon arrangement (rows, top→bottom), matching the spec's pyramid:
  *  1·alone, 2·side-by-side, 3·triangle, then a growing pyramid. Cap is 8. */
 function pyramidRows(n: number): number[] {
@@ -3074,8 +3104,11 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false, show 
   onTip: (t: TipState | null) => void;
 }) {
   if (!members.length) return null;
+  // Up to five avatars stay separate; past five they overlap like the room
+  // markers so a full group still sits inside the pill (Alborz 2026-09-29).
+  const crowded = members.length > 5;
   return (
-    <div style={optInRow}>
+    <div style={{ ...optInRow, gap: crowded ? 0 : 6 }}>
       {members.map((m, i) => {
         const watched = (m.s ?? 0) > 0 || (m.e ?? 0) > 0;
         const isWriter = !!m.wrote;
@@ -3084,8 +3117,8 @@ function OptInAvatars({ members, withTooltip, onTip, personalFill = false, show 
         // KEEP their sky outline on green pills (a green ring on a green fill
         // would vanish); only non-writer avatars go Personal-green there.
         const avStyle = isWriter
-          ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream }
-          : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}` };
+          ? { ...optInAvatar, background: C.green, border: `2px solid ${C.sky}`, color: CANON.cream, marginLeft: crowded && i ? -7 : 0 }
+          : { ...optInAvatar, border: `2px solid ${personalFill ? C.green : C.cream}`, marginLeft: crowded && i ? -7 : 0 };
         // The avatar tip is ONLY the watched line (Alborz 2026-08-01 — the
         // old "They have writing in here." sub retired; new-writing news
         // lives on the pill's own hover, and writer status stays visible

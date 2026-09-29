@@ -2588,6 +2588,33 @@ export async function fetchGroupShowVotes(groupId: string): Promise<GroupShowVot
   }));
 }
 
+/** Proposal answers (2026-09-29): the two passes on a proposal — "sit this
+ *  out" / "seen it" — one row per (group, member, show). A yes-vote stays a
+ *  group_show_votes row, so counts, room starts and the digest are untouched. */
+export type GroupShowPass = { groupId: string; userId: string; showId: string; kind: "out" | "seen" };
+export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPass[]> {
+  const { data, error } = await supabase
+    .from("group_show_passes")
+    .select("group_id, user_id, show_id, kind")
+    .eq("group_id", groupId);
+  if (error || !data) return [];
+  return (data as any[])
+    .filter((r) => r.kind === "out" || r.kind === "seen")
+    .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind }));
+}
+/** null clears the caller's pass (an "I'm in", or entering the room). */
+export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {
+  if (kind === null) {
+    const { error } = await supabase.from("group_show_passes").delete().eq("group_id", groupId).eq("user_id", userId).eq("show_id", showId);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from("group_show_passes")
+    .upsert({ group_id: groupId, user_id: userId, show_id: showId, kind }, { onConflict: "group_id,user_id,show_id" });
+  if (error) throw error;
+}
+
 /** Toggle the caller's per-group opt-in ("want to watch") for a show. */
 export async function setShowVote(groupId: string, showId: string, voted: boolean): Promise<void> {
   const { data, error } = await supabase.rpc("set_show_vote", {

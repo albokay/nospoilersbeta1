@@ -64,6 +64,9 @@ import { ensureCatalogShow } from "../lib/browseCatalog";
 import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
+import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { fetchGroupShowPasses, setGroupShowPass } from "../lib/db";
+import StanceToggle from "../components/StanceToggle";
 import { groupGenericName, personDisplayName } from "../lib/groupNames";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 
@@ -110,36 +113,6 @@ const C = {
  *  excluded, no show name — the sheet's headline already names the show.
  *  "(A is interested.)" / "(A and B are interested.)" / "(A, B, and C are
  *  interested.)" */
-function interestedLine(names: string[]): string | null {
-  if (!names.length) return null;
-  const list = names.length === 1 ? names[0]
-    : names.length === 2 ? `${names[0]} and ${names[1]}`
-    : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-  return `(${list} ${names.length === 1 ? "is" : "are"} interested.)`;
-}
-
-/** Same sliding yes/no control as desktop's vote modal. */
-function YesNoToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      style={{
-        // 96×40 (polish pass 2026-09-14; was 84×32) so the knob is a real
-        // touch target.
-        border: "none", cursor: "pointer", borderRadius: 9999, padding: 4, width: 96, height: 40,
-        background: C.cream, position: "relative", display: "flex", alignItems: "center",
-      }}
-    >
-      <span style={{
-        position: "absolute", left: value ? 50 : 4, top: 4, width: 42, height: 32, borderRadius: 9999,
-        background: value ? C.green : C.yellow, transition: "left 120ms, background 120ms",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 13, fontWeight: 700, color: C.cream,
-      }}>{value ? "yes" : "no"}</span>
-    </button>
-  );
-}
-
 export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -152,6 +125,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [members, setMembers] = useState<PeopleGroupMember[]>([]);
   const [groupShows, setGroupShows] = useState<GroupDashboardShow[]>([]);
+  // Proposal answers (2026-09-29): the passes on this group's proposals,
+  // showId → userId → kind (desktop parity).
+  const [passes, setPasses] = useState<Record<string, Record<string, PassKind>>>({});
   // Letters in transit (2026-09-25): each room's entry tags, for the row's
   // "letters waiting / to open" segment (lib/letters).
   const [entryTags, setEntryTags] = useState<Record<string, RoomEntryTag[]>>({});
@@ -240,6 +216,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       setGroupShows(rows);
       // The rooms' entry tags for the letters lines — non-blocking, tolerant.
       fetchRoomEntryTags(rows.filter((r) => r.roomId).map((r) => r.roomId as string)).then(setEntryTags).catch(() => {});
+      // Proposal answers (2026-09-29): the passes, tolerant.
+      fetchGroupShowPasses(groupId).then((ps) => setPasses(indexPasses(ps))).catch(() => {});
       // Keep this group's shows' episode lists fresh (12h cadence). Perf
       // (2026-07-07): FULLY non-blocking — the catalog read + TVMaze sync no
       // longer delay refreshGroup resolving (the shelves are already up).
@@ -705,7 +683,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const selfHasShow = pill.shelf === "notStarted" ? selfVoted : pill.selfWatching;
     const mode = selfHasShow ? "solo" : pill.shelf === "notStarted" ? "vote" : "watchq";
     const cur = progress[pill.showId];
-    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : { s: 0, e: 0 });
+    // A "seen it" member (2026-09-29) opens at the end of what's aired.
+    const seenHere = passes[pill.showId]?.[selfUserId] === "seen" && !(cur && (cur.s > 0 || cur.e > 0));
+    setDeclaredProgress(selfHasShow && cur ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle in the solo sheet (desktop
     // parity) — toggling to "no" is the per-group un-vote path.
     setClicked({ showId: pill.showId, name, mode, voteToggle: pill.shelf === "notStarted" });
@@ -752,6 +732,41 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     } catch (e) { console.error("[m-group] vote failed", e); }
   }
 
+  // Proposal answers (2026-09-29): "I'm in" is the yes-vote; a pass drops the
+  // vote and records its kind (desktop parity).
+  async function doStance(showId: string, stance: Stance) {
+    if (!user) return;
+    const kind: PassKind | null = stance === "in" ? null : stance;
+    setPasses((prev) => {
+      const forShow = { ...(prev[showId] ?? {}) };
+      if (kind) forShow[user.id] = kind; else delete forShow[user.id];
+      return { ...prev, [showId]: forShow };
+    });
+    try { await setGroupShowPass(groupId, showId, user.id, kind); } catch (e) { console.error("[m-group] pass failed", e); }
+    await doVote(showId, stance === "in");
+  }
+  const myStanceFor = (showId: string): Stance | null => {
+    const gs = groupShows.find((s) => s.showId === showId);
+    if (gs?.members.find((m) => m.userId === selfUserId)?.voted) return "in";
+    return passes[showId]?.[selfUserId] ?? null;
+  };
+  const answerNamesFor = (showId: string) => {
+    const gs = groupShows.find((s) => s.showId === showId);
+    const inIds = (gs?.members ?? []).filter((m) => m.voted && m.userId !== selfUserId).map((m) => m.userId);
+    const ps = passes[showId] ?? {};
+    const name = (id: string) => memberNameById[id] ?? "someone";
+    const passers = (kind: PassKind) => Object.entries(ps).filter(([id, k]) => id !== selfUserId && k === kind && !inIds.includes(id)).map(([id]) => name(id));
+    return { in: inIds.map(name), out: passers("out"), seen: passers("seen") };
+  };
+  // The proposals row's second line: who's in by name, passes as counts,
+  // then your own pass.
+  const proposalLine = (showId: string): string | null => {
+    const line = answerRowLine(answerNamesFor(showId));
+    const mine = passes[showId]?.[selfUserId];
+    if (!line && !mine) return null;
+    return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
+  };
+
   // Browse-row poster tap (2026-08-17, mirrors DashboardPage.pickBrowseShow):
   // make sure the show is in Sidebar's catalog (same side effect as picking a
   // TVMaze search result), then open the yellow sheet in its plain vote form.
@@ -788,6 +803,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       const entry: ProgressEntry = { s: val.s, e: val.e, highestS: val.s, highestE: val.e };
       await upsertRewatchStatus(user.id, showId, entry);
       setProgress((prev) => ({ ...prev, [showId]: entry }));
+      // Entering after a pass flips you to "I'm in" (2026-09-29).
+      if (passes[showId]?.[user.id]) {
+        setPasses((prev) => { const forShow = { ...(prev[showId] ?? {}) }; delete forShow[user.id]; return { ...prev, [showId]: forShow }; });
+        setGroupShowPass(groupId, showId, user.id, null).catch(() => {});
+      }
       await goToRoom(showId);
     } catch (e) { console.error("[m-group] declare+start failed", e); }
   }
@@ -1051,7 +1071,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={null} onClick={() => onRowClick(r.pill, r.name)} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} />
                 ))}
               </div>
             </>
@@ -1111,9 +1131,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
         // Display names, bare (naming arc: no "@" where a given name renders).
         const readText = visibleWriters.length > 1 ? "Read your friends' letters?" : `Read ${readName}'s letters?`;
-        const interestedNames = (gs?.members ?? [])
-          .filter((m) => m.userId !== selfUserId)
-          .map((m) => memberNameById[m.userId] ?? "someone");
+        // Proposal answers (2026-09-29): your answer + the others', one line
+        // per answer; "seen it" opens the progress step at the end of what's
+        // aired (desktop parity).
+        const myStance = myStanceFor(clicked.showId);
+        const seenIt = myStance === "seen";
+        const answers = answerNamesFor(clicked.showId);
+        const answerText = answerLines(answers);
+        const interestedNames = answers.in;
         return (
           <div style={{ ...sheet, background: C.yellow }}>
             {/* The × lives in a real top bar (polish pass 2026-09-14) —
@@ -1149,25 +1174,30 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         {/* Copy pass (Alborz 2026-08-12): the title above
                             names the show — don't restate it. "too" only
                             when someone else is actually interested. */}
-                        <div style={sheetTitle}>Do you want to watch{interestedNames.length > 0 ? " too" : ""}?</div>
-                        {interestedNames.length > 0 && (
-                          <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
-                            {preventLastWordOrphan(interestedLine(interestedNames) ?? "")}
+                        <div style={sheetTitle}>{seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`}</div>
+                        {answerText.length > 0 && (
+                          <div style={{ marginTop: 10, color: C.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.55, textAlign: "center", opacity: 0.85, display: "flex", flexDirection: "column" }}>
+                            {answerText.map((l, i) => <span key={i}>{preventLastWordOrphan(l)}</span>)}
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                          <YesNoToggle value={optedIn} onChange={(v) => doVote(clicked.showId, v)} />
+                          <StanceToggle value={myStance} onChange={(v) => doStance(clicked.showId, v)} />
                         </div>
                       </>
                     )}
-                    {(!withToggle || optedIn) && (
+                    {(!withToggle || optedIn || seenIt) && (
                       <>
                         {withToggle && <div style={sheetDivider} />}
-                        <div style={sheetTitle}>{curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        <div style={sheetTitle}>{seenIt && curVal.s === 0 && curVal.e === 0 ? "How far did you get?" : curVal.s === 0 && curVal.e === 0 ? "Have you started watching?" : "Have you watched more?"}</div>
+                        {seenIt && curVal.s === 0 && curVal.e === 0 && (
+                          <div style={{ marginTop: 8, color: C.cream, fontSize: 13, fontWeight: 400, lineHeight: 1.45, textAlign: "center", opacity: 0.85 }}>
+                            {preventLastWordOrphan("Your progress is defaulted to the end of the show. Change it if you stopped earlier — only writing up to your episode will unseal for you.")}
+                          </div>
+                        )}
                         <div className="m-vote-progress" style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
                           <OneSelectProgress
                             show={showsById[clicked.showId] ?? { seasons: [] }}
-                            value={curVal}
+                            value={seenIt && curVal.s === 0 && curVal.e === 0 ? endOfShow(showsById[clicked.showId]) : curVal}
                             allowZero
                             requireConfirm={false}
                             pillBg="transparent"
@@ -1183,7 +1213,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                         <div style={sheetBtnCol}>
                           <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
-                          {!gs?.roomId && optedCount <= 1 && (
+                          {seenIt ? (
+                            <div style={joinNote}>{gs?.roomId ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : "Starting the room flips your status to \u201cI\u2019m in\u201d"}</div>
+                          ) : !gs?.roomId && optedCount <= 1 && (
                             <div style={joinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
                           <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
