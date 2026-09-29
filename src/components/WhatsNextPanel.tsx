@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchGroupDashboard, fetchShows, fetchPeopleGroupMembers, fetchContactNames, fetchPublicProgressForUser, fetchBrowseAutoRows,
-  setShowVote, ensureProgressRow, startShowRoom, createShow, fetchGroupShowPasses, setGroupShowPass,
+  setShowVote, ensureProgressRow, startShowRoom, createShow, fetchGroupShowPasses, setGroupShowPass, restoreGroupShow,
   type Show, type GroupDashboardShow, type BrowseShow,
 } from "../lib/db";
 import { answerLines, indexPasses, type PassKind, type Stance } from "../lib/proposalAnswers";
@@ -131,10 +131,16 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     return mem ? personDisplayName(contactNames, uid, mem.username, mem.displayName) : "a friend";
   };
 
-  const proposals = useMemo(() => (dash ?? [])
+  // Every proposal here — any answer keeps a show proposed (2026-09-29; a
+  // pass-only show lists no members) — including the ones you "x"-ed off
+  // your shelf, which stay findable so the card can show your stored answer.
+  const proposalsAll = useMemo(() => (dash ?? [])
     .filter((g) => !g.roomId && showById[g.showId])
     .map((g) => ({ g, show: showById[g.showId], voters: g.members.filter((m) => m.voted).map((m) => m.userId) }))
     .sort((a, b) => (b.voters.length - a.voters.length) || a.show.name.localeCompare(b.show.name)), [dash, showById]);
+  // The rows: a cleared proposal drops out of the letter for you (Alborz
+  // 2026-09-29); finding it again or answering it brings it back.
+  const proposals = useMemo(() => proposalsAll.filter((p) => !p.g.viewerDismissed), [proposalsAll]);
   const listRows = useMemo(() => Object.entries(lists)
     .filter(([showId]) => showById[showId])
     .map(([showId, owners]) => ({ show: showById[showId], owners }))
@@ -195,7 +201,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   };
 
   /** Your yes/no on a show already in the catalog: the vote, mirrored at once. */
-  const vote = (showId: string, on: boolean) => withBusy(showId, async () => {
+  const vote = (showId: string, on: boolean, keepRow = false) => withBusy(showId, async () => {
     setDash((d) => {
       const cur = d ?? [];
       const has = cur.some((g) => g.showId === showId);
@@ -205,7 +211,9 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
           ? (g.members.some((m) => m.userId === userId) ? g.members.map((m) => m.userId === userId ? { ...m, voted: true } : m) : [...g.members, { userId, voted: true, s: null, e: null, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }])
           : g.members.filter((m) => m.userId !== userId),
       }) : [...cur, { showId, roomId: null, inRoom: false, viewerLeft: false, viewerDismissed: false, lastActivityAt: null, members: [{ userId, voted: true, s: null, e: null, wrote: false, wroteEntryMinS: null, wroteEntryMinE: null }] }];
-      return next.filter((g) => g.roomId || g.members.length > 0);
+      // A row survives with a room, a yes, or a pass (keepRow: the pass just
+      // written by `stance`, ahead of the passes state).
+      return next.filter((g) => g.roomId || g.members.length > 0 || (keepRow && g.showId === showId) || Object.keys(passes[g.showId] ?? {}).length > 0);
     });
     setLists((l) => { if (!l[showId]) return l; const n = { ...l }; delete n[showId]; return n; });
     await setShowVote(groupId, showId, on);
@@ -231,8 +239,16 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   const selfIn = (voters: string[]) => voters.includes(userId);
   /** Your answer on a proposal: in = the vote; else your pass, if any. */
   const myStance = (showId: string, voters: string[]): Stance | null => (selfIn(voters) ? "in" : passes[showId]?.[userId] ?? null);
+  /** Cleared proposals (2026-09-29): a proposal you "x"-ed off your shelf
+   *  comes back into the letter when you find it again or answer it. */
+  const restore = (showId: string) => {
+    if (!(dash ?? []).some((g) => g.showId === showId && g.viewerDismissed)) return;
+    setDash((d) => (d ?? []).map((g) => (g.showId === showId ? { ...g, viewerDismissed: false } : g)));
+    restoreGroupShow(groupId, showId, userId).catch((e) => console.warn("[whats-next] restore", e));
+  };
   /** "I'm in" is the vote; a pass drops the vote and records its kind. */
   const stance = (showId: string, next: Stance) => {
+    restore(showId);
     const kind: PassKind | null = next === "in" ? null : next;
     setPasses((prev) => {
       const forShow = { ...(prev[showId] ?? {}) };
@@ -240,7 +256,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
       return { ...prev, [showId]: forShow };
     });
     setGroupShowPass(groupId, showId, userId, kind).catch((e) => console.warn("[whats-next] pass", e));
-    return vote(showId, next === "in");
+    return vote(showId, next === "in", kind != null);
   };
   /** The others' answers, one line each; "You proposed this" when it's only you. */
   const captionLines = (showId: string, voters: string[]): string[] => {
@@ -257,7 +273,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   };
 
   const catalogFor = (b: BrowseShow) => shows.find((s) => s.tvmazeId === String(b.tvmazeId)) ?? null;
-  const cardVoted = card?.catalogId ? proposals.some((p) => p.show.id === card.catalogId && selfIn(p.voters)) : false;
+  const cardVoted = card?.catalogId ? proposalsAll.some((p) => p.show.id === card.catalogId && selfIn(p.voters)) : false;
 
   const dark = CANON.dark;
   const heading: React.CSSProperties = { fontFamily: INTER, fontSize: 14, fontWeight: 700, color: dark };
@@ -353,7 +369,12 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => { if (s.tvmazeId) setCard({ id: s.id, name: s.name, tvmazeId: Number(s.tvmazeId), catalogId: s.id }); else vote(s.id, true); }}
+                    onClick={() => {
+                      // A cleared proposal comes back on the search hit (2026-09-29) — as you left it, no new yes.
+                      const cleared = proposalsAll.some((p) => p.show.id === s.id && p.g.viewerDismissed);
+                      restore(s.id);
+                      if (s.tvmazeId) setCard({ id: s.id, name: s.name, tvmazeId: Number(s.tvmazeId), catalogId: s.id }); else if (!cleared) vote(s.id, true);
+                    }}
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid rgba(26,58,74,0.15)", padding: "9px 4px", cursor: "pointer", fontFamily: INTER, color: dark }}
                   >
                     <span style={{ fontSize: 15, fontWeight: 600 }}>{s.name}</span>
@@ -400,9 +421,10 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
             {(() => {
               // A show already proposed here takes the three answers; a
               // browse or search pick isn't proposed yet, so yes = propose.
-              const prop = card.catalogId ? proposals.find((p) => p.show.id === card.catalogId) : undefined;
+              const prop = card.catalogId ? proposalsAll.find((p) => p.show.id === card.catalogId) : undefined;
+              // A pass closes the card at once (Alborz 2026-09-29).
               return prop
-                ? <StanceToggle value={myStance(prop.show.id, prop.voters)} onChange={(v) => stance(prop.show.id, v)} />
+                ? <StanceToggle value={myStance(prop.show.id, prop.voters)} onChange={(v) => { stance(prop.show.id, v); if (v !== "in") setCard(null); }} />
                 : <YesNoToggle
                     value={cardVoted}
                     onChange={(v) => {
