@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { UsersRound, ListChecks, Road, Mail, ShieldCheck } from "lucide-react";
+import { UsersRound, DoorOpen, Flag, Road, Mail } from "lucide-react";
 
 // ── Homepage copy — single source of truth ──────────────────────────────
 //
@@ -33,12 +33,17 @@ export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 // 2026-09-25 (Alborz, verbatim): the letters framing is taught here first —
 // step 3 wears the sealed envelope (the letters glyph) instead of the speech
 // bubble, and steps 3–4 are reworded around sealed letters from the future.
+// 2026-09-29 rewrite (Alborz, verbatim): one idea per step, even lengths —
+// setup (1, 2: lists + agree + start a room, open door), the progress habit
+// (3, flag — the step the mechanism depends on), the letters framing (4,
+// envelope: stamped, sealed, a letter from the future), the pace payoff (5,
+// road). The shield step retired (its point lives in 3 and 4).
 export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
   { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
-  { Icon: ListChecks,        text: "Each friend lists what they would like to watch together." },
-  { Icon: Mail,              text: "Once you agree on a show, start a room and write to your friends without worrying about spoilers. Write as if everyone’s caught up to exactly where you are. If they’re behind, your writing will wait for them — sealed letters from the future." },
-  { Icon: ShieldCheck,       text: "Likewise, nothing you read will spoil you because Sidebar filters every room to each person’s progress." },
-  { Icon: Road,              text: "Watch at your own pace. If you binge ahead, your letters will be waiting for your friends. If you savor the episodes, you’ll always have writing waiting for you." },
+  { Icon: DoorOpen,          text: "Each of you lists what you’d like to watch together, then you agree on a show and start a room." },
+  { Icon: Flag,              text: "After each episode, mark where you are. That’s what keeps the room spoiler-free." },
+  { Icon: Mail,              text: "On Sidebar, everything you write is stamped with the episode you’re on and stays sealed until the reader gets there — like a letter from the future." },
+  { Icon: Road,              text: "So watch at your own pace. Binge ahead and your letters wait for your friends. Take your time and there’s always a letter waiting for you." },
 ];
 
 export const CTA_JOIN_LABEL = "Join / sign in";
