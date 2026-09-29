@@ -45,6 +45,12 @@
 //     show never email anyone.
 // Any one of the three types alone is enough to send a digest.
 //
+// 2026-09-28 (Alborz) — LETTERS FROM SIDEBAR: before the scan, this run
+//   PLANTS the "what's next" and "returning season" alerts as letters from
+//   the Sidebar account into the rooms that qualify (see plantSidebarLetters),
+//   so they ride tonight's digest, light the room, and deep-link like any
+//   letter. Tagged S0 E0, they reach every member, progress row or not.
+//
 // Environment variables required:
 //   SUPABASE_URL              (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY (auto-injected)
@@ -310,6 +316,168 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
+// ── Letters from Sidebar (2026-09-28) ─────────────────────────────────────
+// The "what's next" and "returning season" alerts are LETTERS planted into a
+// show room by this run, before the scan, so they ride tonight's digest and
+// light the room like any letter. The Sidebar identity is a profiles row;
+// the letters are tagged S0 E0 (readable by every member); the app pins them
+// and reads their kind from sidebar_letters, whose key (room, kind, season)
+// also keeps this to one letter per room per season.
+//   • what's next — the room is about to finish the show's AVAILABLE
+//     episodes: someone's progress (or a letter) reached the second-to-last
+//     episode of the last aired season, that season is known complete, and
+//     it happened within the last 7 days (an old finished room stays quiet);
+//   • returning — everyone in the room finished the available episodes and
+//     a NEW season's first episode airs within 14 days.
+const SIDEBAR_USER_ID = "00000000-0000-4000-8000-000000000001";
+const SIDEBAR_USERNAME = "sidebar";
+const RECENT_DAYS = 7;
+const RETURNING_DAYS = 14;
+
+// Mirrors src/lib/utils.ts isSeasonEnd for a season's last aired episode.
+function seasonKnownComplete(show: any, S: number): boolean {
+  const seasons: number[] = Array.isArray(show.seasons) ? show.seasons : [];
+  const last = seasons[S - 1] ?? 0;
+  if (last < 1) return false;
+  const laterAired = seasons.slice(S).some((n: number) => (n || 0) > 0);
+  const ended = !!show.status && show.status !== "Running";
+  const planned = Array.isArray(show.seasons_planned) ? show.seasons_planned[S - 1] : null;
+  const moreScheduled = show.next_air_season === S && !!show.next_air_at;
+  const listedAllAired = planned != null && planned > 0 && last >= planned && !moreScheduled;
+  return laterAired || ended || listedAllAired;
+}
+const atOrPast = (eff: Eff | null, s: number, e: number): boolean => !!eff && (eff.s > s || (eff.s === s && eff.e >= e));
+const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
+const fmtMonth = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "long", timeZone: "America/Los_Angeles" });
+
+async function plantOne(
+  admin: any, roomId: string, showId: string, kind: "whats_next" | "returning", season: number,
+  copy: { title: string; preview: string; body: string },
+): Promise<boolean> {
+  const id = crypto.randomUUID();
+  const { error: tErr } = await admin.from("threads").insert({
+    id, show_id: showId, season: 0, episode: 0, author_id: SIDEBAR_USER_ID, author_name: SIDEBAR_USERNAME,
+    title: copy.title, preview: copy.preview, body: copy.body, is_public: false,
+  });
+  if (tErr) { console.error("[sidebar-letters] thread insert failed", tErr.message); return false; }
+  // The kind row is the guard: a second run for the same (room, kind,
+  // season) fails here and drops its orphan thread.
+  const { error: kErr } = await admin.from("sidebar_letters").insert({ room_id: roomId, kind, season, thread_id: id });
+  if (kErr) { await admin.from("threads").delete().eq("id", id); return false; }
+  const { error: lErr } = await admin.from("group_threads").insert({ group_id: roomId, thread_id: id });
+  if (lErr) {
+    console.error("[sidebar-letters] link failed", lErr.message);
+    await admin.from("threads").delete().eq("id", id); // cascades the kind row
+    return false;
+  }
+  return true;
+}
+
+async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; returning: number }> {
+  const out = { whatsNext: 0, returning: 0 };
+  const nowMs = Date.now();
+  const { data: rooms } = await admin
+    .from("friend_groups")
+    .select("id, show_id, parent_group_id, deleted_at, dnf_at")
+    .not("parent_group_id", "is", null)
+    .is("deleted_at", null);
+  const live = ((rooms ?? []) as any[]).filter((r) => !r.dnf_at && r.show_id);
+  if (!live.length) return out;
+  const roomIds = live.map((r) => r.id as string);
+  const showIds = [...new Set(live.map((r) => r.show_id as string))];
+  const [{ data: showRows }, { data: memberRows }, { data: existing }] = await Promise.all([
+    admin.from("shows").select("id, name, seasons, status, seasons_planned, next_air_at, next_air_season").in("id", showIds),
+    admin.from("friend_group_members").select("group_id, user_id").in("group_id", roomIds),
+    admin.from("sidebar_letters").select("room_id, kind, season").in("room_id", roomIds),
+  ]);
+  const showById = new Map<string, any>();
+  for (const sh of (showRows ?? []) as any[]) showById.set(sh.id, sh);
+  const membersByRoom = new Map<string, string[]>();
+  for (const m of (memberRows ?? []) as any[]) {
+    if (!membersByRoom.has(m.group_id)) membersByRoom.set(m.group_id, []);
+    membersByRoom.get(m.group_id)!.push(m.user_id);
+  }
+  const planted = new Set(((existing ?? []) as any[]).map((x) => `${x.room_id}|${x.kind}|${x.season}`));
+  const userIds = [...new Set(((memberRows ?? []) as any[]).map((m) => m.user_id as string))];
+  const progByKey = new Map<string, any>();
+  if (userIds.length) {
+    const { data: progs } = await admin
+      .from("progress")
+      .select("user_id, show_id, season, episode, is_rewatching, highest_season, highest_episode, updated_at")
+      .in("user_id", userIds)
+      .in("show_id", showIds);
+    for (const pr of (progs ?? []) as any[]) progByKey.set(`${pr.user_id}|${pr.show_id}`, pr);
+  }
+  // A letter at the second-to-last episode counts as the trigger too.
+  const { data: linkRows } = await admin
+    .from("group_threads")
+    .select("group_id, shared_at, threads!inner(season, episode, is_deleted, author_id)")
+    .in("group_id", roomIds);
+  const lettersByRoom = new Map<string, { s: number; e: number; at: number }[]>();
+  for (const l of (linkRows ?? []) as any[]) {
+    if (!l.threads || l.threads.is_deleted || l.threads.author_id === SIDEBAR_USER_ID) continue;
+    if (!lettersByRoom.has(l.group_id)) lettersByRoom.set(l.group_id, []);
+    lettersByRoom.get(l.group_id)!.push({ s: l.threads.season, e: l.threads.episode, at: l.shared_at ? new Date(l.shared_at).getTime() : 0 });
+  }
+  const recentCutoff = nowMs - RECENT_DAYS * 86400000;
+
+  for (const room of live) {
+    const show = showById.get(room.show_id);
+    const members = membersByRoom.get(room.id) ?? [];
+    if (!show || !members.length) continue;
+    const seasons: number[] = Array.isArray(show.seasons) ? show.seasons : [];
+    const S = seasons.length;
+    const last = S ? (seasons[S - 1] ?? 0) : 0;
+    if (S < 1 || last < 1) continue;
+    const effs = members.map((uid) => {
+      const pr = progByKey.get(`${uid}|${room.show_id}`);
+      return pr ? { eff: effectiveProgress(pr) as Eff, at: pr.updated_at ? new Date(pr.updated_at).getTime() : 0 } : null;
+    });
+
+    // what's next
+    if (last >= 2 && seasonKnownComplete(show, S) && !planted.has(`${room.id}|whats_next|${S}`)) {
+      const pen = last - 1;
+      const recentProgress = effs.some((x) => x && atOrPast(x.eff, S, pen) && x.at >= recentCutoff);
+      const recentLetter = (lettersByRoom.get(room.id) ?? []).some((l) => (l.s > S || (l.s === S && l.e >= pen)) && l.at >= recentCutoff);
+      if (recentProgress || recentLetter) {
+        // A room that already reached the end this week gets the finished
+        // wording; the rest hear "almost done".
+        const everyoneDone = effs.every((x) => x && atOrPast(x.eff, S, last));
+        const tail = "\n\nBelow are the shows already proposed in this group, and a few from your own lists. Say yes to what you'd watch, or write back with a pitch.";
+        const ok = await plantOne(admin, room.id, room.show_id, "whats_next", S, everyoneDone ? {
+          title: `You all finished ${show.name}. What's next?`,
+          preview: "Everyone in this room has reached the end.",
+          body: `Everyone in this room has reached the end of ${show.name}. Time to pick what you'll watch together next.${tail}`,
+        } : {
+          title: `You're almost done with ${show.name}. What's next?`,
+          preview: "Someone in this room just reached the second-to-last episode.",
+          body: `Someone in this room just reached the second-to-last episode of ${show.name}. Before the finale lands, pick what you'll watch together next.${tail}`,
+        });
+        if (ok) { out.whatsNext++; planted.add(`${room.id}|whats_next|${S}`); }
+      }
+    }
+
+    // returning
+    const nextAt = show.next_air_at ? new Date(show.next_air_at).getTime() : 0;
+    const nextSeason = Number(show.next_air_season ?? 0);
+    if (nextAt > nowMs && nextAt <= nowMs + RETURNING_DAYS * 86400000 && nextSeason > S && !planted.has(`${room.id}|returning|${nextSeason}`)) {
+      const everyoneFinished = effs.every((x) => x && atOrPast(x.eff, S, last));
+      if (everyoneFinished) {
+        const finishedAt = Math.max(...effs.map((x) => x ? x.at : 0));
+        const month = finishedAt > 0 ? ` in ${fmtMonth(finishedAt)}` : "";
+        const day = fmtDay(show.next_air_at);
+        const ok = await plantOne(admin, room.id, room.show_id, "returning", nextSeason, {
+          title: `${show.name} returns ${day}.`,
+          preview: `Season ${nextSeason} starts ${day}. You finished season ${S} together${month}.`,
+          body: `Season ${nextSeason} starts ${day}. You finished season ${S} together${month}.\n\nYour letters from last season are right here below — worth a re-read before it starts — and the show guide has the recap, filtered to what you've seen.\n\nWrite back with what you're hoping for.`,
+        });
+        if (ok) { out.returning++; planted.add(`${room.id}|returning|${nextSeason}`); }
+      }
+    }
+  }
+  return out;
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
@@ -332,6 +500,13 @@ serve(async (req) => {
   const onlyUserId = body.only_user_id ?? null;
 
   const since = new Date(Date.now() - WINDOW_HOURS * 3600 * 1000).toISOString();
+
+  // Letters from Sidebar (2026-09-28): plant this run's letters FIRST so they
+  // land inside the window and ride tonight's digest. Never on a dry run;
+  // never blocks the digest.
+  const planted = dryRun
+    ? { whatsNext: 0, returning: 0, dryRun: true }
+    : await plantSidebarLetters(admin).catch((e) => { console.error("[sidebar-letters] planting failed", e); return { whatsNext: 0, returning: 0, error: String(e) }; });
 
   // 1. Friend-room entries that ARRIVED in a room in the last 24h, keyed on
   //    group_threads.shared_at (when the entry was linked into the room) — NOT
@@ -419,7 +594,7 @@ serve(async (req) => {
   }
 
   if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length) {
-    return json({ ok: true, sent: 0, reason: "nothing new" });
+    return json({ ok: true, sent: 0, reason: "nothing new", planted });
   }
 
   // 2. Index thread rows (from the embedded join, plus replied-to threads).
@@ -542,8 +717,9 @@ serve(async (req) => {
       if (m.digest_opt_out) continue;                // opted out of this room
       if (onlyUserId && m.user_id !== onlyUserId) continue;
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
-      if (!prog) continue;                           // hasn't started → sees nothing
-      if (!canView(t.season, t.episode, effectiveProgress(prog))) continue;
+      // A letter from Sidebar (S0 E0) reaches every member, row or no row.
+      if (!prog && t.author_id !== SIDEBAR_USER_ID) continue; // hasn't started → sees nothing
+      if (!canView(t.season, t.episode, prog ? effectiveProgress(prog) : { s: 0, e: 0 })) continue;
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(link.group_id)) {
@@ -620,7 +796,7 @@ serve(async (req) => {
   }
 
   const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys()])];
-  if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new" });
+  if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new", planted });
   // Greeting (Alborz 2026-09-22): the recipient's own first name opens the
   // email — a personal first line is one of the signals that keeps a
   // notification out of Gmail's Promotions tab. Fetched for all recipients
@@ -797,5 +973,5 @@ serve(async (req) => {
     report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, chats: chatDigests.length, sent: ok });
   }
 
-  return json({ ok: true, dryRun, candidates: recipientIds.length, sent, report });
+  return json({ ok: true, dryRun, candidates: recipientIds.length, sent, planted, report });
 });
