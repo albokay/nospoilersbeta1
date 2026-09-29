@@ -45,6 +45,58 @@ import type { ProgressEntry, Thread, Reply } from "../../types";
 // the card border). No keyframe animation; just a snap on/off of the
 // border color, matching the live treatment exactly.
 
+// A road marker (letters in transit, 2026-09-25) — "Sam is here · S1 E4"
+// on the cream line. Wrap rule (Alborz 2026-09-28, /m with three friends
+// ran off the screen): when the discs plus the caption don't fit the row,
+// the discs stay on the line and the caption drops to a second line,
+// centred, balanced. Measured with a hidden nowrap probe so the decision
+// never depends on the layout it changes.
+const ROAD_TEXT: React.CSSProperties = { fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: CANON.cream };
+function RoadMarkerRow({ ariaLabel, people, text }: {
+  ariaLabel: string;
+  people: { key: string; initial: string }[];
+  text: string;
+}) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const [wrapped, setWrapped] = useState(false);
+  // 24px discs overlapping by 6, plus the chip's gap (8) and side padding (20).
+  const discsW = 24 + Math.max(0, people.length - 1) * 18;
+  useEffect(() => {
+    const measure = () => {
+      const row = rowRef.current, probe = probeRef.current;
+      if (!row || !probe) return;
+      setWrapped(discsW + 8 + probe.offsetWidth + 20 > row.clientWidth);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [discsW, text]);
+  return (
+    <div ref={rowRef} aria-label={ariaLabel} style={{ position: "relative", margin: "4px 0 16px" }}>
+      <span ref={probeRef} aria-hidden style={{ ...ROAD_TEXT, position: "absolute", visibility: "hidden", whiteSpace: "nowrap", pointerEvents: "none" }}>{text}</span>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div aria-hidden style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 2, background: CANON.cream, opacity: 0.6 }} />
+        <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", background: "var(--dos-bg)" }}>
+          <span style={{ display: "inline-flex" }}>
+            {people.map((p, i) => (
+              <span key={p.key} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--canon-friend,#adc8d7)", background: CANON.personal, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", marginLeft: i ? -6 : 0 }}>
+                {p.initial}
+              </span>
+            ))}
+          </span>
+          {!wrapped && <span style={{ ...ROAD_TEXT, whiteSpace: "nowrap" }}>{text}</span>}
+        </div>
+      </div>
+      {wrapped && (
+        <div style={{ marginTop: 6, display: "flex", justifyContent: "center", padding: "0 8px" }}>
+          <span className="sb-balance" style={{ ...ROAD_TEXT, lineHeight: 1.35, textAlign: "center", maxWidth: "100%" }}>{text}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export type V2RoomFeedEntry = {
   threadId: string;
   s: number;
@@ -426,19 +478,12 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       ? `${list} ${plural ? "are" : "is"} here`
       : `${list} ${plural ? "haven't" : "hasn't"} started watching`;
     return (
-      <div key={`road-${m.idx}`} aria-label={started ? `${who}, season ${m.s} episode ${m.e}` : who} style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "4px 0 16px" }}>
-        <div aria-hidden style={{ position: "absolute", left: 0, right: 0, top: "50%", height: 2, background: CANON.cream, opacity: 0.6 }} />
-        <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 8, padding: "0 10px", background: "var(--dos-bg)" }}>
-          <span style={{ display: "inline-flex" }}>
-            {m.people.map((p, i) => (
-              <span key={p.username} style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid var(--canon-friend,#adc8d7)", background: CANON.personal, color: CANON.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", marginLeft: i ? -6 : 0 }}>
-                {(dn(p.username)[0] ?? "?").toUpperCase()}
-              </span>
-            ))}
-          </span>
-          <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, color: CANON.cream, whiteSpace: "nowrap" }}>{who}{started && <> &middot; S{m.s} E{m.e}</>}</span>
-        </div>
-      </div>
+      <RoadMarkerRow
+        key={`road-${m.idx}`}
+        ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who}
+        people={m.people.map((p) => ({ key: p.username, initial: (dn(p.username)[0] ?? "?").toUpperCase() }))}
+        text={started ? `${who} · S${m.s} E${m.e}` : who}
+      />
     );
   });
 
