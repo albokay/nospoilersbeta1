@@ -1084,7 +1084,20 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
                   group. */}
               {cardShow && !pickedReady && (
                 <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-                  {!progress[cardShow.id]?.wantedAt && (
+                  {progress[cardShow.id]?.wantedAt ? (
+                    // Say so instead of hiding the button (Alborz 2026-09-29):
+                    // a wanted show that came back to zero looked broken.
+                    <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, minHeight: 44 }}>
+                      <span>On your want-to-watch list</span>
+                      <button
+                        type="button"
+                        onClick={() => unwantShow(cardShow.id)}
+                        style={{ background: "none", border: "none", padding: 0, color: CREAM, fontFamily: "inherit", fontSize: 13, fontWeight: 400, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", opacity: 0.85 }}
+                      >
+                        remove
+                      </button>
+                    </div>
+                  ) : (
                     <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy || logBusy} onClick={wantIt}>
                       {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
                     </button>
