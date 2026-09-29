@@ -1,3 +1,4 @@
+import { isSidebarAuthor, sidebarTag, type SidebarLetterKind } from "../lib/sidebarLetters";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { MessageSquare, Link2, X, Heart, Lock } from "lucide-react";
 import { CANON } from "../styles/canon";
@@ -337,7 +338,7 @@ function ReplyBody({
 }
 
 export default function RepliesList({
-  thread, progressForShow, riskyMode = false,
+  thread, sidebarKind = null, progressForShow, riskyMode = false,
   likeReply, unlikeReply, likesReplies, likedByUserReplies, focusReplyId, onAuthRequired,
   threadReplyOpen, onThreadReplyClose, onRiskyReveal, onExternalReplyAdded, onReplyDeleted, freshReplyIds, onClickProfile, compactBorders,
   showAheadStubs = false,
@@ -349,6 +350,8 @@ export default function RepliesList({
   mobileIdiom = false,
 }: {
   thread: Thread;
+  /** Letters from Sidebar (2026-09-28): the letter's kind, for the tag. */
+  sidebarKind?: SidebarLetterKind | null;
   progressForShow?: ViewerProgress;
   riskyMode?: boolean;
   orderMode?: "episode" | "time";
@@ -1114,7 +1117,14 @@ export default function RepliesList({
                   {groupId && departedUsernames?.has(r.author) && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.75 }}>has left the room</span>
                   )}
-                  {thread.showId !== "simshow" && (
+                  {isSidebarAuthor(thread.author) ? (
+                    // Responses to a letter from Sidebar (2026-09-28) wear the
+                    // letter's own label instead of an episode tag — they're
+                    // tagged S0 E0, open to everyone in the room.
+                    <span style={{ color: "var(--dos-cyan)", fontWeight: 400 }}>
+                      &middot;{" "}{sidebarTag(sidebarKind)}
+                    </span>
+                  ) : thread.showId !== "simshow" && (
                     <span style={{ color: "var(--dos-cyan)", fontWeight: 400 }}>
                       &middot;{" "}
                       <EpisodeTag

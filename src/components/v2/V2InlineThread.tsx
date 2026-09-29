@@ -1,3 +1,4 @@
+import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
@@ -42,6 +43,9 @@ import type { ProgressEntry, Thread } from "../../types";
 
 export type V2InlineThreadProps = {
   thread: Thread;
+  /** Letters from Sidebar (2026-09-28): the letter's kind — responses wear
+   *  its label and are tagged S0 E0 so everyone in the room can read them. */
+  sidebarKind?: SidebarLetterKind | null;
   /** Naming arc (2026-07-07): username → the viewer's given name. Display-
    *  only; forwarded to RepliesList + HighlightableBody. */
   displayNames?: Record<string, string>;
@@ -96,6 +100,7 @@ export type V2InlineThreadProps = {
 
 export default function V2InlineThread({
   thread,
+  sidebarKind = null,
   displayNames,
   groupId,
   viewerProgress,
@@ -789,6 +794,7 @@ export default function V2InlineThread({
       <div style={{ marginTop: 8 }}>
         <RepliesList
           thread={thread}
+          sidebarKind={sidebarKind}
           displayNames={displayNames}
           groupId={groupId}
           progressForShow={viewerProgress ?? undefined}
@@ -830,13 +836,17 @@ export default function V2InlineThread({
             showId={thread.showId}
             viewerSeason={viewerProgress?.s ?? thread.season}
             viewerEpisode={viewerProgress?.e ?? thread.episode}
+            // Responses to a letter from Sidebar are tagged S0 E0 (2026-09-28)
+            // — the conversation under it is open to everyone in the room.
             postTagSeason={
-              viewerProgress?.isRewatching && viewerProgress.highestS != null
+              isSidebarAuthor(thread.author) ? 0
+                : viewerProgress?.isRewatching && viewerProgress.highestS != null
                 ? viewerProgress.highestS
                 : viewerProgress?.s ?? thread.season
             }
             postTagEpisode={
-              viewerProgress?.isRewatching && viewerProgress.highestE != null
+              isSidebarAuthor(thread.author) ? 0
+                : viewerProgress?.isRewatching && viewerProgress.highestE != null
                 ? viewerProgress.highestE
                 : viewerProgress?.e ?? thread.episode
             }

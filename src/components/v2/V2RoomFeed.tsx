@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Lock, Mail, Mails, Users, Sparkles, Flag } from "lucide-react";
+import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY_NAME, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
 import Stamp, { stampSpecFor, stampBox } from "../Stamp";
@@ -71,6 +72,10 @@ export type V2RoomFeedEntry = {
   /** TSP onboarding demo only: instructional "Alborz" entry — gets a distinct
       treatment and no map cell. Undefined/false everywhere in live rooms. */
   isInstructional?: boolean;
+  /** Letters from Sidebar (2026-09-28): which planted letter this is, from
+   *  the room's sidebar_letters rows; null for a regular letter (and for a
+   *  Sidebar letter whose row hasn't landed — the explainer's stamp then). */
+  sidebarKind?: SidebarLetterKind | null;
   /** CP4 (2026-07-06): a spoiler-gated entry, rendered as a non-interactive
       one-line placeholder ("X has watched … and written to …") instead of a
       ticket — the entry-level twin of RepliesList's ahead-of-progress reply
@@ -317,6 +322,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     if (preserveOrder) return entries;
     const dir = sortOrder === "desc" ? -1 : 1;
     return [...entries].sort((a, b) => {
+      // Letters from Sidebar lead in both orders (2026-09-28): tagged S0 E0
+      // so everyone can read them, they'd otherwise sink to the bottom.
+      const sa = isSidebarAuthor(a.authorUsername) ? 1 : 0, sb = isSidebarAuthor(b.authorUsername) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
       if (a.s !== b.s) return dir * (a.s - b.s);
       if (a.e !== b.e) return dir * (a.e - b.e);
       return b.updatedAt - a.updatedAt;
@@ -352,6 +361,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     const desc = sortOrder === "desc";
     const slotOf = (idx: number): string | null => {
       for (const en of sorted) {
+        // Pinned letters from Sidebar aren't on the road (S0 E0 at the top
+        // would catch every marker).
+        if (isSidebarAuthor(en.authorUsername)) continue;
         const ei = idxOf(en.s, en.e);
         if (desc ? ei <= idx : ei > idx) return en.threadId;
       }
@@ -833,13 +845,19 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // at the ticket's top-right — the WRITER'S stamp, one per account,
         // generated from their id. A rewatch letter's stamp wears the rewatch
         // tag with the rewatch glyph and keeps the tag's hover explanation.
-        const stampSpec = stampSpecFor(entry.authorId || entry.authorUsername);
+        // A letter from Sidebar (2026-09-28) wears the explainer's framed
+        // stamp with the letter's own words ("What / next?", "next /
+        // season"). Closed, it sits on cream paper with the stamp in Friend
+        // blue and no preview; open, it looks like any ticket.
+        const isSb = isSidebarAuthor(entry.authorUsername);
+        const sbClosed = isSb && !isExpanded;
+        const stampSpec = isSb ? SIDEBAR_STAMP_SPEC : stampSpecFor(entry.authorId || entry.authorUsername);
         const stampScale = mobileIdiom ? 0.78 : 1;
         const stampSize = stampBox(stampSpec);
-        const stampInitial = dn(entry.authorUsername).trim().charAt(0).toUpperCase();
-        const isRewatchTag = !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
-        const stampLabel = isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
-        const stampEl = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={stampScale} rewatch={isRewatchTag} />;
+        const stampInitial = isSb ? "" : dn(entry.authorUsername).trim().charAt(0).toUpperCase();
+        const isRewatchTag = !isSb && !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
+        const stampLabel = isSb ? sidebarStampLabel(entry.sidebarKind) : isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
+        const stampEl = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={stampScale} rewatch={isRewatchTag} ink={sbClosed ? CANON.friend : undefined} />;
         const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
         const stampReserve = stampEl ? Math.round(stampSize.w * stampScale) + 12 : 0;
         const stampMinH = stampEl ? Math.round(stampSize.h * stampScale) : 0;
@@ -862,6 +880,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               className={`card threadCard${entry.isInstructional ? " tsp-guide" : ""}${isNew && !entry.isInstructional ? " ticket-new" : ""}`}
               style={{
                 margin: 0,
+                // A closed letter from Sidebar is cream paper (the explainer's
+                // look) so it stands out; open, it's a ticket like the rest.
+                background: sbClosed ? CANON.cream : undefined,
                 // Pointer cursor + click-to-toggle are scoped to COLLAPSED
                 // cards only. When expanded, clicks on the card body did
                 // nothing (most inner content stops propagation) so the
@@ -873,7 +894,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 // Polish pass 2026-09-15 (desktop): 16/20 collapsed, 20/24
                 // expanded; mobile keeps its 16px sides from the /m pass.
                 paddingTop: mobileIdiom ? 16 : (isExpanded ? 20 : 16),
-                paddingBottom: 36,
+                paddingBottom: sbClosed ? 16 : 36,
                 ...(mobileIdiom
                   ? { paddingLeft: 16, paddingRight: 16 }
                   : { paddingLeft: isExpanded ? 24 : 20, paddingRight: isExpanded ? 24 : 20 }),
@@ -918,17 +939,27 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 style={{
                   fontSize: 13,
                   lineHeight: 1.45,
-                  color: CANON.cream,
+                  color: sbClosed ? CANON.dark : CANON.cream,
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                   flexWrap: "wrap",
                   // Tombstone byline matches the title-row opacity so the
                   // entire entry header fades together.
-                  opacity: entry.isDeleted ? 0.35 : 0.9,
+                  opacity: entry.isDeleted ? 0.35 : sbClosed ? 0.8 : 0.9,
                 }}
               >
-                {entry.isInstructional ? (
+                {isSb ? (
+                  // A letter from Sidebar: the envelope disc stands in for the
+                  // avatar (Identity on the cream paper, cream on the open
+                  // ticket); nothing to click, no profile behind it.
+                  <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}>
+                    <span aria-hidden style={{ width: 20, height: 20, borderRadius: "50%", background: sbClosed ? CANON.identity : CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Mail size={12} color={sbClosed ? CANON.cream : CANON.identity} strokeWidth={2.4} />
+                    </span>
+                    <b>{SIDEBAR_DISPLAY_NAME}</b>
+                  </span>
+                ) : entry.isInstructional ? (
                   // TSP demo: sparkles REPLACES the standard profile avatar for
                   // Alborz (no SidebarAvatar, not clickable).
                   <span className="username" style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}>
@@ -1048,6 +1079,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   <div onClick={(e) => e.stopPropagation()}>
                     <V2InlineThread
                       thread={entry.thread}
+                      sidebarKind={entry.sidebarKind ?? null}
                       displayNames={displayNames}
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
@@ -1085,7 +1117,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   <div style={{ fontStyle: "italic", color: CANON.dark, opacity: 0.35 }}>
                     {dn(entry.authorUsername)} deleted their entry.
                   </div>
-                ) : (
+                ) : isSb ? null : (
                   <div className="clamp3">
                     {parsePromptTokens(entry.preview).map((part, i) => (
                       <React.Fragment key={`prev-${i}`}>{part}</React.Fragment>

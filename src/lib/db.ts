@@ -3432,6 +3432,19 @@ export async function fetchThreadViewState(groupId: string): Promise<Record<stri
  * without them, and every entry maps to undefined — callers then fall back
  * to the timestamp-only rule, i.e. exactly today's behaviour.
  */
+/** Letters from Sidebar (2026-09-28): which planted letter each thread in a
+ *  room is (thread id → kind). Tolerant: no rows / no table → {}. */
+export async function fetchSidebarLetters(roomId: string): Promise<Record<string, import("./sidebarLetters").SidebarLetterKind>> {
+  const { data, error } = await supabase
+    .from("sidebar_letters")
+    .select("thread_id, kind")
+    .eq("room_id", roomId);
+  if (error || !data) return {};
+  const out: Record<string, import("./sidebarLetters").SidebarLetterKind> = {};
+  for (const r of data as any[]) if (r.kind === "whats_next" || r.kind === "returning") out[r.thread_id] = r.kind;
+  return out;
+}
+
 export async function fetchThreadSeenProgress(
   groupId: string,
 ): Promise<Record<string, { season: number; episode: number }>> {

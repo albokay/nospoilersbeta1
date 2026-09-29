@@ -1,3 +1,4 @@
+import { type SidebarLetterKind } from "../lib/sidebarLetters";
 /**
  * ShowRoomPage — the restructure (group × show) room (CP4a).
  *
@@ -19,7 +20,7 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
-  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState,
+  persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState, fetchSidebarLetters,
   fetchThreadSeenProgress, isAboveSeenProgress,
   fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
@@ -332,12 +333,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         const eff = effectiveProgress(pm[showId] ?? null);
         return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
       });
-      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
         parentGid ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
         fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
         fetchUserThreads(user.id, showId),
         grP,
+        // Letters from Sidebar (2026-09-28): which planted letter is which.
+        fetchSidebarLetters(roomId).catch(() => ({} as Record<string, SidebarLetterKind>)),
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
@@ -383,6 +386,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         updatedAt: gr.sharedAt?.[t.id] || t.updatedAt,
         replyCount: (gr.replyCounts[t.id] ?? 0) + (gr.aheadCounts?.[t.id] ?? 0),
         thread: t,
+        sidebarKind: sbKinds[t.id] ?? null,
       }));
       // CP4: spoiler-gated entries ride the same feed as one-line stubs
       // ("X has watched … and written to …"), sorted like ordinary entries.
