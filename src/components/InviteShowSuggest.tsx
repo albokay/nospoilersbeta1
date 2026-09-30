@@ -224,7 +224,8 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           <InviteShowCard idiom={idiom} show={cardShow} onClose={() => setBrowseOpen(null)}>
             <div style={{ color: CANON.cream, fontSize: 15, fontWeight: 600, textAlign: "center" }}>Do you want to watch this?</div>
             <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-              <YesNoToggle value={isPicked(browseOpen)} onChange={(v) => setPicked(browseOpen, v)} />
+              {/* A yes closes the card at once (Alborz 2026-09-30). */}
+              <YesNoToggle value={isPicked(browseOpen)} onChange={(v) => { setPicked(browseOpen, v); if (v) setBrowseOpen(null); }} />
             </div>
           </InviteShowCard>
         );

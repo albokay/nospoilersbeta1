@@ -8,7 +8,7 @@ import { answerLines, indexPasses, type PassKind, type Stance } from "../lib/pro
 import StanceToggle from "./StanceToggle";
 import { tvmazeEpisodes, slugify, fetchTvmazePoster, tvmazeSearch, networkLabel, type TVmazeShow } from "../lib/tvmaze";
 import { getTrailerKeyCached } from "../lib/trailers";
-import { personDisplayName, joinNames } from "../lib/groupNames";
+import { personDisplayName } from "../lib/groupNames";
 import { CANON } from "../styles/canon";
 import YesNoToggle from "./YesNoToggle";
 import InviteShowCard from "./InviteShowCard";
@@ -74,20 +74,19 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
         ]);
         if (cancelled) return;
         setDash(d); setShows(s); setMembers(m); setContactNames(cn); setPasses(indexPasses(ps));
-        // The members' "You want to watch" shelves (lib/reference.ts): the
+        // Your OWN "You want to watch" shelf (lib/reference.ts; Alborz
+        // 2026-09-30 — the friends' lists are theirs to propose from): the
         // wanted stamp set, progress still at zero, not stopped, not hidden,
-        // and not already in this group.
+        // and not already in this group. Empty → the section is skipped.
         const inGroup = new Set(d.map((g) => g.showId));
         const owners: Record<string, string[]> = {};
-        await Promise.all(m.map(async (mem) => {
-          try {
-            const prog = await fetchPublicProgressForUser(mem.userId);
-            for (const [showId, p] of Object.entries(prog)) {
-              if (!p.wantedAt || (p.s ?? 0) > 0 || (p.e ?? 0) > 0 || p.stoppedWatching || p.shelfHiddenAt || inGroup.has(showId)) continue;
-              (owners[showId] ??= []).push(mem.userId);
-            }
-          } catch { /* one member's list missing is fine */ }
-        }));
+        try {
+          const prog = await fetchPublicProgressForUser(userId);
+          for (const [showId, p] of Object.entries(prog)) {
+            if (!p.wantedAt || (p.s ?? 0) > 0 || (p.e ?? 0) > 0 || p.stoppedWatching || p.shelfHiddenAt || inGroup.has(showId)) continue;
+            owners[showId] = [userId];
+          }
+        } catch { /* your list missing is fine */ }
         if (!cancelled) setLists(owners);
       } catch {
         if (!cancelled) setFailed(true);
@@ -267,10 +266,6 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     if (lines.length) return lines;
     return [selfIn(voters) ? "You proposed this" : "Proposed here"];
   };
-  const listCaption = (owners: string[]) => {
-    const labels = owners.map((o) => (o === userId ? "your" : `${nameOf(o)}'s`));
-    return `on ${joinNames(labels)} ${owners.length === 1 ? "list" : "lists"}`;
-  };
 
   const catalogFor = (b: BrowseShow) => shows.find((s) => s.tvmazeId === String(b.tvmazeId)) ?? null;
   const cardVoted = card?.catalogId ? proposalsAll.some((p) => p.show.id === card.catalogId && selfIn(p.voters)) : false;
@@ -340,10 +335,10 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
 
       {listRows.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ ...heading, color: "rgba(26,58,74,0.75)" }}>From your personal lists:</div>
-          {listRows.map(({ show, owners }) => (
+          <div style={{ ...heading, color: "rgba(26,58,74,0.75)" }}>From your personal list:</div>
+          {listRows.map(({ show }) => (
             <div key={show.id} style={{ display: "flex", alignItems: "center", gap: 12, opacity: busy.has(show.id) ? 0.6 : 1 }}>
-              <div style={{ flexGrow: 1, minWidth: 0, fontFamily: INTER, fontSize: 14, color: "rgba(26,58,74,0.75)" }}>{show.name} · {listCaption(owners)}</div>
+              <div style={{ flexGrow: 1, minWidth: 0, fontFamily: INTER, fontSize: 14, color: "rgba(26,58,74,0.75)" }}>{show.name}</div>
               <button type="button" style={ghostPill} disabled={busy.has(show.id)} onClick={() => vote(show.id, true)}>propose</button>
             </div>
           ))}
@@ -351,7 +346,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
       )}
 
       <div ref={searchRef} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={heading}>Or find something new</div>
+        <div style={heading}>Find something new</div>
         {searchOpen && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <input

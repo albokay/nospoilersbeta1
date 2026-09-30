@@ -134,8 +134,10 @@ export function tipsDefaultOpen(page: TipsPage, userId: string | null | undefine
  *  used to say (the sticky and its copy retired with it). Rendered by
  *  SidebarLetter; "Dear {first name}," is the component's. */
 export const ROOM_LETTER = {
-  headline: "On Sidebar, you write your friends letters.",
-  p1: "Every letter in this room wears a stamp: the episode it was written from. A letter stamped ahead of you stays sealed until you get there, and yours stay sealed for friends who are behind. Write as if everyone’s right where you are.",
+  headline: "On Sidebar, you write letters to your friends.",
+  p1: "Every letter in this room wears a stamp with the episode it was written from. Every member has a stamp of their own.",
+  /** Its own paragraph (Alborz 2026-09-30). */
+  p1b: "A letter stamped ahead of you stays sealed until you get there, and yours stay sealed for friends who are behind. Write as if everyone’s right where you are.",
   p2: "The progress picker up top is the most important part of this room. Every time you come in, make sure it matches how far you’ve watched, so the letters your friends leave you can open in time (and so your own writing doesn’t spoil them).",
   /** /m: the letter sits above the control card, so the picker is beneath it. */
   p2Mobile: "The progress picker just below is the most important part of this room. Every time you come in, make sure it matches how far you’ve watched, so the letters your friends leave you can open in time (and so your own writing doesn’t spoil them).",

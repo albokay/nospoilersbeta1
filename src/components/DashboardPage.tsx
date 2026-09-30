@@ -1777,10 +1777,23 @@ export default function DashboardPage() {
 
   // One drawer thumbnail — poster opens the room; DNF thumbs carry the
   // hover x that offers to start watching again.
+  // New writing in a FINISHED room (Alborz 2026-09-30): the finished pill
+  // and the drawer thumbnails carry the room's disc like the shelf pills —
+  // a what's-next letter from Sidebar included. Blue (visible) wins over red.
+  const finishedWriting = useMemo(() => {
+    let k: "blue" | "red" | null = null;
+    for (const it of [...drawerItems.finished, ...drawerItems.dnf]) {
+      const d = roomDotByRoomId.get(it.roomId);
+      if (d === "blue") return "blue";
+      if (d === "red") k = "red";
+    }
+    return k;
+  }, [drawerItems, roomDotByRoomId]);
   const drawerThumb = (it: { roomId: string; showId: string; name: string }, isDnf: boolean) => {
     const poster = drawerPosters[it.showId];
     return (
       <div key={it.roomId} className="drawer-thumb-wrap" style={{ position: "relative", width: 96 }}>
+        {roomDotByRoomId.get(it.roomId) && <LetterDisc kind={roomDotByRoomId.get(it.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
         <button
           onClick={() => navigate(`/show-room/${it.roomId}`)}
           title={`Open the ${it.name} room`}
@@ -2041,7 +2054,9 @@ export default function DashboardPage() {
                   <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
                     <span className="sb-plate" />
                     <button style={finishedPillStyle} title="shows you've finished together" onClick={openFinishedDrawer}>
-                      {drawerUnseen && <span style={notifDotButton} />}
+                      {finishedWriting
+                        ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />
+                        : drawerUnseen && <span style={notifDotButton} />}
                       <CelebrationStar size={16} color={C.yellow} />
                       <span>{settledCount} finished together</span>
                     </button>

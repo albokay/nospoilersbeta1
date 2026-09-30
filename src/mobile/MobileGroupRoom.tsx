@@ -499,16 +499,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // the celebration kept), one size under the show rows. Counts only settled rooms — a celebrating one
   // is still its own row above. Stands alone when there are no open rooms.
   const settledCount = drawerItems.finished.filter((it) => celebrationState(selfUserId, it.roomId) === "done").length + drawerItems.dnf.length;
-  const finishedPill = settledCount > 0 ? (
-    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
-      <span className="sb-plate" />
-      <button onClick={openFinishedDrawer} aria-label="shows you've finished together" style={finishedPillStyle}>
-        {drawerUnseen && <span className="m-dot-in" style={rowDot} />}
-        <CelebrationStar size={16} color={C.yellow} />
-        <span>{settledCount} finished together</span>
-      </button>
-    </span>
-  ) : null;
 
   // Posters for the drawer thumbnails (module-cached).
   useEffect(() => {
@@ -555,6 +545,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const poster = drawerPosters[it.showId];
     return (
       <div key={it.roomId} style={{ position: "relative", width: 96 }}>
+        {roomDotByRoomId.get(it.roomId) && <LetterDisc kind={roomDotByRoomId.get(it.roomId) === "red" ? "sealed" : "open"} className="m-dot-in" style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
         <button
           onClick={() => { setFinishedDrawerOpen(false); navigate(`/m/show-room/${it.roomId}`); }}
           style={{ display: "block", background: "transparent", border: "none", padding: 0, cursor: "pointer", width: "100%", textAlign: "left" }}
@@ -636,6 +627,31 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     }
     return m;
   }, [roomVis]);
+  // New writing in a FINISHED room (Alborz 2026-09-30): the finished pill
+  // and the drawer thumbnails carry the room's disc like the shelf pills —
+  // a what's-next letter from Sidebar included. Blue (visible) wins over red.
+  const finishedWriting = useMemo(() => {
+    let k: "blue" | "red" | null = null;
+    for (const it of [...drawerItems.finished, ...drawerItems.dnf]) {
+      const d = roomDotByRoomId.get(it.roomId);
+      if (d === "blue") return "blue";
+      if (d === "red") k = "red";
+    }
+    return k;
+  }, [drawerItems, roomDotByRoomId]);
+  // (The finished pill moved below the room dots so it can carry one — 2026-09-30.)
+  const finishedPill = settledCount > 0 ? (
+    <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: C.cream }} onTouchStart={() => {}}>
+      <span className="sb-plate" />
+      <button onClick={openFinishedDrawer} aria-label="shows you've finished together" style={finishedPillStyle}>
+        {finishedWriting
+          ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} className="m-dot-in" style={{ position: "absolute", top: -9, left: 12, zIndex: 2 }} />
+          : drawerUnseen && <span className="m-dot-in" style={rowDot} />}
+        <CelebrationStar size={16} color={C.yellow} />
+        <span>{settledCount} finished together</span>
+      </button>
+    </span>
+  ) : null;
 
   // Live ROOM dots (room-signals CP3, 2026-09-13): a friend's new entry or
   // response refreshes the exact-dot data while you sit in the group room.

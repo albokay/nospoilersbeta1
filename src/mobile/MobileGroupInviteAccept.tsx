@@ -297,6 +297,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
                   <InvitePoster
                     key={show.id}
                     idiom="mobile"
+                    pinned
                     tvmazeId={show.tvmazeId}
                     name={show.name}
                     onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}

@@ -187,6 +187,7 @@ export default function PublicDashboardPage({ username, invite, displayNameOverr
                   <InvitePoster
                     key={show.id}
                     idiom="desktop"
+                    pinned
                     tvmazeId={show.tvmazeId}
                     name={show.name}
                     onOpen={trailerOk[show.id] ? () => setTrailerFor(show) : undefined}

@@ -60,6 +60,7 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
         </div>
       </div>
       <p style={body}>{ROOM_LETTER.p1}</p>
+      <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p1b}</p>
       <p style={{ ...body, marginTop: m ? 10 : 14 }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: m ? 16 : 22 }}>
         <span style={{ fontFamily: LORA, fontStyle: "italic", fontSize: m ? 15 : 18, color: CANON.dark }}>{ROOM_LETTER.signoff}</span>
