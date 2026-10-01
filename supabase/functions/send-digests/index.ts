@@ -135,7 +135,20 @@ type DigestEntry = { threadId: string; title: string; authorName: string };
 // ones stay an in-app red dot and never leak into mail.
 type DigestResponse = { threadId: string; title: string; ownerName: string | null; responderNames: string[] };
 type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[] };
-type ProposalDigest = { groupId: string; showName: string; proposerName: string };
+// Proposals (Alborz 2026-09-30): grouped under the FRIEND who proposed —
+// "{Friend} proposed new shows to watch." then one line per show, with
+// "(X is also in.)" when another friend has already opted in (never the
+// proposer or the recipient; opt-outs are never mentioned). groupLabel is
+// set only when the same friend proposed in more than one of the recipient's
+// groups, to tell the blocks apart.
+type ProposalDigest = { groupId: string; proposerName: string; groupLabel: string | null; shows: { showName: string; alsoIn: string[] }[] };
+const proposalHeading = (p: ProposalDigest): string =>
+  `${p.proposerName} proposed ${p.shows.length === 1 ? "a new show" : "new shows"} to watch${p.groupLabel ? ` (${p.groupLabel})` : ""}.`;
+const alsoInLine = (names: string[]): string => `${formatNames(names)} ${names.length === 1 ? "is" : "are"} also in.`;
+// Letters from Sidebar (Alborz 2026-09-30): not "what your friends wrote" —
+// each is its own linked line right under the greeting, and a digest that
+// holds nothing else is subject-lined "There's a new letter in your X room".
+type SidebarLetterDigest = { groupId: string; roomName: string; threadId: string; title: string };
 type ChatDigest = { groupId: string; groupLabel: string; senderNames: string[] };
 
 const SECTION_H2 = `margin:0 0 6px;font-size:18px;color:#1a2c3a;font-weight:800;line-height:1.3`;
@@ -148,7 +161,15 @@ function buildDigestHtml(
   proposals: ProposalDigest[] = [],
   chats: ChatDigest[] = [],
   greetName: string | null = null,
+  sidebarLetters: SidebarLetterDigest[] = [],
 ): string {
+  const hasFriendContent = rooms.length > 0 || proposals.length > 0 || chats.length > 0 || deckNames.length > 0;
+  const sidebarBlock = sidebarLetters
+    .map((l) => {
+      const url = `${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`;
+      return `<p style="margin:0 0 ${hasFriendContent ? 22 : 10}px;font-size:17px;color:#1a2c3a;line-height:1.45"><a href="${url}" style="color:#1a2c3a;font-weight:700">${escapeHtml(l.title)}</a></p>`;
+    })
+    .join("");
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
@@ -184,15 +205,18 @@ function buildDigestHtml(
     })
     .join("");
 
-  // Proposals: the show title carries the section (bold, the room-heading
-  // grammar); the line links into the group room.
+  // Proposals (2026-09-30): the FRIEND carries the section — the heading
+  // links into the group room, then one line per show.
   const proposalSections = proposals
     .map((p) => {
       const url = `${baseUrl}/dashboard?g=${encodeURIComponent(p.groupId)}`;
+      const items = p.shows
+        .map((sh) => `<p style="${ITEM_P}">&mdash; ${escapeHtml(sh.showName)}${sh.alsoIn.length ? ` <span style="color:rgba(26,44,58,0.6)">(${escapeHtml(alsoInLine(sh.alsoIn))})</span>` : ""}</p>`)
+        .join("");
       return `
   <div style="margin:0 0 28px">
-    <h2 style="${SECTION_H2}">${escapeHtml(p.showName)}</h2>
-    <p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(p.proposerName)} proposed a new show to watch.</a></p>
+    <h2 style="${SECTION_H2}"><a href="${url}" style="color:#1a2c3a">${escapeHtml(proposalHeading(p))}</a></h2>
+    ${items}
   </div>`;
     })
     .join("");
@@ -214,10 +238,11 @@ function buildDigestHtml(
 <html>
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
-  ${greetName ? `<p style="margin:0 0 10px;font-size:15px;color:#1a2c3a;line-height:1.5">Hi ${escapeHtml(greetName)},</p>` : ""}
+  ${greetName ? `<p style="margin:0 0 ${sidebarLetters.length ? 16 : 10}px;font-size:15px;color:#1a2c3a;line-height:1.5">Hi ${escapeHtml(greetName)},</p>` : ""}
+  ${sidebarBlock}${hasFriendContent ? `
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     What your friends wrote today.
-  </h1>
+  </h1>` : ""}
   ${sections}${proposalSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
@@ -233,10 +258,10 @@ function buildDigestHtml(
 // the classic bulk-mail fingerprint Gmail files under Promotions. Names the
 // most specific item by rank — entries → responses → chat → proposals → deck —
 // and admits the rest with ", and more". The h1 stays the stable frame.
-function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[]): string {
+function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = []): string {
   const entryRooms = rooms.filter((r) => r.entries.length > 0);
   const respRooms = rooms.filter((r) => r.responses.length > 0);
-  const kinds = [entryRooms.length > 0, respRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0].filter(Boolean).length;
+  const kinds = [entryRooms.length > 0, respRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0].filter(Boolean).length;
   let lead = "What your friends wrote today";
   if (entryRooms.length) {
     const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
@@ -253,9 +278,17 @@ function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: Propo
   } else if (chats.length) {
     lead = chats.length === 1 ? `${formatNames(chats[0].senderNames)} messaged you in ${chats[0].groupLabel}` : `New messages in ${chats.length} groups`;
   } else if (proposals.length) {
-    lead = proposals.length === 1 ? `${proposals[0].proposerName} proposed ${proposals[0].showName}` : `${proposals.length} new show proposals`;
+    const total = proposals.reduce((n, p) => n + p.shows.length, 0);
+    if (proposals.length === 1) lead = total === 1 ? `${proposals[0].proposerName} proposed ${proposals[0].shows[0].showName}` : `${proposals[0].proposerName} proposed ${total} new shows`;
+    else lead = `${total} new show proposals`;
   } else if (deckNames.length) {
     lead = `${formatNames(deckNames)} answered more How We Watch TV questions`;
+  } else if (sidebarLetters.length) {
+    // Only a letter from Sidebar (2026-09-30): name the room, not "Sidebar wrote".
+    const roomNames = [...new Set(sidebarLetters.map((l) => l.roomName))];
+    lead = roomNames.length === 1
+      ? (sidebarLetters.length === 1 ? `There's a new letter in your ${roomNames[0]} room` : `There are new letters in your ${roomNames[0]} room`)
+      : `There are new letters in ${roomNames.length} of your rooms`;
   }
   return kinds > 1 ? `${lead}, and more` : lead;
 }
@@ -267,6 +300,7 @@ function buildDigestText(
   proposals: ProposalDigest[] = [],
   chats: ChatDigest[] = [],
   greetName: string | null = null,
+  sidebarLetters: SidebarLetterDigest[] = [],
 ): string {
   const sections = rooms
     .map((r) => {
@@ -292,7 +326,7 @@ function buildDigestText(
     .join("\n\n");
 
   const proposalLines = proposals
-    .map((p) => `${p.showName}\n${p.proposerName} proposed a new show to watch. — ${baseUrl}/dashboard?g=${encodeURIComponent(p.groupId)}`)
+    .map((p) => `${proposalHeading(p)} — ${baseUrl}/dashboard?g=${encodeURIComponent(p.groupId)}\n${p.shows.map((sh) => `  - ${sh.showName}${sh.alsoIn.length ? ` (${alsoInLine(sh.alsoIn)})` : ""}`).join("\n")}`)
     .join("\n\n");
   const chatLines = chats
     .map((c) => `${c.groupLabel}\n${formatNames(c.senderNames)} messaged you. — ${baseUrl}/dashboard?g=${encodeURIComponent(c.groupId)}&chat=1`)
@@ -302,11 +336,11 @@ function buildDigestText(
     ? `\n\n${formatNames(deckNames)} answered more "How We Watch TV" questions.`
     : "";
   const blocks = [sections, proposalLines, chatLines].filter(Boolean).join("\n\n");
-  return `${greetName ? `Hi ${greetName},\n\n` : ""}What your friends wrote today.
-
-${blocks}${deckLine}
-
-To stop getting emails about your friend rooms, open a room and click the gear icon next to its name, then choose "unsubscribe."`;
+  const sidebarLines = sidebarLetters
+    .map((l) => `${l.title} — ${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`)
+    .join("\n");
+  const friendBlock = blocks || deckLine ? `What your friends wrote today.\n\n${blocks}${deckLine}\n\n` : "";
+  return `${greetName ? `Hi ${greetName},\n\n` : ""}${sidebarLines ? `${sidebarLines}\n\n` : ""}${friendBlock}To stop getting emails about your friend rooms, open a room and click the gear icon next to its name, then choose "unsubscribe."`;
 }
 
 function json(payload: unknown, status = 200): Response {
@@ -782,6 +816,22 @@ serve(async (req) => {
     }
   }
 
+  // 6a-prop-in. Who else has opted in to each proposed show (2026-09-30):
+  //     Map<"group|show", Set<userId>> — the "(X is also in.)" note.
+  const votersByPair = new Map<string, Set<string>>();
+  if (proposals.length) {
+    const { data: inRows } = await admin
+      .from("group_show_votes")
+      .select("group_id, show_id, user_id")
+      .in("group_id", [...new Set(proposals.map((p) => p.groupId))])
+      .in("show_id", [...new Set(proposals.map((p) => p.showId))]);
+    for (const v of (inRows ?? []) as any[]) {
+      const key = `${v.group_id}|${v.show_id}`;
+      if (!votersByPair.has(key)) votersByPair.set(key, new Set());
+      votersByPair.get(key)!.add(v.user_id);
+    }
+  }
+
   // 6a-prop. Per-recipient proposal items.
   const perUserProps = new Map<string, { groupId: string; showId: string; proposerId: string }[]>();
   for (const p of proposals) {
@@ -902,6 +952,7 @@ serve(async (req) => {
     const roomDigests: RoomDigest[] = [...rooms.entries()]
       .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[] }]) => {
         const entries: DigestEntry[] = r.entries
+          .filter((e: any) => e.authorId !== SIDEBAR_USER_ID) // Sidebar's letters get their own lines (below)
           .sort((a: any, b: any) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
           .map((e: any) => ({
             threadId: e.threadId,
@@ -921,6 +972,14 @@ serve(async (req) => {
         }
         return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()] };
       })
+      // A room whose only news is a letter from Sidebar has no friend section.
+      .filter((r) => r.entries.length > 0 || r.responses.length > 0)
+      .sort((a, b) => a.roomName.localeCompare(b.roomName));
+    // Letters from Sidebar (2026-09-30): their own linked lines under the greeting.
+    const sidebarLetters: SidebarLetterDigest[] = [...rooms.entries()]
+      .flatMap(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[] }]) => r.entries
+        .filter((e: any) => e.authorId === SIDEBAR_USER_ID)
+        .map((e: any) => ({ groupId, roomName: r.roomName, threadId: e.threadId, title: e.title })))
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
 
     // The recipient's label for a people-group: its custom name, else the
@@ -933,13 +992,31 @@ serve(async (req) => {
       return names.length ? formatNames(names) : "Your group";
     };
 
-    const proposalDigests: ProposalDigest[] = (perUserProps.get(userId) ?? [])
-      .map((p) => ({
-        groupId: p.groupId,
-        showName: showNameById.get(p.showId) ?? p.showId,
-        proposerName: authorName(p.proposerId),
+    // Proposals grouped under the friend who proposed (2026-09-30): one
+    // block per (friend, group), shows by name; "(X is also in.)" names the
+    // OTHER friends who've opted in — never the proposer or the recipient.
+    const propBlocks = new Map<string, { groupId: string; proposerId: string; shows: { showName: string; alsoIn: string[] }[] }>();
+    for (const p of perUserProps.get(userId) ?? []) {
+      const key = `${p.proposerId}|${p.groupId}`;
+      if (!propBlocks.has(key)) propBlocks.set(key, { groupId: p.groupId, proposerId: p.proposerId, shows: [] });
+      const alsoIn = [...(votersByPair.get(`${p.groupId}|${p.showId}`) ?? [])]
+        .filter((uid) => uid !== p.proposerId && uid !== userId && !seedAuthors.has(uid))
+        .map((uid) => authorName(uid));
+      propBlocks.get(key)!.shows.push({ showName: showNameById.get(p.showId) ?? p.showId, alsoIn });
+    }
+    const groupsByProposer = new Map<string, Set<string>>();
+    for (const b of propBlocks.values()) {
+      if (!groupsByProposer.has(b.proposerId)) groupsByProposer.set(b.proposerId, new Set());
+      groupsByProposer.get(b.proposerId)!.add(b.groupId);
+    }
+    const proposalDigests: ProposalDigest[] = [...propBlocks.values()]
+      .map((b) => ({
+        groupId: b.groupId,
+        proposerName: authorName(b.proposerId),
+        groupLabel: (groupsByProposer.get(b.proposerId)?.size ?? 0) > 1 ? groupLabel(b.groupId) : null,
+        shows: b.shows.sort((x, y) => x.showName.localeCompare(y.showName)),
       }))
-      .sort((a, b) => a.showName.localeCompare(b.showName));
+      .sort((a, b) => a.proposerName.localeCompare(b.proposerName));
 
     const chatDigests: ChatDigest[] = [...(perUserChat.get(userId) ?? new Map<string, Set<string>>()).entries()]
       .map(([gid, senders]: [string, Set<string>]) => ({
@@ -955,7 +1032,8 @@ serve(async (req) => {
         userId, email,
         rooms: roomDigests.length,
         entries: roomDigests.reduce((n, r) => n + r.entries.length, 0),
-        proposals: proposalDigests.length,
+        proposals: proposalDigests.reduce((n, p) => n + p.shows.length, 0),
+        sidebarLetters: sidebarLetters.length,
         chats: chatDigests.length,
         deckNames: deckNames.length,
         dryRun: true,
@@ -965,9 +1043,9 @@ serve(async (req) => {
     const ok = await sendResendEmail(
       resendKey,
       email,
-      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames),
-      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName),
-      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName),
+      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames, sidebarLetters),
+      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters),
+      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters),
     );
     if (ok) sent++;
     report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, chats: chatDigests.length, sent: ok });

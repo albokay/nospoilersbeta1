@@ -10,6 +10,7 @@ import MobileGroupChat from "./MobileGroupChat";
 import MobileShowRoom from "./MobileShowRoom";
 import MobileGroupInviteAccept from "./MobileGroupInviteAccept";
 import MobilePool from "./MobilePool";
+import { startBottomBleed } from "./bottomBleed";
 
 // Mobile entry point. Mounts on any path under /m/* via the top-level <App>
 // router in src/App.tsx. Only admins can reach /m while the mobile rebuild is
@@ -88,7 +89,10 @@ export default function MobileApp() {
     // Scope the shared [data-m] rules above to the /m surface for as long as
     // any mobile page is mounted (covers portaled sheets/dialogs too).
     document.body.setAttribute("data-m", "");
-    return () => { document.body.removeAttribute("data-m"); };
+    // Home-screen app: the band under the layout takes the colour of
+    // whatever is open above it (2026-09-30).
+    const stopBleed = startBottomBleed();
+    return () => { document.body.removeAttribute("data-m"); stopBleed(); };
   }, []);
 
   const subPath = location.pathname.replace(/^\/m/, "") || "/";

@@ -134,9 +134,21 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
     return ids;
   }, [excludeTvmazeIds, picks, shows]);
   const [browseOpen, setBrowseOpen] = useState<BrowseShow | null>(null);
+  // A TVMaze search hit's status rides along to its pick (the card's yes).
+  const tvStatusRef = useRef(new Map<number, string | undefined>());
   function pickOf(b: BrowseShow): InviteShowPick {
     const cat = shows.find((s) => s.tvmazeId === String(b.tvmazeId));
-    return cat ? { kind: "catalog", id: cat.id, name: cat.name } : { kind: "tv", tvmazeId: b.tvmazeId, name: b.name };
+    if (cat) return { kind: "catalog", id: cat.id, name: cat.name };
+    const status = tvStatusRef.current.get(b.tvmazeId);
+    return status ? { kind: "tv", tvmazeId: b.tvmazeId, name: b.name, status } : { kind: "tv", tvmazeId: b.tvmazeId, name: b.name };
+  }
+  // A search hit opens the same trailer card as a browse thumbnail (Alborz
+  // 2026-09-30). A catalog show with no TVMaze id has no card to open, so
+  // it's added outright as before.
+  function openFromSearch(p: InviteShowPick, tvmazeId: number | null) {
+    if (tvmazeId == null) { addPick(p); return; }
+    if (p.kind === "tv") tvStatusRef.current.set(tvmazeId, p.status);
+    setBrowseOpen({ tvmazeId, name: p.name, imageUrl: null, channel: null });
   }
   function isPicked(b: BrowseShow): boolean {
     const p = pickOf(b);
@@ -183,23 +195,25 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           style={searchInput}
         />
         {hasResults && (
-          // Mobile: the list scrolls internally past ~a third of the screen
-          // so it can never outgrow the band above the keyboard.
-          <div style={{ marginTop: 8, textAlign: "left", ...(mobile ? { maxHeight: "34dvh", overflowY: "auto", WebkitOverflowScrolling: "touch" as const } : {}) }}>
+          // The results float OVER the page below (Alborz 2026-09-30) — they
+          // used to grow the card and push everything under it down. Mobile:
+          // the list scrolls internally past ~a third of the screen so it
+          // can never outgrow the band above the keyboard.
+          <div style={{ ...resultsDrop, maxHeight: mobile ? "34dvh" : 320 }}>
             {catalogMatches.map((s) => (
-              <button key={s.id} style={resultRow} onClick={() => addPick({ kind: "catalog", id: s.id, name: s.name })}>
+              <button key={s.id} style={resultRow} onClick={() => openFromSearch({ kind: "catalog", id: s.id, name: s.name }, s.tvmazeId ? Number(s.tvmazeId) : null)}>
                 <span style={resultName}>{s.name}</span><Plus size={16} strokeWidth={2.5} />
               </button>
             ))}
             {tvToAdd.map(({ tv, id }) => (
-              <button key={id} style={resultRow} onClick={() => addPick({ kind: "tv", tvmazeId: tv.id, name: tv.name, status: tv.status })}>
+              <button key={id} style={resultRow} onClick={() => openFromSearch({ kind: "tv", tvmazeId: tv.id, name: tv.name, status: tv.status }, tv.id)}>
                 <span style={resultName}>{tv.name}{networkLabel(tv) ? ` · ${networkLabel(tv)}` : ""}</span><Plus size={16} strokeWidth={2.5} />
               </button>
             ))}
           </div>
         )}
         {query.trim().length >= 2 && catalogMatches.length === 0 && tvToAdd.length === 0 && (
-          <div style={{ padding: "12px 16px", fontSize: 13, color: CANON.dark, opacity: 0.6, textAlign: "left" }}>searching&hellip;</div>
+          <div style={{ ...resultsDrop, padding: "12px 16px", fontSize: 13, color: "rgba(26,58,74,0.6)" }}>searching&hellip;</div>
         )}
       </div>
 
@@ -225,7 +239,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
             <div style={{ color: CANON.cream, fontSize: 15, fontWeight: 600, textAlign: "center" }}>Do you want to watch this?</div>
             <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
               {/* A yes closes the card at once (Alborz 2026-09-30). */}
-              <YesNoToggle value={isPicked(browseOpen)} onChange={(v) => { setPicked(browseOpen, v); if (v) setBrowseOpen(null); }} />
+              <YesNoToggle value={isPicked(browseOpen)} onChange={(v) => { setPicked(browseOpen, v); if (v) { setBrowseOpen(null); setQuery(""); setTvResults([]); } }} />
             </div>
           </InviteShowCard>
         );
@@ -237,8 +251,18 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
 // Self-contained styles — the wall pages each carry their own scoped CSS, so
 // this block depends on none of it.
 const searchCard: React.CSSProperties = {
+  // relative + raised: the results list hangs beneath it, over the page.
+  position: "relative", zIndex: 20,
   margin: "0 auto", background: CANON.cream, borderRadius: 15, padding: 10, boxSizing: "border-box",
   boxShadow: "0 8px 24px rgba(0,0,0,0.12)", textAlign: "center",
+};
+// The search results (2026-09-30): a panel under the card that overlays the
+// content below instead of pushing it down.
+const resultsDrop: React.CSSProperties = {
+  position: "absolute", left: 0, right: 0, top: "calc(100% + 6px)", zIndex: 21,
+  background: CANON.cream, borderRadius: 15, padding: "6px 10px", boxSizing: "border-box",
+  boxShadow: "0 8px 24px rgba(0,0,0,0.18)", textAlign: "left",
+  overflowY: "auto", WebkitOverflowScrolling: "touch",
 };
 const searchInput: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", border: `2px solid ${CANON.friend}`, borderRadius: 12,

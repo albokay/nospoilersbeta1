@@ -217,10 +217,10 @@ serve(async (req) => {
     // sentence; tagline removed; CTA = "Join in →". Fine print unchanged.
     const headlineHtml = ep4 === null
       ? `📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.`
-      : `📺 <strong>${escapeHtml(senderName)}</strong> thinks that &ldquo;just wait till you see episode 4&rdquo; when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+      : `📺 <strong>${escapeHtml(senderName)}</strong> ${ep4 ? "thinks" : "doesn&rsquo;t think"} &ldquo;just wait till you see episode 4&rdquo; counts as a TV show spoiler.`;
     const headlineText = ep4 === null
       ? `${senderName} wants to watch shows with you on Sidebar.`
-      : `${senderName} thinks that "just wait till you see episode 4" when discussing TV ${ep4 ? "counts as a spoiler" : "is not a spoiler"}.`;
+      : `${senderName} ${ep4 ? "thinks" : "doesn't think"} "just wait till you see episode 4" counts as a TV show spoiler.`;
     const doYouHtml = ep4 === null ? "" : `\n  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;font-weight:700">Do you?</p>`;
     const doYouText = ep4 === null ? "" : `\n\nDo you?`;
 
