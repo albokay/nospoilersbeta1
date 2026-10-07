@@ -12,7 +12,7 @@ const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 
 // One fill everywhere (Alborz 2026-10-07): yellow on letters AND on
 // responses — Friend blue now means SEALED: a stretch whose notes you can't
-// read yet. The hovered or open stretch goes a shade darker.
+// read yet. The hovered or open stretch turns cream (his 10-07 note).
 const DEFAULT_HIGHLIGHT_COLOR = CANON.accent;
 const SEALED_COLOR = CANON.friend;
 
@@ -138,7 +138,7 @@ function HighlightableSegment({
         const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
         if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
         const readable = p.covering.some((h) => !h.sealed);
-        const hasReadableNote = p.covering.some((h) => !h.sealed && h.kind === "note");
+        const hasReadableNote = p.covering.some((h) => h.kind === "note");
         const active = !!activeIds && p.covering.some((h) => activeIds.has(h.id));
         const base = readable ? color : SEALED_COLOR;
         return (
@@ -147,7 +147,7 @@ function HighlightableSegment({
             onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
             onMouseLeave={onLeave}
             onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
-            style={{ background: active ? darken(base) : base, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
+            style={{ background: active ? CANON.cream : base, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
           >
             {renderText(slice)}
           </span>
@@ -274,7 +274,8 @@ export default function HighlightableBody({
   // The open / hovered stretch, re-derived from the CURRENT highlights so a
   // note added or removed while the paper is open shows up at once.
   const openSet = open ? covering(highlights, open) : [];
-  const openNotes = openSet.filter((h) => !h.sealed && h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
+  // Every note on the stretch, sealed ones included: each is its own page.
+  const openNotes = openSet.filter((h) => h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
   const openSealed = openSet.filter((h) => h.sealed);
   const hoverSet = hover ? covering(highlights, hover) : [];
   const activeIds = open ? new Set(openSet.map((h) => h.id)) : hover ? new Set(hoverSet.map((h) => h.id)) : null;
@@ -296,6 +297,7 @@ export default function HighlightableBody({
   };
 
   const baseForAdd = openNotes[openNotes.length - 1] ?? openSet[0];
+  void openSealed;
 
   return (
     <>
@@ -364,7 +366,6 @@ export default function HighlightableBody({
         <HighlightNotePaper
           anchorEl={open.el}
           notes={openNotes}
-          sealed={openSealed}
           currentUserId={currentUserId}
           displayNames={displayNames}
           onClose={() => setOpen(null)}

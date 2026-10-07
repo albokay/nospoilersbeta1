@@ -14,11 +14,15 @@ import SidebarAvatar from "../SidebarAvatar";
 //     "A note from s1 e5. It opens when you catch up."), plus "click to
 //     read" when there is something to read. Your own yup keeps its ×.
 //
-//   HighlightNotePaper — the paper that opens on click: ONE NOTE PER PAGE.
+//   HighlightNotePaper — the paper that opens on click: ONE NOTE PER PAGE,
+//     sealed ones included (a sealed note is its own card: the writer's
+//     name and avatar as usual, the red lock where the writing would be).
 //     "← Name" bottom-left from the second page on, "Name →" bottom-right
-//     while there is a next note, × top-right, Delete bottom-middle on
-//     your own note, and "Add note" on the LAST page (so a second person
-//     adds to the same stretch instead of highlighting it again).
+//     while there is a next note, "1 of 2" bottom-centre, × top-right,
+//     Delete under that on your own note, and "Add note" on the LAST page
+//     (so a second person adds to the same stretch instead of highlighting
+//     it again). With more than one note a second card peeks out behind
+//     the first (his 10-07 notes).
 //
 // Both are anchored to the stretch itself (not the cursor), re-measured on
 // every scroll and resize so they travel with the page, and clamped to the
@@ -46,6 +50,8 @@ function joinNames(names: string[]): string {
 }
 
 const progressTag = (h: Highlight) => `s${h.authorSeason} e${h.authorEpisode}`;
+const COUNT_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+const countWord = (n: number) => COUNT_WORDS[n] ?? String(n);
 
 /** The stretch's boxes, re-measured on scroll (any scroller) and resize.
  *  `first` is the first line's box (the hover popup rides the first line);
@@ -117,22 +123,16 @@ function Chips({ readable, sealed }: { readable: Highlight[]; sealed: Highlight[
 export function describeStretch(readable: Highlight[], sealed: Highlight[], displayNames: Names): { notes: string | null; yups: string | null; sealed: string | null } {
   const notes = readable.filter((h) => h.kind === "note");
   const yups = readable.filter((h) => h.kind === "yup");
+  // His copy (10-07): "One visible note from Alborz." / "One sealed note
+  // waiting for you." — no episode numbers on the rollover.
   let notesLine: string | null = null;
   if (notes.length) {
-    const byAuthor = new Map<string, number>();
-    for (const h of notes) byAuthor.set(nameOf(h, displayNames), (byAuthor.get(nameOf(h, displayNames)) ?? 0) + 1);
-    const names = Array.from(byAuthor.keys());
-    if (names.length === 1) {
-      const n = byAuthor.get(names[0]) ?? 1;
-      notesLine = n === 1 ? `${names[0]} left a note` : `${names[0]} left ${n} notes`;
-    } else {
-      notesLine = `${joinNames(names)} left notes`;
-    }
+    const names = Array.from(new Set(notes.map((h) => nameOf(h, displayNames))));
+    notesLine = `${countWord(notes.length)} visible note${notes.length === 1 ? "" : "s"} from ${joinNames(names)}.`;
   }
   const yupsLine = yups.length ? joinNames(Array.from(new Set(yups.map((h) => nameOf(h, displayNames))))) : null;
-  let sealedLine: string | null = null;
-  if (sealed.length === 1) sealedLine = `A note from ${progressTag(sealed[0])}. It opens when you catch up.`;
-  else if (sealed.length > 1) sealedLine = `${sealed.length} notes from ahead. They open when you catch up.`;
+  const sealedNotes = sealed.filter((h) => h.kind === "note");
+  const sealedLine = sealedNotes.length ? `${countWord(sealedNotes.length)} sealed note${sealedNotes.length === 1 ? "" : "s"} waiting for you.` : null;
   return { notes: notesLine, yups: yupsLine, sealed: sealedLine };
 }
 
@@ -152,7 +152,7 @@ export function HighlightHoverPopup({ anchorEl, readable, sealed, currentUserId,
   const maxW = Math.min(280, vw - 24);
   const cx = Math.max(12 + maxW / 2, Math.min(boxes.first.left + boxes.first.width / 2, vw - 12 - maxW / 2));
   const lines = describeStretch(readable, sealed, displayNames);
-  const hasNotes = readable.some((h) => h.kind === "note");
+  const hasNotes = readable.some((h) => h.kind === "note") || sealed.some((h) => h.kind === "note");
   const ownYup = readable.find((h) => h.kind === "yup" && !!currentUserId && h.authorId === currentUserId);
   return (
     <span
@@ -186,7 +186,7 @@ export function HighlightHoverPopup({ anchorEl, readable, sealed, currentUserId,
           {lines.sealed && <span>{lines.sealed}</span>}
         </span>
       </span>
-      {hasNotes && <span style={{ opacity: 0.6, fontSize: 11 }}>Click to read</span>}
+      {hasNotes && <span style={{ opacity: 0.6, fontSize: 11 }}>Click to open</span>}
     </span>
   );
 }
@@ -197,11 +197,11 @@ const footBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 4, minHeight: 32,
 };
 
-export function HighlightNotePaper({ anchorEl, notes, sealed, currentUserId, displayNames, onClose, onDelete, onAddNote }: {
+export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayNames, onClose, onDelete, onAddNote }: {
   anchorEl: HTMLElement;
-  /** The readable notes on this stretch, oldest first — one page each. */
+  /** Every note on this stretch, oldest first, sealed ones included — one
+   *  page each. */
   notes: Highlight[];
-  sealed: Highlight[];
   currentUserId: string | null;
   displayNames?: Record<string, string>;
   onClose: () => void;
@@ -261,7 +261,6 @@ export function HighlightNotePaper({ anchorEl, notes, sealed, currentUserId, dis
   const prev = i > 0 ? notes[i - 1] : null;
   const next = i < notes.length - 1 ? notes[i + 1] : null;
   const isLast = i === notes.length - 1;
-  const sealedLine = describeStretch([], sealed, displayNames).sealed;
 
   async function save() {
     const text = draft.trim();
@@ -282,14 +281,24 @@ export function HighlightNotePaper({ anchorEl, notes, sealed, currentUserId, dis
   return (
     <div
       ref={paperRef}
-      role="dialog"
-      aria-label={`Note from ${nameOf(note, displayNames)}`}
       data-hl-popup
       style={{
         position: "fixed", left, width, maxHeight, boxSizing: "border-box", ...place,
-        transform: `rotate(${PAPER_TILT}deg)`,
+        transform: `rotate(${PAPER_TILT}deg)`, zIndex: 9999,
+        display: "flex", flexDirection: "column",
+      }}
+    >
+    {notes.length > 1 && (
+      // The card behind: one is enough to say "there's more here".
+      <div aria-hidden style={{ position: "absolute", left: 7, top: 9, right: -7, bottom: -9, background: CANON.cream, borderRadius: PAPER_RADIUS, boxShadow: "0 8px 24px rgba(0,0,0,0.16)", transform: "rotate(1.6deg)", transformOrigin: "bottom center" }} />
+    )}
+    <div
+      role="dialog"
+      aria-label={note.sealed ? `Sealed note from ${nameOf(note, displayNames)}` : `Note from ${nameOf(note, displayNames)}`}
+      style={{
+        position: "relative", zIndex: 1, minHeight: 0, maxHeight: "inherit", boxSizing: "border-box",
         background: CANON.cream, color: CANON.dark, borderRadius: PAPER_RADIUS,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.2)", zIndex: 9999,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
         padding: "12px 14px 10px", display: "flex", flexDirection: "column", gap: 8,
         fontFamily: INTER,
       }}
@@ -301,24 +310,24 @@ export function HighlightNotePaper({ anchorEl, notes, sealed, currentUserId, dis
         </span>
         <span style={{ minWidth: 0, display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
           <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nameOf(note, displayNames)}</span>
-          <span style={{ fontSize: 11, opacity: 0.65 }}>{progressTag(note)} · {timeAgo(note.createdAt)}{notes.length > 1 ? ` · ${i + 1} of ${notes.length}` : ""}</span>
+          <span style={{ fontSize: 11, opacity: 0.65 }}>{progressTag(note)} · {timeAgo(note.createdAt)}</span>
         </span>
         <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", right: -8, top: -6, width: 32, height: 32, border: "none", background: "transparent", color: CANON.dark, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
           <X size={16} />
         </button>
       </div>
 
-      {sealedLine && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, opacity: 0.75 }}>
-          <span style={{ display: "inline-flex", width: 16, height: 16, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={9} color={CANON.cream} strokeWidth={2.6} /></span>
-          <span>{sealedLine}</span>
+      {/* The note — scrolls inside when it is taller than the room it has.
+          A sealed note shows the lock where its writing would be. */}
+      {note.sealed ? (
+        <div aria-label="Sealed until you catch up" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "14px 0 10px" }}>
+          <span style={{ display: "inline-flex", width: 36, height: 36, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={18} color={CANON.cream} strokeWidth={2.4} /></span>
+        </div>
+      ) : (
+        <div style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", paddingRight: 2 }}>
+          {note.note}
         </div>
       )}
-
-      {/* The note — scrolls inside when it is taller than the room it has */}
-      <div style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", paddingRight: 2 }}>
-        {note.note}
-      </div>
 
       {/* Add note — on the last page only; the writing field replaces it */}
       {isLast && onAddNote && !writing && (
@@ -346,20 +355,24 @@ export function HighlightNotePaper({ anchorEl, notes, sealed, currentUserId, dis
         </div>
       )}
 
-      {/* Footer: ← Name | Delete | Name → */}
-      {(prev || next || (isOwn && onDelete)) && (
+      {/* Footer: ← Name | 1 of 2 | Name →, then Delete under it on your own note */}
+      {(prev || next) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: 2 }}>
           <span style={{ justifySelf: "start" }}>
             {prev && <button type="button" onClick={() => { setPage(i - 1); setWriting(false); }} style={footBtn}><ChevronLeft size={14} />{nameOf(prev, displayNames)}</button>}
           </span>
-          <span style={{ justifySelf: "center" }}>
-            {isOwn && onDelete && <button type="button" onClick={() => onDelete(note.id)} style={{ ...footBtn, color: CANON.alert }}>Delete</button>}
-          </span>
+          <span style={{ justifySelf: "center", fontSize: 11, opacity: 0.6 }}>{i + 1} of {notes.length}</span>
           <span style={{ justifySelf: "end" }}>
             {next && <button type="button" onClick={() => { setPage(i + 1); setWriting(false); }} style={footBtn}>{nameOf(next, displayNames)}<ChevronRight size={14} /></button>}
           </span>
         </div>
       )}
+      {isOwn && onDelete && !note.sealed && (
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <button type="button" onClick={() => onDelete(note.id)} style={{ ...footBtn, color: CANON.alert }}>Delete</button>
+        </div>
+      )}
+    </div>
     </div>
   );
 }
