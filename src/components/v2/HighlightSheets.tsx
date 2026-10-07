@@ -53,14 +53,6 @@ const field: React.CSSProperties = {
 };
 const bottomPad = "calc(env(safe-area-inset-bottom, 0px) + 24px)";
 
-function SealedLine({ text }: { text: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, lineHeight: 1.4 }}>
-      <span style={{ display: "inline-flex", width: 20, height: 20, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={11} color={CANON.cream} strokeWidth={2.6} /></span>
-      <span>{text}</span>
-    </div>
-  );
-}
 
 export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, displayNames, onClose, onDelete, onAddNote }: {
   quoted: string;
@@ -106,11 +98,12 @@ export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, di
       <div role="dialog" aria-label="Notes" style={{ ...sheet, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
         <div style={title}>{notes.length ? (notes.length === 1 ? "A note on this" : "Notes on this") : "This highlight"}</div>
         <div style={quotedStyle}>“{quoted}”</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, lineHeight: 1.4, marginBottom: 4 }}>
-          {lines.notes && <div>{lines.notes}</div>}
-          {lines.yups && <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{lines.yups}: <ThumbsUp size={13} color={CANON.cream} strokeWidth={2} /></div>}
-          {lines.sealed && <SealedLine text={lines.sealed} />}
-        </div>
+        {/* The rollover's lines belong to the desktop popup (his 10-07
+            note): here the cards say it, sealed ones included. Only a yup,
+            which has no card, gets a line. */}
+        {lines.yups && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, lineHeight: 1.4, marginBottom: 4 }}>{lines.yups}: <ThumbsUp size={13} color={CANON.cream} strokeWidth={2} /></div>
+        )}
 
         <div ref={scrollRef} style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", margin: "6px -6px 0", padding: `8px 6px ${bottomPad}` }}>
           {notes.map((h, i) => {
