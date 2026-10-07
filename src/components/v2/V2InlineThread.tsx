@@ -775,13 +775,20 @@ export default function V2InlineThread({
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
       {!isTombstone && !editing && pickMode && (
-        // Pick mode (the phone): the row becomes the picking bar.
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
-          <span style={{ flex: "1 1 160px", fontSize: 13, lineHeight: 1.4, fontStyle: "italic", opacity: 0.85 }}>
-            {pickRange ? "Tap more sentences to add them, or an end one to let it go." : "Tap the sentences you mean."}
-          </span>
-          <button className="btn sb-cream-outline" onClick={endPick} style={sPillGeom}>Cancel</button>
-          <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
+        // Pick mode (the phone): a cream card in the action row's place
+        // that says what a note is and how to pick (his 10-07 note: the
+        // one-line hint was too cryptic and too easy to miss).
+        <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 16, background: CANON.cream, color: CANON.dark }}>
+          <div style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 18, lineHeight: 1.3, marginBottom: 6 }}>Add a note</div>
+          <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+            {pickRange
+              ? "Tap more sentences to add them, or tap the first or last one to let it go. Then tap Next to write your note."
+              : "A note is a thought you leave on part of a letter. Tap the sentences above that you want to write about — they'll light up. Then tap Next."}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+            <button className="btn sb-cream-outline" onClick={endPick} style={{ ...sPillGeom, borderColor: CANON.dark, color: CANON.dark }}>Cancel</button>
+            <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
+          </div>
         </div>
       )}
       {!isTombstone && !editing && !pickMode && (
@@ -1081,7 +1088,6 @@ export default function V2InlineThread({
           sentences — the stretch, then Yup. or a note. */}
       {mobileCreate && createPortal(
         <HighlightCreateSheet
-          quoted={mobileCreate.text}
           onClose={() => setMobileCreate(null)}
           onConfirm={async (payload) => {
             await createHighlightFromRange(mobileCreate, payload);

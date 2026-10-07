@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import CanonRadio from "./CanonRadio";
 import { CANON } from "../styles/canon";
 
-// Two-radio picker shown after the user selects text and clicks the
-// "Highlight…" button. Mirrors NudgePopover / AskTheRoomPicker visually:
+// The note box shown after the user selects text and clicks "Add a note"
+// (was a two-radio picker with "Yup." — retired 2026-10-07). Mirrors NudgePopover / AskTheRoomPicker visually:
 // cream card, canon-light-blue radio rows, click-outside + Escape to
 // dismiss, anchored below the trigger button (above it when the screen
 // runs out below — notes arc, 2026-10-07).
@@ -19,7 +18,6 @@ import { CANON } from "../styles/canon";
 // The picker itself stays simple: pick → OK → onConfirm → parent unmounts.
 
 const CREAM        = CANON.cream;
-const CANON_LIGHT  = CANON.friend;
 const CANON_NAVY   = CANON.dark;
 const CANON_YELLOW = CANON.accent;
 const TEXT_MUTED   = "#5f5e5a";
@@ -64,7 +62,6 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
   }, [anchorEl]);
   const noteInputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const [selected, setSelected] = useState<"yup" | "note" | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -110,30 +107,20 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const handleSelectYup = () => setSelected("yup");
-  const handleSelectNote = () => {
-    setSelected("note");
-    // Defer focus so the input is in the DOM by the time we focus it.
-    setTimeout(() => noteInputRef.current?.focus(), 0);
-  };
+  // Straight into writing: focus the box as soon as it opens.
+  useEffect(() => { setTimeout(() => noteInputRef.current?.focus(), 0); }, []);
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Hard cap at NOTE_MAX even if the browser somehow lets a paste through.
     setNote(e.target.value.slice(0, NOTE_MAX));
   };
 
-  const canSubmit =
-    !submitting &&
-    (selected === "yup" || (selected === "note" && note.trim().length > 0));
+  const canSubmit = !submitting && note.trim().length > 0;
 
   async function handleOk() {
-    if (!canSubmit || !selected) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     try {
-      if (selected === "yup") {
-        await onConfirm({ kind: "yup" });
-      } else {
-        await onConfirm({ kind: "note", note: note.trim() });
-      }
+      await onConfirm({ kind: "note", note: note.trim() });
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +148,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: CANON_NAVY, fontFamily: '"Inter", sans-serif' }}>
-          React to this:
+          Add a note
         </div>
         <button
           onClick={onClose}
@@ -184,77 +171,33 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
         </button>
       </div>
 
-      {/* Options */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-        {/* Yup */}
-        <label
-          onClick={handleSelectYup}
+      {/* The composition box (his 10-07 note: no "Yup." to pick any more —
+          Add a note opens straight into writing). */}
+      <div style={{ marginBottom: 12 }}>
+        <textarea
+          ref={noteInputRef}
+          value={note}
+          onChange={handleNoteChange}
+          maxLength={NOTE_MAX}
+          rows={5}
+          placeholder="Write your note…"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
+            width: "100%",
+            fontSize: 14,
+            lineHeight: 1.5,
+            fontFamily: '"Inter", sans-serif',
             padding: "10px 14px",
-            minHeight: 48,
-            boxSizing: "border-box",
             borderRadius: 12,
-            background: CANON_LIGHT,
-            fontSize: 15,
-            fontWeight: selected === "yup" ? 600 : 400,
-            color: CANON.cream,
-            cursor: "pointer",
+            border: "none",
+            background: CREAM,
+            boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)",
+            boxSizing: "border-box",
+            color: CANON_NAVY,
+            outline: "none",
+            resize: "vertical",
           }}
-        >
-          <CanonRadio checked={selected === "yup"} color={color} />
-          <span>Yup.</span>
-        </label>
-
-        {/* Note */}
-        <div style={{ padding: "10px 14px", minHeight: 48, boxSizing: "border-box", borderRadius: 12, background: CANON_LIGHT, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <label
-            onClick={handleSelectNote}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 15,
-              fontWeight: selected === "note" ? 600 : 400,
-              color: CANON.cream,
-              marginBottom: selected === "note" ? 8 : 0,
-              cursor: "pointer",
-            }}
-          >
-            <CanonRadio checked={selected === "note"} color={CANON_YELLOW} />
-            <span>Write a note&hellip;</span>
-          </label>
-          {selected === "note" && (
-            <>
-              <textarea
-                ref={noteInputRef}
-                value={note}
-                onChange={handleNoteChange}
-                maxLength={NOTE_MAX}
-                rows={4}
-                placeholder="write a note"
-                style={{
-                  width: "100%",
-                  fontSize: 14,
-                  lineHeight: 1.5,
-                  fontFamily: '"Inter", sans-serif',
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: CREAM,
-                  boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)",
-                  boxSizing: "border-box",
-                  color: CANON_NAVY,
-                  outline: "none",
-                  resize: "vertical",
-                }}
-              />
-              <div style={{ alignSelf: "flex-end", marginTop: 4, fontSize: 11, color: CANON.cream, opacity: 0.8 }}>{note.length}/{NOTE_MAX}</div>
-            </>
-          )}
-        </div>
+        />
+        <div style={{ textAlign: "right", marginTop: 4, fontSize: 11, color: TEXT_MUTED }}>{note.length}/{NOTE_MAX}</div>
       </div>
 
       {/* Footer: ok / Cancel */}

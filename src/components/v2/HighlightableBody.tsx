@@ -351,7 +351,6 @@ export default function HighlightableBody({
       )}
       {mobile && open && openSet.length > 0 && createPortal(
         <HighlightNoteSheet
-          quoted={openSet[0].quotedText}
           readable={openSet.filter((h) => !h.sealed)}
           sealed={openSealed}
           currentUserId={currentUserId}

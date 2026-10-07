@@ -33,11 +33,9 @@ const sheet: React.CSSProperties = {
   boxSizing: "border-box", fontFamily: INTER,
 };
 const title: React.CSSProperties = { fontFamily: LORA, fontWeight: 700, fontSize: 20, marginBottom: 8 };
-const quotedStyle: React.CSSProperties = {
-  fontFamily: LORA, fontStyle: "italic", fontSize: 14, lineHeight: 1.45, opacity: 0.92,
-  display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
-  borderLeft: `2px solid ${CANON.cream}`, paddingLeft: 10, margin: "0 0 10px",
-};
+// One plain line about what a note is (his 10-07 note: the quoted stretch
+// read as a message, so it's gone from both sheets).
+const aboutStyle: React.CSSProperties = { fontSize: 14, lineHeight: 1.5, opacity: 0.92, margin: "0 0 12px" };
 const creamPill: React.CSSProperties = {
   background: CANON.cream, color: CANON.dark, border: "none", borderRadius: 9999,
   padding: "10px 18px", fontFamily: INTER, fontSize: 14, fontWeight: 700, cursor: "pointer", minHeight: 44,
@@ -54,8 +52,7 @@ const field: React.CSSProperties = {
 const bottomPad = "calc(env(safe-area-inset-bottom, 0px) + 24px)";
 
 
-export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, displayNames, onClose, onDelete, onAddNote }: {
-  quoted: string;
+export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNames, onClose, onDelete, onAddNote }: {
   readable: Highlight[];
   sealed: Highlight[];
   currentUserId: string | null;
@@ -97,7 +94,7 @@ export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, di
     <div style={backdrop} onClick={onClose}>
       <div role="dialog" aria-label="Notes" style={{ ...sheet, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
         <div style={title}>{notes.length ? (notes.length === 1 ? "A note on this" : "Notes on this") : "This highlight"}</div>
-        <div style={quotedStyle}>“{quoted}”</div>
+        <div style={aboutStyle}>Notes are what friends leave on a stretch of a letter. A note from further ahead stays sealed until you catch up.</div>
         {/* The rollover's lines belong to the desktop popup (his 10-07
             note): here the cards say it, sealed ones included. Only a yup,
             which has no card, gets a line. */}
@@ -152,8 +149,7 @@ export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, di
   );
 }
 
-export function HighlightCreateSheet({ quoted, onClose, onConfirm }: {
-  quoted: string;
+export function HighlightCreateSheet({ onClose, onConfirm }: {
   onClose: () => void;
   onConfirm: (payload: { kind: "yup" } | { kind: "note"; note: string }) => Promise<void>;
 }) {
@@ -176,11 +172,11 @@ export function HighlightCreateSheet({ quoted, onClose, onConfirm }: {
     <div style={backdrop} onClick={onClose}>
       <div role="dialog" aria-label="Add a note" style={{ ...sheet, paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
         <div style={title}>Add a note</div>
-        <div style={{ ...quotedStyle, WebkitLineClamp: 4 }}>“{quoted}”</div>
+        <div style={aboutStyle}>Your note will sit on the sentences you picked. Friends who are behind you will see it once they've watched this far.</div>
         <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Write a note…" style={field} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
           <button type="button" onClick={() => go({ kind: "note", note: draft.trim() })} disabled={!draft.trim() || saving} style={{ ...creamPill, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save note"}</button>
-          <button type="button" onClick={() => go({ kind: "yup" })} disabled={saving} style={{ ...outlinePill, display: "inline-flex", alignItems: "center", gap: 6 }}>Just <ThumbsUp size={14} color={CANON.cream} strokeWidth={2.2} /> Yup.</button>
+          <button type="button" onClick={onClose} disabled={saving} style={outlinePill}>Cancel</button>
           <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.8 }}>{draft.length}/{NOTE_MAX}</span>
         </div>
         {error && <div style={{ marginTop: 8, fontSize: 13, fontStyle: "italic" }}>{error}</div>}
