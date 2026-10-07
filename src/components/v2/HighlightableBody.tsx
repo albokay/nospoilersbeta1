@@ -181,6 +181,7 @@ function PickSegment({ text, bodyStart, range, all, onToggle }: {
         role="button"
         tabIndex={0}
         aria-pressed={picked}
+        data-picked={picked ? "1" : undefined}
         onClick={(e) => { e.stopPropagation(); onToggle(sn, all); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(sn, all); } }}
         style={{ background: picked ? PICK_FILL : "transparent", padding: "2px 0", borderRadius: 3, cursor: "pointer", boxShadow: picked ? `0 0 0 1px ${CANON.accent}` : "none", transition: "background 120ms ease" }}

@@ -359,10 +359,32 @@ export default function V2InlineThread({
     setPickMode(true);
   };
   const endPick = () => { setPickMode(false); setPickRange(null); };
+  // Bring the picked sentences to the top of the page so they stay in
+  // view above the writing sheet (his 10-07 note). The room scrolls inside
+  // a fixed container, so find the nearest scroller rather than the window.
+  const scrollPickIntoView = () => {
+    const el = bodyRef.current?.querySelector('[data-picked="1"]') as HTMLElement | null;
+    if (!el) return;
+    let scroller: HTMLElement | null = el.parentElement;
+    while (scroller && scroller !== document.body) {
+      const oy = getComputedStyle(scroller).overflowY;
+      if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
+    }
+    const top = el.getBoundingClientRect().top;
+    if (scroller && scroller !== document.body) {
+      const delta = top - (scroller.getBoundingClientRect().top + 24);
+      scroller.scrollBy({ top: delta, behavior: "smooth" });
+    } else {
+      window.scrollBy({ top: top - 24, behavior: "smooth" });
+    }
+  };
+  // The pick stays lit behind the writing sheet (his 10-07 note); it clears
+  // when the sheet closes, saved or not.
   const pickNext = () => {
     if (!pickRange) return;
     setMobileCreate({ start: pickRange.a, end: pickRange.b, text: thread.body.slice(pickRange.a, pickRange.b) });
-    endPick();
+    setTimeout(scrollPickIntoView, 0);
   };
 
   const handleDeleteHighlight = (id: string) => {
@@ -1088,10 +1110,11 @@ export default function V2InlineThread({
           sentences — the stretch, then Yup. or a note. */}
       {mobileCreate && createPortal(
         <HighlightCreateSheet
-          onClose={() => setMobileCreate(null)}
+          onClose={() => { setMobileCreate(null); endPick(); }}
           onConfirm={async (payload) => {
             await createHighlightFromRange(mobileCreate, payload);
             setMobileCreate(null);
+            endPick();
           }}
         />,
         document.body,

@@ -158,7 +158,9 @@ export function HighlightCreateSheet({ onClose, onConfirm }: {
   const [error, setError] = useState<string | null>(null);
   const swipe = useSheetSwipeDown(onClose, { enabled: !saving });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { setTimeout(() => textareaRef.current?.focus(), 50); }, []);
+  // Focus after the page has scrolled the picked sentences into view
+  // (V2InlineThread does that on open), so the keyboard doesn't fight it.
+  useEffect(() => { const t = setTimeout(() => textareaRef.current?.focus(), 380); return () => clearTimeout(t); }, []);
 
   async function go(payload: { kind: "yup" } | { kind: "note"; note: string }) {
     if (saving) return;
@@ -172,7 +174,7 @@ export function HighlightCreateSheet({ onClose, onConfirm }: {
     <div style={backdrop} onClick={onClose}>
       <div role="dialog" aria-label="Add a note" style={{ ...sheet, paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
         <div style={title}>Add a note</div>
-        <div style={aboutStyle}>Your note will sit on the sentences you picked. Friends who are behind you will see it once they've watched this far.</div>
+        <div style={aboutStyle}>Your note will sit on the sentences you picked — spoiler-gated just like everything else.</div>
         <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Write a note…" style={field} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
           <button type="button" onClick={() => go({ kind: "note", note: draft.trim() })} disabled={!draft.trim() || saving} style={{ ...creamPill, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save note"}</button>
