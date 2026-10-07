@@ -94,6 +94,9 @@ export type V2InlineThreadProps = {
    *  when present and canRespondDirect is false, the composer runs in
    *  request-to-respond mode for this thread's owner. */
   publicRoomGate?: PublicRoomResponseGate;
+  /** Letters-only room (the switch, 2026-10-07): hides Write back and both
+   *  Quote… buttons and never mounts the composer. */
+  responsesOff?: boolean;
   /** Fires after a reply is published from this thread's composer, so the
    *  parent feed can bump the entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -123,6 +126,7 @@ export default function V2InlineThread({
   onClickProfile,
   focusReplyId,
   publicRoomGate,
+  responsesOff = false,
   onReplyAdded,
   mobileIdiom = false,
 }: V2InlineThreadProps) {
@@ -657,7 +661,7 @@ export default function V2InlineThread({
       Write back
     </button>
   );
-  const showWriteBack = !isTombstone && !composerOpen;
+  const showWriteBack = !isTombstone && !composerOpen && !responsesOff;
 
   return (
     <>
@@ -851,7 +855,7 @@ export default function V2InlineThread({
               Highlight…
             </button>
           )}
-          {!mobileIdiom && (
+          {!mobileIdiom && !responsesOff && (
             // Cream outline + text, cream-fill/Sky-text hover (Alborz
             // 2026-08-13 tweak — the Business version got lost on sky).
             <button
@@ -905,6 +909,7 @@ export default function V2InlineThread({
           onScrollToComposer={openComposer}
           refreshKey={repliesKey}
           hideRespondButtons
+          quoteOff={responsesOff}
           compactBorders
           showAheadStubs
           enableHighlights
@@ -918,7 +923,7 @@ export default function V2InlineThread({
           or when a Quote pending-reference is staged. Renders ABOVE the
           shared bottom row so when the composer is open the row shows
           just the collapse on the left (Write button is gone). */}
-      {!isTombstone && composerOpen && (
+      {!isTombstone && composerOpen && !responsesOff && (
         <div
           ref={composerWrapperRef}
           onInput={handleComposerInput}
@@ -1051,7 +1056,7 @@ export default function V2InlineThread({
           <div>
             <h3 style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 22, lineHeight: 1.3, margin: "0 0 10px" }}>Delete this letter?</h3>
             <p style={{ fontSize: 15, lineHeight: 1.5, opacity: 0.9, margin: "0 0 18px" }}>
-              If it has responses, they'll stay visible in the room as a tombstone. Otherwise the letter disappears from the room.
+              {responsesOff ? "The letter disappears from the room." : "If it has responses, they'll stay visible in the room as a tombstone. Otherwise the letter disappears from the room."}
             </p>
             <div style={{ display: "flex", gap: 12 }}>
               <button

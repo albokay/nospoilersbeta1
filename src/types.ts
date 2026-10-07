@@ -25,6 +25,9 @@ export type FriendGroup = {
   createdAt: number;
   /** The people-group this show room belongs to (restructure model). */
   parentGroupId?: string | null;
+  /** Letters-only room (2026-10-07): no responses, notes in their place.
+   *  Every room created from the switch on; older rooms stay false. */
+  lettersOnly?: boolean;
 };
 
 export type FriendGroupMember = {

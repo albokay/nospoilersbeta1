@@ -357,6 +357,7 @@ export default function RepliesList({
   externalReplies, onRepliesLoaded, refreshKey, groupId, departedUsernames, displayNames,
   orderMode = "episode",
   hideRespondButtons = false,
+  quoteOff = false,
   enableHighlights = false,
   mobileIdiom = false,
 }: {
@@ -399,6 +400,9 @@ export default function RepliesList({
   // own single "Write a response" button. V1 leaves this false to keep
   // existing behavior.
   hideRespondButtons?: boolean;
+  // Letters-only room (the switch, 2026-10-07): the per-response Quote…
+  // would open the response composer, so it goes too.
+  quoteOff?: boolean;
   // V2 uses 2px borders on response cards instead of the V1 default 4px.
   // Applies to both the default state and the green "progressReveal"
   // outline. V2InlineThread opts in; V1 leaves undefined → 4px.
@@ -1358,7 +1362,7 @@ export default function RepliesList({
                       Highlight…
                     </button>
                   )}
-                  {!mobileIdiom && (
+                  {!mobileIdiom && !quoteOff && (
                     <div style={{ position: "relative", display: "inline-block" }}>
                       {/* Styled by the `.reply-card .btn` rules (theme.ts,
                           !important) — inline colors here are dead weight. */}

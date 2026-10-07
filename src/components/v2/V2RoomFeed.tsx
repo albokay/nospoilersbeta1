@@ -271,6 +271,9 @@ export type V2RoomFeedProps = {
       owner's approval rather than published. Omitted everywhere else, so the
       friend room / general aggregate are unaffected. */
   publicRoomGate?: PublicRoomResponseGate;
+  /** Letters-only room (the switch, 2026-10-07): no Write back, no Quote…,
+      no composer — notes stand in for responses. */
+  responsesOff?: boolean;
   /** Fires after a reply is published from any entry's composer, so the parent
       can bump that entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -357,6 +360,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     entryIcon,
     preserveOrder = false,
     publicRoomGate,
+    responsesOff = false,
     onReplyAdded,
     scrollContainerRef,
     demoMode = false,
@@ -1163,6 +1167,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           : undefined
                       }
                       publicRoomGate={publicRoomGate}
+                      responsesOff={responsesOff}
                       onReplyAdded={onReplyAdded}
                     />
                   </div>

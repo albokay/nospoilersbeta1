@@ -86,6 +86,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
+  // Letters-only room (the switch, 2026-10-07): null until the room row is
+  // read, and "responses off" until it is known false, so no Write back
+  // ever flashes in a room that has none.
+  const [lettersOnly, setLettersOnly] = useState<boolean | null>(null);
+  const lettersOnlyRef = useRef<boolean | null>(null);
+  const applyLettersOnly = (v: boolean) => { lettersOnlyRef.current = v; setLettersOnly(v); };
   const [groupName, setGroupName] = useState<string | null>(null); // "[show] with [group]" header
   // The people behind an UNNAMED group's "with …" line (2026-09-27): each
   // name opens that friend's profile, like the group room's header. null
@@ -270,6 +276,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setMapMembers(snap.mapMembers ?? []);
       setPrivateEntries(snap.privateEntries ?? []);
       setParentGroupId(snap.parentGroupId ?? null);
+      if (typeof snap.lettersOnly === "boolean") applyLettersOnly(snap.lettersOnly);
       paintedFromSnapRef.current = true;
       setLoading(false);
     } catch { /* corrupt snapshot — the live load paints */ }
@@ -305,18 +312,22 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         showId = navRoom.roomShowId;
         parentGid = navRoom.roomParentGroupId ?? null;
         // Background verify only — a deleted room bounces back out.
-        supabase.from("friend_groups").select("id, deleted_at").eq("id", roomId).maybeSingle()
-          .then(({ data }) => { if (!data || data.deleted_at) navigate(parentGid ? `/dashboard?g=${parentGid}` : "/dashboard", { replace: true }); });
+        supabase.from("friend_groups").select("id, deleted_at, letters_only").eq("id", roomId).maybeSingle()
+          .then(({ data }) => {
+            if (!data || data.deleted_at) { navigate(parentGid ? `/dashboard?g=${parentGid}` : "/dashboard", { replace: true }); return; }
+            applyLettersOnly(!!(data as { letters_only?: boolean }).letters_only);
+          });
       } else {
         const { data: roomRow, error: roomErr } = await supabase
           .from("friend_groups")
-          .select("id, show_id, parent_group_id, deleted_at")
+          .select("id, show_id, parent_group_id, deleted_at, letters_only")
           .eq("id", roomId)
           .maybeSingle();
         if (roomErr) throw roomErr;
         if (!roomRow || roomRow.deleted_at) throw new Error("room not found");
         showId = roomRow.show_id as string;
         parentGid = (roomRow.parent_group_id as string | null) ?? null;
+        applyLettersOnly(!!(roomRow as { letters_only?: boolean }).letters_only);
       }
       setParentGroupId(parentGid);
       // Entering the room clears its new-activity dot on the dashboard/group view.
@@ -478,7 +489,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           sessionStorage.setItem(`ns_room_snap_${user.id}_${roomId}`, JSON.stringify({
             show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, progress,
             feedEntries: [...entries, ...gatedStubs], mapMembers: members,
-            privateEntries: priv, parentGroupId: parentGid,
+            privateEntries: priv, parentGroupId: parentGid, lettersOnly: lettersOnlyRef.current,
           }));
         } catch { /* quota — instant paint just won't happen */ }
       }
@@ -1071,6 +1082,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   initialExpandedThreadId={initialExpandThreadId ?? undefined}
                   scrollContainerRef={pageRef}
                   groupId={roomId}
+                  responsesOff={lettersOnly !== false}
                   // CP4 stub audience — decided at display time: exactly one
                   // OTHER current member → "you"; two or more → "the room".
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
@@ -1100,6 +1112,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <V2RoomFeed
                     displayNames={displayNames}
                     entries={privateFeedEntries}
+                    responsesOff={!privateOnly && lettersOnly !== false}
                     viewerProgress={progressForShow}
                     userId={user?.id ?? ""}
                     onThreadEdited={() => load()}
