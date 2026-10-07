@@ -320,8 +320,11 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
       {/* The note — scrolls inside when it is taller than the room it has.
           A sealed note shows the lock where its writing would be. */}
       {note.sealed ? (
-        <div aria-label="Sealed until you catch up" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "14px 0 10px" }}>
-          <span style={{ display: "inline-flex", width: 36, height: 36, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={18} color={CANON.cream} strokeWidth={2.4} /></span>
+        // His 10-07 note: the sealed letter's dashed frame, in Friend blue,
+        // where the writing would be, a bigger lock, and when it unseals.
+        <div aria-label={`This note will unseal when you watch S${note.authorSeason} E${note.authorEpisode}.`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "22px 14px 20px", margin: "2px 0 4px", border: `2px dashed ${CANON.friend}`, borderRadius: 12 }}>
+          <span style={{ display: "inline-flex", width: 48, height: 48, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={22} color={CANON.cream} strokeWidth={2.4} /></span>
+          <span style={{ fontSize: 13, lineHeight: 1.45, textAlign: "center", opacity: 0.8 }}>This note will unseal when you watch S{note.authorSeason} E{note.authorEpisode}.</span>
         </div>
       ) : (
         <div style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", paddingRight: 2 }}>

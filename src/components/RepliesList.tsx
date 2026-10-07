@@ -916,7 +916,7 @@ export default function RepliesList({
         <Modal onClose={() => setHighlightHint(null)} width="min(520px,92vw)" cardStyle={hintCard}>
           <div>
             <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
-              Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
+              Want to leave a note? Highlight a portion of text, then click "Add a note".
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button className="d-btn-identity" style={hintGotIt} onClick={() => setHighlightHint(null)}>Got it</button>
@@ -1359,7 +1359,7 @@ export default function RepliesList({
                         fontFamily: "inherit",
                       }}
                     >
-                      Highlight…
+                      Add a note
                     </button>
                   )}
                   {!mobileIdiom && !quoteOff && (

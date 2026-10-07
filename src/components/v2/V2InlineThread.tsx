@@ -852,7 +852,7 @@ export default function V2InlineThread({
               onClick={mobileIdiom ? startPick : handleHighlightClick}
               style={sPillGeom}
             >
-              Highlight…
+              Add a note
             </button>
           )}
           {!mobileIdiom && !responsesOff && (
@@ -1020,7 +1020,7 @@ export default function V2InlineThread({
         <Modal onClose={() => setHighlightHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
           <div>
             <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
-              Want to react to something quickly? Highlight a portion of text then click the "Highlight..." button.
+              Want to leave a note? Highlight a portion of text, then click "Add a note".
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button style={{ ...dlgPillM, background: "var(--canon-identity,#355eb8)", border: "none", color: CANON.cream }} onClick={() => setHighlightHint(false)}>Got it</button>

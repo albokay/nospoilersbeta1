@@ -78,7 +78,10 @@ export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, di
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const swipe = useSheetSwipeDown(onClose, { scrollRef, enabled: !saving });
-  const notes = readable.filter((h) => h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
+  // Every note, sealed ones included (the desktop paper's rule, 10-07): a
+  // sealed note is its own paper with the dashed frame where the writing
+  // would be.
+  const notes = [...readable, ...sealed].filter((h) => h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
   const lines = describeStretch(readable, sealed, displayNames);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (writing) setTimeout(() => { textareaRef.current?.focus(); textareaRef.current?.scrollIntoView({ block: "nearest" }); }, 0); }, [writing]);
@@ -120,11 +123,18 @@ export function HighlightNoteSheet({ quoted, readable, sealed, currentUserId, di
                     <span style={{ fontSize: 14, fontWeight: 700 }}>{nameOf(h, displayNames)}</span>
                     <span style={{ fontSize: 11, opacity: 0.65 }}>s{h.authorSeason} e{h.authorEpisode} · {timeAgo(h.createdAt)}</span>
                   </span>
-                  {own && onDelete && (
+                  {own && onDelete && !h.sealed && (
                     <button type="button" onClick={() => onDelete(h.id)} style={{ marginLeft: "auto", background: "transparent", border: "none", padding: "6px 4px", color: CANON.alert, fontFamily: INTER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Delete</button>
                   )}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{h.note}</div>
+                {h.sealed ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "18px 12px 16px", marginTop: 10, border: `2px dashed ${CANON.friend}`, borderRadius: 12 }}>
+                    <span style={{ display: "inline-flex", width: 44, height: 44, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={20} color={CANON.cream} strokeWidth={2.4} /></span>
+                    <span style={{ fontSize: 13, lineHeight: 1.45, textAlign: "center", opacity: 0.8 }}>This note will unseal when you watch S{h.authorSeason} E{h.authorEpisode}.</span>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 8, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{h.note}</div>
+                )}
               </div>
             );
           })}
@@ -171,8 +181,8 @@ export function HighlightCreateSheet({ quoted, onClose, onConfirm }: {
 
   return (
     <div style={backdrop} onClick={onClose}>
-      <div role="dialog" aria-label="Highlight" style={{ ...sheet, paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
-        <div style={title}>Highlight</div>
+      <div role="dialog" aria-label="Add a note" style={{ ...sheet, paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
+        <div style={title}>Add a note</div>
         <div style={{ ...quotedStyle, WebkitLineClamp: 4 }}>“{quoted}”</div>
         <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Write a note…" style={field} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
