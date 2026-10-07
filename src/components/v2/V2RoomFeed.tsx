@@ -9,7 +9,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { CANON } from "../../styles/canon";
-import { ChevronDown, ChevronUp, Lock, Mail, Mails, Users, Sparkles, Flag } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Mail, Mails, MessageSquareText, Users, Sparkles, Flag } from "lucide-react";
 import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY_NAME, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
@@ -274,6 +274,10 @@ export type V2RoomFeedProps = {
   /** Letters-only room (the switch, 2026-10-07): no Write back, no Quote…,
       no composer — notes stand in for responses. */
   responsesOff?: boolean;
+  /** Notes inside each letter (notes arc, 2026-10-07): threadId → how many
+      notes sit on that letter's body, sealed ones included. A closed letter
+      shows the count beside the chevron like its response count. */
+  noteCounts?: Record<string, number>;
   /** Fires after a reply is published from any entry's composer, so the parent
       can bump that entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -361,6 +365,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     preserveOrder = false,
     publicRoomGate,
     responsesOff = false,
+    noteCounts,
     onReplyAdded,
     scrollContainerRef,
     demoMode = false,
@@ -1275,6 +1280,50 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         portal
                       >
                         {countInner}
+                      </Tooltip>
+                    );
+                  })()}
+                  {/* Notes inside (his 10-07 note): the same grammar as the
+                      response count — glyph + number, and with a signal the
+                      blue/red pill behind it. When the letter also has
+                      responses, the response pill carries the colour. */}
+                  {(noteCounts?.[entry.threadId] ?? 0) > 0 && (() => {
+                    const n = noteCounts![entry.threadId];
+                    const noteKind = entry.replyCount > 0 ? null : pillKind;
+                    const inner = (
+                      <span
+                        aria-label={`${n} note${n === 1 ? "" : "s"}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          color: CANON.cream,
+                          fontSize: 13,
+                          fontWeight: 500,
+                          userSelect: "none",
+                          ...(noteKind
+                            ? { background: noteKind === "blue" ? CANON.identity : CANON.alert, borderRadius: 65, padding: "3px 9px" }
+                            : {}),
+                        }}
+                      >
+                        <MessageSquareText size={14} color={CANON.cream} />
+                        {n}
+                      </span>
+                    );
+                    if (!noteKind) return inner;
+                    return (
+                      <Tooltip
+                        text={noteKind === "blue"
+                          ? "New notes in here for you."
+                          : signal?.redCount
+                            ? "Notes in here for when you catch up."
+                            : "Someone left a note on your letter."}
+                        direction="above"
+                        align="right"
+                        width={180}
+                        portal
+                      >
+                        {inner}
                       </Tooltip>
                     );
                   })()}

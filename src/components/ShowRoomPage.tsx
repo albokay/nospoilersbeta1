@@ -215,6 +215,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // from ahead of you lights it RED and counts; a yup keeps yellow.
   const [latestNoteOnViewerWriting, setLatestNoteOnViewerWriting] = useState<Record<string, number>>({});
   const [sealedNoteCount, setSealedNoteCount] = useState<Record<string, number>>({});
+  // Notes inside each letter, sealed ones included — the closed letter's count.
+  const [noteCountByThread, setNoteCountByThread] = useState<Record<string, number>>({});
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
   });
@@ -662,6 +664,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setLatestHighlightOnViewerWriting({});
       setLatestNoteOnViewerWriting({});
       setSealedNoteCount({});
+      setNoteCountByThread({});
       return;
     }
     let cancelled = false;
@@ -705,10 +708,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           const tid = replyToThread[h.targetId];
           if (tid) take(tid, h);
         }
+        const noteCounts: Record<string, number> = {};
+        for (const h of entryHL) if (h.kind === "note") noteCounts[h.targetId] = (noteCounts[h.targetId] ?? 0) + 1;
         if (!cancelled) {
           setLatestHighlightOnViewerWriting(latestYup);
           setLatestNoteOnViewerWriting(latestNote);
           setSealedNoteCount(sealedCount);
+          setNoteCountByThread(noteCounts);
         }
       } catch (err) { console.warn("highlight-signal fetch failed:", err); }
     })();
@@ -1111,6 +1117,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   scrollContainerRef={pageRef}
                   groupId={roomId}
                   responsesOff={lettersOnly !== false}
+                  noteCounts={noteCountByThread}
                   // CP4 stub audience — decided at display time: exactly one
                   // OTHER current member → "you"; two or more → "the room".
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
