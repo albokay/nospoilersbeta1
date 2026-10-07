@@ -1,5 +1,5 @@
 // Live room dots (room-signals CP3, 2026-09-13): one realtime channel with
-// two bindings per room — a friend's new entry or response re-runs the
+// three bindings per room — a friend's new entry, response or note re-runs the
 // exact-dot fetch (debounced) so the dashboard clusters and group shelves
 // light up without a reload. Your own replies don't ding (the fetch would
 // come back unchanged). Mirrors the chat listeners' auth handling:
@@ -47,6 +47,17 @@ export function subscribeRoomDots(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "group_threads", filter: `group_id=eq.${rid}` },
           ding,
+        )
+        // A friend's new note on your writing (notes arc, 2026-10-07) —
+        // the dots function decides whether it's yours to see.
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "highlights", filter: `group_id=eq.${rid}` },
+          (payload) => {
+            const row = payload.new as { author_id?: string; kind?: string } | null;
+            if (row?.author_id === userId || row?.kind !== "note") return;
+            ding();
+          },
         );
     }
     channel = ch.subscribe((status) => {

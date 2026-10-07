@@ -134,7 +134,15 @@ type DigestEntry = { threadId: string; title: string; authorName: string };
 // entry"). Only READABLE replies are ever emailed; hidden (ahead-of-progress)
 // ones stay an in-app red dot and never leak into mail.
 type DigestResponse = { threadId: string; title: string; ownerName: string | null; responderNames: string[] };
-type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[] };
+// Notes (Alborz 2026-10-07, the letters-only rooms arc): friends' highlight
+// NOTES on the recipient's writing — a letter they wrote or are part of (a
+// response or a note of theirs on it), or a response they wrote. Said as
+// "{name} left a note on your letter". Readable notes only; a sealed one
+// stays an in-app red dot. Yups aren't mail.
+type DigestNote = { threadId: string; title: string; ownerName: string | null; onResponse: boolean; noterNames: string[] };
+const noteWhere = (x: DigestNote, possessive: (owner: string) => string): string =>
+  x.onResponse ? "your response in" : (x.ownerName === null ? "your letter" : `${possessive(x.ownerName)} letter`);
+type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[]; notes: DigestNote[] };
 // Proposals (Alborz 2026-09-30): grouped under the FRIEND who proposed —
 // "{Friend} proposed new shows to watch." then one line per show, with
 // "(X is also in.)" when another friend has already opted in (never the
@@ -197,10 +205,18 @@ function buildDigestHtml(
           return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(formatNames(x.responderNames))} responded to ${whose} letter <span style="font-style:italic">&ldquo;${escapeHtml(x.title)}&rdquo;</span></a></p>`;
         })
         .join("");
+      const notes = (r.notes ?? [])
+        .map((x) => {
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
+          const what = x.noterNames.length === 1 ? "left a note on" : "left notes on";
+          const where = noteWhere(x, (o) => `${escapeHtml(o)}&rsquo;s`);
+          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-weight:600">${escapeHtml(formatNames(x.noterNames))} ${what} ${where} <span style="font-style:italic">&ldquo;${escapeHtml(x.title)}&rdquo;</span></a></p>`;
+        })
+        .join("");
       return `
   <div style="margin:0 0 28px">
     <h2 style="${SECTION_H2}">${escapeHtml(r.roomName)}</h2>
-    ${intro}${items}${responses}
+    ${intro}${items}${responses}${notes}
   </div>`;
     })
     .join("");
@@ -261,7 +277,8 @@ function buildDigestHtml(
 function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = []): string {
   const entryRooms = rooms.filter((r) => r.entries.length > 0);
   const respRooms = rooms.filter((r) => r.responses.length > 0);
-  const kinds = [entryRooms.length > 0, respRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0].filter(Boolean).length;
+  const noteRooms = rooms.filter((r) => (r.notes ?? []).length > 0);
+  const kinds = [entryRooms.length > 0, respRooms.length > 0, noteRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0].filter(Boolean).length;
   let lead = "What your friends wrote today";
   if (entryRooms.length) {
     const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
@@ -275,6 +292,17 @@ function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: Propo
       lead = `${formatNames(x.responderNames)} responded to ${x.ownerName === null ? "your" : `${x.ownerName}'s`} ${respRooms[0].roomName} letter`;
     } else if (respRooms.length === 1) lead = `New responses in ${respRooms[0].roomName}`;
     else lead = `New responses in ${respRooms.length} of your rooms`;
+  } else if (noteRooms.length) {
+    // Notes (2026-10-07) rank right after responses: they are the response
+    // in a letters-only room.
+    const all = noteRooms.flatMap((r) => r.notes);
+    if (all.length === 1) {
+      const x = all[0];
+      lead = x.onResponse
+        ? `${formatNames(x.noterNames)} left a note on your response in ${noteRooms[0].roomName}`
+        : `${formatNames(x.noterNames)} left a note on ${x.ownerName === null ? "your" : `${x.ownerName}'s`} ${noteRooms[0].roomName} letter`;
+    } else if (noteRooms.length === 1) lead = `New notes in ${noteRooms[0].roomName}`;
+    else lead = `New notes in ${noteRooms.length} of your rooms`;
   } else if (chats.length) {
     lead = chats.length === 1 ? `${formatNames(chats[0].senderNames)} messaged you in ${chats[0].groupLabel}` : `New messages in ${chats.length} groups`;
   } else if (proposals.length) {
@@ -320,8 +348,15 @@ function buildDigestText(
           return `  - ${formatNames(x.responderNames)} responded to ${whose} letter "${x.title}" — ${url}`;
         })
         .join("\n");
+      const notes = (r.notes ?? [])
+        .map((x) => {
+          const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
+          const what = x.noterNames.length === 1 ? "left a note on" : "left notes on";
+          return `  - ${formatNames(x.noterNames)} ${what} ${noteWhere(x, (o) => `${o}'s`)} "${x.title}" — ${url}`;
+        })
+        .join("\n");
       const head = r.entries.length ? `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}` : r.roomName;
-      return responses ? `${head}\n${responses}` : head;
+      return [head, responses, notes].filter(Boolean).join("\n");
     })
     .join("\n\n");
 
@@ -627,7 +662,51 @@ serve(async (req) => {
     }
   }
 
-  if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length) {
+  // 1e. Notes (2026-10-07): friends' highlight NOTES in the window, each
+  //     resolved to the LETTER it hangs under (a note on a response resolves
+  //     through the response) plus everyone who is part of that letter —
+  //     its author, live responders, and anyone who has left a note on it.
+  const { data: hlRows } = await admin
+    .from("highlights")
+    .select("id, target_type, target_id, group_id, author_id, kind, author_season, author_episode, created_at")
+    .gte("created_at", since);
+  const recentNotes = ((hlRows ?? []) as any[]).filter((h) => h.group_id && h.kind === "note");
+  const notedThreadById = new Map<string, any>();
+  const noteTarget = new Map<string, { threadId: string; onResponse: boolean; responseAuthorId: string | null }>();
+  const partsByNotedThread = new Map<string, Set<string>>();
+  if (recentNotes.length) {
+    const replyTargetIds = recentNotes.filter((h) => h.target_type === "reply").map((h) => h.target_id as string);
+    const replyById = new Map<string, any>();
+    if (replyTargetIds.length) {
+      const { data: rrows } = await admin.from("replies").select("id, thread_id, author_id, group_id, is_deleted").in("id", replyTargetIds);
+      for (const r of (rrows ?? []) as any[]) if (!r.is_deleted) replyById.set(r.id, r);
+    }
+    for (const h of recentNotes) {
+      if (h.target_type === "thread") { noteTarget.set(h.id, { threadId: h.target_id, onResponse: false, responseAuthorId: null }); continue; }
+      const r = replyById.get(h.target_id);
+      if (r) noteTarget.set(h.id, { threadId: r.thread_id, onResponse: true, responseAuthorId: r.author_id });
+    }
+    const ntIds = [...new Set([...noteTarget.values()].map((x) => x.threadId))];
+    if (ntIds.length) {
+      const { data: ntRows } = await admin
+        .from("threads")
+        .select("id, author_id, title, season, episode, is_deleted, is_public")
+        .in("id", ntIds);
+      for (const th of (ntRows ?? []) as any[]) {
+        if (!th.is_deleted && th.is_public === false) notedThreadById.set(th.id, th);
+      }
+      for (const [tid, th] of notedThreadById) partsByNotedThread.set(tid, new Set([th.author_id]));
+      const { data: partRows2 } = await admin.from("replies").select("thread_id, author_id, group_id, is_deleted").in("thread_id", ntIds);
+      for (const pr of (partRows2 ?? []) as any[]) {
+        if (!pr.group_id || pr.is_deleted) continue;
+        partsByNotedThread.get(pr.thread_id)?.add(pr.author_id);
+      }
+      const { data: noteRows2 } = await admin.from("highlights").select("target_id, author_id").eq("target_type", "thread").eq("kind", "note").in("target_id", ntIds);
+      for (const n of (noteRows2 ?? []) as any[]) partsByNotedThread.get(n.target_id)?.add(n.author_id);
+    }
+  }
+
+  if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length && !recentNotes.length) {
     return json({ ok: true, sent: 0, reason: "nothing new", planted });
   }
 
@@ -637,9 +716,10 @@ serve(async (req) => {
   const threadById = new Map<string, any>();
   for (const l of recentLinks) threadById.set(l.threads.id, l.threads);
   for (const [tid, th] of repliedThreadById) if (!threadById.has(tid)) threadById.set(tid, th);
+  for (const [tid, th] of notedThreadById) if (!threadById.has(tid)) threadById.set(tid, th);
 
   // 3. Active rooms only (skip soft-deleted).
-  const groupIds = [...new Set([...recentLinks.map((l) => l.group_id), ...recentReplies.map((r) => r.group_id)])];
+  const groupIds = [...new Set([...recentLinks.map((l) => l.group_id), ...recentReplies.map((r) => r.group_id), ...recentNotes.map((h) => h.group_id)])];
   const activeGroups = new Map<string, { show_id: string; name: string }>();
   if (groupIds.length) {
     const { data: groups } = await admin
@@ -704,6 +784,7 @@ serve(async (req) => {
   const identityIds = [...new Set([
     ...[...threadById.values()].map((t) => t.author_id),
     ...recentReplies.map((r) => r.author_id),
+    ...recentNotes.map((h) => h.author_id),
     ...recentChats.map((c) => c.author_id),
     ...proposals.map((p) => p.proposerId),
     ...[...pgMembersByGroup.values()].flat(),
@@ -738,7 +819,7 @@ serve(async (req) => {
 
   // 6. Compute per-recipient, per-room visible-new entries.
   //    perUser: Map<userId, Map<groupId, { roomName, entries[] }>>
-  const perUser = new Map<string, Map<string, { roomName: string; entries: any[]; responses: any[] }>>();
+  const perUser = new Map<string, Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }>>();
   for (const link of recentLinks) {
     const g = activeGroups.get(link.group_id);
     if (!g) continue;
@@ -757,7 +838,7 @@ serve(async (req) => {
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(link.group_id)) {
-        rooms.set(link.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [] });
+        rooms.set(link.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [], notes: [] });
       }
       rooms.get(link.group_id)!.entries.push({
         threadId: t.id,
@@ -789,7 +870,7 @@ serve(async (req) => {
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(rr.group_id)) {
-        rooms.set(rr.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [] });
+        rooms.set(rr.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [], notes: [] });
       }
       rooms.get(rr.group_id)!.responses.push({
         threadId: th.id,
@@ -797,6 +878,44 @@ serve(async (req) => {
         threadAuthorId: th.author_id,
         responderId: rr.author_id,
         createdAt: rr.created_at,
+      });
+    }
+  }
+
+  // 6-note. Per-recipient READABLE notes on their writing (2026-10-07): a
+  //     letter they wrote or are part of, or a response they wrote.
+  for (const h of recentNotes) {
+    const g = activeGroups.get(h.group_id);
+    if (!g) continue;
+    const tgt = noteTarget.get(h.id);
+    if (!tgt) continue;
+    const th = notedThreadById.get(tgt.threadId);
+    if (!th) continue;
+    if (seedAuthors.has(h.author_id)) continue;      // skip seed/demo content
+    const parts = partsByNotedThread.get(tgt.threadId);
+    const roster = membersByGroup.get(h.group_id) ?? [];
+    for (const m of roster) {
+      if (m.user_id === h.author_id) continue;        // not your own notes
+      const mine = tgt.onResponse ? tgt.responseAuthorId === m.user_id : !!parts?.has(m.user_id);
+      if (!mine) continue;                             // only your writing, or a letter you're part of
+      if (m.digest_opt_out) continue;                  // opted out of this room
+      if (onlyUserId && m.user_id !== onlyUserId) continue;
+      const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
+      if (!prog) continue;
+      // Readable only — a sealed note is the in-app red dot, never mail.
+      if (!canView(h.author_season ?? 0, h.author_episode ?? 0, effectiveProgress(prog))) continue;
+      if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
+      const rooms = perUser.get(m.user_id)!;
+      if (!rooms.has(h.group_id)) {
+        rooms.set(h.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [], notes: [] });
+      }
+      rooms.get(h.group_id)!.notes.push({
+        threadId: th.id,
+        title: (th.title && String(th.title).trim()) || "(untitled)",
+        threadAuthorId: th.author_id,
+        onResponse: tgt.onResponse,
+        noterId: h.author_id,
+        createdAt: h.created_at,
       });
     }
   }
@@ -948,9 +1067,9 @@ serve(async (req) => {
       const uname = usernameById.get(authorId);
       return uname ? `@${uname}` : "a friend";
     };
-    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[]; responses: any[] }>();
+    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }>();
     const roomDigests: RoomDigest[] = [...rooms.entries()]
-      .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[] }]) => {
+      .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }]) => {
         const entries: DigestEntry[] = r.entries
           .filter((e: any) => e.authorId !== SIDEBAR_USER_ID) // Sidebar's letters get their own lines (below)
           .sort((a: any, b: any) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
@@ -970,14 +1089,26 @@ serve(async (req) => {
           const n = authorName(x.responderId);
           if (!d.responderNames.includes(n)) d.responderNames.push(n);
         }
-        return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()] };
+        // Notes grouped per letter (a note on a response under it is its own
+        // line), noters in arrival order.
+        const notesByKey = new Map<string, DigestNote>();
+        for (const x of [...r.notes].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())) {
+          const key = `${x.threadId}|${x.onResponse ? "r" : "t"}`;
+          if (!notesByKey.has(key)) {
+            notesByKey.set(key, { threadId: x.threadId, title: x.title, ownerName: x.threadAuthorId === userId ? null : authorName(x.threadAuthorId), onResponse: x.onResponse, noterNames: [] });
+          }
+          const d = notesByKey.get(key)!;
+          const n = authorName(x.noterId);
+          if (!d.noterNames.includes(n)) d.noterNames.push(n);
+        }
+        return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()], notes: [...notesByKey.values()] };
       })
       // A room whose only news is a letter from Sidebar has no friend section.
-      .filter((r) => r.entries.length > 0 || r.responses.length > 0)
+      .filter((r) => r.entries.length > 0 || r.responses.length > 0 || r.notes.length > 0)
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
     // Letters from Sidebar (2026-09-30): their own linked lines under the greeting.
     const sidebarLetters: SidebarLetterDigest[] = [...rooms.entries()]
-      .flatMap(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[] }]) => r.entries
+      .flatMap(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }]) => r.entries
         .filter((e: any) => e.authorId === SIDEBAR_USER_ID)
         .map((e: any) => ({ groupId, roomName: r.roomName, threadId: e.threadId, title: e.title })))
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
@@ -1032,6 +1163,8 @@ serve(async (req) => {
         userId, email,
         rooms: roomDigests.length,
         entries: roomDigests.reduce((n, r) => n + r.entries.length, 0),
+        responses: roomDigests.reduce((n, r) => n + r.responses.length, 0),
+        notes: roomDigests.reduce((n, r) => n + r.notes.length, 0),
         proposals: proposalDigests.reduce((n, p) => n + p.shows.length, 0),
         sidebarLetters: sidebarLetters.length,
         chats: chatDigests.length,
