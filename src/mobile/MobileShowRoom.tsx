@@ -276,6 +276,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // 2026-09-12: a response in a conversation you're part of is for you).
   const [myReplyThreadIds, setMyReplyThreadIds] = useState<Set<string>>(new Set());
   const [latestHighlightOnViewerWriting, setLatestHighlightOnViewerWriting] = useState<Record<string, number>>({});
+  // Notes arc (Alborz 2026-10-07): a readable NOTE on your writing, or on a
+  // letter you've noted on, lights the letter BLUE like a response; a note
+  // from ahead of you lights it RED and counts; a yup keeps yellow.
+  const [latestNoteOnViewerWriting, setLatestNoteOnViewerWriting] = useState<Record<string, number>>({});
+  const [sealedNoteCount, setSealedNoteCount] = useState<Record<string, number>>({});
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
   });
@@ -675,6 +680,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   useEffect(() => {
     if (privateOnly || !roomId || !user?.id || feedEntries.length === 0) {
       setLatestHighlightOnViewerWriting({});
+      setLatestNoteOnViewerWriting({});
+      setSealedNoteCount({});
       return;
     }
     let cancelled = false;
@@ -686,27 +693,43 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         const allViewerReplyIds = (viewerReplyRows ?? []).map((r: any) => r.id);
         if (!cancelled) setMyReplyThreadIds(new Set((viewerReplyRows ?? []).map((r: any) => r.thread_id as string)));
         const [entryHL, replyHL] = await Promise.all([
-          fetchHighlights({ targetType: "thread", targetIds: entryIds, viewerProgress: progressForShow ?? undefined }),
+          fetchHighlights({ targetType: "thread", targetIds: entryIds, viewerProgress: progressForShow ?? undefined, includeSealed: true }),
           allViewerReplyIds.length > 0
-            ? fetchHighlights({ targetType: "reply", targetIds: allViewerReplyIds, viewerProgress: progressForShow ?? undefined })
+            ? fetchHighlights({ targetType: "reply", targetIds: allViewerReplyIds, viewerProgress: progressForShow ?? undefined, includeSealed: true })
             : Promise.resolve([]),
         ]);
-        const latest: Record<string, number> = {};
+        const latestYup: Record<string, number> = {};
+        const latestNote: Record<string, number> = {};
+        const sealedCount: Record<string, number> = {};
         const viewerUsername = profile?.username ?? null;
         const isViewerEntry: Record<string, boolean> = {};
         for (const e of feedEntries) isViewerEntry[e.threadId] = !!viewerUsername && e.authorUsername === viewerUsername;
+        // A letter you've left a note on counts as yours for notes (the room
+        // envelopes' rule); for yups only your own writing counts.
+        const myNoted = new Set<string>();
+        for (const h of entryHL) if (h.authorId === user.id && h.kind === "note") myNoted.add(h.targetId);
+        const take = (tid: string, h: { sealed: boolean; kind: string; createdAt: number }) => {
+          if (h.sealed) { if (h.kind === "note") sealedCount[tid] = (sealedCount[tid] ?? 0) + 1; return; }
+          const m = h.kind === "note" ? latestNote : latestYup;
+          if (h.createdAt > (m[tid] ?? 0)) m[tid] = h.createdAt;
+        };
         for (const h of entryHL) {
-          if (!isViewerEntry[h.targetId] || h.authorId === user.id) continue;
-          if (h.createdAt > (latest[h.targetId] ?? 0)) latest[h.targetId] = h.createdAt;
+          if (h.authorId === user.id) continue;
+          if (!isViewerEntry[h.targetId] && !(h.kind === "note" && myNoted.has(h.targetId))) continue;
+          take(h.targetId, h);
         }
         const replyToThread: Record<string, string> = {};
         for (const r of viewerReplyRows ?? []) replyToThread[r.id] = r.thread_id;
         for (const h of replyHL) {
           if (h.authorId === user.id) continue;
           const tid = replyToThread[h.targetId];
-          if (tid && h.createdAt > (latest[tid] ?? 0)) latest[tid] = h.createdAt;
+          if (tid) take(tid, h);
         }
-        if (!cancelled) setLatestHighlightOnViewerWriting(latest);
+        if (!cancelled) {
+          setLatestHighlightOnViewerWriting(latestYup);
+          setLatestNoteOnViewerWriting(latestNote);
+          setSealedNoteCount(sealedCount);
+        }
       } catch (err) { console.warn("highlight-signal fetch failed:", err); }
     })();
     return () => { cancelled = true; };
@@ -738,12 +761,17 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       // waiting for you to catch up (counted, below). Own replies excluded,
       // so posting never self-notifies.
       if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "blue" }; continue; }
+      // Notes (Alborz 2026-10-07): a readable note on your writing is BLUE
+      // like a response; a yup stays yellow; a sealed note joins the red
+      // count below.
+      if ((latestNoteOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "blue" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
-      const hiddenCount = perThreadHiddenCount[tid] ?? 0;
-      if ((isOwn || myReplyThreadIds.has(tid)) && hiddenCount > 0) out[tid] = { kind: "red", redCount: hiddenCount };
+      const sealedNotes = sealedNoteCount[tid] ?? 0;
+      const hiddenCount = (perThreadHiddenCount[tid] ?? 0) + sealedNotes;
+      if ((isOwn || myReplyThreadIds.has(tid) || sealedNotes > 0) && hiddenCount > 0) out[tid] = { kind: "red", redCount: hiddenCount };
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, latestNoteOnViewerWriting, sealedNoteCount, lastHighlightSeenAt]);
 
   // The red signal's render home: the expand chevron in an Alert-red 32px
   // circle — the green new-responses badge's exact grammar, red (Alborz

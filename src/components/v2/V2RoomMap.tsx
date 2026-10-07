@@ -1577,12 +1577,14 @@ export default function V2RoomMap({
                 let signalLine: React.ReactNode = null;
                 if (signal) {
                   const text =
+                    // A dot can be a response OR a note now (2026-10-07), so
+                    // the words don't name either.
                     signal.kind === "blue"
-                      ? "New responses in here for you."
+                      ? "Something new in here for you."
                       : signal.kind === "yellow"
                         ? "Someone reacted to your letter."
                         : signal.redCount
-                          ? "Responses in here for when you catch up."
+                          ? "Something in here for when you catch up."
                           : "Someone responded to your letter.";
                   signalLine = (
                     <span style={{
