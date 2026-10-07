@@ -206,6 +206,7 @@ function ReplyBody({
   highlights = [],
   currentUserId = null,
   onDeleteHighlight,
+  onAddNote,
   displayNames,
 }: {
   body: string;
@@ -224,6 +225,8 @@ function ReplyBody({
   highlights?: Highlight[];
   currentUserId?: string | null;
   onDeleteHighlight?: (id: string) => void;
+  /** "Add note" on an open note paper (notes arc, 2026-10-07). */
+  onAddNote?: (base: Highlight, note: string) => Promise<void>;
   displayNames?: Record<string, string>;
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
@@ -250,9 +253,9 @@ function ReplyBody({
             displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
+            onAddNote={onAddNote}
             bodyStart={0}
             linkify
-            color="#adc8d7"
           />
           <blockquote
             className="blockquote-ref"
@@ -269,9 +272,9 @@ function ReplyBody({
             displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
+            onAddNote={onAddNote}
             bodyStart={afterStart}
             linkify
-            color="#adc8d7"
           />
         </div>
       );
@@ -291,9 +294,9 @@ function ReplyBody({
             displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
+            onAddNote={onAddNote}
             bodyStart={0}
             linkify
-            color="#adc8d7"
           />
           <blockquote
             className="blockquote-ref"
@@ -310,9 +313,9 @@ function ReplyBody({
             displayNames={displayNames}
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
+            onAddNote={onAddNote}
             bodyStart={afterStart}
             linkify
-            color="#adc8d7"
           />
         </div>
       );
@@ -329,9 +332,9 @@ function ReplyBody({
         displayNames={displayNames}
         currentUserId={currentUserId}
         onDeleteHighlight={onDeleteHighlight}
+        onAddNote={onAddNote}
         bodyStart={0}
         linkify
-        color="#adc8d7"
       />
     </div>
   );
@@ -566,6 +569,7 @@ export default function RepliesList({
       targetType: "reply",
       targetIds: ids,
       viewerProgress: progressForShow,
+      includeSealed: true,
     })
       .then((rows) => {
         if (cancelled) return;
@@ -633,6 +637,29 @@ export default function RepliesList({
       setHighlightError((prev) => ({ ...prev, [replyId]: msg }));
       setHighlightPicker(null);
     }
+  };
+
+  // "Add note" on an open note paper (notes arc, 2026-10-07): another note
+  // on the same stretch of this response, tagged with the writer's
+  // progress now. Rejects so the paper can say so.
+  const handleAddNoteReply = async (replyId: string, base: Highlight, note: string) => {
+    if (!groupId) return;
+    const eff = effectiveProgress(progressForShow);
+    const replyRow = byId[replyId];
+    const inserted = await dbCreateHighlight({
+      targetType:    "reply",
+      targetId:      replyId,
+      groupId,
+      startOffset:   base.startOffset,
+      endOffset:     base.endOffset,
+      quotedText:    base.quotedText,
+      kind:          "note",
+      note,
+      authorSeason:  eff?.s ?? replyRow?.season ?? 0,
+      authorEpisode: eff?.e ?? replyRow?.episode ?? 0,
+    });
+    setHighlightsByReply((prev) => ({ ...prev, [replyId]: [...(prev[replyId] ?? []), inserted] }));
+    setHighlightError((prev) => ({ ...prev, [replyId]: null }));
   };
 
   const handleDeleteHighlightReply = (replyId: string, highlightId: string) => {
@@ -867,7 +894,6 @@ export default function RepliesList({
           anchorEl={highlightBtnRefs.current[highlightPicker.replyId]}
           onClose={() => setHighlightPicker(null)}
           onConfirm={handleHighlightConfirmReply}
-          color="#adc8d7"
         />
       )}
 
@@ -1273,6 +1299,7 @@ export default function RepliesList({
                     highlights={highlightsEnabled ? (highlightsByReply[r.id] ?? []) : []}
                     currentUserId={user?.id ?? null}
                     onDeleteHighlight={highlightsEnabled ? (hid) => handleDeleteHighlightReply(r.id, hid) : undefined}
+                    onAddNote={highlightsEnabled && user ? (base, note) => handleAddNoteReply(r.id, base, note) : undefined}
                     displayNames={displayNames}
                   />
                   {highlightsEnabled && highlightError[r.id] && (

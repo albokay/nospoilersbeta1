@@ -267,6 +267,7 @@ export default function V2InlineThread({
       targetType: "thread",
       targetIds: [thread.id],
       viewerProgress: viewerProgress ?? undefined,
+      includeSealed: true,
     })
       .then((rows) => {
         if (cancelled) return;
@@ -342,6 +343,31 @@ export default function V2InlineThread({
       setHighlightError("Couldn't remove highlight.");
     });
   };
+
+  // "Add note" on an open note paper (notes arc, 2026-10-07): another note
+  // on the SAME stretch — the base highlight's offsets and quoted text,
+  // tagged with the writer's progress now. Rejects so the paper can say so.
+  const handleAddNote = async (base: Highlight, note: string) => {
+    if (!groupId) return;
+    const eff = effectiveProgress(viewerProgress);
+    const inserted = await dbCreateHighlight({
+      targetType:    "thread",
+      targetId:      thread.id,
+      groupId,
+      startOffset:   base.startOffset,
+      endOffset:     base.endOffset,
+      quotedText:    base.quotedText,
+      kind:          "note",
+      note,
+      authorSeason:  eff?.s ?? thread.season,
+      authorEpisode: eff?.e ?? thread.episode,
+    });
+    setHighlights((prev) => [...prev, inserted]);
+    setHighlightError(null);
+  };
+  // A letter with a note on it can't be edited (his rule, 2026-10-07): the
+  // notes point at its words. A yup alone still re-anchors fine.
+  const hasNote = highlights.some((h) => h.kind === "note");
 
   // ── Reply-level like / unlike ───────────────────────────────────────────
   const handleLikeReply = useCallback(
@@ -691,6 +717,7 @@ export default function V2InlineThread({
             displayNames={displayNames}
             currentUserId={userId}
             onDeleteHighlight={handleDeleteHighlight}
+            onAddNote={groupId && userId ? handleAddNote : undefined}
           />
         </div>
       )}
@@ -717,9 +744,9 @@ export default function V2InlineThread({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
           {isOwn && (
             <>
-              {replyCount > 0 ? (
+              {replyCount > 0 || hasNote ? (
                 <Tooltip
-                  text="This letter can't be edited because others have responded to it."
+                  text={replyCount > 0 ? "This letter can't be edited because others have responded to it." : "This letter can't be edited because someone left a note on it."}
                   direction="above"
                   align="right"
                   useAbsolute={true}

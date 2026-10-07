@@ -5410,6 +5410,11 @@ export type Highlight = {
    *  Snapshot semantics match threads.season/episode + replies.season/episode. */
   authorSeason: number;
   authorEpisode: number;
+  /** True when the viewer hasn't reached the author's progress yet (notes
+   *  arc, 2026-10-07): the stretch still shows, sealed, but `note` is
+   *  withheld (null). Computed per fetch against the viewer's progress;
+   *  always false when no progress is given. */
+  sealed: boolean;
 };
 
 function rowToHighlight(row: any): Highlight {
@@ -5424,10 +5429,11 @@ function rowToHighlight(row: any): Highlight {
     endOffset:      row.end_offset,
     quotedText:     row.quoted_text,
     kind:           row.kind,
-    note:           row.note ?? null,
+    note:           row.__sealed ? null : (row.note ?? null),
     createdAt:      new Date(row.created_at).getTime(),
     authorSeason:   row.author_season ?? 0,
     authorEpisode:  row.author_episode ?? 0,
+    sealed:         !!row.__sealed,
   };
 }
 
@@ -5455,6 +5461,11 @@ export async function fetchHighlights(args: {
   targetType: "thread" | "reply";
   targetIds: string[];
   viewerProgress?: ViewerProgress;
+  /** Notes arc (2026-10-07): keep the highlights the viewer can't read yet,
+   *  flagged `sealed` with their note withheld, so the stretch can show as
+   *  sealed. Default false: sealed rows are dropped as before (the
+   *  notification-dot pipeline relies on that). */
+  includeSealed?: boolean;
 }): Promise<Highlight[]> {
   if (!args.targetIds.length) return [];
   const { data, error } = await supabase
@@ -5473,14 +5484,15 @@ export async function fetchHighlights(args: {
   // Spoiler filter: drop rows where author snapshot is past viewer progress.
   // Done BEFORE the username lookup so we don't waste a round-trip on rows
   // we're going to discard anyway.
-  const visibleRows = args.viewerProgress
-    ? rows.filter((r: any) =>
-        canView(
-          { season: r.author_season ?? 0, episode: r.author_episode ?? 0 },
-          args.viewerProgress,
-        ),
-      )
-    : rows;
+  const isSealed = (r: any) =>
+    !!args.viewerProgress &&
+    !canView(
+      { season: r.author_season ?? 0, episode: r.author_episode ?? 0 },
+      args.viewerProgress,
+    );
+  const visibleRows = args.includeSealed
+    ? rows.map((r: any) => ({ ...r, __sealed: isSealed(r) }))
+    : rows.filter((r: any) => !isSealed(r));
   if (visibleRows.length === 0) return [];
 
   // Batch-fetch usernames for all distinct authors in one round-trip.
@@ -5514,7 +5526,8 @@ export async function fetchHighlights(args: {
  *   - other                 → the raw error message
  *
  * Length validations mirror the DB CHECK constraints (1..2000 quoted_text,
- * 1..50 note when kind='note') so a malformed call fails fast on the client.
+ * 1..1000 note when kind='note' — notes arc, 2026-10-07) so a malformed call
+ * fails fast on the client.
  */
 export async function createHighlight(args: {
   targetType: "thread" | "reply";
@@ -5535,7 +5548,7 @@ export async function createHighlight(args: {
   await checkRateLimit("create_highlight", 30, 60);
   validateLength("Highlighted text", args.quotedText, 1, 2000);
   if (args.kind === "note") {
-    validateLength("Note", args.note ?? "", 1, 50);
+    validateLength("Note", args.note ?? "", 1, 1000);
   }
   if (args.endOffset <= args.startOffset) {
     throw new Error("Invalid highlight range.");

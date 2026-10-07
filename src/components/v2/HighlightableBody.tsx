@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ThumbsUp } from "lucide-react";
+import { HighlightHoverPopup, HighlightNotePaper } from "./HighlightNotePaper";
 import { linkifyText } from "../../lib/linkify";
 import type { Highlight } from "../../lib/db";
 import { CANON } from "../../styles/canon";
@@ -8,14 +8,19 @@ import { CANON } from "../../styles/canon";
 // Same regex as src/lib/promptTokens.ts — keep in sync if that ever changes.
 const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 
-// Canon palette.
-const CANON_YELLOW = CANON.accent;
-const CANON_NAVY   = CANON.dark;
-const CREAM        = CANON.cream;
+// One fill everywhere (Alborz 2026-10-07): yellow on letters AND on
+// responses — Friend blue now means SEALED: a stretch whose notes you can't
+// read yet. The hovered or open stretch goes a shade darker.
+const DEFAULT_HIGHLIGHT_COLOR = CANON.accent;
+const SEALED_COLOR = CANON.friend;
 
-// Default highlight fill — used for entry bodies. Reply bodies pass a
-// light-blue override via the `color` prop (canon-light-blue per spec).
-const DEFAULT_HIGHLIGHT_COLOR = CANON_YELLOW;
+/** A shade darker (multiply by 0.86) for the hovered / open stretch. */
+export function darken(hex: string, f = 0.86): string {
+  const m = hex.replace("#", "");
+  if (m.length !== 6) return hex;
+  const c = [0, 2, 4].map((i) => Math.max(0, Math.min(255, Math.round(parseInt(m.slice(i, i + 2), 16) * f))));
+  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
 
 // Internal tokenization shape. `text` segments carry the rendered text plus
 // the raw-body offset where that rendered text starts (after any whitespace
@@ -63,234 +68,89 @@ function tokenizeBody(body: string, bodyStartOffset: number = 0): BodyToken[] {
   return out;
 }
 
+/** The stretch under the cursor (or the open one): the piece's range in
+ *  raw-body offsets plus its element, for anchoring. */
+type Active = { a: number; b: number; el: HTMLElement };
+
+/** One run of text with the highlights that cover ALL of it. Highlights may
+ *  overlap now (notes stack on a stretch, 2026-10-07), so a segment is cut
+ *  at every highlight boundary and each piece carries its covering set. */
+type Piece = { a: number; b: number; covering: Highlight[] };
+
+function piecesFor(bodyStart: number, bodyEnd: number, highlights: Highlight[]): Piece[] | null {
+  const inSeg = highlights.filter((h) => h.startOffset < bodyEnd && h.endOffset > bodyStart);
+  if (inSeg.length === 0) return null;
+  const cuts = new Set<number>([bodyStart, bodyEnd]);
+  for (const h of inSeg) {
+    cuts.add(Math.max(bodyStart, Math.min(bodyEnd, h.startOffset)));
+    cuts.add(Math.max(bodyStart, Math.min(bodyEnd, h.endOffset)));
+  }
+  const xs = Array.from(cuts).sort((p, q) => p - q);
+  const out: Piece[] = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const a = xs[i], b = xs[i + 1];
+    if (b <= a) continue;
+    out.push({ a, b, covering: inSeg.filter((h) => h.startOffset <= a && h.endOffset >= b) });
+  }
+  return out;
+}
+
+const covering = (highlights: Highlight[], r: { a: number; b: number }) =>
+  highlights.filter((h) => h.startOffset <= r.a && h.endOffset >= r.b);
+
 /**
- * Render a single plain-text segment with any highlight overlays. The outer
+ * Render a single plain-text segment with its highlight pieces. The outer
  * span carries `data-body-start` so the selection-to-offset mapping
  * (selectionToBodyOffsets, below) can read it.
- *
- * Per Q7, a highlight is always fully contained in one segment, so a simple
- * "filter to segment range, sort, walk" produces the correct overlay shape.
  */
 function HighlightableSegment({
   text,
   bodyStart,
   highlights,
-  currentUserId,
-  onDeleteHighlight,
+  activeIds,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
-  displayNames,
+  onEnter,
+  onLeave,
+  onPick,
 }: {
   text: string;
   bodyStart: number;
   highlights: Highlight[];
-  currentUserId: string | null;
-  onDeleteHighlight?: (id: string) => void;
-  /** When true, plain-text slices are run through linkifyText so URL-shaped
-   *  substrings render as <a> auto-links. Used by reply-body rendering;
-   *  entry bodies (V2InlineThread) pass linkify={false} matching the
-   *  pre-highlight behavior. */
+  /** Ids of the highlights covering the hovered / open piece — every piece
+   *  sharing one of them darkens (the whole stretch, overlaps included). */
+  activeIds: Set<string> | null;
   linkify?: boolean;
-  /** Highlight span fill color. Default canon-yellow for entry bodies;
-   *  reply bodies pass canon-light-blue. */
   color?: string;
-  displayNames?: Record<string, string>;
+  onEnter: (active: Active) => void;
+  onLeave: () => void;
+  onPick: (active: Active, hasReadableNote: boolean) => void;
 }) {
   const renderText = (s: string): React.ReactNode => (linkify ? linkifyText(s) : s);
-
   const bodyEnd = bodyStart + text.length;
-  const inSegment = highlights
-    .filter(h => h.startOffset >= bodyStart && h.endOffset <= bodyEnd)
-    .sort((a, b) => a.startOffset - b.startOffset);
-
-  if (inSegment.length === 0) {
-    return <span data-body-start={bodyStart}>{renderText(text)}</span>;
-  }
-
-  const nodes: React.ReactNode[] = [];
-  let cursor = bodyStart;
-  let runKey = 0;
-  for (const h of inSegment) {
-    if (h.startOffset > cursor) {
-      const slice = text.slice(cursor - bodyStart, h.startOffset - bodyStart);
-      nodes.push(<React.Fragment key={`r-${runKey++}`}>{renderText(slice)}</React.Fragment>);
-    }
-    const segText = text.slice(h.startOffset - bodyStart, h.endOffset - bodyStart);
-    nodes.push(
-      <HighlightSpan
-        key={h.id}
-        highlight={h}
-        isOwn={!!currentUserId && h.authorId === currentUserId}
-        onDelete={onDeleteHighlight ? () => onDeleteHighlight(h.id) : undefined}
-        color={color}
-        displayName={displayNames?.[h.authorUsername]}
-      >
-        {renderText(segText)}
-      </HighlightSpan>
-    );
-    cursor = h.endOffset;
-  }
-  if (cursor < bodyEnd) {
-    const slice = text.slice(cursor - bodyStart);
-    nodes.push(<React.Fragment key={`r-${runKey++}`}>{renderText(slice)}</React.Fragment>);
-  }
-  return <span data-body-start={bodyStart}>{nodes}</span>;
-}
-
-/**
- * A single highlighted span with hover tooltip. Custom tooltip (not the
- * shared `Tooltip` component) because the bubble needs `pointer-events:
- * auto` for the owner's × delete button — the shared Tooltip pins
- * pointer-events: none.
- */
-function HighlightSpan({
-  highlight,
-  children,
-  isOwn,
-  onDelete,
-  color = DEFAULT_HIGHLIGHT_COLOR,
-  displayName,
-}: {
-  highlight: Highlight;
-  children: React.ReactNode;
-  isOwn: boolean;
-  onDelete?: () => void;
-  color?: string;
-  /** Naming arc (2026-07-07): the viewer's given name for the highlighter. */
-  displayName?: string;
-}) {
-  const [hovered, setHovered] = useState(false);
-  // Cursor position captured on mouseenter — the tooltip anchors here so
-  // it always lands near the cursor, regardless of where the highlighted
-  // span's bounding-box center happens to be (relevant when a highlight
-  // wraps across multiple lines).
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const spanRef = useRef<HTMLSpanElement>(null);
-  const bubbleRef = useRef<HTMLSpanElement>(null);
-
-  // Tap-anywhere-else dismissal. On touch devices a tap fires mouseenter
-  // (opening the bubble) but mouseleave never reliably follows, so the ×
-  // was the only way out. A pointerdown outside the span/bubble closes it.
-  // On desktop this is a no-op in practice — moving the mouse to click
-  // elsewhere already triggers the mouseleave close timer.
-  useEffect(() => {
-    if (!hovered) return;
-    const onDocPointerDown = (ev: PointerEvent) => {
-      const t = ev.target as Node;
-      if (spanRef.current?.contains(t) || bubbleRef.current?.contains(t)) return;
-      if (closeTimer.current) clearTimeout(closeTimer.current);
-      setHovered(false);
-    };
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
-  }, [hovered]);
-
-  // Grace period so the cursor can travel from the highlighted span into
-  // the (portaled) tooltip without it closing en route. 500ms is generous
-  // enough that the cursor can land on the × delete button without the
-  // tooltip vanishing mid-trip.
-  const enterSpan = (e: React.MouseEvent) => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setAnchor({ x: e.clientX, y: e.clientY });
-    setHovered(true);
-  };
-  const enterTooltip = () => {
-    // Don't reposition when the cursor enters the tooltip itself — just
-    // cancel the pending close so the bubble stays open.
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  };
-  const leave = () => {
-    closeTimer.current = setTimeout(() => setHovered(false), 500);
-  };
-
-  useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  }, []);
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setHovered(false);
-    onDelete?.();
-  };
-
+  const pieces = piecesFor(bodyStart, bodyEnd, highlights);
+  if (!pieces) return <span data-body-start={bodyStart}>{renderText(text)}</span>;
   return (
-    <span
-      ref={spanRef}
-      onMouseEnter={enterSpan}
-      onMouseLeave={leave}
-      // Touch (Alborz 2026-09-23): a tap fires mouseenter only the FIRST
-      // time — the emulated cursor then "stays" on the span, so after a
-      // tap-away closed the bubble a second tap never re-entered and it
-      // stayed shut. A click while the bubble is closed opens it at the tap
-      // point; on desktop the span is already hovered when clicked, so this
-      // is inert there.
-      onClick={(e) => {
-        if (hovered) return;
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-        setAnchor({ x: e.clientX, y: e.clientY });
-        setHovered(true);
-      }}
-      style={{ background: color, padding: "2px 2px", borderRadius: 3 }}
-    >
-      {children}
-      {hovered && anchor && createPortal(
-        <span
-          ref={bubbleRef}
-          onMouseEnter={enterTooltip}
-          onMouseLeave={leave}
-          style={{
-            position: "fixed",
-            top:  anchor.y - 16,
-            left: anchor.x,
-            // Center horizontally on cursor, lift fully above cursor, then
-            // tilt 6° clockwise. transformOrigin pins the rotation to the
-            // bottom-center so the bubble appears to lean, not pivot.
-            transform: "translate(-50%, -100%) rotate(6deg)",
-            transformOrigin: "bottom center",
-            background: CREAM,
-            color: CANON_NAVY,
-            borderRadius: 12,
-            padding: "6px 10px",
-            fontSize: 12,
-            fontWeight: 500,
-            whiteSpace: "nowrap",
-            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
-            zIndex: 9999,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            pointerEvents: "auto",
-          }}
-        >
-          <span>{displayName ?? highlight.authorUsername}:</span>
-          {highlight.kind === "yup" ? (
-            <ThumbsUp size={12} color={CANON_NAVY} strokeWidth={2} />
-          ) : (
-            <span>{highlight.note}</span>
-          )}
-          {isOwn && onDelete && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              aria-label="Remove highlight"
-              style={{
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                marginLeft: 4,
-                color: CANON_NAVY,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <X size={12} />
-            </button>
-          )}
-        </span>,
-        document.body,
-      )}
+    <span data-body-start={bodyStart}>
+      {pieces.map((p) => {
+        const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
+        if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
+        const readable = p.covering.some((h) => !h.sealed);
+        const hasReadableNote = p.covering.some((h) => !h.sealed && h.kind === "note");
+        const active = !!activeIds && p.covering.some((h) => activeIds.has(h.id));
+        const base = readable ? color : SEALED_COLOR;
+        return (
+          <span
+            key={`h-${p.a}`}
+            onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
+            onMouseLeave={onLeave}
+            onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
+            style={{ background: active ? darken(base) : base, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
+          >
+            {renderText(slice)}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -298,17 +158,20 @@ function HighlightSpan({
 /**
  * Top-level renderer for an entry body. Handles PROMPT tokens (rendered as
  * non-highlightable `prompt-ref` blockquotes) and plain-text segments
- * (highlightable, with overlays per-highlight).
+ * (highlightable, with overlays per-highlight). Owns the rollover popup and
+ * the open note paper for the whole body, so a stretch that crosses two
+ * segments still reads as one.
  *
  * Drop-in replacement for `parsePromptTokens(body).map(...)` in V2InlineThread
  * (entry body). Reply bodies have a separate token type ([QUOTE: ...]); they
- * use a different renderer wired in C6.
+ * render their slices through this same component.
  */
 export default function HighlightableBody({
   body,
   highlights,
   currentUserId,
   onDeleteHighlight,
+  onAddNote,
   bodyStart = 0,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
@@ -318,23 +181,69 @@ export default function HighlightableBody({
   highlights: Highlight[];
   currentUserId: string | null;
   onDeleteHighlight?: (id: string) => void;
+  /** "Add note" on the open paper: writes another note onto the same
+   *  stretch as `base`. Omit on surfaces that can't write. */
+  onAddNote?: (base: Highlight, note: string) => Promise<void>;
   /** Raw-body offset where THIS slice starts in the source body string.
    *  Default 0 — set when this renders only a sub-slice (e.g. the "before"
    *  or "after" segment of a reply body that's been split around a QUOTE
    *  token). */
   bodyStart?: number;
-  /** Forwarded to HighlightableSegment. When true, plain-text slices are
-   *  auto-linked via linkifyText. Used by reply bodies (which previously
-   *  ran linkify via annotateTextWithSups + linkifyNodes). */
+  /** When true, plain-text slices are auto-linked via linkifyText. Used by
+   *  reply bodies. */
   linkify?: boolean;
-  /** Highlight fill color. Default canon-yellow (entries). Reply bodies
-   *  pass canon-light-blue (`var(--canon-friend,#adc8d7)`) to distinguish reaction context. */
+  /** Highlight fill. Default canon-yellow — the one fill for letters and
+   *  responses alike (2026-10-07). */
   color?: string;
-  /** Naming arc (2026-07-07): username → the viewer's given name (tooltip
-   *  attribution only). */
+  /** Naming arc (2026-07-07): username → the viewer's given name (popup and
+   *  paper attribution only). */
   displayNames?: Record<string, string>;
 }) {
   const tokens = tokenizeBody(body, bodyStart);
+  const [hover, setHover] = useState<Active | null>(null);
+  const [open, setOpen] = useState<Active | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
+  // Grace period so the cursor can travel from the stretch into the popup.
+  const scheduleClose = () => { cancelClose(); closeTimer.current = setTimeout(() => setHover(null), 500); };
+  useEffect(() => () => cancelClose(), []);
+
+  // Tap-anywhere-else closes the popup (on touch a tap fires mouseenter but
+  // mouseleave never reliably follows).
+  useEffect(() => {
+    if (!hover) return;
+    const onDown = (ev: PointerEvent) => {
+      const t = ev.target as Node;
+      if (hover.el.contains(t)) return;
+      if ((t as HTMLElement).closest?.("[data-hl-popup]")) return;
+      cancelClose();
+      setHover(null);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [hover]);
+
+  // The open / hovered stretch, re-derived from the CURRENT highlights so a
+  // note added or removed while the paper is open shows up at once.
+  const openSet = open ? covering(highlights, open) : [];
+  const openNotes = openSet.filter((h) => !h.sealed && h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
+  const openSealed = openSet.filter((h) => h.sealed);
+  const hoverSet = hover ? covering(highlights, hover) : [];
+  const activeIds = open ? new Set(openSet.map((h) => h.id)) : hover ? new Set(hoverSet.map((h) => h.id)) : null;
+
+  // Nothing left to read (last note deleted): the paper closes itself.
+  useEffect(() => { if (open && openNotes.length === 0) setOpen(null); }, [open, openNotes.length]);
+
+  const onEnter = (a: Active) => { cancelClose(); if (!open) setHover(a); };
+  const onLeave = () => scheduleClose();
+  const onPick = (a: Active, hasReadableNote: boolean) => {
+    if (hasReadableNote) { cancelClose(); setHover(null); setOpen(a); return; }
+    // Yups and sealed notes only: a click (a tap on touch) shows the popup.
+    if (!hover) { cancelClose(); setHover(a); }
+  };
+
+  const baseForAdd = openNotes[openNotes.length - 1] ?? openSet[0];
+
   return (
     <>
       {tokens.map((tok, i) => {
@@ -351,14 +260,41 @@ export default function HighlightableBody({
             text={tok.text}
             bodyStart={tok.bodyStart}
             highlights={highlights}
-            currentUserId={currentUserId}
-            onDeleteHighlight={onDeleteHighlight}
+            activeIds={activeIds}
             linkify={linkify}
             color={color}
-            displayNames={displayNames}
+            onEnter={onEnter}
+            onLeave={onLeave}
+            onPick={onPick}
           />
         );
       })}
+      {hover && !open && hoverSet.length > 0 && createPortal(
+        <HighlightHoverPopup
+          anchorEl={hover.el}
+          readable={hoverSet.filter((h) => !h.sealed)}
+          sealed={hoverSet.filter((h) => h.sealed)}
+          currentUserId={currentUserId}
+          displayNames={displayNames}
+          onDelete={onDeleteHighlight ? (id) => { onDeleteHighlight(id); setHover(null); } : undefined}
+          onEnter={cancelClose}
+          onLeave={scheduleClose}
+        />,
+        document.body,
+      )}
+      {open && openNotes.length > 0 && createPortal(
+        <HighlightNotePaper
+          anchorEl={open.el}
+          notes={openNotes}
+          sealed={openSealed}
+          currentUserId={currentUserId}
+          displayNames={displayNames}
+          onClose={() => setOpen(null)}
+          onDelete={onDeleteHighlight}
+          onAddNote={onAddNote && baseForAdd ? (note) => onAddNote(baseForAdd, note) : undefined}
+        />,
+        document.body,
+      )}
     </>
   );
 }

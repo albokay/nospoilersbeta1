@@ -7,11 +7,13 @@ import { CANON } from "../styles/canon";
 // Two-radio picker shown after the user selects text and clicks the
 // "Highlight…" button. Mirrors NudgePopover / AskTheRoomPicker visually:
 // cream card, canon-light-blue radio rows, click-outside + Escape to
-// dismiss, anchored below the trigger button.
+// dismiss, anchored below the trigger button (above it when the screen
+// runs out below — notes arc, 2026-10-07).
 //
 // One of two payload shapes returns via onConfirm:
 //   { kind: "yup" }
-//   { kind: "note", note: "<1..50 char trimmed string>" }
+//   { kind: "note", note: "<1..1000 char trimmed string>" } — a real note
+//   now (was a 50-char line): notes stand in for responses.
 //
 // The parent owns selection capture, server submit, and any error display.
 // The picker itself stays simple: pick → OK → onConfirm → parent unmounts.
@@ -24,7 +26,7 @@ const TEXT_MUTED   = "#5f5e5a";
 
 const POPOVER_WIDTH    = 280;
 const GAP_FROM_ANCHOR  = 10;
-const NOTE_MAX         = 50;
+const NOTE_MAX         = 1000;
 
 interface Props {
   /** Bounding rect of the Highlight button, used to anchor the popover. */
@@ -60,7 +62,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
       window.removeEventListener("resize", follow);
     };
   }, [anchorEl]);
-  const noteInputRef = useRef<HTMLInputElement | null>(null);
+  const noteInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [selected, setSelected] = useState<"yup" | "note" | null>(null);
   const [note, setNote] = useState("");
@@ -68,12 +70,20 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
 
   // Position: directly below the anchor, right-edge aligned (matches
   // NudgePopover's "from-anchor" mode). Min 14px from the viewport's
-  // right edge so the popover doesn't kiss the screen edge.
+  // right edge so the popover doesn't kiss the screen edge. With the
+  // taller note field it flips ABOVE the button when the room below runs
+  // out, and scrolls inside as a last resort — never off screen.
+  const vh = window.innerHeight;
+  const spaceBelow = vh - rect.bottom - GAP_FROM_ANCHOR - 12;
+  const flipUp = spaceBelow < 320 && rect.top - GAP_FROM_ANCHOR - 12 > spaceBelow;
   const positionStyle: React.CSSProperties = {
     position: "fixed",
-    top:   rect.bottom + GAP_FROM_ANCHOR,
     right: Math.max(14, window.innerWidth - rect.right),
     width: POPOVER_WIDTH,
+    ...(flipUp
+      ? { bottom: vh - rect.top + GAP_FROM_ANCHOR, maxHeight: rect.top - GAP_FROM_ANCHOR - 12 }
+      : { top: rect.bottom + GAP_FROM_ANCHOR, maxHeight: spaceBelow }),
+    overflowY: "auto",
   };
 
   // Click-outside dismissal — defer the listener install by one tick so the
@@ -106,7 +116,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
     // Defer focus so the input is in the DOM by the time we focus it.
     setTimeout(() => noteInputRef.current?.focus(), 0);
   };
-  const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Hard cap at NOTE_MAX even if the browser somehow lets a paste through.
     setNote(e.target.value.slice(0, NOTE_MAX));
   };
@@ -214,30 +224,35 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
             }}
           >
             <CanonRadio checked={selected === "note"} color={CANON_YELLOW} />
-            <span>Write a short note&hellip;</span>
+            <span>Write a note&hellip;</span>
           </label>
           {selected === "note" && (
-            <input
-              ref={noteInputRef}
-              type="text"
-              value={note}
-              onChange={handleNoteChange}
-              maxLength={NOTE_MAX}
-              placeholder="write a short note"
-              style={{
-                width: "100%",
-                fontSize: 14,
-                padding: "8px 14px",
-                borderRadius: 9999,
-                border: "none",
-                background: CREAM,
-                boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)",
-                height: 40,
-                boxSizing: "border-box",
-                color: CANON_NAVY,
-                outline: "none",
-              }}
-            />
+            <>
+              <textarea
+                ref={noteInputRef}
+                value={note}
+                onChange={handleNoteChange}
+                maxLength={NOTE_MAX}
+                rows={4}
+                placeholder="write a note"
+                style={{
+                  width: "100%",
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  fontFamily: '"Inter", sans-serif',
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: CREAM,
+                  boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)",
+                  boxSizing: "border-box",
+                  color: CANON_NAVY,
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+              <div style={{ alignSelf: "flex-end", marginTop: 4, fontSize: 11, color: CANON.cream, opacity: 0.8 }}>{note.length}/{NOTE_MAX}</div>
+            </>
           )}
         </div>
       </div>
