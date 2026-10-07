@@ -2,7 +2,6 @@ import WhatsNextPanel from "../WhatsNextPanel";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import { CANON } from "../../styles/canon";
 import { ChevronUp, MessageSquare } from "lucide-react";
 import Modal from "../Modal";
@@ -12,6 +11,8 @@ import type { PublicRoomResponseGate } from "./V2RoomFeed";
 import Tooltip from "../Tooltip";
 import HighlightPicker from "../HighlightPicker";
 import HighlightableBody, { selectionToBodyOffsets } from "./HighlightableBody";
+import { HighlightCreateSheet } from "./HighlightSheets";
+import { togglePick, type Range } from "../../lib/sentences";
 import { useAuth } from "../../lib/auth";
 import {
   deleteThread as dbDeleteThread,
@@ -137,11 +138,13 @@ export default function V2InlineThread({
   const [threadCitations, setThreadCitations] = useState<CitationEntry[]>([]);
 
   // ── Edit state ──────────────────────────────────────────────────────────
-  // Mobile highlight invitation (Alborz 2026-09-02): the Highlight… button
-  // is BACK on mobile, but highlighting is selection-based (needs a mouse) —
-  // tapping opens an informational bottom sheet pointing at desktop instead.
-  const [mobileHlInfoOpen, setMobileHlInfoOpen] = useState(false);
-  const mobileHlSwipe = useSheetSwipeDown(() => setMobileHlInfoOpen(false), { open: mobileHlInfoOpen });
+  // The phone picks a highlight by TAPPING SENTENCES (notes arc,
+  // 2026-10-07; replaces the 09-02 "needs a mouse" sheet): Highlight… turns
+  // pick mode on, taps build one continuous pick, Next opens the create
+  // sheet (Yup. or a note), Cancel leaves it.
+  const [pickRange, setPickRange] = useState<Range | null>(null);
+  const [pickMode, setPickMode] = useState(false);
+  const [mobileCreate, setMobileCreate] = useState<{ start: number; end: number; text: string } | null>(null);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(thread.titleBase);
   const [editBody, setEditBody] = useState(thread.body);
@@ -299,10 +302,13 @@ export default function V2InlineThread({
     setHighlightPicker({ anchorRect: rect, start: sel.start, end: sel.end, text: sel.text });
   };
 
-  const handleHighlightConfirm = async (
+  // One create path for both platforms: the desktop picker's selection and
+  // the phone's sentence pick both land here as a range.
+  const createHighlightFromRange = async (
+    range: { start: number; end: number; text: string },
     payload: { kind: "yup" } | { kind: "note"; note: string },
   ) => {
-    if (!highlightPicker || !groupId) return;
+    if (!groupId) return;
     // Snapshot the viewer's effective progress as the highlight's spoiler tag
     // — viewers behind this won't see the highlight. Falls back to the
     // entry's own season/episode if progress isn't computable (defensive;
@@ -310,27 +316,49 @@ export default function V2InlineThread({
     const eff = effectiveProgress(viewerProgress);
     const authorSeason  = eff?.s ?? thread.season;
     const authorEpisode = eff?.e ?? thread.episode;
+    const inserted = await dbCreateHighlight({
+      targetType:    "thread",
+      targetId:      thread.id,
+      groupId,
+      startOffset:   range.start,
+      endOffset:     range.end,
+      quotedText:    range.text,
+      kind:          payload.kind,
+      note:          payload.kind === "note" ? payload.note : null,
+      authorSeason,
+      authorEpisode,
+    });
+    setHighlights((prev) => [...prev, inserted]);
+    setHighlightError(null);
+  };
+
+  const handleHighlightConfirm = async (
+    payload: { kind: "yup" } | { kind: "note"; note: string },
+  ) => {
+    if (!highlightPicker || !groupId) return;
     try {
-      const inserted = await dbCreateHighlight({
-        targetType:    "thread",
-        targetId:      thread.id,
-        groupId,
-        startOffset:   highlightPicker.start,
-        endOffset:     highlightPicker.end,
-        quotedText:    highlightPicker.text,
-        kind:          payload.kind,
-        note:          payload.kind === "note" ? payload.note : null,
-        authorSeason,
-        authorEpisode,
-      });
-      setHighlights((prev) => [...prev, inserted]);
-      setHighlightPicker(null);
-      setHighlightError(null);
+      await createHighlightFromRange(highlightPicker, payload);
     } catch (e) {
       const msg = (e as { message?: string })?.message ?? "Couldn't save highlight.";
       setHighlightError(msg);
+    } finally {
       setHighlightPicker(null);
     }
+  };
+
+  // The phone's pick mode.
+  const startPick = () => {
+    if (!groupId) return;
+    if (!userId) { onAuthRequired?.(); return; }
+    setHighlightError(null);
+    setPickRange(null);
+    setPickMode(true);
+  };
+  const endPick = () => { setPickMode(false); setPickRange(null); };
+  const pickNext = () => {
+    if (!pickRange) return;
+    setMobileCreate({ start: pickRange.a, end: pickRange.b, text: thread.body.slice(pickRange.a, pickRange.b) });
+    endPick();
   };
 
   const handleDeleteHighlight = (id: string) => {
@@ -718,6 +746,8 @@ export default function V2InlineThread({
             currentUserId={userId}
             onDeleteHighlight={handleDeleteHighlight}
             onAddNote={groupId && userId ? handleAddNote : undefined}
+            mobile={mobileIdiom}
+            pick={pickMode ? { range: pickRange, onToggle: (sn, all) => setPickRange((r) => togglePick(r, sn, all)) } : undefined}
           />
         </div>
       )}
@@ -740,7 +770,17 @@ export default function V2InlineThread({
           The "Write back" trigger (was "Write a response") moved below the replies. Star
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
-      {!isTombstone && !editing && (
+      {!isTombstone && !editing && pickMode && (
+        // Pick mode (the phone): the row becomes the picking bar.
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
+          <span style={{ flex: "1 1 160px", fontSize: 13, lineHeight: 1.4, fontStyle: "italic", opacity: 0.85 }}>
+            {pickRange ? "Tap more sentences to add them, or an end one to let it go." : "Tap the sentences you mean."}
+          </span>
+          <button className="btn sb-cream-outline" onClick={endPick} style={sPillGeom}>Cancel</button>
+          <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
+        </div>
+      )}
+      {!isTombstone && !editing && !pickMode && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
           {isOwn && (
             <>
@@ -800,12 +840,12 @@ export default function V2InlineThread({
           ) : groupId && (
             // Accent fill kept (option B); hover = Sky fill + Accent
             // outline via the sb-hl-entry class (theme.ts, 2026-08-13).
-            // On mobile (2026-09-02) the button opens the desktop-only
-            // invitation sheet — the selection flow itself needs a mouse.
+            // On the phone (notes arc, 2026-10-07) the button turns pick
+            // mode on — sentences are tapped instead of selected.
             <button
               ref={highlightBtnRef}
               className="btn sb-hl-entry"
-              onClick={mobileIdiom ? () => setMobileHlInfoOpen(true) : handleHighlightClick}
+              onClick={mobileIdiom ? startPick : handleHighlightClick}
               style={sPillGeom}
             >
               Highlight…
@@ -1032,32 +1072,17 @@ export default function V2InlineThread({
         </Modal>
       )}
 
-      {/* Mobile highlight invitation (Alborz 2026-09-02): the standard
-          bottom sheet — Accent, cream text, left-justified (mobile sheet
-          rule), swipe-down or tap-outside to dismiss. */}
-      {mobileHlInfoOpen && createPortal(
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(26,58,74,0.35)", zIndex: 1200 }}
-          onClick={() => setMobileHlInfoOpen(false)}
-        >
-          <div
-            style={{
-              position: "fixed", left: 0, right: 0, bottom: 0,
-              background: CANON.accent, color: CANON.cream,
-              borderTopLeftRadius: 24, borderTopRightRadius: 24,
-              padding: "24px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)",
-              textAlign: "left",
-              ...mobileHlSwipe.style,
-            }}
-            {...mobileHlSwipe.handlers}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 20, marginBottom: 10 }}>Highlights</div>
-            <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-              This feature needs a mouse — on desktop you can highlight a portion of a friend&rsquo;s writing and leave a reaction right on it. Take a look next time you&rsquo;re at your computer!
-            </div>
-          </div>
-        </div>,
+      {/* The phone's create sheet (notes arc, 2026-10-07): after picking
+          sentences — the stretch, then Yup. or a note. */}
+      {mobileCreate && createPortal(
+        <HighlightCreateSheet
+          quoted={mobileCreate.text}
+          onClose={() => setMobileCreate(null)}
+          onConfirm={async (payload) => {
+            await createHighlightFromRange(mobileCreate, payload);
+            setMobileCreate(null);
+          }}
+        />,
         document.body,
       )}
     </>

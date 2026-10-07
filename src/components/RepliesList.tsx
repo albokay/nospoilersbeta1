@@ -207,6 +207,7 @@ function ReplyBody({
   currentUserId = null,
   onDeleteHighlight,
   onAddNote,
+  mobile = false,
   displayNames,
 }: {
   body: string;
@@ -227,6 +228,8 @@ function ReplyBody({
   onDeleteHighlight?: (id: string) => void;
   /** "Add note" on an open note paper (notes arc, 2026-10-07). */
   onAddNote?: (base: Highlight, note: string) => Promise<void>;
+  /** The phone: a tap on a stretch opens the notes sheet. */
+  mobile?: boolean;
   displayNames?: Record<string, string>;
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
@@ -254,6 +257,7 @@ function ReplyBody({
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
+            mobile={mobile}
             bodyStart={0}
             linkify
           />
@@ -273,6 +277,7 @@ function ReplyBody({
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
+            mobile={mobile}
             bodyStart={afterStart}
             linkify
           />
@@ -295,6 +300,7 @@ function ReplyBody({
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
+            mobile={mobile}
             bodyStart={0}
             linkify
           />
@@ -314,6 +320,7 @@ function ReplyBody({
             currentUserId={currentUserId}
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
+            mobile={mobile}
             bodyStart={afterStart}
             linkify
           />
@@ -333,6 +340,7 @@ function ReplyBody({
         currentUserId={currentUserId}
         onDeleteHighlight={onDeleteHighlight}
         onAddNote={onAddNote}
+        mobile={mobile}
         bodyStart={0}
         linkify
       />
@@ -1300,6 +1308,7 @@ export default function RepliesList({
                     currentUserId={user?.id ?? null}
                     onDeleteHighlight={highlightsEnabled ? (hid) => handleDeleteHighlightReply(r.id, hid) : undefined}
                     onAddNote={highlightsEnabled && user ? (base, note) => handleAddNoteReply(r.id, base, note) : undefined}
+                    mobile={mobileIdiom}
                     displayNames={displayNames}
                   />
                   {highlightsEnabled && highlightError[r.id] && (

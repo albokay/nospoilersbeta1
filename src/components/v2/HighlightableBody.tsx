@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HighlightHoverPopup, HighlightNotePaper } from "./HighlightNotePaper";
+import { HighlightNoteSheet } from "./HighlightSheets";
+import { splitSentences, type Range } from "../../lib/sentences";
 import { linkifyText } from "../../lib/linkify";
 import type { Highlight } from "../../lib/db";
 import { CANON } from "../../styles/canon";
@@ -155,6 +157,43 @@ function HighlightableSegment({
   );
 }
 
+/** Pick mode (the phone, notes arc 2026-10-07): the run is drawn sentence
+ *  by sentence; a tap toggles a sentence into one continuous pick. Existing
+ *  highlights aren't drawn while picking — a note on an existing stretch is
+ *  added from its sheet instead. */
+const PICK_FILL = "rgba(222,168,56,0.45)";
+function PickSegment({ text, bodyStart, range, all, onToggle }: {
+  text: string;
+  bodyStart: number;
+  range: Range | null;
+  all: Range[];
+  onToggle: (s: Range, all: Range[]) => void;
+}) {
+  const sentences = splitSentences(text, bodyStart);
+  const nodes: React.ReactNode[] = [];
+  let cursor = bodyStart;
+  for (const sn of sentences) {
+    if (sn.a > cursor) nodes.push(<React.Fragment key={`g-${cursor}`}>{text.slice(cursor - bodyStart, sn.a - bodyStart)}</React.Fragment>);
+    const picked = !!range && sn.a >= range.a && sn.b <= range.b;
+    nodes.push(
+      <span
+        key={`s-${sn.a}`}
+        role="button"
+        tabIndex={0}
+        aria-pressed={picked}
+        onClick={(e) => { e.stopPropagation(); onToggle(sn, all); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(sn, all); } }}
+        style={{ background: picked ? PICK_FILL : "transparent", padding: "2px 0", borderRadius: 3, cursor: "pointer", boxShadow: picked ? `0 0 0 1px ${CANON.accent}` : "none", transition: "background 120ms ease" }}
+      >
+        {text.slice(sn.a - bodyStart, sn.b - bodyStart)}
+      </span>,
+    );
+    cursor = sn.b;
+  }
+  if (cursor < bodyStart + text.length) nodes.push(<React.Fragment key={`g-${cursor}`}>{text.slice(cursor - bodyStart)}</React.Fragment>);
+  return <span data-body-start={bodyStart}>{nodes}</span>;
+}
+
 /**
  * Top-level renderer for an entry body. Handles PROMPT tokens (rendered as
  * non-highlightable `prompt-ref` blockquotes) and plain-text segments
@@ -176,11 +215,19 @@ export default function HighlightableBody({
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
   displayNames,
+  mobile = false,
+  pick,
 }: {
   body: string;
   highlights: Highlight[];
   currentUserId: string | null;
   onDeleteHighlight?: (id: string) => void;
+  /** The phone (notes arc, 2026-10-07): no rollover popup; a tap on a
+   *  stretch opens the notes SHEET instead of the paper. */
+  mobile?: boolean;
+  /** Pick mode (the phone): sentences become tappable and build one
+   *  continuous pick; `range` is the current pick in raw-body offsets. */
+  pick?: { range: Range | null; onToggle: (s: Range, all: Range[]) => void };
   /** "Add note" on the open paper: writes another note onto the same
    *  stretch as `base`. Omit on surfaces that can't write. */
   onAddNote?: (base: Highlight, note: string) => Promise<void>;
@@ -200,6 +247,7 @@ export default function HighlightableBody({
   displayNames?: Record<string, string>;
 }) {
   const tokens = tokenizeBody(body, bodyStart);
+  const allSentences = pick ? tokens.flatMap((t) => (t.kind === "text" ? splitSentences(t.text, t.bodyStart) : [])) : [];
   const [hover, setHover] = useState<Active | null>(null);
   const [open, setOpen] = useState<Active | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -231,14 +279,19 @@ export default function HighlightableBody({
   const hoverSet = hover ? covering(highlights, hover) : [];
   const activeIds = open ? new Set(openSet.map((h) => h.id)) : hover ? new Set(hoverSet.map((h) => h.id)) : null;
 
-  // Nothing left to read (last note deleted): the paper closes itself.
-  useEffect(() => { if (open && openNotes.length === 0) setOpen(null); }, [open, openNotes.length]);
+  // Nothing left to read (last note deleted): the paper closes itself; on
+  // the phone the sheet stays until the stretch itself is gone.
+  useEffect(() => {
+    if (!open) return;
+    if (mobile ? openSet.length === 0 : openNotes.length === 0) setOpen(null);
+  }, [open, mobile, openSet.length, openNotes.length]);
 
-  const onEnter = (a: Active) => { cancelClose(); if (!open) setHover(a); };
-  const onLeave = () => scheduleClose();
+  const onEnter = (a: Active) => { if (mobile) return; cancelClose(); if (!open) setHover(a); };
+  const onLeave = () => { if (!mobile) scheduleClose(); };
   const onPick = (a: Active, hasReadableNote: boolean) => {
+    if (mobile) { setHover(null); setOpen(a); return; }
     if (hasReadableNote) { cancelClose(); setHover(null); setOpen(a); return; }
-    // Yups and sealed notes only: a click (a tap on touch) shows the popup.
+    // Yups and sealed notes only: a click shows the popup.
     if (!hover) { cancelClose(); setHover(a); }
   };
 
@@ -252,6 +305,18 @@ export default function HighlightableBody({
             <blockquote key={`prompt-${i}`} className="prompt-ref">
               {tok.text}
             </blockquote>
+          );
+        }
+        if (pick) {
+          return (
+            <PickSegment
+              key={`pick-${tok.bodyStart}`}
+              text={tok.text}
+              bodyStart={tok.bodyStart}
+              range={pick.range}
+              all={allSentences}
+              onToggle={pick.onToggle}
+            />
           );
         }
         return (
@@ -269,7 +334,7 @@ export default function HighlightableBody({
           />
         );
       })}
-      {hover && !open && hoverSet.length > 0 && createPortal(
+      {!mobile && hover && !open && hoverSet.length > 0 && createPortal(
         <HighlightHoverPopup
           anchorEl={hover.el}
           readable={hoverSet.filter((h) => !h.sealed)}
@@ -282,7 +347,20 @@ export default function HighlightableBody({
         />,
         document.body,
       )}
-      {open && openNotes.length > 0 && createPortal(
+      {mobile && open && openSet.length > 0 && createPortal(
+        <HighlightNoteSheet
+          quoted={openSet[0].quotedText}
+          readable={openSet.filter((h) => !h.sealed)}
+          sealed={openSealed}
+          currentUserId={currentUserId}
+          displayNames={displayNames}
+          onClose={() => setOpen(null)}
+          onDelete={onDeleteHighlight}
+          onAddNote={onAddNote && baseForAdd ? (note) => onAddNote(baseForAdd, note) : undefined}
+        />,
+        document.body,
+      )}
+      {!mobile && open && openNotes.length > 0 && createPortal(
         <HighlightNotePaper
           anchorEl={open.el}
           notes={openNotes}
