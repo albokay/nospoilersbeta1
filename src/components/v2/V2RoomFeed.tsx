@@ -275,9 +275,12 @@ export type V2RoomFeedProps = {
       no composer — notes stand in for responses. */
   responsesOff?: boolean;
   /** Notes inside each letter (notes arc, 2026-10-07): threadId → how many
-      notes sit on that letter's body, sealed ones included. A closed letter
-      shows the count beside the chevron like its response count. */
-  noteCounts?: Record<string, number>;
+      notes sit on that letter's body, all of them and the readable ones. A
+      closed letter shows the count beside the chevron like its response
+      count: the readable number while it's blue (or plain), every note
+      once it's red (his 10-07 rule: blue "1" until the note is seen, then
+      red "2" until the sealed one opens). */
+  noteCounts?: Record<string, { all: number; readable: number }>;
   /** Fires after a reply is published from any entry's composer, so the parent
       can bump that entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -1287,9 +1290,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       response count — glyph + number, and with a signal the
                       blue/red pill behind it. When the letter also has
                       responses, the response pill carries the colour. */}
-                  {(noteCounts?.[entry.threadId] ?? 0) > 0 && (() => {
-                    const n = noteCounts![entry.threadId];
+                  {(noteCounts?.[entry.threadId]?.all ?? 0) > 0 && (() => {
+                    const nc = noteCounts![entry.threadId];
                     const noteKind = entry.replyCount > 0 ? null : pillKind;
+                    const n = noteKind === "red" ? nc.all : nc.readable;
+                    if (n === 0) return null;
                     const inner = (
                       <span
                         aria-label={`${n} note${n === 1 ? "" : "s"}`}
