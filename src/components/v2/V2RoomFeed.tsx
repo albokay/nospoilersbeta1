@@ -281,6 +281,9 @@ export type V2RoomFeedProps = {
       once it's red (his 10-07 rule: blue "1" until the note is seen, then
       red "2" until the sealed one opens). */
   noteCounts?: Record<string, { all: number; readable: number }>;
+  /** The notes on a letter (or on a response under it) actually opened —
+      the room page stamps the letter's note-seen mark here. */
+  onNotesOpened?: (threadId: string) => void;
   /** Fires after a reply is published from any entry's composer, so the parent
       can bump that entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -369,6 +372,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     publicRoomGate,
     responsesOff = false,
     noteCounts,
+    onNotesOpened,
     onReplyAdded,
     scrollContainerRef,
     demoMode = false,
@@ -1176,6 +1180,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       }
                       publicRoomGate={publicRoomGate}
                       responsesOff={responsesOff}
+                      onNotesOpened={onNotesOpened}
                       onReplyAdded={onReplyAdded}
                     />
                   </div>
@@ -1293,8 +1298,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   {(noteCounts?.[entry.threadId]?.all ?? 0) > 0 && (() => {
                     const nc = noteCounts![entry.threadId];
                     const noteKind = entry.replyCount > 0 ? null : pillKind;
-                    const n = noteKind === "red" ? nc.all : nc.readable;
-                    if (n === 0) return null;
+                    const n = nc.all;
                     const inner = (
                       <span
                         aria-label={`${n} note${n === 1 ? "" : "s"}`}

@@ -94,7 +94,6 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
     <div style={backdrop} onClick={onClose}>
       <div role="dialog" aria-label="Notes" style={{ ...sheet, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
         <div style={title}>{notes.length ? (notes.length === 1 ? "A note on this" : "Notes on this") : "This highlight"}</div>
-        <div style={aboutStyle}>Notes are what friends leave on a stretch of a letter. A note from further ahead stays sealed until you catch up.</div>
         {/* The rollover's lines belong to the desktop popup (his 10-07
             note): here the cards say it, sealed ones included. Only a yup,
             which has no card, gets a line. */}

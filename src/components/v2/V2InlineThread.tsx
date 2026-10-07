@@ -97,6 +97,8 @@ export type V2InlineThreadProps = {
   /** Letters-only room (the switch, 2026-10-07): hides Write back and both
    *  Quote… buttons and never mounts the composer. */
   responsesOff?: boolean;
+  /** The notes on this letter, or on a response under it, actually opened. */
+  onNotesOpened?: (threadId: string) => void;
   /** Fires after a reply is published from this thread's composer, so the
    *  parent feed can bump the entry's reply count without a refetch. */
   onReplyAdded?: (threadId: string) => void;
@@ -127,6 +129,7 @@ export default function V2InlineThread({
   focusReplyId,
   publicRoomGate,
   responsesOff = false,
+  onNotesOpened,
   onReplyAdded,
   mobileIdiom = false,
 }: V2InlineThreadProps) {
@@ -772,6 +775,7 @@ export default function V2InlineThread({
             currentUserId={userId}
             onDeleteHighlight={handleDeleteHighlight}
             onAddNote={groupId && userId ? handleAddNote : undefined}
+            onNotesOpened={() => onNotesOpened?.(thread.id)}
             mobile={mobileIdiom}
             pick={pickMode ? { range: pickRange, onToggle: (sn, all) => setPickRange((r) => togglePick(r, sn, all)) } : undefined}
           />
@@ -939,6 +943,7 @@ export default function V2InlineThread({
           refreshKey={repliesKey}
           hideRespondButtons
           quoteOff={responsesOff}
+          onNotesOpened={() => onNotesOpened?.(thread.id)}
           compactBorders
           showAheadStubs
           enableHighlights

@@ -207,6 +207,7 @@ function ReplyBody({
   currentUserId = null,
   onDeleteHighlight,
   onAddNote,
+  onNotesOpened,
   mobile = false,
   displayNames,
 }: {
@@ -230,6 +231,7 @@ function ReplyBody({
   onAddNote?: (base: Highlight, note: string) => Promise<void>;
   /** The phone: a tap on a stretch opens the notes sheet. */
   mobile?: boolean;
+  onNotesOpened?: () => void;
   displayNames?: Record<string, string>;
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
@@ -258,6 +260,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
             mobile={mobile}
+            onNotesOpened={onNotesOpened}
             bodyStart={0}
             linkify
           />
@@ -278,6 +281,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
             mobile={mobile}
+            onNotesOpened={onNotesOpened}
             bodyStart={afterStart}
             linkify
           />
@@ -301,6 +305,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
             mobile={mobile}
+            onNotesOpened={onNotesOpened}
             bodyStart={0}
             linkify
           />
@@ -321,6 +326,7 @@ function ReplyBody({
             onDeleteHighlight={onDeleteHighlight}
             onAddNote={onAddNote}
             mobile={mobile}
+            onNotesOpened={onNotesOpened}
             bodyStart={afterStart}
             linkify
           />
@@ -341,6 +347,7 @@ function ReplyBody({
         onDeleteHighlight={onDeleteHighlight}
         onAddNote={onAddNote}
         mobile={mobile}
+        onNotesOpened={onNotesOpened}
         bodyStart={0}
         linkify
       />
@@ -358,6 +365,7 @@ export default function RepliesList({
   orderMode = "episode",
   hideRespondButtons = false,
   quoteOff = false,
+  onNotesOpened,
   enableHighlights = false,
   mobileIdiom = false,
 }: {
@@ -403,6 +411,8 @@ export default function RepliesList({
   // Letters-only room (the switch, 2026-10-07): the per-response Quote…
   // would open the response composer, so it goes too.
   quoteOff?: boolean;
+  // The notes on a response actually opened (notes arc, 2026-10-07).
+  onNotesOpened?: () => void;
   // V2 uses 2px borders on response cards instead of the V1 default 4px.
   // Applies to both the default state and the green "progressReveal"
   // outline. V2InlineThread opts in; V1 leaves undefined → 4px.
@@ -1313,6 +1323,7 @@ export default function RepliesList({
                     onDeleteHighlight={highlightsEnabled ? (hid) => handleDeleteHighlightReply(r.id, hid) : undefined}
                     onAddNote={highlightsEnabled && user ? (base, note) => handleAddNoteReply(r.id, base, note) : undefined}
                     mobile={mobileIdiom}
+                    onNotesOpened={onNotesOpened}
                     displayNames={displayNames}
                   />
                   {highlightsEnabled && highlightError[r.id] && (

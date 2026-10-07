@@ -100,6 +100,28 @@ function piecesFor(bodyStart: number, bodyEnd: number, highlights: Highlight[]):
 const covering = (highlights: Highlight[], r: { a: number; b: number }) =>
   highlights.filter((h) => h.startOffset <= r.a && h.endOffset >= r.b);
 
+/** Overlapping highlights are ONE stretch (his 10-07 note): a sweep over the
+ *  sorted highlights joins every pair that overlaps into a cluster with the
+ *  union range. Hovering, opening, darkening and "Add note" all work on the
+ *  cluster, so two people who noted overlapping sentences read as one stack. */
+type Cluster = { ids: Set<string>; a: number; b: number };
+function buildClusters(highlights: Highlight[]): { list: Cluster[]; byId: Map<string, number> } {
+  const sorted = [...highlights].sort((x, y) => x.startOffset - y.startOffset || x.endOffset - y.endOffset);
+  const list: Cluster[] = [];
+  const byId = new Map<string, number>();
+  for (const h of sorted) {
+    const last = list[list.length - 1];
+    if (last && h.startOffset < last.b) {
+      last.ids.add(h.id);
+      last.b = Math.max(last.b, h.endOffset);
+    } else {
+      list.push({ ids: new Set([h.id]), a: h.startOffset, b: h.endOffset });
+    }
+    byId.set(h.id, list.length - 1);
+  }
+  return { list, byId };
+}
+
 /**
  * Render a single plain-text segment with its highlight pieces. The outer
  * span carries `data-body-start` so the selection-to-offset mapping
@@ -110,6 +132,7 @@ function HighlightableSegment({
   bodyStart,
   highlights,
   activeIds,
+  openable,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
   onEnter,
@@ -122,6 +145,9 @@ function HighlightableSegment({
   /** Ids of the highlights covering the hovered / open piece — every piece
    *  sharing one of them darkens (the whole stretch, overlaps included). */
   activeIds: Set<string> | null;
+  /** Ids of highlights whose stretch (cluster) holds at least one note —
+   *  a click there opens the stack. */
+  openable: Set<string>;
   linkify?: boolean;
   color?: string;
   onEnter: (active: Active) => void;
@@ -138,7 +164,8 @@ function HighlightableSegment({
         const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
         if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
         const readable = p.covering.some((h) => !h.sealed);
-        const hasReadableNote = p.covering.some((h) => h.kind === "note");
+        // A click opens the stack when ANY note sits anywhere in this stretch's cluster.
+        const hasReadableNote = p.covering.some((h) => openable.has(h.id));
         const active = !!activeIds && p.covering.some((h) => activeIds.has(h.id));
         const base = readable ? color : SEALED_COLOR;
         return (
@@ -212,6 +239,7 @@ export default function HighlightableBody({
   currentUserId,
   onDeleteHighlight,
   onAddNote,
+  onNotesOpened,
   bodyStart = 0,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
@@ -232,6 +260,10 @@ export default function HighlightableBody({
   /** "Add note" on the open paper: writes another note onto the same
    *  stretch as `base`. Omit on surfaces that can't write. */
   onAddNote?: (base: Highlight, note: string) => Promise<void>;
+  /** Fires when the notes on a stretch actually open (the paper or the
+   *  sheet), with at least one readable note in them — the moment the
+   *  letter's blue note signal clears (his 10-07 note: not on expand). */
+  onNotesOpened?: () => void;
   /** Raw-body offset where THIS slice starts in the source body string.
    *  Default 0 — set when this renders only a sub-slice (e.g. the "before"
    *  or "after" segment of a reply body that's been split around a QUOTE
@@ -272,14 +304,29 @@ export default function HighlightableBody({
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [hover]);
 
-  // The open / hovered stretch, re-derived from the CURRENT highlights so a
-  // note added or removed while the paper is open shows up at once.
-  const openSet = open ? covering(highlights, open) : [];
+  // The open / hovered stretch = the whole CLUSTER of overlapping highlights
+  // under the point, re-derived from the CURRENT highlights so a note added
+  // or removed while the paper is open shows up at once.
+  const clusters = buildClusters(highlights);
+  const clusterAt = (r: { a: number; b: number } | null): Cluster | null => {
+    if (!r) return null;
+    const first = covering(highlights, r)[0];
+    if (!first) return null;
+    const ci = clusters.byId.get(first.id);
+    return ci === undefined ? null : clusters.list[ci];
+  };
+  const openCluster = clusterAt(open);
+  const openSet = openCluster ? highlights.filter((h) => openCluster.ids.has(h.id)) : [];
   // Every note on the stretch, sealed ones included: each is its own page.
   const openNotes = openSet.filter((h) => h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
   const openSealed = openSet.filter((h) => h.sealed);
-  const hoverSet = hover ? covering(highlights, hover) : [];
-  const activeIds = open ? new Set(openSet.map((h) => h.id)) : hover ? new Set(hoverSet.map((h) => h.id)) : null;
+  const hoverCluster = clusterAt(hover);
+  const hoverSet = hoverCluster ? highlights.filter((h) => hoverCluster.ids.has(h.id)) : [];
+  const activeIds = openCluster ? openCluster.ids : hoverCluster ? hoverCluster.ids : null;
+  const openable = new Set<string>();
+  for (const cl of clusters.list) {
+    if (highlights.some((h) => cl.ids.has(h.id) && h.kind === "note")) for (const id of cl.ids) openable.add(id);
+  }
 
   // Nothing left to read (last note deleted): the paper closes itself; on
   // the phone the sheet stays until the stretch itself is gone.
@@ -290,14 +337,24 @@ export default function HighlightableBody({
 
   const onEnter = (a: Active) => { if (mobile) return; cancelClose(); if (!open) setHover(a); };
   const onLeave = () => { if (!mobile) scheduleClose(); };
+  // Opening the notes is what counts as seeing them (his 10-07 note) —
+  // only when something readable is in there.
+  const reportOpened = (a: Active) => {
+    const cl = clusterAt(a);
+    if (cl && highlights.some((h) => cl.ids.has(h.id) && h.kind === "note" && !h.sealed)) onNotesOpened?.();
+  };
   const onPick = (a: Active, hasReadableNote: boolean) => {
-    if (mobile) { setHover(null); setOpen(a); return; }
-    if (hasReadableNote) { cancelClose(); setHover(null); setOpen(a); return; }
+    if (mobile) { setHover(null); setOpen(a); reportOpened(a); return; }
+    if (hasReadableNote) { cancelClose(); setHover(null); setOpen(a); reportOpened(a); return; }
     // Yups and sealed notes only: a click shows the popup.
     if (!hover) { cancelClose(); setHover(a); }
   };
 
-  const baseForAdd = openNotes[openNotes.length - 1] ?? openSet[0];
+  // "Add note" lands on the whole stretch — the cluster's union — so the new
+  // note belongs to the same stack.
+  const baseForAdd: Highlight | undefined = openCluster && openSet[0]
+    ? { ...openSet[0], startOffset: openCluster.a, endOffset: openCluster.b, quotedText: body.slice(openCluster.a - bodyStart, openCluster.b - bodyStart) }
+    : undefined;
   void openSealed;
 
   return (
@@ -329,6 +386,7 @@ export default function HighlightableBody({
             bodyStart={tok.bodyStart}
             highlights={highlights}
             activeIds={activeIds}
+            openable={openable}
             linkify={linkify}
             color={color}
             onEnter={onEnter}

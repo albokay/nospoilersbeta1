@@ -215,6 +215,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // from ahead of you lights it RED and counts; a yup keeps yellow.
   const [latestNoteOnViewerWriting, setLatestNoteOnViewerWriting] = useState<Record<string, number>>({});
   const [sealedNoteCount, setSealedNoteCount] = useState<Record<string, number>>({});
+  // The furthest-ahead readable note per letter, for the catch-up arm.
+  const [deepestReadableNote, setDeepestReadableNote] = useState<Record<string, { s: number; e: number }>>({});
+  // When you last OPENED the notes on a letter (the paper or the sheet, not
+  // the letter itself — his 10-07 note), with your progress at that moment,
+  // so a note that unseals later reads as new. Per device, like the others.
+  const [lastNoteSeen, setLastNoteSeen] = useState<Record<string, { at: number; s: number; e: number }>>(() => {
+    try { return JSON.parse(localStorage.getItem("ns_note_seen") || "{}"); } catch { return {}; }
+  });
   // Notes inside each letter, sealed ones included — the closed letter's count.
   const [noteCountByThread, setNoteCountByThread] = useState<Record<string, { all: number; readable: number }>>({});
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
@@ -664,6 +672,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setLatestHighlightOnViewerWriting({});
       setLatestNoteOnViewerWriting({});
       setSealedNoteCount({});
+      setDeepestReadableNote({});
       setNoteCountByThread({});
       return;
     }
@@ -691,10 +700,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         // envelopes' rule); for yups only your own writing counts.
         const myNoted = new Set<string>();
         for (const h of entryHL) if (h.authorId === user.id && h.kind === "note") myNoted.add(h.targetId);
-        const take = (tid: string, h: { sealed: boolean; kind: string; createdAt: number }) => {
+        const deepest: Record<string, { s: number; e: number }> = {};
+        const take = (tid: string, h: { sealed: boolean; kind: string; createdAt: number; authorSeason: number; authorEpisode: number }) => {
           if (h.sealed) { if (h.kind === "note") sealedCount[tid] = (sealedCount[tid] ?? 0) + 1; return; }
           const m = h.kind === "note" ? latestNote : latestYup;
           if (h.createdAt > (m[tid] ?? 0)) m[tid] = h.createdAt;
+          if (h.kind === "note") {
+            const d = deepest[tid];
+            if (!d || h.authorSeason > d.s || (h.authorSeason === d.s && h.authorEpisode > d.e)) deepest[tid] = { s: h.authorSeason, e: h.authorEpisode };
+          }
         };
         for (const h of entryHL) {
           if (h.authorId === user.id) continue;
@@ -721,6 +735,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           setLatestHighlightOnViewerWriting(latestYup);
           setLatestNoteOnViewerWriting(latestNote);
           setSealedNoteCount(sealedCount);
+          setDeepestReadableNote(deepest);
           setNoteCountByThread(noteCounts);
         }
       } catch (err) { console.warn("highlight-signal fetch failed:", err); }
@@ -754,7 +769,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // Notes (Alborz 2026-10-07): a readable note on your writing is BLUE
       // like a response; a yup stays yellow; a sealed note joins the red
       // count below.
-      if ((latestNoteOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "blue" }; continue; }
+      // The response rule, ported (his 10-07 call): BLUE = something new to
+      // READ — a readable note that arrived since you last opened the notes
+      // on this letter, or one that unsealed since (you were behind it when
+      // you last looked); clears when the notes actually open, not on
+      // expand. RED (below) = sealed notes waiting, until you catch up.
+      const ns = lastNoteSeen[tid];
+      const dn = deepestReadableNote[tid];
+      const noteArrived = (latestNoteOnViewerWriting[tid] ?? 0) > (ns?.at ?? 0);
+      const noteUnsealed = !!ns && !!dn && (dn.s > ns.s || (dn.s === ns.s && dn.e > ns.e));
+      if (noteArrived || noteUnsealed) { out[tid] = { kind: "blue" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const sealedNotes = sealedNoteCount[tid] ?? 0;
       const hiddenCount = (perThreadHiddenCount[tid] ?? 0) + sealedNotes;
@@ -765,7 +789,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       }
     }
     return out;
-  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, latestNoteOnViewerWriting, sealedNoteCount, lastHighlightSeenAt]);
+  }, [feedEntries, perThreadLatestReply, lastOpenedAt, myReplyThreadIds, perThreadHiddenCount, deepestVisibleReply, seenProgress, profile?.username, latestHighlightOnViewerWriting, latestNoteOnViewerWriting, sealedNoteCount, deepestReadableNote, lastNoteSeen, lastHighlightSeenAt]);
 
   // ── White "never opened" outline (others' entries) — Alborz 2026-09-12:
   //    it used to be "new since last visit", marked seen ON SIGHT, so an
@@ -785,6 +809,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [feedEntries, lastOpenedAt, profile?.username]);
 
   // ── Signal-clearing handlers (ported) ──────────────────────────────────────
+  // The notes on a letter actually opened (the paper / the sheet): stamp
+  // now + your progress, so the blue clears and a later unseal reads as new.
+  const handleNotesOpened = useCallback((threadId: string) => {
+    const eff = effectiveProgress(progressForShow);
+    setLastNoteSeen((prev) => {
+      const next = { ...prev, [threadId]: { at: Date.now(), s: eff?.s ?? 0, e: eff?.e ?? 0 } };
+      try { localStorage.setItem("ns_note_seen", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, [progressForShow]);
+
   const handleEntryExpanded = useCallback((threadId: string) => {
     const latestSeenAt = perThreadLatestReply[threadId] ?? 0;
     setLastOpenedAt((prev) => {
@@ -1125,6 +1160,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   groupId={roomId}
                   responsesOff={lettersOnly !== false}
                   noteCounts={noteCountByThread}
+                  onNotesOpened={handleNotesOpened}
                   // CP4 stub audience — decided at display time: exactly one
                   // OTHER current member → "you"; two or more → "the room".
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
