@@ -200,8 +200,8 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
         <div style={{ textAlign: "right", marginTop: 4, fontSize: 11, color: TEXT_MUTED }}>{note.length}/{NOTE_MAX}</div>
       </div>
 
-      {/* Footer: ok / Cancel */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {/* Footer: Cancel / Save, bottom-right (his 10-07 note) */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexDirection: "row-reverse", justifyContent: "flex-start" }}>
         <button
           onClick={handleOk}
           disabled={!canSubmit}
@@ -219,7 +219,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
             cursor: canSubmit ? "pointer" : "not-allowed",
           }}
         >
-          {submitting ? "Saving…" : "OK"}
+          {submitting ? "Saving…" : "Save"}
         </button>
         <button
           onClick={onClose}

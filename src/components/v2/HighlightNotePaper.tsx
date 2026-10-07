@@ -332,12 +332,6 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
         </div>
       )}
 
-      {/* Add note — on the last page only; the writing field replaces it */}
-      {isLast && onAddNote && !writing && (
-        <button type="button" onClick={() => { setWriting(true); setError(null); }} style={{ ...footBtn, alignSelf: "flex-start", background: CANON.accent, color: CANON.cream, padding: "6px 14px" }}>
-          Add note
-        </button>
-      )}
       {writing && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <textarea
@@ -350,23 +344,29 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
             style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 10, padding: "10px 12px", fontFamily: INTER, fontSize: 14, lineHeight: 1.5, color: CANON.dark, background: CANON.cream, boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)", resize: "vertical", outline: "none" }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button type="button" onClick={save} disabled={!draft.trim() || saving} style={{ ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px", opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
+            <span style={{ fontSize: 11, opacity: 0.55 }}>{draft.length}/{NOTE_MAX}</span>
+            <span style={{ flex: 1 }} />
             <button type="button" onClick={() => { setWriting(false); setDraft(""); setError(null); }} style={{ ...footBtn, opacity: 0.7 }}>Cancel</button>
-            <span style={{ marginLeft: "auto", fontSize: 11, opacity: 0.55 }}>{draft.length}/{NOTE_MAX}</span>
+            <button type="button" onClick={save} disabled={!draft.trim() || saving} style={{ ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px", opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
           </div>
           {error && <div style={{ fontSize: 12, color: CANON.alert, fontStyle: "italic" }}>{error}</div>}
         </div>
       )}
 
-      {/* Footer: ← Name | 1 of 2 | Name →, then Delete under it on your own note */}
-      {(prev || next) && (
+      {/* Footer: ← Name | 1 of 2 | Name → — on the last page "Add note" takes
+          the right corner (his 10-07 note); Delete under it on your own note */}
+      {(prev || next || (isLast && onAddNote && !writing)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: 2 }}>
           <span style={{ justifySelf: "start" }}>
             {prev && <button type="button" onClick={() => { setPage(i - 1); setWriting(false); }} style={footBtn}><ChevronLeft size={14} />{nameOf(prev, displayNames)}</button>}
           </span>
-          <span style={{ justifySelf: "center", fontSize: 11, opacity: 0.6 }}>{i + 1} of {notes.length}</span>
+          <span style={{ justifySelf: "center", fontSize: 11, opacity: 0.6 }}>{notes.length > 1 ? `${i + 1} of ${notes.length}` : ""}</span>
           <span style={{ justifySelf: "end" }}>
-            {next && <button type="button" onClick={() => { setPage(i + 1); setWriting(false); }} style={footBtn}>{nameOf(next, displayNames)}<ChevronRight size={14} /></button>}
+            {next
+              ? <button type="button" onClick={() => { setPage(i + 1); setWriting(false); }} style={footBtn}>{nameOf(next, displayNames)}<ChevronRight size={14} /></button>
+              : (isLast && onAddNote && !writing)
+                ? <button type="button" onClick={() => { setWriting(true); setError(null); }} style={{ ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px" }}>Add note</button>
+                : null}
           </span>
         </div>
       )}
