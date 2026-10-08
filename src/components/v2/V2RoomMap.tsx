@@ -1126,6 +1126,32 @@ export default function V2RoomMap({
             total 32px offset from username row to first cell. */}
         <div aria-hidden style={{ gridColumn: "1 / -1", height: 12 }} />
 
+        {/* ── A brand-new room (Alborz 2026-10-07): nobody has reached an
+            episode yet, so there are no rows — an understated note in the
+            sealed-letter dashed idiom says what will appear here. Cream on
+            the desktop's sky, ink on the phone's cream sheet. */}
+        {rows.length === 0 && (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              margin: mobile ? "4px 16px 16px" : "4px 0 0",
+              padding: "14px 16px",
+              minWidth: 240,
+              maxWidth: 320,
+              boxSizing: "border-box",
+              border: `2px dashed ${mobile ? "rgba(26,58,74,0.35)" : "rgba(254,248,234,0.8)"}`,
+              borderRadius: 24,
+              color: mobile ? CANON.dark : CANON.cream,
+              fontFamily: '"Inter", sans-serif',
+              fontSize: 13,
+              lineHeight: 1.5,
+              opacity: 0.9,
+            }}
+          >
+            Once you start watching and writing, an episode map will appear here to help you navigate your writing.
+          </div>
+        )}
+
         {/* ── Body rows ────────────────────────────────────────────────── */}
         {rows.map((row, rowIdx) => {
           const rowKey = `${row.season}-${row.episode}`;

@@ -1868,7 +1868,7 @@ export default function DashboardPage() {
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
           </div>
           <div style={D.header.center}>
-            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your friends</h1>
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your watch groups</h1>
           </div>
           <div />
         </div>
@@ -1938,9 +1938,9 @@ export default function DashboardPage() {
         </div>
         <div style={D.header.center}>
           {/* Center: the page title — group name + gear + members caption in
-              a room; "Your friends" on the green. */}
+              a room; "Your watch groups" on the green. */}
           {inGroup ? clustersEl : (!socialOnbActive && !postAccept ? (
-            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your friends</h1>
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your watch groups</h1>
           ) : null)}
         </div>
         <div style={D.header.right}>
