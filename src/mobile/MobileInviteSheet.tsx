@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, X } from "lucide-react";
+import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
+import { bootstrapGroupWithLetter, type FirstLetter } from "../lib/firstLetterBootstrap";
 import InviteLinkRow from "../components/InviteLinkRow";
 import LoadingDots from "../components/LoadingDots";
 import { CANON } from "../styles/canon";
@@ -57,7 +60,7 @@ export default function MobileInviteSheet({
    *  create navigates into the new group). */
   onCreated?: (groupId: string) => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const creating = !targetGroupId;
 
   const [rows, setRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
@@ -69,6 +72,12 @@ export default function MobileInviteSheet({
   const [shows, setShows] = useState<Show[]>([]);
   const [progress, setProgress] = useState<Record<string, ProgressEntry>>({});
   const [inviteShows, setInviteShows] = useState<Show[]>([]);
+  // A new group starts with a letter (Alborz 2026-10-07): after the form
+  // ("Next") comes the onboarding's first-letter screen in the show room's
+  // full-screen compose shell; nothing is created until it's sent. No way
+  // out but "← back".
+  const [step, setStep] = useState<"form" | "letter">("form");
+  const composeRef = useRef<ComposeFormHandle>(null);
   const [showQuery, setShowQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const [creatingShow, setCreatingShow] = useState(false);
@@ -123,7 +132,8 @@ export default function MobileInviteSheet({
   }, [tvResults, shows, inviteShows]);
 
   function pickShow(s: Show) {
-    setInviteShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
+    // One show on a new group (Alborz 2026-10-07): a pick replaces the pick.
+    setInviteShows([s]);
     setShowQuery("");
     setTvResults([]);
   }
@@ -187,14 +197,71 @@ export default function MobileInviteSheet({
     }
   }
 
+  // The first letter is sent: the onboarding's bootstrap (group → room →
+  // letter → invites carrying the room → emails), then the same results
+  // card as today; Done lands in the new group as today.
+  async function publishFirstLetter(data: FirstLetter) {
+    if (!user || !profile?.username) return;
+    const show = inviteShows[0];
+    if (!show) return;
+    const friends = rows.map((r) => ({ name: r.name.trim(), email: r.email.trim() })).filter((r) => r.email.includes("@"));
+    const { groupId, links } = await bootstrapGroupWithLetter({ userId: user.id, username: profile.username, showId: show.id, friends, letter: data });
+    setCreatedGroupId(groupId);
+    setLinks(links);
+    setStep("form");
+    onSent?.();
+  }
+
   // Closing after a successful create lands the user inside the new group.
   function close() {
     if (createdGroupId && onCreated) { onCreated(createdGroupId); return; }
     onClose();
   }
 
+  const letterShow = inviteShows[0];
+  const letterFriendCount = rows.filter((r) => r.email.includes("@") && r.name.trim()).length;
+  const letterProg = letterShow ? progress[letterShow.id] : undefined;
+  const letterFresh = !letterProg || letterProg.s < 1 || (letterProg.s === 1 && letterProg.e <= 4);
+
   return (
     <div style={sheet}>
+      {creating && step === "letter" && letterShow && user && createPortal(
+        <div style={composeShell}>
+          {/* Back replaces the compose exits (no skipping out) — routed
+              through the form's discard check so typed writing still gets
+              its confirm. */}
+          <button
+            style={{ position: "fixed", top: "calc(env(safe-area-inset-top, 0px) + 14px)", left: 18, zIndex: 1010, border: "none", background: "transparent", color: C.blue, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 8 }}
+            onClick={() => composeRef.current?.attemptDiscard()}
+          >← back</button>
+          <ComposeForm
+            ref={composeRef}
+            mobileIdiom
+            showId={letterShow.id}
+            privateOnly
+            hideTopRightClose
+            hideCancel
+            onCancel={() => setStep("form")}
+            onSubmitted={() => {}}
+            initialTitle="Let's do this!"
+            headingOverride={
+              <>
+                <h1 className="sb-balance" style={{ ...M.type.title, color: C.blue, margin: "40px auto 10px" }}>
+                  Tell your {letterFriendCount > 1 ? "friends" : "friend"} why you&rsquo;re excited about <b>{letterShow.name}</b>:
+                </h1>
+                <p className="sb-balance" style={{ fontFamily: '"Inter", sans-serif', fontSize: 14, lineHeight: 1.5, color: CANON.dark, opacity: 0.85, maxWidth: 330, margin: "0 auto 10px" }}>
+                  On Sidebar, everything you write is stamped with the episode it was written from — like a letter that will stay sealed until your friends catch up.
+                </p>
+              </>
+            }
+            promptButton={{ label: "Want help with what to write?", background: `var(--canon-identity, ${CANON.identity})` }}
+            promptPoolTag={letterFresh ? "onb-fresh" : "onb-returning"}
+            bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${letterFriendCount > 1 ? "friends" : "friend"}?`}
+            externalSubmit={{ label: "send & invite", submittingLabel: "sending", onSubmit: publishFirstLetter }}
+          />
+        </div>,
+        document.body,
+      )}
       {/* The × lives in a real top bar (polish pass 2026-09-14) — content
           starts right under it instead of a fixed 64px paddingTop. */}
       <div style={{ ...M.topBar, justifyContent: "flex-end" }}>
@@ -245,7 +312,7 @@ export default function MobileInviteSheet({
             {creating && (
               <>
                 <p style={explainer}>
-                  And propose at least one show
+                  And pick a show to watch together
                 </p>
                 {inviteShows.length > 0 && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -286,8 +353,8 @@ export default function MobileInviteSheet({
             <div style={{ textAlign: "center", marginTop: 32 }}>
               {/* In-flight label matches the act (Alborz 2026-08-20, desktop
                   parity): animated dots like the site's other waits. */}
-              <button style={{ ...sendBtn, opacity: sending || !ready ? 0.6 : 1 }} disabled={sending || !ready} onClick={sendInvites}>
-                {sending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "Create group" : "Send invite"}
+              <button style={{ ...sendBtn, opacity: sending || !ready ? 0.6 : 1 }} disabled={sending || !ready} onClick={creating ? () => setStep("letter") : sendInvites}>
+                {sending ? <>sending invite<LoadingDots /></> : creating ? "Next" : "Send invite"}
               </button>
             </div>
           </>
@@ -396,4 +463,10 @@ const resultRow: React.CSSProperties = {
 const sendBtn: React.CSSProperties = {
   ...M.pill.L, background: C.blue, color: C.cream,
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+};
+
+// The show room's full-screen compose shell (the phone onboarding's).
+const composeShell: React.CSSProperties = {
+  position: "fixed", inset: 0, zIndex: 1000, background: CANON.cream, overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
 };

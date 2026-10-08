@@ -96,7 +96,9 @@ import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupS
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
 import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
-import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill } from "./dashboardChrome";
+import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill, composeBackdrop, composeCardOuter } from "./dashboardChrome";
+import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
+import { bootstrapGroupWithLetter, type FirstLetter } from "../lib/firstLetterBootstrap";
 import { groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -303,6 +305,12 @@ export default function DashboardPage() {
   // CP2 create-a-group: the paired show proposals (≥1 required) + its picker.
   const [inviteShows, setInviteShows] = useState<Show[]>([]);
   const [inviteShowQuery, setInviteShowQuery] = useState("");
+  // A new group starts with a letter (Alborz 2026-10-07): after the form
+  // ("Next") comes the onboarding's first-letter screen; nothing is created
+  // until it's sent. No way out but "← back" — an invitee must have writing
+  // to arrive to.
+  const [inviteStep, setInviteStep] = useState<"form" | "letter">("form");
+  const inviteComposeRef = useRef<ComposeFormHandle>(null);
   const [inviteTvResults, setInviteTvResults] = useState<TVmazeShow[]>([]);
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
   const inviteTvDebounceRef = useRef<number | null>(null);
@@ -1158,7 +1166,8 @@ export default function DashboardPage() {
   }, [inviteTvResults, shows, inviteShows]);
 
   function pickInviteShow(s: Show) {
-    setInviteShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
+    // One show on a new group (Alborz 2026-10-07): a pick replaces the pick.
+    setInviteShows([s]);
     setInviteShowQuery("");
     setInviteTvResults([]);
   }
@@ -1325,7 +1334,24 @@ export default function DashboardPage() {
     setInviteTvResults([]);
     setCreatedGroupId(null);
     setInviteLinks(null);
+    setInviteStep("form");
     setInviteOpen(true);
+  }
+
+  // The first letter is sent: the onboarding's bootstrap (group → room →
+  // letter → invites carrying the room → emails), then the same results
+  // card as today, and Done lands in the new group as today. Errors surface
+  // in the compose form itself (it owns the external publish).
+  async function publishFirstLetter(data: FirstLetter) {
+    if (!user || !profile?.username) return;
+    const show = inviteShows[0];
+    if (!show) return;
+    const friends = inviteRows.map((r) => ({ name: r.name.trim(), email: r.email.trim() })).filter((r) => r.email.includes("@"));
+    const { groupId, links } = await bootstrapGroupWithLetter({ userId: user.id, username: profile.username, showId: show.id, friends, letter: data });
+    setCreatedGroupId(groupId);
+    setInviteLinks(links);
+    setInviteStep("form");
+    try { const rail = await loadRail(user.id); setRailGroups(rail); } catch { /* the results card still shows */ }
   }
 
   // "Create another watch group?" forms a NEW group as ONE act — ≥1 named
@@ -2305,6 +2331,49 @@ export default function DashboardPage() {
 
       {/* Invite / create-group modal. CP3a: creates the people-group. CP5 adds
           the email-invite send + accept flow. */}
+      {/* A new group's first letter (Alborz 2026-10-07): the onboarding's
+          compose screen, word for word, over the invite modal. zIndex 1002
+          clears the dashboard top bar; "← back" returns to the form. */}
+      {inviteOpen && !inviteTargetGroupId && inviteStep === "letter" && inviteShows[0] && user && (() => {
+        const show = inviteShows[0];
+        const friendCount = inviteRows.filter((r) => r.email.includes("@") && r.name.trim()).length;
+        const prog = progress[show.id];
+        const fresh = !prog || prog.s < 1 || (prog.s === 1 && prog.e <= 4);
+        return (
+          <div style={{ ...composeBackdrop, zIndex: 1002 }}>
+            <div style={composeCardOuter}>
+              <button
+                style={{ position: "absolute", top: 20, left: 24, zIndex: 30, border: "none", background: "transparent", color: CANON.identity, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 4 }}
+                onClick={() => inviteComposeRef.current?.attemptDiscard()}
+              >← back</button>
+              <ComposeForm
+                ref={inviteComposeRef}
+                showId={show.id}
+                privateOnly
+                hideTopRightClose
+                hideCancel
+                onCancel={() => setInviteStep("form")}
+                onSubmitted={() => {}}
+                initialTitle="Let's do this!"
+                headingOverride={
+                  <>
+                    <h1 className="sb-balance" style={{ fontFamily: LORA, fontWeight: 700, fontSize: 34, letterSpacing: 0, color: CANON.identity, maxWidth: 820, margin: "0 auto 10px" }}>
+                      Tell your {friendCount > 1 ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:
+                    </h1>
+                    <p className="sb-balance" style={{ fontFamily: "Inter, sans-serif", fontSize: 17, lineHeight: 1.55, color: CANON.dark, opacity: 0.85, maxWidth: 640, margin: "0 auto 10px" }}>
+                      On Sidebar, everything you write is stamped with the episode it was written from — like a letter that will stay sealed until your friends catch up.
+                    </p>
+                  </>
+                }
+                promptButton={{ label: "Want help with what to write?", background: `var(--canon-identity, ${CANON.identity})` }}
+                promptPoolTag={fresh ? "onb-fresh" : "onb-returning"}
+                bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${friendCount > 1 ? "friends" : "friend"}?`}
+                externalSubmit={{ label: "send & invite", submittingLabel: "sending", onSubmit: publishFirstLetter }}
+              />
+            </div>
+          </div>
+        );
+      })()}
       {inviteOpen && (() => {
         const creating = !inviteTargetGroupId;
         // ≥1 complete friend row; in create mode every filled row needs BOTH a
@@ -2359,7 +2428,7 @@ export default function DashboardPage() {
                 {creating && (
                   <>
                     <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: "normal", lineHeight: 1.5, color: C.cream, margin: "24px 0 10px" }}>
-                      And propose at least one show to watch together:
+                      And pick a show to watch together:
                     </p>
                     {inviteShows.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
@@ -2401,8 +2470,8 @@ export default function DashboardPage() {
                   {/* In-flight label matches the act (Alborz 2026-08-20 —
                       "creating…" while ADDING a friend read as confusing):
                       animated dots like the site's other waits. */}
-                  <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1 }} disabled={inviteSending || !ready} onClick={sendInvites}>
-                    {inviteSending ? (creating ? <>creating group<LoadingDots /></> : <>sending invite<LoadingDots /></>) : creating ? "Create group" : "Send invite"}
+                  <button style={{ ...invitePill, opacity: inviteSending || !ready ? 0.6 : 1 }} disabled={inviteSending || !ready} onClick={creating ? () => setInviteStep("letter") : sendInvites}>
+                    {inviteSending ? <>sending invite<LoadingDots /></> : creating ? "Next" : "Send invite"}
                   </button>
                 </div>
               </>
