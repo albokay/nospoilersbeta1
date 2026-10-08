@@ -2035,7 +2035,7 @@ export default function DashboardPage() {
           <>
           {(groupShelves.watching.length > 0 || celebrating.length > 0 || settledCount > 0) && (
             <>
-              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Shows you're watching</h1>}
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>What you're watching:</h1>}
               {/* Celebration rows lead the shelf (2026-09-23), in their own
                   row: their two-line height must never stretch a room pill's
                   wrap (the opt-in avatars hang from the wrap's bottom). */}

@@ -1083,7 +1083,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         // immediately and two ghost rows hold the layout — same pattern as
         // the dashboard; static, no shimmer.
         <div style={contentWrap}>
-          <h1 style={shelfHeader}>Shows you're watching</h1>
+          <h1 style={shelfHeader}>What you're watching:</h1>
           <div style={shelfCol}>
             <MobileGhostRow barWidth={120} />
             <MobileGhostRow barWidth={160} />
@@ -1096,7 +1096,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <div style={contentWrap}>
           {(groupShelves.watching.length > 0 || celebrating.length > 0 || finishedPill) && (
             <>
-              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Shows you're watching</h1>}
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>What you're watching:</h1>}
               <div style={shelfCol}>
                 {/* Celebration rows lead the shelf (2026-09-23). */}
                 {celebrating.map((c) => (
@@ -1123,7 +1123,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   so the first browse row peeks clearly above the docked deck
                   card — an invitation to scroll, not a covered-up glitch. */}
               <h1 style={{ ...shelfHeader, marginTop: (groupShelves.watching.length || celebrating.length || settledCount) ? 32 : 0 }}>
-                Proposed shows
+                Proposed shows:
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
