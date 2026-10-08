@@ -1602,11 +1602,13 @@ function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashe
       )}
     </button>
     {onX && (
-      // Desktop's hover x made permanent (Alborz 2026-10-08, "styled just
-      // like desktop"): the same 22px cream disc, red ×, same shadow, on the
-      // top-right curve where desktop's sits (top −7 / right −3) — the
-      // letter disc's opposite corner. The disc is drawn inside a 40px
-      // transparent target so a thumb lands it. A sibling of the row
+      // Desktop's hover x made permanent (Alborz 2026-10-08): the same 22px
+      // disc and shadow, but — after his live look ("cluttered") and two
+      // inline mockups — a GREEN disc with a cream ×, its centre on the
+      // pill's top-right curve (half on the button; desktop's cream/red at
+      // top −7 / right −3 hung off it). The letter disc's opposite corner.
+      // The disc is drawn inside a 40px transparent target so a thumb lands
+      // it. A sibling of the row
       // button (never nested, never bubbles into the row's tap) and a
       // direct child of the .sb-press wrapper, so it rides the row's
       // press shift as part of the button.
@@ -1753,18 +1755,19 @@ const rowBase: React.CSSProperties = {
   borderRadius: 65, cursor: "pointer", textAlign: "left",
   fontFamily: '"Inter", sans-serif',
 };
-// The row's corner × (2026-10-08): desktop's `.dash-pill-x` geometry —
-// 22px disc at top −7 / right −3 — centred in a 40px hit box, so the box
-// sits at top −16 / right −12. Transparent box, no border; the disc carries
-// the look (cream fill, red ×, 15px, the same drop shadow).
+// The row's corner × (2026-10-08): desktop's `.dash-pill-x` disc (22px,
+// the same drop shadow) at top −3 / right 1 — its centre on the pill's
+// curve, his pick from the mockups (desktop's −7 / −3 hung off) — centred
+// in a 40px hit box, so the box sits at top −12 / right −8. Transparent
+// box, no border; the disc carries the look (Personal green, cream ×, 15px).
 const xHit: React.CSSProperties = {
-  position: "absolute", top: -16, right: -12, width: 40, height: 40, zIndex: 3,
+  position: "absolute", top: -12, right: -8, width: 40, height: 40, zIndex: 3,
   padding: 0, margin: 0, border: "none", background: "transparent", cursor: "pointer",
   display: "flex", alignItems: "center", justifyContent: "center",
   WebkitTapHighlightColor: "transparent",
 };
 const xDisc: React.CSSProperties = {
-  width: 22, height: 22, borderRadius: "50%", background: C.cream, color: C.red,
+  width: 22, height: 22, borderRadius: "50%", background: C.green, color: C.cream,
   fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1,
   display: "flex", alignItems: "center", justifyContent: "center",
   boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
