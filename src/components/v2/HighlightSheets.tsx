@@ -61,15 +61,17 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
   onDelete?: (id: string) => void;
   onAddNote?: (note: string) => Promise<void>;
 }) {
+  // His 10-07 note: no shelf. The page dims and the notes FLOAT as cream
+  // papers, nothing else — no heading. Tap the dim (or a gap between the
+  // papers) or swipe down to close.
   const scrollRef = useRef<HTMLDivElement>(null);
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const swipe = useSheetSwipeDown(onClose, { scrollRef, enabled: !saving });
-  // Every note, sealed ones included (the desktop paper's rule, 10-07): a
-  // sealed note is its own paper with the dashed frame where the writing
-  // would be.
+  // Every note, sealed ones included (the desktop paper's rule): a sealed
+  // note is its own paper with the dashed frame where the writing would be.
   const notes = [...readable, ...sealed].filter((h) => h.kind === "note").sort((x, y) => x.createdAt - y.createdAt);
   const lines = describeStretch(readable, sealed, displayNames);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -90,59 +92,68 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
     }
   }
 
-  return (
-    <div style={backdrop} onClick={onClose}>
-      <div role="dialog" aria-label="Notes" style={{ ...sheet, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
-        <div style={title}>{notes.length ? (notes.length === 1 ? "A note on this" : "Notes on this") : "This highlight"}</div>
-        {/* The rollover's lines belong to the desktop popup (his 10-07
-            note): here the cards say it, sealed ones included. Only a yup,
-            which has no card, gets a line. */}
-        {lines.yups && (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, lineHeight: 1.4, marginBottom: 4 }}>{lines.yups}: <ThumbsUp size={13} color={CANON.cream} strokeWidth={2} /></div>
-        )}
+  const paper = (i: number): React.CSSProperties => ({
+    background: CANON.cream, color: CANON.dark, borderRadius: 16, padding: "14px 16px",
+    boxShadow: "0 12px 32px rgba(0,0,0,0.28)", transform: `rotate(${i % 2 === 0 ? -1.5 : 1.5}deg)`,
+    margin: "0 4px 18px",
+  });
 
-        <div ref={scrollRef} style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", margin: "6px -6px 0", padding: `8px 6px ${bottomPad}` }}>
-          {notes.map((h, i) => {
-            const own = !!currentUserId && h.authorId === currentUserId;
-            return (
-              <div key={h.id} style={{ background: CANON.cream, color: CANON.dark, borderRadius: 14, padding: "12px 14px", boxShadow: "0 2px 8px rgba(0,0,0,0.12)", transform: `rotate(${i % 2 === 0 ? -1.2 : 1.2}deg)`, marginBottom: 14 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ display: "inline-flex", width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><SidebarAvatar userId={h.authorId} username={h.authorUsername} size={24} /></span>
-                  <span style={{ minWidth: 0, display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>{nameOf(h, displayNames)}</span>
-                    <span style={{ fontSize: 11, opacity: 0.65 }}>s{h.authorSeason} e{h.authorEpisode} · {timeAgo(h.createdAt)}</span>
-                  </span>
-                  {own && onDelete && !h.sealed && (
-                    <button type="button" onClick={() => onDelete(h.id)} style={{ marginLeft: "auto", background: "transparent", border: "none", padding: "6px 4px", color: CANON.alert, fontFamily: INTER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Delete</button>
-                  )}
-                </div>
-                {h.sealed ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "18px 12px 16px", marginTop: 10, border: `2px dashed ${CANON.friend}`, borderRadius: 12 }}>
-                    <span style={{ display: "inline-flex", width: 44, height: 44, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={20} color={CANON.cream} strokeWidth={2.4} /></span>
-                    <span style={{ fontSize: 13, lineHeight: 1.45, textAlign: "center", opacity: 0.8 }}>This note will unseal when you watch S{h.authorSeason} E{h.authorEpisode}.</span>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 8, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{h.note}</div>
+  return (
+    <div style={{ ...backdrop, background: "rgba(26,58,74,0.55)" }} onClick={onClose}>
+      <div
+        ref={scrollRef}
+        role="dialog"
+        aria-label="Notes"
+        style={{ position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "84vh", overflowY: "auto", boxSizing: "border-box", padding: `24px 16px ${bottomPad}`, fontFamily: INTER, ...swipe.style }}
+        {...swipe.handlers}
+        onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
+      >
+        {lines.yups && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: CANON.cream, color: CANON.dark, borderRadius: 9999, padding: "6px 12px", fontSize: 13, margin: "0 4px 14px", boxShadow: "0 6px 18px rgba(0,0,0,0.22)" }}>{lines.yups}: <ThumbsUp size={13} color={CANON.dark} strokeWidth={2} /></div>
+        )}
+        {notes.map((h, i) => {
+          const own = !!currentUserId && h.authorId === currentUserId;
+          return (
+            <div key={h.id} style={paper(i)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ display: "inline-flex", width: 24, height: 24, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}><SidebarAvatar userId={h.authorId} username={h.authorUsername} size={24} /></span>
+                <span style={{ minWidth: 0, display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{nameOf(h, displayNames)}</span>
+                  <span style={{ fontSize: 11, opacity: 0.65 }}>s{h.authorSeason} e{h.authorEpisode} · {timeAgo(h.createdAt)}</span>
+                </span>
+                {own && onDelete && !h.sealed && (
+                  <button type="button" onClick={() => onDelete(h.id)} style={{ marginLeft: "auto", background: "transparent", border: "none", padding: "6px 4px", color: CANON.alert, fontFamily: INTER, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Delete</button>
                 )}
               </div>
-            );
-          })}
-
-          {onAddNote && !writing && (
-            <button type="button" onClick={() => { setWriting(true); setError(null); }} style={{ ...creamPill, marginTop: 4 }}>Add note</button>
-          )}
-          {writing && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-              <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Add your note…" style={field} />
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button type="button" onClick={save} disabled={!draft.trim() || saving} style={{ ...creamPill, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
-                <button type="button" onClick={() => { setWriting(false); setDraft(""); setError(null); }} style={outlinePill}>Cancel</button>
-                <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.8 }}>{draft.length}/{NOTE_MAX}</span>
-              </div>
-              {error && <div style={{ fontSize: 13, fontStyle: "italic" }}>{error}</div>}
+              {h.sealed ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "18px 12px 16px", marginTop: 10, border: `2px dashed ${CANON.friend}`, borderRadius: 12 }}>
+                  <span style={{ display: "inline-flex", width: 44, height: 44, borderRadius: "50%", background: CANON.alert, alignItems: "center", justifyContent: "center" }}><Lock size={20} color={CANON.cream} strokeWidth={2.4} /></span>
+                  <span style={{ fontSize: 13, lineHeight: 1.45, textAlign: "center", opacity: 0.8 }}>This note will unseal when you watch S{h.authorSeason} E{h.authorEpisode}.</span>
+                </div>
+              ) : (
+                <div style={{ marginTop: 8, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{h.note}</div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })}
+
+        {onAddNote && !writing && (
+          <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 4px" }}>
+            <button type="button" onClick={() => { setWriting(true); setError(null); }} style={{ ...creamPill, boxShadow: "0 8px 22px rgba(0,0,0,0.25)" }}>Add note</button>
+          </div>
+        )}
+        {writing && (
+          <div style={{ ...paper(notes.length), transform: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+            <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Add your note…" style={{ ...field, boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, opacity: 0.6 }}>{draft.length}/{NOTE_MAX}</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" onClick={() => { setWriting(false); setDraft(""); setError(null); }} style={{ background: "transparent", border: `2px solid ${CANON.dark}`, color: CANON.dark, borderRadius: 9999, padding: "8px 16px", fontFamily: INTER, fontSize: 14, fontWeight: 700, cursor: "pointer", minHeight: 44 }}>Cancel</button>
+              <button type="button" onClick={save} disabled={!draft.trim() || saving} style={{ background: CANON.accent, color: CANON.cream, border: "none", borderRadius: 9999, padding: "10px 18px", fontFamily: INTER, fontSize: 14, fontWeight: 700, cursor: "pointer", minHeight: 44, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
+            </div>
+            {error && <div style={{ fontSize: 13, fontStyle: "italic", color: CANON.alert }}>{error}</div>}
+          </div>
+        )}
       </div>
     </div>
   );

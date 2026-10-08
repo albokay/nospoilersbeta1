@@ -3,7 +3,7 @@ import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetter
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CANON } from "../../styles/canon";
-import { ChevronUp, MessageSquare } from "lucide-react";
+import { ChevronUp, MessageSquare, X } from "lucide-react";
 import Modal from "../Modal";
 import RepliesList from "../RepliesList";
 import ResponseComposer, { type PendingReference } from "../ResponseComposer";
@@ -804,7 +804,10 @@ export default function V2InlineThread({
         // Pick mode (the phone): a cream card in the action row's place
         // that says what a note is and how to pick (his 10-07 note: the
         // one-line hint was too cryptic and too easy to miss).
-        <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 16, background: CANON.cream, color: CANON.dark }}>
+        <div style={{ position: "relative", marginTop: 16, padding: "14px 44px 14px 16px", borderRadius: 16, background: CANON.cream, color: CANON.dark }}>
+          <button type="button" onClick={endPick} aria-label="Close" style={{ position: "absolute", top: 6, right: 6, width: 36, height: 36, border: "none", background: "transparent", color: CANON.dark, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+            <X size={18} />
+          </button>
           <div style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 18, lineHeight: 1.3, marginBottom: 6 }}>Add a note</div>
           <div style={{ fontSize: 14, lineHeight: 1.5 }}>
             {pickRange
@@ -812,7 +815,6 @@ export default function V2InlineThread({
               : "A note is a thought you leave on part of a letter. Tap the sentences above that you want to write about — they'll light up. Then tap Next."}
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-            <button className="btn sb-cream-outline" onClick={endPick} style={{ ...sPillGeom, borderColor: CANON.dark, color: CANON.dark }}>Cancel</button>
             <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
           </div>
         </div>
