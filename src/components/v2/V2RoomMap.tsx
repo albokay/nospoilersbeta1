@@ -1148,7 +1148,7 @@ export default function V2RoomMap({
               opacity: 0.9,
             }}
           >
-            Once you start watching and writing, an episode map will appear here to help you navigate your writing.
+            Once you start watching, an episode map will appear here to help you navigate your writing.
           </div>
         )}
 

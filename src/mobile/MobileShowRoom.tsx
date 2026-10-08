@@ -1293,7 +1293,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 padding: 28, fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1.5,
               }}
             >
-              Once you start watching and writing, an episode map will appear here to help you navigate your writing.
+              Once you start watching, an episode map will appear here to help you navigate your writing.
             </div>
           </div>
         </div>
