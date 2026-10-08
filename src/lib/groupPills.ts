@@ -82,11 +82,17 @@ export function computePill(
   // a proposal you've voted yes on is cream-filled; a proposal you haven't
   // opted into (someone else's) is outline-only. On a proposal, `members`
   // holds only the yes-voters, so self-present-and-voted = you're in.
-  const fill: PillFill = show.roomId ? "green" : self?.voted ? "cream" : "outlined";
+  // The shelves (Alborz 2026-10-08, "I'm in" opens the room): a show is
+  // WATCHING only when its room has at least two members and you're one of
+  // them — green. Everything else is PROPOSED: your own room nobody has
+  // joined yet (cream, "just you so far"), a room friends opened that you
+  // haven't joined (outlined), a plain proposal (cream if you're in).
+  const shared = !!show.roomId && show.inRoom && count >= 2;
+  const fill: PillFill = shared ? "green" : self ? "cream" : "outlined";
   const people = writerCount >= 2;
   const pencil = writerCount === 1;
   const showCount = count >= 2 && !people;
-  const shelf = show.roomId ? "watching" : "notStarted";
+  const shelf = shared ? "watching" : "notStarted";
 
   let right: PillRight = { kind: "none" };
 

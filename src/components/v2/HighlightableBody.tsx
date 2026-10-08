@@ -135,6 +135,7 @@ function HighlightableSegment({
   openable,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
+  sealedTone,
   onEnter,
   onLeave,
   onPick,
@@ -150,6 +151,7 @@ function HighlightableSegment({
   openable: Set<string>;
   linkify?: boolean;
   color?: string;
+  sealedTone: "sky" | "cream";
   onEnter: (active: Active) => void;
   onLeave: () => void;
   onPick: (active: Active, hasReadableNote: boolean) => void;
@@ -167,14 +169,21 @@ function HighlightableSegment({
         // A click opens the stack when ANY note sits anywhere in this stretch's cluster.
         const hasReadableNote = p.covering.some((h) => openable.has(h.id));
         const active = !!activeIds && p.covering.some((h) => activeIds.has(h.id));
-        const base = readable ? color : SEALED_COLOR;
+        // A sealed stretch on a SKY letter card can't be Friend blue (it
+        // vanished, Alborz 2026-10-08): there it's a pale cream wash with the
+        // sealed-letter dashed underline; on a cream response card it stays
+        // Friend blue.
+        const sealedStyle: React.CSSProperties = sealedTone === "sky"
+          ? { background: "rgba(254,248,236,0.45)", borderBottom: "2px dashed rgba(254,248,236,0.9)" }
+          : { background: SEALED_COLOR };
+        const restStyle: React.CSSProperties = readable ? { background: color } : sealedStyle;
         return (
           <span
             key={`h-${p.a}`}
             onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
             onMouseLeave={onLeave}
             onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
-            style={{ background: active ? CANON.cream : base, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
+            style={{ ...(active ? { background: CANON.cream } : restStyle), padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
           >
             {renderText(slice)}
           </span>
@@ -246,6 +255,7 @@ export default function HighlightableBody({
   displayNames,
   mobile = false,
   pick,
+  sealedTone = "sky",
 }: {
   body: string;
   highlights: Highlight[];
@@ -257,6 +267,10 @@ export default function HighlightableBody({
   /** Pick mode (the phone): sentences become tappable and build one
    *  continuous pick; `range` is the current pick in raw-body offsets. */
   pick?: { range: Range | null; onToggle: (s: Range, all: Range[]) => void };
+  /** The card under the text: "sky" (a letter card) draws a sealed stretch
+   *  as a cream wash with a dashed underline; "cream" (a response card)
+   *  keeps Friend blue. */
+  sealedTone?: "sky" | "cream";
   /** "Add note" on the open paper: writes another note onto the same
    *  stretch as `base`. Omit on surfaces that can't write. */
   onAddNote?: (base: Highlight, note: string) => Promise<void>;
@@ -389,6 +403,7 @@ export default function HighlightableBody({
             openable={openable}
             linkify={linkify}
             color={color}
+            sealedTone={sealedTone}
             onEnter={onEnter}
             onLeave={onLeave}
             onPick={onPick}

@@ -232,6 +232,9 @@ function ReplyBody({
   /** The phone: a tap on a stretch opens the notes sheet. */
   mobile?: boolean;
   onNotesOpened?: () => void;
+  /** Accepted for symmetry with the bodies below, which draw a sealed stretch
+   *  for a cream response card. */
+  sealedTone?: "sky" | "cream";
   displayNames?: Record<string, string>;
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
@@ -261,6 +264,7 @@ function ReplyBody({
             onAddNote={onAddNote}
             mobile={mobile}
             onNotesOpened={onNotesOpened}
+            sealedTone="cream"
             bodyStart={0}
             linkify
           />
@@ -282,6 +286,7 @@ function ReplyBody({
             onAddNote={onAddNote}
             mobile={mobile}
             onNotesOpened={onNotesOpened}
+            sealedTone="cream"
             bodyStart={afterStart}
             linkify
           />
@@ -306,6 +311,7 @@ function ReplyBody({
             onAddNote={onAddNote}
             mobile={mobile}
             onNotesOpened={onNotesOpened}
+            sealedTone="cream"
             bodyStart={0}
             linkify
           />
@@ -327,6 +333,7 @@ function ReplyBody({
             onAddNote={onAddNote}
             mobile={mobile}
             onNotesOpened={onNotesOpened}
+            sealedTone="cream"
             bodyStart={afterStart}
             linkify
           />
@@ -348,6 +355,7 @@ function ReplyBody({
         onAddNote={onAddNote}
         mobile={mobile}
         onNotesOpened={onNotesOpened}
+        sealedTone="cream"
         bodyStart={0}
         linkify
       />
@@ -1324,6 +1332,7 @@ export default function RepliesList({
                     onAddNote={highlightsEnabled && user ? (base, note) => handleAddNoteReply(r.id, base, note) : undefined}
                     mobile={mobileIdiom}
                     onNotesOpened={onNotesOpened}
+            sealedTone="cream"
                     displayNames={displayNames}
                   />
                   {highlightsEnabled && highlightError[r.id] && (

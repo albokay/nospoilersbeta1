@@ -579,20 +579,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     for (const gs of groupShows) {
       // CP5: a room the viewer deliberately LEFT is hidden from THEIR shelves
       // only (never-joined rooms stay visible for discovery; desktop parity).
-      if (gs.viewerLeft && !gs.inRoom) continue;
+      // 2026-10-08: a room you left WITH an answer stays as a passed proposal.
+      if (gs.viewerLeft && !gs.inRoom && !passes[gs.showId]?.[selfUserId]) continue;
       // Finished-together / DNF rooms live in the drawer, not the shelves
       // (2026-09-13). New episodes un-finish a room automatically.
       if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
-      // Cleared proposals (2026-09-29): a proposal you "x"-ed off your shelf
-      // stays hidden for you until you search it again — or a room starts.
-      if (!gs.roomId && gs.viewerDismissed) continue;
+      // Cleared proposals (2026-09-29): hidden for you until you search it
+      // again — or you're in its room.
+      if (!gs.inRoom && gs.viewerDismissed) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       // Proposal answers (Alborz 2026-09-29): a proposal you passed on reads
       // dashed and sinks to the bottom of the proposed shelf — for you only.
       const selfVotedHere = !!gs.members.find((mm) => mm.userId === selfUserId)?.voted;
       const myPass = passes[gs.showId]?.[selfUserId];
-      const passed = !gs.roomId && !selfVotedHere && (myPass === "out" || myPass === "seen");
+      const passed = !gs.inRoom && !selfVotedHere && (myPass === "out" || myPass === "seen");
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
         // resolved = the member's name has loaded (members fetch lands after
@@ -744,6 +745,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         setProgress((prev) => ({ ...prev, [showId]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
         setOutOfPool((prev) => new Set(prev).add(showId)); // mirror in_pool=false
       }
+      // "I'm in" opens (or joins) the show's room (Alborz 2026-10-08).
+      if (voted) {
+        try { await startShowRoom(groupId, showId); } catch (e) { console.error("[m-group] room open on yes failed", e); }
+      }
       // Optimistic: flip your own vote in the loaded group data so the toggle
       // and shelf react instantly; refreshGroup below re-syncs from the server.
       setGroupShows((prev) => prev.map((gs) => {
@@ -777,9 +782,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     });
     try { await setGroupShowPass(groupId, showId, user.id, kind); } catch (e) { console.error("[m-group] pass failed", e); }
     await doVote(showId, stance === "in");
+    // A pass on a show you're in steps you out of its room (2026-10-08).
+    if (stance !== "in") {
+      const gs = groupShows.find((x) => x.showId === showId);
+      if (gs?.roomId && gs.inRoom) await doLeaveRoom(gs.roomId, showId);
+    }
   }
   const myStanceFor = (showId: string): Stance | null => {
     const gs = groupShows.find((s) => s.showId === showId);
+    if (gs?.inRoom) return "in";
     if (gs?.members.find((m) => m.userId === selfUserId)?.voted) return "in";
     return passes[showId]?.[selfUserId] ?? null;
   };
@@ -794,6 +805,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // The proposals row's second line: who's in by name, passes as counts,
   // then your own pass.
   const proposalLine = (showId: string): string | null => {
+    // Your own room that nobody has joined yet (2026-10-08).
+    const gsRow = groupShows.find((x) => x.showId === showId);
+    if (gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     const line = answerRowLine(answerNamesFor(showId));
     const st = myStanceFor(showId);
     const mine = st === "out" || st === "seen" ? st : null;
@@ -1127,7 +1141,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} dashed={r.passed} onLongPress={r.pill.roomId ? undefined : () => setClearSheet({ showId: r.pill.showId, name: r.name })} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} dashed={r.passed} onLongPress={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name })} />
                 ))}
               </div>
             </>
@@ -1281,9 +1295,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                             old question-copy lines are retired. */}
                         {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                         <div style={sheetBtnCol}>
-                          <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                          <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Enter show room"}</button>
                           {seenIt ? (
-                            <div style={joinNote}>{gs?.roomId ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : "Starting the room flips your status to \u201cI\u2019m in\u201d"}</div>
+                            <div style={joinNote}>{"Entering the room flips your status to \u201cI\u2019m in\u201d"}</div>
                           ) : !gs?.roomId && optedCount <= 1 && (
                             <div style={joinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
@@ -1314,7 +1328,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   <div style={sheetDivider} />
                   {showRead && <div style={{ ...sheetTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                   <div style={sheetBtnCol}>
-                    <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                    <button style={sheetRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Enter show room"}</button>
                     <button style={sheetConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                   </div>
                 </>
@@ -1435,8 +1449,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 <ChevronRight size={20} color={C.midnight} style={{ opacity: 0.5, flexShrink: 0 }} />
               </span>
             </button>
-            <button style={sheetRow} onClick={() => doLeaveRoom(sheetFor.roomId, sheetFor.showId)}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Leave this room (just you)</span>
+            {/* The long-press is the opt-in switch (2026-10-08): both answers
+                step you out of the room and show on your friends' shelves. */}
+            <button style={sheetRow} onClick={() => { const sid = sheetFor.showId; setSheetFor(null); doStance(sid, "out"); }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Sit this out (leave the room)</span>
+              <span style={sheetSub}>Your letters stay. Everyone else keeps going.</span>
+            </button>
+            <button style={sheetRow} onClick={() => { const sid = sheetFor.showId; setSheetFor(null); doStance(sid, "seen"); }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>I&rsquo;ve seen it (leave the room)</span>
               <span style={sheetSub}>Your letters stay. Everyone else keeps going.</span>
             </button>
             <button style={{ ...sheetRow, borderBottom: "none" }} onClick={() => doDnfRoom(sheetFor.roomId)}>

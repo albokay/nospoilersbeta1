@@ -548,6 +548,7 @@ export default function DashboardPage() {
   const [passes, setPasses] = useState<Record<string, Record<string, PassKind>>>({});
   const myStanceFor = (showId: string): Stance | null => {
     const gs = groupShows.find((s) => s.showId === showId);
+    if (gs?.inRoom) return "in";
     if (gs?.members.find((m) => m.userId === selfUserId)?.voted) return "in";
     return passes[showId]?.[selfUserId] ?? null;
   };
@@ -965,26 +966,30 @@ export default function DashboardPage() {
   // ── Group shelves (sky) — pills computed from the aggregation RPC ──────────
   const groupShelves = useMemo(() => {
     type OptIn = { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean };
-    type Row = { pill: PillData; name: string; passed: boolean; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
+    type Row = { pill: PillData; name: string; passed: boolean; soloRoom: boolean; opted: OptIn[]; selfProg: { s: number; e: number } | null; selfOpted: boolean; selfWrote: boolean; furthestFriend: { s: number; e: number } | null; tier: number; lastActivityAt: number | null };
     const watching: Row[] = [];
     const notStarted: Row[] = [];
     for (const gs of groupShows) {
       // CP5: a room the viewer deliberately LEFT is hidden from THEIR view
       // (other members are unaffected); the in-group search re-enters it.
-      if (gs.viewerLeft && !gs.inRoom) continue;
+      // 2026-10-08: a room you left WITH an answer ("sit this out" / "seen
+      // it") stays as a passed proposal; a plain leave keeps hiding it.
+      if (gs.viewerLeft && !gs.inRoom && !passes[gs.showId]?.[selfUserId]) continue;
       // Finished-together / DNF rooms live in the drawer, not the shelves
       // (2026-09-13). New episodes un-finish a room automatically.
       if (gs.roomId && (roomDnf[gs.roomId] || finishedRoomIds.has(gs.roomId))) continue;
       // Cleared proposals (2026-09-29): a proposal you "x"-ed off your shelf
-      // stays hidden for you until you search it again — or a room starts.
-      if (!gs.roomId && gs.viewerDismissed) continue;
+      // stays hidden for you until you search it again — or you're in its room.
+      if (!gs.inRoom && gs.viewerDismissed) continue;
       const show = showsById[gs.showId];
       const pill = computePill(gs, show?.seasons, selfUserId);
       // Proposal answers (Alborz 2026-09-29): a proposal you passed on reads
       // dashed and sinks to the bottom of the proposed shelf — for you only.
       const selfVotedHere = !!gs.members.find((mm) => mm.userId === selfUserId)?.voted;
       const myPass = passes[gs.showId]?.[selfUserId];
-      const passed = !gs.roomId && !selfVotedHere && (myPass === "out" || myPass === "seen");
+      const passed = !gs.inRoom && !selfVotedHere && (myPass === "out" || myPass === "seen");
+      // Your own room that nobody has joined yet (2026-10-08): cream, "just you so far".
+      const soloRoom = !!gs.roomId && gs.inRoom && gs.members.length < 2;
       // Opted-in members other than you → the avatars overlapping the pill.
       const opted: OptIn[] = gs.members
         .filter((mm) => mm.userId !== selfUserId)
@@ -1010,7 +1015,7 @@ export default function DashboardPage() {
       const tier = writerCount >= 2 ? 0 : writerCount === 1 ? 1 : watcherCount >= 2 ? 2 : watcherCount >= 1 ? 3 : 4;
       // Exactly one writer → mark that writer's avatar (green fill + pencil).
       // (If the lone writer is you, no avatar exists to mark — nothing shows.)
-      const row = { pill, passed, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, furthestFriend, tier, lastActivityAt: gs.lastActivityAt };
+      const row = { pill, passed, soloRoom, name: show?.name ?? gs.showId, opted, selfProg, selfOpted: !!self, selfWrote: !!self?.wrote, furthestFriend, tier, lastActivityAt: gs.lastActivityAt };
       (pill.shelf === "watching" ? watching : notStarted).push(row);
     }
     const byName = (a: Row, b: Row) => a.name.localeCompare(b.name);
@@ -1474,6 +1479,12 @@ export default function DashboardPage() {
         setProgress((prev) => ({ ...prev, [showId]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
         setOutOfPool((prev) => new Set(prev).add(showId)); // mirror in_pool=false
       }
+      // "I'm in" opens (or joins) the show's room (Alborz 2026-10-08): the
+      // room exists from the first yes, with everyone who said yes in it;
+      // the shelf moves up at the second member. No separate "open" step.
+      if (voted) {
+        try { await startShowRoom(activeGroupId, showId); } catch (e) { console.error("[dashboard] room open on yes failed", e); }
+      }
       // Optimistic: flip your own vote in the loaded group data so the toggle
       // and shelf react instantly; refreshGroup below re-syncs from the server.
       setGroupShows((prev) => prev.map((gs) => {
@@ -1507,6 +1518,12 @@ export default function DashboardPage() {
     });
     try { await setGroupShowPass(activeGroupId, showId, user.id, kind); } catch (e) { console.error("[dashboard] pass failed", e); }
     await doVote(showId, stance === "in");
+    // A pass on a show you're in steps you out of its room (2026-10-08) —
+    // your letters stay, everyone else keeps going.
+    if (stance !== "in") {
+      const gs = groupShows.find((x) => x.showId === showId);
+      if (gs?.roomId && gs.inRoom) await doLeaveRoom(gs.roomId, showId);
+    }
   }
 
   async function goToRoom(showId: string) {
@@ -2105,11 +2122,15 @@ export default function DashboardPage() {
                 <div key={r.pill.showId} className="group-pill-wrap">
                   {r.pill.roomId && roomDotByRoomId.get(r.pill.roomId) && <LetterDisc kind={roomDotByRoomId.get(r.pill.roomId) === "red" ? "sealed" : "open"} style={{ position: "absolute", top: -9, left: 4, zIndex: 6, pointerEvents: "none" }} />}
                   <div {...interestedTipProps(r.pill.showId, r.opted, r.name, r.selfOpted, r.selfProg ? `You've finished: ${positionLabel(r.selfProg.s, r.selfProg.e, showsById[r.pill.showId])}` : undefined, roomNotif(r.pill.roomId))}>
-                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} dashed={r.passed} passLabel={(() => { const st = myStanceFor(r.pill.showId); return st === "out" || st === "seen" ? passSlotLabel(st) : null; })()} onClick={() => onPillClick(r.pill, r.name)} />
+                    <GroupPill pill={r.pill} name={r.name} furthestFriend={r.furthestFriend} dashed={r.passed} passLabel={(() => { const st = myStanceFor(r.pill.showId); return st === "out" || st === "seen" ? passSlotLabel(st) : r.soloRoom ? "just you so far" : null; })()} onClick={() => onPillClick(r.pill, r.name)} />
                   </div>
                   {/* Cleared proposals (2026-09-29): the corner "x" the room
                       pills have — here it clears the proposal from YOUR shelf. */}
-                  {!r.pill.roomId && (
+                  {r.pill.inRoom && r.pill.roomId ? (
+                    // Your own room nobody has joined yet: the x is the same
+                    // switch the top shelf has (sit this out / seen it).
+                    <button className="dash-pill-x" title="leave this show room" onClick={() => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name })}>×</button>
+                  ) : (
                     <button className="dash-pill-x" title="clear this from your shelf" onClick={() => setClearConfirm({ showId: r.pill.showId, name: r.name })}>×</button>
                   )}
                   <OptInAvatars members={r.opted} show={showsById[r.pill.showId]} withTooltip onTip={moveTip} />
@@ -2650,9 +2671,9 @@ export default function DashboardPage() {
                             old question-copy lines are retired. */}
                         {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                         <div style={modalBtnCol}>
-                          <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                          <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Enter show room"}</button>
                           {seenIt ? (
-                            <div style={modalJoinNote}>{gs?.roomId ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : "Starting the room flips your status to \u201cI\u2019m in\u201d"}</div>
+                            <div style={modalJoinNote}>{"Entering the room flips your status to \u201cI\u2019m in\u201d"}</div>
                           ) : !gs?.roomId && optedCount <= 1 && (
                             <div style={modalJoinNote}>{preventLastWordOrphan("Your friends can join in when they're ready.")}</div>
                           )}
@@ -2683,7 +2704,7 @@ export default function DashboardPage() {
                   <div style={yellowDivider} />
                   {showRead && <div style={{ ...yellowTitle, fontSize: 13 }}>{preventLastWordOrphan(readText)}</div>}
                   <div style={modalBtnCol}>
-                    <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : gs?.roomId ? "Enter show room" : "Open a show room"}</button>
+                    <button style={modalRoomBtn} onClick={() => declareAndGo(clicked.showId, declaredProgress)}>{showRead ? "Read" : "Enter show room"}</button>
                     <button style={modalConfirmBtn} onClick={() => declareProgressOnly(clicked.showId, declaredProgress)}>Just confirm my progress</button>
                   </div>
                 </>
@@ -2955,7 +2976,7 @@ export default function DashboardPage() {
                 grammar (polish pass 2026-09-15): Subtitle + Body, no ×. */}
             <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Leaving, or done watching?</div>
             <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 10 }}>
-              Leaving takes you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your letters stay, and everyone else keeps going.
+              Sitting it out or having seen it both take you out of the <b>{leaveConfirm.name}</b> room in this group &mdash; your letters stay, and everyone else keeps going. Your answer shows on your friends&rsquo; shelves.
             </div>
             <div style={{ fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
               Or call it for the whole group: the show moves to the finished drawer under &ldquo;Didn&rsquo;t finish:&rdquo;, and anyone can bring it back later.
@@ -2967,7 +2988,8 @@ export default function DashboardPage() {
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div style={{ display: "inline-flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", gap: 12 }}>
-                  <button style={{ ...D.pill.M, background: C.red, color: CANON.cream }} onClick={() => doLeaveRoom(leaveConfirm.roomId, leaveConfirm.showId)}>Leave</button>
+                  <button style={{ ...D.pill.M, background: C.red, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doStance(leaveConfirm.showId, "out")}>Sit this out</button>
+                  <button style={{ ...D.pill.M, background: C.red, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doStance(leaveConfirm.showId, "seen")}>I&rsquo;ve seen it</button>
                   <button style={{ ...D.pill.M, background: C.blue, color: CANON.cream, whiteSpace: "nowrap" }} onClick={() => doDnfRoom(leaveConfirm.roomId)}>We&rsquo;re done with it</button>
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>

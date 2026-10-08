@@ -134,7 +134,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
   // pass-only show lists no members) — including the ones you "x"-ed off
   // your shelf, which stay findable so the card can show your stored answer.
   const proposalsAll = useMemo(() => (dash ?? [])
-    .filter((g) => !g.roomId && showById[g.showId])
+    .filter((g) => !(g.roomId && g.inRoom && g.members.length >= 2) && showById[g.showId])
     .map((g) => ({ g, show: showById[g.showId], voters: g.members.filter((m) => m.voted).map((m) => m.userId) }))
     .sort((a, b) => (b.voters.length - a.voters.length) || a.show.name.localeCompare(b.show.name)), [dash, showById]);
   // The rows: a cleared proposal drops out of the letter for you (Alborz
@@ -216,7 +216,12 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     });
     setLists((l) => { if (!l[showId]) return l; const n = { ...l }; delete n[showId]; return n; });
     await setShowVote(groupId, showId, on);
-    if (on) await ensureProgressRow(userId, showId);
+    if (on) {
+      await ensureProgressRow(userId, showId);
+      // "I'm in" opens (or joins) the show's room (Alborz 2026-10-08) — the
+      // room exists from the first yes; the shelf moves at the second.
+      try { await startShowRoom(groupId, showId); } catch (e) { console.warn("[whats-next] room open failed", e); }
+    }
   });
 
   /** A browse pick Sidebar doesn't have yet: create its catalog row, then vote. */
