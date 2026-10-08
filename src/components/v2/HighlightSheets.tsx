@@ -107,10 +107,14 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
         ref={scrollRef}
         role="dialog"
         aria-label="Notes"
-        style={{ position: "fixed", inset: 0, overflowY: "auto", boxSizing: "border-box", padding: `18vh 16px ${bottomPad}`, fontFamily: INTER, ...swipe.style }}
+        style={{ position: "fixed", inset: 0, overflowY: "auto", fontFamily: INTER, ...swipe.style }}
         {...swipe.handlers}
-        onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
+        onClick={(e) => { e.stopPropagation(); const t = e.target as HTMLElement; if (t === e.currentTarget || t.dataset.floatGap === "1") onClose(); }}
       >
+      {/* The papers fill from the BOTTOM up until they overflow (his 10-07
+          note: one short note sat high on the page); past that the stack
+          starts at the top and scrolls as before. */}
+      <div data-float-gap="1" style={{ minHeight: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: `12vh 16px ${bottomPad}` }}>
         {lines.yups && (
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: CANON.cream, color: CANON.dark, borderRadius: 9999, padding: "6px 12px", fontSize: 13, margin: "0 4px 14px", boxShadow: "0 6px 18px rgba(0,0,0,0.22)" }}>{lines.yups}: <ThumbsUp size={13} color={CANON.dark} strokeWidth={2} /></div>
         )}
@@ -157,6 +161,7 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
             {error && <div style={{ fontSize: 13, fontStyle: "italic", color: CANON.alert }}>{error}</div>}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
