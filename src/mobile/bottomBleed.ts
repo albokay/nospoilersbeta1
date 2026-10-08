@@ -19,17 +19,54 @@ function opaque(c: string): string | null {
   return alpha >= 0.99 ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})` : null;
 }
 
-/** The first opaque background at the bottom-centre of the layout. */
+/** "rgba(...)" / "rgb(...)" → channels, or null for none / transparent. */
+function channels(c: string): { r: number; g: number; b: number; a: number } | null {
+  const m = c.match(/^rgba?\(([^)]+)\)$/);
+  if (!m) return null;
+  const p = m[1].split(/[,/]/).map((x) => x.trim()).filter(Boolean).map(parseFloat);
+  if (p.length < 3 || p.some((v) => Number.isNaN(v))) return null;
+  const a = p.length > 3 ? p[3] : 1;
+  return a <= 0.005 ? null : { r: p[0], g: p[1], b: p[2], a };
+}
+
+/** What is actually painted at the bottom-centre of the layout: the stack
+ *  of elements under that point, topmost first (not just ancestors — an
+ *  overlay's dim is no ancestor of the page), composited from the first
+ *  opaque one upward through any translucent layers (2026-10-07: the
+ *  floating notes' dim, so the band darkens with the page). */
 function sample(): string | null {
   const x = Math.round(window.innerWidth / 2);
   const y = Math.max(0, window.innerHeight - 2);
-  let el = document.elementFromPoint(x, y) as HTMLElement | null;
-  while (el && el !== document.documentElement) {
-    const c = opaque(getComputedStyle(el).backgroundColor);
-    if (c) return c;
-    el = el.parentElement;
+  const stack = typeof document.elementsFromPoint === "function"
+    ? (document.elementsFromPoint(x, y) as HTMLElement[])
+    : null;
+  if (!stack) {
+    let el = document.elementFromPoint(x, y) as HTMLElement | null;
+    while (el && el !== document.documentElement) {
+      const c = opaque(getComputedStyle(el).backgroundColor);
+      if (c) return c;
+      el = el.parentElement;
+    }
+    return null;
   }
-  return null;
+  const layers: { r: number; g: number; b: number; a: number }[] = [];
+  let base: { r: number; g: number; b: number } | null = null;
+  for (const el of stack) {
+    if (el === document.documentElement) break;
+    const ch = channels(getComputedStyle(el).backgroundColor);
+    if (!ch) continue;
+    if (ch.a >= 0.99) { base = ch; break; }
+    layers.push(ch);
+  }
+  if (!base) return null;
+  let { r, g, b } = base;
+  for (let i = layers.length - 1; i >= 0; i--) {
+    const l = layers[i];
+    r = l.r * l.a + r * (1 - l.a);
+    g = l.g * l.a + g * (1 - l.a);
+    b = l.b * l.a + b * (1 - l.a);
+  }
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
 export function startBottomBleed(): () => void {

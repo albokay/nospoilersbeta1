@@ -98,13 +98,16 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
     margin: "0 4px 18px",
   });
 
+  // The scroller covers the whole screen (his 10-07 note: the papers were
+  // cropped at the float's top edge) — the papers start a way down and
+  // scroll clean off the top of the phone; the dim stays put beneath.
   return (
     <div style={{ ...backdrop, background: "rgba(26,58,74,0.55)" }} onClick={onClose}>
       <div
         ref={scrollRef}
         role="dialog"
         aria-label="Notes"
-        style={{ position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "84vh", overflowY: "auto", boxSizing: "border-box", padding: `24px 16px ${bottomPad}`, fontFamily: INTER, ...swipe.style }}
+        style={{ position: "fixed", inset: 0, overflowY: "auto", boxSizing: "border-box", padding: `18vh 16px ${bottomPad}`, fontFamily: INTER, ...swipe.style }}
         {...swipe.handlers}
         onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
       >
