@@ -1083,7 +1083,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         // immediately and two ghost rows hold the layout — same pattern as
         // the dashboard; static, no shimmer.
         <div style={contentWrap}>
-          <h1 style={shelfHeader}>Open show rooms</h1>
+          <h1 style={shelfHeader}>Shows you're watching</h1>
           <div style={shelfCol}>
             <MobileGhostRow barWidth={120} />
             <MobileGhostRow barWidth={160} />
@@ -1096,7 +1096,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <div style={contentWrap}>
           {(groupShelves.watching.length > 0 || celebrating.length > 0 || finishedPill) && (
             <>
-              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Open show rooms</h1>}
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Shows you're watching</h1>}
               <div style={shelfCol}>
                 {/* Celebration rows lead the shelf (2026-09-23). */}
                 {celebrating.map((c) => (

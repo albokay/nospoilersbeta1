@@ -417,7 +417,7 @@ export default function MobileDashboard() {
         loading ? (
           <>
             <h1 style={{ ...M.type.display, color: C.cream, textAlign: "center", margin: "16px 0 0" }}>
-              Your dashboard
+              Your friends
             </h1>
             <div style={groupsWrap}>
               <MobileGhostRow barWidth={120} />
@@ -433,7 +433,7 @@ export default function MobileDashboard() {
           {/* Page headlines ("Your shows" arc CP1, 2026-09-07). */}
           {!showSocialOnb && !postAccept && (
             <h1 style={{ ...M.type.display, color: C.cream, textAlign: "center", margin: "16px 0 0" }}>
-              Your dashboard
+              Your friends
             </h1>
           )}
           {/* ── Groups + pending invites ── */}

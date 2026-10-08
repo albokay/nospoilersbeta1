@@ -1868,7 +1868,7 @@ export default function DashboardPage() {
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
           </div>
           <div style={D.header.center}>
-            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your dashboard</h1>
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your friends</h1>
           </div>
           <div />
         </div>
@@ -1938,9 +1938,9 @@ export default function DashboardPage() {
         </div>
         <div style={D.header.center}>
           {/* Center: the page title — group name + gear + members caption in
-              a room; "Your dashboard" on the green. */}
+              a room; "Your friends" on the green. */}
           {inGroup ? clustersEl : (!socialOnbActive && !postAccept ? (
-            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your dashboard</h1>
+            <h1 style={{ ...D.type.display, color: CANON.cream, margin: 0 }}>Your friends</h1>
           ) : null)}
         </div>
         <div style={D.header.right}>
@@ -2035,7 +2035,7 @@ export default function DashboardPage() {
           <>
           {(groupShelves.watching.length > 0 || celebrating.length > 0 || settledCount > 0) && (
             <>
-              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Open show rooms</h1>}
+              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>Shows you're watching</h1>}
               {/* Celebration rows lead the shelf (2026-09-23), in their own
                   row: their two-line height must never stretch a room pill's
                   wrap (the opt-in avatars hang from the wrap's bottom). */}
