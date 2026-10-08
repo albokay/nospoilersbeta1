@@ -2096,7 +2096,7 @@ export default function DashboardPage() {
               shows (votes live here per CP1; starting a room promotes off). */}
           {groupShelves.notStarted.length > 0 && (
             <h1 style={{ ...shelfHeader, marginTop: (groupShelves.watching.length || celebrating.length || settledCount) ? 56 : 0 }}>
-              Proposed shows
+              Proposed shows:
             </h1>
           )}
           {groupShelves.notStarted.length > 0 && (
