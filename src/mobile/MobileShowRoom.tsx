@@ -130,6 +130,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
+  // The map's own emptiness rule (V2RoomMap's touchedSeasons): nobody has
+  // reached episode 1 of any season, so it would draw no rows.
+  const mapEmpty = useMemo(() => mapMembers.every((m) => {
+    const eff = effectiveProgress(m.progress);
+    if (!eff) return true;
+    return (eff.e >= 1 ? eff.s : eff.s - 1) <= 0;
+  }), [mapMembers]);
   // The unlock line (2026-09-25): what the last progress move opened. See
   // load() for the detection; UnlockLine for the copy.
   const [unlockNote, setUnlockNote] = useState<UnlockNote | null>(null);
@@ -1267,7 +1274,31 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              your own icon → the rating edit mode (Save commits; closing
              the sheet mid-edit drops unsaved taps). Red dots have no
              dismiss here (Alborz 2026-09-23). ── */}
-      {mapSheetOpen && roomId && show && user && (
+      {mapSheetOpen && roomId && show && user && mapEmpty && (
+        // A brand-new room (Alborz 2026-10-07): nobody has reached an episode,
+        // so the sheet holds only its title and a square Sky-dashed box with
+        // the note, and is only as tall as that — not a map's 80dvh.
+        <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setMapSheetOpen(false); }}>
+          <div
+            style={{ ...sheetShell, background: C.cream, padding: "12px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)", display: "flex", flexDirection: "column", ...mapSwipe.style }}
+            {...mapSwipe.handlers}
+          >
+            <div style={OVERLAY.grabber(CANON.dark)} />
+            <div style={{ ...M.type.title, color: C.midnight }}>Season map</div>
+            <div
+              style={{
+                marginTop: 14, width: "100%", aspectRatio: "1 / 1", boxSizing: "border-box",
+                border: `2px dashed ${CANON.friend}`, borderRadius: 24, color: CANON.friend,
+                display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center",
+                padding: 28, fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1.5,
+              }}
+            >
+              Once you start watching and writing, an episode map will appear here to help you navigate your writing.
+            </div>
+          </div>
+        </div>
+      )}
+      {mapSheetOpen && roomId && show && user && !mapEmpty && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setMapSheetOpen(false); }}>
           <div
             style={{ ...sheetShell, background: C.cream, padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px)", height: "80dvh", display: "flex", flexDirection: "column", overflowY: "hidden", ...mapSwipe.style }}
