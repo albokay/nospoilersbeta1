@@ -95,12 +95,11 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
       body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
       aside,
     }));
-  // MOBILE-ONLY (Alborz 2026-09-13): long-press is mobile's show-button
-  // organizing gesture (desktop has the hover x); slots in after the
-  // welcome tip. Desktop's placed stickies are untouched.
-  if (idiom === "mobile") {
-    tips.splice(1, 0, { body: "Press and hold a show button for more options." });
-  }
+  // 2026-09-13 → 2026-10-08: a mobile-only "Press and hold a show button for
+  // more options." tip sat here while the long-press was the phone's
+  // show-button gesture. The hold is retired (the row's corner × opens the
+  // same sheet, and needs no teaching — Alborz's call), so the tip went
+  // with it; the two platforms now share the desktop set.
   return tips;
 }
 

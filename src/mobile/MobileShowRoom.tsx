@@ -10,7 +10,7 @@ import {
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState, fetchSidebarLetters,
   fetchThreadSeenProgress, isAboveSeenProgress,
   fetchHighlights, fetchPeopleGroupsForUser, fetchRoomDigestOptOut, setRoomDigestOptOut,
-  leaveShowRoom, setRoomDnf, fetchContactNames,
+  leaveShowRoom, setRoomDnf, fetchContactNames, setGroupShowPass, setShowVote,
   type Show,
 } from "../lib/db";
 import { joinNames, joinNameNodes } from "../lib/groupNames";
@@ -221,14 +221,18 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // CP5 (mobile mirror): leave ONLY this show room in this group — never
   // global. Writing stays intact; the room and everyone else's votes are
-  // untouched; rejoin via the group's search ("· rejoin"). Lands back on the
-  // group, whose shelf now hides this room for the leaver only.
-  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  // untouched. Lands back on the group. 2026-10-08 (Alborz's option 3): the
+  // gear's "Leave (just you)" became the two answers — "Sit this out" /
+  // "I've seen it" file the pass and drop your yes (the group room's ×
+  // sheet's exact act) before leaving, so the show stays on your shelf as a
+  // passed proposal and your friends' shelves learn why; a bare leave
+  // recorded nothing and the room simply vanished for you. The old
+  // "Leave this show room?" confirm went with it: the two labelled answers
+  // are the question.
   const [leaveBusy, setLeaveBusy] = useState(false);
-  const leaveSwipe = useSheetSwipeDown(() => setLeaveConfirmOpen(false), { enabled: !leaveBusy, open: leaveConfirmOpen });
   // "We're done with this one" from the gear (Alborz 2026-09-13) — parks
-  // the show for the whole group (same action as the shelf long-press) and
-  // returns to the group room; revivable from the finished drawer.
+  // the show for the whole group (same action as the group room's × sheet)
+  // and returns to the group room; revivable from the finished drawer.
   const [dnfBusy, setDnfBusy] = useState(false);
   async function doDnfRoom() {
     if (!roomId || dnfBusy) return;
@@ -244,12 +248,17 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       setDnfBusy(false);
     }
   }
-  async function doLeaveRoom() {
-    if (!roomId || leaveBusy) return;
+  async function doLeaveRoom(kind: "out" | "seen") {
+    if (!roomId || leaveBusy || !user) return;
     setLeaveBusy(true);
     try {
+      // Without a known parent group (a bare link into a room whose group
+      // didn't resolve) the answer can't be filed — leave as before.
+      if (parentGroupId && show?.id) {
+        await setGroupShowPass(parentGroupId, show.id, user.id, kind);
+        await setShowVote(parentGroupId, show.id, false);
+      }
       await leaveShowRoom(roomId);
-      setLeaveConfirmOpen(false);
       setDigestModalOpen(false);
       closeRoom();
     } catch (e) {
@@ -1372,33 +1381,18 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </>
             )}
             {/* CP5 + DNF (2026-09-13): per-room leave AND "we're done with
-                this one" both live here (alongside the shelf long-press) —
-                the two-path grammar; each exit explained in place. */}
+                this one" both live here (alongside the group room's ×) —
+                the two-path grammar; each exit explained in place.
+                2026-10-08: the leave is the two answers, the switch. */}
             <div style={digestDivider} />
             <div style={digestLabel}>Leaving, or done watching?</div>
-            <button style={alertBtn} onClick={() => { setDigestModalOpen(false); setLeaveConfirmOpen(true); }}>Leave (just you)</button>
-            <div style={{ ...digestSub, margin: "10px 0 16px" }}>Your letters stay. Re-propose the show to rejoin.</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <button style={alertBtn} disabled={leaveBusy} onClick={() => doLeaveRoom("out")}>Sit this out</button>
+              <button style={alertBtn} disabled={leaveBusy} onClick={() => doLeaveRoom("seen")}>I’ve seen it</button>
+            </div>
+            <div style={{ ...digestSub, margin: "10px 0 16px" }}>Both take you out of this room. Your letters stay, and everyone else keeps going. Your answer shows on your friends’ shelves.</div>
             <button style={identityBtnM} disabled={dnfBusy} onClick={doDnfRoom}>{dnfBusy ? "one moment…" : "We’re done with this one"}</button>
             <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group. Anyone can bring it back later.</div>
-          </div>
-        </div>
-      )}
-
-      {/* ── CP5: leave-room confirm (yellow sheet; polish pass 2026-09-14:
-             Lora title, one body paragraph, alert-FILL Leave + outlined
-             Cancel — a bare text "cancel" had no target). ── */}
-      {leaveConfirmOpen && roomId && (
-        <div style={dim} onClick={(e) => { if (e.target === e.currentTarget && !leaveBusy) setLeaveConfirmOpen(false); }}>
-          <div style={{ ...sheetShell, background: C.yellow, ...leaveSwipe.style }} {...leaveSwipe.handlers}>
-            <div style={OVERLAY.grabber(CANON.cream)} />
-            <div style={{ ...M.type.title, color: C.cream, marginBottom: 12 }}>Leave this show room?</div>
-            <div style={{ color: C.cream, fontSize: 15, lineHeight: 1.5, marginBottom: 18 }}>
-              This takes you out of the <b>{show?.name ?? "show"}</b> room in this group and removes it from your list. Your letters stay; re-propose the show to rejoin.
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-start", gap: 12, alignItems: "center" }}>
-              <button style={{ ...M.pill.M, background: CANON.alert, color: CANON.cream, opacity: leaveBusy ? 0.6 : 1 }} disabled={leaveBusy} onClick={doLeaveRoom}>Leave</button>
-              <button style={{ ...M.pill.M, background: "transparent", color: C.cream, border: "2px solid var(--canon-cream,#fef8ea)" }} disabled={leaveBusy} onClick={() => setLeaveConfirmOpen(false)}>Cancel</button>
-            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, Search, ChevronRight } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, Search } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
@@ -138,7 +138,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   // Finished-together drawer (2026-09-13, desktop parity): DNF marks, each
   // room's CURRENT members (for the auto finished detection), the drawer
-  // sheet, posters, the revive modal, and the long-press action sheet.
+  // sheet, posters, the revive modal, and the show-button × sheet.
   const [roomDnf, setRoomDnfMap] = useState<Record<string, number>>({});
   const [roomMembersById, setRoomMembersById] = useState<Record<string, string[]>>({});
   const [finishedDrawerOpen, setFinishedDrawerOpen] = useState(false);
@@ -148,7 +148,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
-  // Cleared proposals (2026-09-29): long-press on a proposed row → its sheet.
+  // Cleared proposals (2026-09-29): the corner × on a proposed row you're
+  // not in → its sheet (the long-press until 2026-10-08).
   const [clearSheet, setClearSheet] = useState<{ showId: string; name: string } | null>(null);
   const [chatNew, setChatNew] = useState(false);
   // Unread count for the chat tab's badge (Alborz 2026-09-19); undefined
@@ -514,7 +515,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerItems, showsById]);
 
-  // Long-press sheet actions (copy locked by Alborz 2026-09-13). Optimistic
+  // The × sheet's actions (copy locked by Alborz 2026-09-13; the × replaced
+  // the long-press 2026-10-08). Optimistic
   // like desktop; each is reversible (re-propose to rejoin / revive from
   // the drawer).
   async function doLeaveRoom(roomId: string, showId: string) {
@@ -909,8 +911,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     setSearchOpen(false);
   }
 
-  // Cleared proposals (2026-09-29, desktop parity): the row's long-press
-  // sheet clears a proposal from YOUR shelf only — every answer stays for
+  // Cleared proposals (2026-09-29, desktop parity): the row's × sheet (the
+  // long-press until 2026-10-08) clears a proposal from YOUR shelf only — every answer stays for
   // everyone; the search brings it back exactly as you left it.
   async function doClearShow(showId: string) {
     if (!user) return;
@@ -1123,7 +1125,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined}
                     line2={gapLine(r)}
                     onClick={() => onRowClick(r.pill, r.name)}
-                    onLongPress={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
+                    onX={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
+                    xLabel="leave this show room"
                   />
                 ))}
               </div>
@@ -1141,7 +1144,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </h1>
               <div style={shelfCol}>
                 {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} dashed={r.passed} onLongPress={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name })} />
+                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} dashed={r.passed} onX={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name })} xLabel={r.pill.inRoom ? "leave this show room" : "clear from my shelf"} />
                 ))}
               </div>
             </>
@@ -1434,23 +1437,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         />
       )}
 
-      {/* ── Long-press action sheet (2026-09-13; polish pass 2026-09-14:
-             grabber, title 22 + "with {group}" caption, 56px rows, chevron
-             on the navigation row only, swipe-down). ── */}
+      {/* ── The show-button × sheet (2026-09-13 as the long-press sheet;
+             polish pass 2026-09-14: grabber, title 22 + "with {group}"
+             caption, 56px rows, swipe-down). 2026-10-08 (Alborz): opened by
+             the row's corner × instead of a 500ms hold — the hold was the
+             app's only long-press and nothing but one tip line taught it.
+             Its "Open the room" row went with the hold: the row itself opens
+             the room. ── */}
       {sheetFor && (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setSheetFor(null); }}>
           <div {...lpSheetSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...lpSheetSwipe.style }}>
             <div style={OVERLAY.grabber(C.midnight)} />
             <div style={{ ...M.type.title, color: C.midnight }}>{sheetFor.name}</div>
             <div style={{ ...sheetCaptionDark, marginBottom: 8 }}>with {groupName}</div>
-            <button style={sheetRow} onClick={() => { const rid = sheetFor.roomId; setSheetFor(null); navigate(`/m/show-room/${rid}`); }}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                <span style={{ fontWeight: 700, fontSize: 15, color: C.midnight }}>Open the room</span>
-                <ChevronRight size={20} color={C.midnight} style={{ opacity: 0.5, flexShrink: 0 }} />
-              </span>
-            </button>
-            {/* The long-press is the opt-in switch (2026-10-08): both answers
-                step you out of the room and show on your friends' shelves. */}
+            {/* The × is the opt-in switch (2026-10-08): both answers step
+                you out of the room and show on your friends' shelves. */}
             <button style={sheetRow} onClick={() => { const sid = sheetFor.showId; setSheetFor(null); doStance(sid, "out"); }}>
               <span style={{ fontWeight: 700, fontSize: 15, color: C.red }}>Sit this out (leave the room)</span>
               <span style={sheetSub}>Your letters stay. Everyone else keeps going.</span>
@@ -1467,7 +1468,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         </div>
       )}
 
-      {/* ── Cleared proposals (2026-09-29): long-press on a proposed row —
+      {/* ── Cleared proposals (2026-09-29): the corner × on a proposed row you're not in —
              the rooms' sheet shell, one action: clear it from YOUR shelf
              (copy: Alborz's brief). ── */}
       {clearSheet && (
@@ -1538,35 +1539,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 }
 
 // ── Show row (full-width, two-line, opt-in avatars right) ───────────────────
-function ShowRow({ row, dot, line2, onClick, onLongPress, dashed = false }: {
+function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashed = false }: {
   /** A proposal you passed on (Alborz 2026-09-29): dashed cream outline. */
   dashed?: boolean;
   row: { pill: PillData; name: string; opted: { username: string; s: number | null; e: number | null; wrote: boolean; resolved: boolean }[] };
   dot: "blue" | "red" | undefined;
   line2: React.ReactNode;
   onClick: () => void;
-  /** Long-press (500ms hold) opens the organizing sheet (2026-09-13) —
-   *  only rooms the viewer is IN pass one. Any pointer movement cancels,
-   *  so scrolling never triggers it. */
-  onLongPress?: () => void;
+  /** The corner × (Alborz 2026-10-08; it replaced the 500ms hold, which was
+   *  the app's only long-press and nothing but a tip taught it): opens the
+   *  row's sheet — the leave answers for a room you're in, "Clear from my
+   *  shelf" for a proposal you're not in. Rows with nothing to offer draw
+   *  no ×. */
+  onX?: () => void;
+  xLabel?: string;
 }) {
-  const lpTimer = React.useRef<number | null>(null);
-  const lpFired = React.useRef(false);
-  const lpOrigin = React.useRef<{ x: number; y: number } | null>(null);
-  const lpStart = (e: React.PointerEvent) => {
-    if (!onLongPress) return;
-    lpFired.current = false;
-    lpOrigin.current = { x: e.clientX, y: e.clientY };
-    lpTimer.current = window.setTimeout(() => { lpFired.current = true; onLongPress(); }, 500);
-  };
-  const lpCancel = () => {
-    if (lpTimer.current != null) { window.clearTimeout(lpTimer.current); lpTimer.current = null; }
-  };
-  // Cancel only on REAL movement (>10px) — a resting fingertip jitters.
-  const lpMove = (e: React.PointerEvent) => {
-    const o = lpOrigin.current;
-    if (o && Math.hypot(e.clientX - o.x, e.clientY - o.y) > 10) lpCancel();
-  };
   const pill = row.pill;
   const isSelfWatching = pill.selfWatching;
   const isGreen = pill.fill === "green";
@@ -1583,14 +1570,8 @@ function ShowRow({ row, dot, line2, onClick, onLongPress, dashed = false }: {
     <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
       <span className="sb-plate" />
     <button
-      onClick={() => { if (lpFired.current) { lpFired.current = false; return; } onClick(); }}
-      onPointerDown={lpStart}
-      onPointerUp={lpCancel}
-      onPointerMove={lpMove}
-      onPointerCancel={lpCancel}
-      onPointerLeave={lpCancel}
-      onContextMenu={(e) => { if (onLongPress) e.preventDefault(); }}
-      style={{ ...rowBase, background: bg, border, color: fg, ...(onLongPress ? ({ WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" } as React.CSSProperties) : {}) }}
+      onClick={onClick}
+      style={{ ...rowBase, background: bg, border, color: fg }}
     >
       {/* The letters disc (2026-09-25): open = new to read, sealed = waiting
           for you to catch up; sits on the top-left curve where the dot did. */}
@@ -1620,6 +1601,19 @@ function ShowRow({ row, dot, line2, onClick, onLongPress, dashed = false }: {
         </span>
       )}
     </button>
+    {onX && (
+      // Desktop's hover x made permanent (Alborz 2026-10-08, "styled just
+      // like desktop"): the same 22px cream disc, red ×, same shadow, on the
+      // top-right curve where desktop's sits (top −7 / right −3) — the
+      // letter disc's opposite corner. The disc is drawn inside a 40px
+      // transparent target so a thumb lands it. A sibling of the row
+      // button (never nested, never bubbles into the row's tap) and a
+      // direct child of the .sb-press wrapper, so it rides the row's
+      // press shift as part of the button.
+      <button type="button" aria-label={xLabel} onClick={onX} style={xHit}>
+        <span style={xDisc}>×</span>
+      </button>
+    )}
     </span>
   );
 }
@@ -1758,6 +1752,22 @@ const rowBase: React.CSSProperties = {
   width: "100%", minHeight: 64, padding: "12px 22px", boxSizing: "border-box",
   borderRadius: 65, cursor: "pointer", textAlign: "left",
   fontFamily: '"Inter", sans-serif',
+};
+// The row's corner × (2026-10-08): desktop's `.dash-pill-x` geometry —
+// 22px disc at top −7 / right −3 — centred in a 40px hit box, so the box
+// sits at top −16 / right −12. Transparent box, no border; the disc carries
+// the look (cream fill, red ×, 15px, the same drop shadow).
+const xHit: React.CSSProperties = {
+  position: "absolute", top: -16, right: -12, width: 40, height: 40, zIndex: 3,
+  padding: 0, margin: 0, border: "none", background: "transparent", cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  WebkitTapHighlightColor: "transparent",
+};
+const xDisc: React.CSSProperties = {
+  width: 22, height: 22, borderRadius: "50%", background: C.cream, color: C.red,
+  fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1,
+  display: "flex", alignItems: "center", justifyContent: "center",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
 };
 // The finished-together pill (2026-09-23): the row's shape one size down,
 // cream fill, green ink.
