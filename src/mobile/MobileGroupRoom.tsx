@@ -1566,6 +1566,15 @@ function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashe
   // Pressable (Alborz 2026-08-18; theme.ts .sb-press): plate in the row's
   // own color. The no-op touchstart makes iOS honor :active on the press.
   const plateColor = isSelfWatching || isGreen ? C.green : C.cream;
+  // The corner disc takes the row's own tier (Alborz 2026-10-08, from the
+  // mockups): green rows → green disc + cream ×; the cream solo room →
+  // cream disc + green ×; outlined / dashed proposals (sky) → sky disc with
+  // a 2px cream ring + cream ×. Same 22px, same shadow, same seat.
+  const xTier: React.CSSProperties = isSelfWatching || isGreen
+    ? { background: C.green, color: C.cream }
+    : isCream
+      ? { background: C.cream, color: C.green }
+      : { background: C.sky, color: C.cream, border: `2px solid ${C.cream}` };
   return (
     <span className="sb-press" style={{ borderRadius: 65, ["--sb-plate" as any]: plateColor }} onTouchStart={() => {}}>
       <span className="sb-plate" />
@@ -1603,17 +1612,17 @@ function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashe
     </button>
     {onX && (
       // Desktop's hover x made permanent (Alborz 2026-10-08): the same 22px
-      // disc and shadow, but — after his live look ("cluttered") and two
-      // inline mockups — a GREEN disc with a cream ×, its centre on the
-      // pill's top-right curve (half on the button; desktop's cream/red at
-      // top −7 / right −3 hung off it). The letter disc's opposite corner.
+      // disc and shadow, but — after his live look ("cluttered") and four
+      // inline mockups — in the row's own tier (xTier above), its centre on
+      // the pill's top-right curve (half on the button; desktop's cream/red
+      // at top −7 / right −3 hung off it). The letter disc's opposite corner.
       // The disc is drawn inside a 40px transparent target so a thumb lands
       // it. A sibling of the row
       // button (never nested, never bubbles into the row's tap) and a
       // direct child of the .sb-press wrapper, so it rides the row's
       // press shift as part of the button.
       <button type="button" aria-label={xLabel} onClick={onX} style={xHit}>
-        <span style={xDisc}>×</span>
+        <span style={{ ...xDisc, ...xTier }}>×</span>
       </button>
     )}
     </span>
@@ -1759,7 +1768,8 @@ const rowBase: React.CSSProperties = {
 // the same drop shadow) at top −3 / right 1 — its centre on the pill's
 // curve, his pick from the mockups (desktop's −7 / −3 hung off) — centred
 // in a 40px hit box, so the box sits at top −12 / right −8. Transparent
-// box, no border; the disc carries the look (Personal green, cream ×, 15px).
+// box, no border; the disc carries the look (15px ×; fill, ink and ring
+// per row tier — see xTier in ShowRow).
 const xHit: React.CSSProperties = {
   position: "absolute", top: -12, right: -8, width: 40, height: 40, zIndex: 3,
   padding: 0, margin: 0, border: "none", background: "transparent", cursor: "pointer",
@@ -1767,7 +1777,7 @@ const xHit: React.CSSProperties = {
   WebkitTapHighlightColor: "transparent",
 };
 const xDisc: React.CSSProperties = {
-  width: 22, height: 22, borderRadius: "50%", background: C.green, color: C.cream,
+  width: 22, height: 22, borderRadius: "50%", boxSizing: "border-box",
   fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1,
   display: "flex", alignItems: "center", justifyContent: "center",
   boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
