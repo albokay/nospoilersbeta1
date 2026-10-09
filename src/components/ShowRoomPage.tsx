@@ -750,7 +750,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   // ── Per-entry map signal (precedence BLUE > YELLOW > RED, one per cell) ────
   const cellSignals = useMemo(() => {
-    const out: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }> = {};
+    // `via` (2026-10-08): what the dot is about — a note, a response, or
+    // both (a mixed red) — so the map's line can name a note (his copy).
+    const out: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number; via?: "note" | "response" | "mixed" }> = {};
     for (const entry of feedEntries) {
       if (entry.isDeleted) continue;
       const tid = entry.threadId;
@@ -770,7 +772,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // waiting for you to catch up (counted, below). Your own replies are
       // excluded from the visible-latest timestamp, so posting never
       // self-notifies; catching up turns a hidden red into green.
-      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "blue" }; continue; }
+      if ((isOwn || myReplyThreadIds.has(tid)) && (hasNewReadable || becameReadable)) { out[tid] = { kind: "blue", via: "response" }; continue; }
       // Notes (Alborz 2026-10-07): a readable note on your writing is BLUE
       // like a response; a yup stays yellow; a sealed note joins the red
       // count below.
@@ -783,14 +785,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const dn = deepestReadableNote[tid];
       const noteArrived = (latestNoteOnViewerWriting[tid] ?? 0) > (ns?.at ?? 0);
       const noteUnsealed = !!ns && !!dn && (dn.s > ns.s || (dn.s === ns.s && dn.e > ns.e));
-      if (noteArrived || noteUnsealed) { out[tid] = { kind: "blue" }; continue; }
+      if (noteArrived || noteUnsealed) { out[tid] = { kind: "blue", via: "note" }; continue; }
       if ((latestHighlightOnViewerWriting[tid] ?? 0) > (lastHighlightSeenAt[tid] ?? 0)) { out[tid] = { kind: "yellow" }; continue; }
       const sealedNotes = sealedNoteCount[tid] ?? 0;
-      const hiddenCount = (perThreadHiddenCount[tid] ?? 0) + sealedNotes;
+      const hiddenResponses = perThreadHiddenCount[tid] ?? 0;
+      const hiddenCount = hiddenResponses + sealedNotes;
+      const via = sealedNotes > 0 && hiddenResponses === 0 ? "note" : hiddenResponses > 0 && sealedNotes === 0 ? "response" : "mixed";
       // Hidden red (with count) stays until the viewer catches up — no
       // manual dismissal anywhere (Alborz 2026-09-23).
       if ((isOwn || myReplyThreadIds.has(tid) || sealedNotes > 0) && hiddenCount > 0) {
-        out[tid] = { kind: "red", redCount: hiddenCount };
+        out[tid] = { kind: "red", redCount: hiddenCount, via };
       }
     }
     return out;

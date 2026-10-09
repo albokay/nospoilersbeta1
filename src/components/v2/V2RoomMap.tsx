@@ -191,7 +191,7 @@ export type V2RoomMapProps = {
       drop shadow. Yellow can appear on any user's column (viewer might
       have a reply in someone else's entry) — unlike red/green which only
       appear on the viewer's own column. */
-  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }>;
+  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number; via?: "note" | "response" | "mixed" }>;
   /** Per-thread "this entry is new since your last room visit" flag. Drives
       the white outline on the cell. Same flag drives the entry-card's
       white outline (handled in V2RoomFeed). */
@@ -1603,14 +1603,18 @@ export default function V2RoomMap({
                 let signalLine: React.ReactNode = null;
                 if (signal) {
                   const text =
-                    // A dot can be a response OR a note now (2026-10-07), so
-                    // the words don't name either.
+                    // A dot can be a response OR a note (2026-10-07); since
+                    // 2026-10-08 the signal says which (`via`), so a note is
+                    // named (his copy) and the generic lines stay for
+                    // responses and for a red that mixes both.
                     signal.kind === "blue"
-                      ? "Something new in here for you."
+                      ? (signal.via === "note" ? "Someone left you a note." : "Something new in here for you.")
                       : signal.kind === "yellow"
                         ? "Someone reacted to your letter."
                         : signal.redCount
-                          ? "Something in here for when you catch up."
+                          ? (signal.via === "note"
+                              ? (signal.redCount > 1 ? "Someone left you sealed notes." : "Someone left you a sealed note.")
+                              : "Something in here for when you catch up.")
                           : "Someone responded to your letter.";
                   signalLine = (
                     <span style={{

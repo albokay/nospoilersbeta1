@@ -234,7 +234,7 @@ export type V2RoomFeedProps = {
       red = own-entry hidden responses). Only "blue" matters for the
       entry card — drives the A2 green-filled circle behind the expand
       chevron on collapsed cards. Yellow + red are map-only. */
-  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number }>;
+  cellSignals?: Record<string, { kind: "blue" | "yellow" | "red"; redCount?: number; via?: "note" | "response" | "mixed" }>;
   /** Per-thread red "hidden responses" dot on the entry card (public-rooms
       scope, 2026). Used by the single-user public room, which has no map to
       carry the friend-room red signal. count = responses hidden from the owner
