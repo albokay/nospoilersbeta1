@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { X, ArrowLeft, Settings, MessageCircle, Search } from "lucide-react";
+import { X, ArrowLeft, Settings, MessageCircle, Search, SquarePen } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
 import { useAuth } from "../lib/auth";
@@ -148,6 +148,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [drawerPosters, setDrawerPosters] = useState<Record<string, string | null>>({});
   const [reviveConfirm, setReviveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   const [sheetFor, setSheetFor] = useState<{ roomId: string; showId: string; name: string } | null>(null);
+  // Edit mode (Alborz 2026-10-09, the iPhone home-screen idea with his pen
+  // glyph): the shelves are clean by default; the pen on the first shelf
+  // head shows every row's × and turns into "Done". While editing, a tap on
+  // a row opens its options sheet instead of the room (the whole pill is
+  // the target). Ends on Done, or on any action taken from a sheet.
+  const [editing, setEditing] = useState(false);
   // Cleared proposals (2026-09-29): the corner × on a proposed row you're
   // not in → its sheet (the long-press until 2026-10-08).
   const [clearSheet, setClearSheet] = useState<{ showId: string; name: string } | null>(null);
@@ -521,6 +527,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // the drawer).
   async function doLeaveRoom(roomId: string, showId: string) {
     setSheetFor(null);
+    setEditing(false);
     try {
       await leaveShowRoom(roomId);
       setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, inRoom: false, viewerLeft: true } : gs)));
@@ -528,6 +535,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   }
   async function doDnfRoom(roomId: string) {
     setSheetFor(null);
+    setEditing(false);
     try {
       await setRoomDnf(roomId, true);
       setRoomDnfMap((prev) => ({ ...prev, [roomId]: Date.now() }));
@@ -917,6 +925,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   async function doClearShow(showId: string) {
     if (!user) return;
     setClearSheet(null);
+    setEditing(false);
     setGroupShows((prev) => prev.map((gs) => (gs.showId === showId ? { ...gs, viewerDismissed: true } : gs)));
     try {
       await dismissGroupShow(groupId, showId, user.id);
@@ -1112,23 +1121,27 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <div style={contentWrap}>
           {(groupShelves.watching.length > 0 || celebrating.length > 0 || finishedPill) && (
             <>
-              {groupShelves.watching.length > 0 && <h1 style={shelfHeader}>What you're watching</h1>}
+              {groupShelves.watching.length > 0 && <ShelfHead title="What you're watching" editing={editing} onToggle={() => setEditing((v) => !v)} />}
               <div style={shelfCol}>
                 {/* Celebration rows lead the shelf (2026-09-23). */}
                 {celebrating.map((c) => (
                   <CelebrationRow key={c.roomId} name={c.name} opted={c.opted} onClick={openFinishedDrawer} />
                 ))}
-                {groupShelves.watching.map((r) => (
-                  <ShowRow
-                    key={r.pill.showId}
-                    row={r}
-                    dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined}
-                    line2={gapLine(r)}
-                    onClick={() => onRowClick(r.pill, r.name)}
-                    onX={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
-                    xLabel="leave this show room"
-                  />
-                ))}
+                {groupShelves.watching.map((r) => {
+                  // The row's options (the × sheet) — shown and tapped only in edit mode.
+                  const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined;
+                  return (
+                    <ShowRow
+                      key={r.pill.showId}
+                      row={r}
+                      dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined}
+                      line2={gapLine(r)}
+                      onClick={editing && act ? act : () => onRowClick(r.pill, r.name)}
+                      onX={editing ? act : undefined}
+                      xLabel="leave this show room"
+                    />
+                  );
+                })}
               </div>
               {finishedPill && <div style={{ marginTop: 16 }}>{finishedPill}</div>}
             </>
@@ -1139,13 +1152,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               {/* Vertical rhythm tightened from here down (Alborz 2026-08-18)
                   so the first browse row peeks clearly above the docked deck
                   card — an invitation to scroll, not a covered-up glitch. */}
-              <h1 style={{ ...shelfHeader, marginTop: (groupShelves.watching.length || celebrating.length || settledCount) ? 32 : 0 }}>
-                Proposed shows
-              </h1>
+              {/* The pen rides the FIRST shelf head; with no watching shelf it sits here. */}
+              <ShelfHead
+                title="Proposed shows"
+                marginTop={(groupShelves.watching.length || celebrating.length || settledCount) ? 32 : 0}
+                editing={editing}
+                onToggle={groupShelves.watching.length > 0 ? undefined : () => setEditing((v) => !v)}
+              />
               <div style={shelfCol}>
-                {groupShelves.notStarted.map((r) => (
-                  <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={() => onRowClick(r.pill, r.name)} dashed={r.passed} onX={r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name })} xLabel={r.pill.inRoom ? "leave this show room" : "clear from my shelf"} />
-                ))}
+                {groupShelves.notStarted.map((r) => {
+                  // Your own room → the × sheet (leave); a proposal you're not in → clear it from your shelf.
+                  const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name });
+                  return (
+                    <ShowRow key={r.pill.showId} row={r} dot={r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined} line2={proposalLine(r.pill.showId)} onClick={editing ? act : () => onRowClick(r.pill, r.name)} dashed={r.passed} onX={editing ? act : undefined} xLabel={r.pill.inRoom ? "leave this show room" : "clear from my shelf"} />
+                  );
+                })}
               </div>
             </>
           )}
@@ -1550,7 +1571,8 @@ function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashe
    *  the app's only long-press and nothing but a tip taught it): opens the
    *  row's sheet — the leave answers for a room you're in, "Clear from my
    *  shelf" for a proposal you're not in. Rows with nothing to offer draw
-   *  no ×. */
+   *  no ×, and since 2026-10-09 the room passes it only in EDIT MODE (the
+   *  pen on the shelf head) — the shelves are clean by default. */
   onX?: () => void;
   xLabel?: string;
 }) {
@@ -1627,6 +1649,40 @@ function ShowRow({ row, dot, line2, onClick, onX, xLabel = "show options", dashe
       </button>
     )}
     </span>
+  );
+}
+
+// The shelf head with the pen (Alborz 2026-10-09): the iPhone home-screen
+// "edit" idea, with his pen glyph (the app's SquarePen) instead of the word.
+// Tap it and every row's × appears and the pen reads "Done"; one pen
+// governs both shelves, riding the first head on the page. The title keeps
+// its centred Lora; the control hangs off the right end, its glyph flush
+// with the rows' right edge.
+function ShelfHead({ title, marginTop, editing, onToggle }: {
+  title: string;
+  marginTop?: number;
+  editing: boolean;
+  /** Omitted on a head that doesn't carry the pen (the second shelf). */
+  onToggle?: () => void;
+}) {
+  return (
+    <div style={{ position: "relative", marginTop }}>
+      <h1 style={shelfHeader}>{title}</h1>
+      {onToggle && (
+        <button
+          type="button"
+          aria-label={editing ? "done editing" : "edit your shows"}
+          onClick={onToggle}
+          style={{
+            ...iconBtn, position: "absolute", right: -12, top: "50%", transform: "translateY(-50%)",
+            width: editing ? "auto" : 44, padding: editing ? "0 12px" : 0,
+            color: C.cream, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13,
+          }}
+        >
+          {editing ? "Done" : <SquarePen size={M.glyph} color={C.cream} />}
+        </button>
+      )}
+    </div>
   );
 }
 
