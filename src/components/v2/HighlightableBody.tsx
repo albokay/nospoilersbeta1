@@ -4,6 +4,7 @@ import { HighlightHoverPopup, HighlightNotePaper } from "./HighlightNotePaper";
 import { HighlightNoteSheet } from "./HighlightSheets";
 import { splitSentences, type Range } from "../../lib/sentences";
 import { linkifyText } from "../../lib/linkify";
+import { useSeenNoteIds, loadSeenNoteIds, markNoteIdsSeen } from "../../lib/noteSeen";
 import type { Highlight } from "../../lib/db";
 import { CANON } from "../../styles/canon";
 
@@ -133,6 +134,7 @@ function HighlightableSegment({
   highlights,
   activeIds,
   openable,
+  settled,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
   sealedTone,
@@ -149,6 +151,10 @@ function HighlightableSegment({
   /** Ids of highlights whose stretch (cluster) holds at least one note —
    *  a click there opens the stack. */
   openable: Set<string>;
+  /** Ids of highlights in a SETTLED stretch (Alborz 2026-10-08): sealed
+   *  notes in it, and every readable note already opened — drawn in the
+   *  sealed style so the sealed note is what you notice. */
+  settled: Set<string>;
   linkify?: boolean;
   color?: string;
   sealedTone: "sky" | "cream";
@@ -165,7 +171,9 @@ function HighlightableSegment({
       {pieces.map((p) => {
         const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
         if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
-        const readable = p.covering.some((h) => !h.sealed);
+        // Yellow = something readable here you haven't opened; a settled
+        // stretch (readable notes opened, sealed ones waiting) draws sealed.
+        const readable = p.covering.some((h) => !h.sealed) && !p.covering.some((h) => settled.has(h.id));
         // A click opens the stack when ANY note sits anywhere in this stretch's cluster.
         const hasReadableNote = p.covering.some((h) => openable.has(h.id));
         const active = !!activeIds && p.covering.some((h) => activeIds.has(h.id));
@@ -297,6 +305,10 @@ export default function HighlightableBody({
   const allSentences = pick ? tokens.flatMap((t) => (t.kind === "text" ? splitSentences(t.text, t.bodyStart) : [])) : [];
   const [hover, setHover] = useState<Active | null>(null);
   const [open, setOpen] = useState<Active | null>(null);
+  // The per-stretch "opened" stamp, per account (lib/noteSeen.ts): the room
+  // pages start its load with the room; this is the fallback elsewhere.
+  const seenNoteIds = useSeenNoteIds();
+  useEffect(() => { if (currentUserId) loadSeenNoteIds(currentUserId); }, [currentUserId]);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
   // Grace period so the cursor can travel from the stretch into the popup.
@@ -341,6 +353,20 @@ export default function HighlightableBody({
   for (const cl of clusters.list) {
     if (highlights.some((h) => cl.ids.has(h.id) && h.kind === "note")) for (const id of cl.ids) openable.add(id);
   }
+  // A MIXED stretch — readable notes and sealed ones — draws in the sealed
+  // style once its readable notes have been opened (Alborz 2026-10-08), so
+  // the sealed note is what you notice next time; a stretch with only
+  // readable notes never changes. Your own notes and yups count as seen. A
+  // new readable note, or a sealed one unsealing as you catch up, isn't in
+  // the stamp, so the yellow comes back until that's opened too. Per
+  // account (the server table), his call.
+  const settled = new Set<string>();
+  for (const cl of clusters.list) {
+    const inCl = highlights.filter((h) => cl.ids.has(h.id));
+    if (!inCl.some((h) => h.sealed)) continue;
+    const unseen = inCl.some((h) => h.kind === "note" && !h.sealed && h.authorId !== currentUserId && !seenNoteIds.has(h.id));
+    if (!unseen) for (const id of cl.ids) settled.add(id);
+  }
 
   // Nothing left to read (last note deleted): the paper closes itself; on
   // the phone the sheet stays until the stretch itself is gone.
@@ -355,7 +381,15 @@ export default function HighlightableBody({
   // only when something readable is in there.
   const reportOpened = (a: Active) => {
     const cl = clusterAt(a);
-    if (cl && highlights.some((h) => cl.ids.has(h.id) && h.kind === "note" && !h.sealed)) onNotesOpened?.();
+    if (!cl) return;
+    const readableNotes = highlights.filter((h) => cl.ids.has(h.id) && h.kind === "note" && !h.sealed);
+    if (readableNotes.length === 0) return;
+    onNotesOpened?.();
+    // The stretch's readable notes are seen now — the per-stretch stamp
+    // behind `settled` (the open stretch draws cream while open, so the
+    // sealed look appears once the paper / sheet closes).
+    const fresh = readableNotes.filter((h) => !seenNoteIds.has(h.id)).map((h) => h.id);
+    if (fresh.length > 0 && currentUserId) markNoteIdsSeen(currentUserId, fresh);
   };
   const onPick = (a: Active, hasReadableNote: boolean) => {
     if (mobile) { setHover(null); setOpen(a); reportOpened(a); return; }
@@ -401,6 +435,7 @@ export default function HighlightableBody({
             highlights={highlights}
             activeIds={activeIds}
             openable={openable}
+            settled={settled}
             linkify={linkify}
             color={color}
             sealedTone={sealedTone}

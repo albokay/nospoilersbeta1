@@ -1,3 +1,4 @@
+import { loadSeenNoteIds } from "../lib/noteSeen";
 import { type SidebarLetterKind } from "../lib/sidebarLetters";
 /**
  * ShowRoomPage — the restructure (group × show) room (CP4a).
@@ -225,6 +226,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   });
   // Notes inside each letter, sealed ones included — the closed letter's count.
   const [noteCountByThread, setNoteCountByThread] = useState<Record<string, { all: number; readable: number }>>({});
+  // The per-account "opened" stamp behind settled stretches (lib/noteSeen.ts,
+  // 2026-10-08): start its load with the room so the first expanded letter
+  // paints right. Not part of the signal pipeline above.
+  useEffect(() => { if (user?.id) loadSeenNoteIds(user.id); }, [user?.id]);
   const [lastHighlightSeenAt, setLastHighlightSeenAt] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("ns_highlight_seen") || "{}"); } catch { return {}; }
   });
