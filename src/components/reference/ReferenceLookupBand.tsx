@@ -33,6 +33,9 @@ import SidebarLogo from "../SidebarLogo";
 import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, searchPill } from "../dashboardChrome";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord, EditorialColumn } from "../editorial/Chrome";
+import { EditorialDialog, EditorialSheet, NumbersPicker } from "../editorial/GroupRoom";
+import { Block, Frame, FORM_CSS } from "../editorial/Onboarding";
+import { NOTE_FIELD } from "../editorial/MapNotes";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -678,6 +681,111 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     </>
   );
 
+  // The editorial modals (Alborz's notes, item 7): the search, the canon
+  // card, the essentials card and the look-it-up card as the bible's dialog
+  // (desktop) or sheet (phone). Same acts as the classic modals above.
+  const EdShell = ({ children, onClose, label }: { children: React.ReactNode; onClose: () => void; label: string }) => mobile
+    ? <EditorialSheet onClose={onClose}>{children}</EditorialSheet>
+    : <EditorialDialog onClose={onClose} width={480} label={label} align="left">{children}</EditorialDialog>;
+  const edRow: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "12px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, WebkitTapHighlightColor: "transparent" };
+  const edTag = (t: string) => <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{t}</span>;
+  const edNote: React.CSSProperties = { ...E.type.note13, color: E.color.inkSub, marginTop: 6 };
+  const editorialModals = (
+    <>
+      <style>{FORM_CSS}</style>
+      {searchOpen && (
+        <EdShell onClose={() => setSearchOpen(false)} label={searchMode === "canon" ? "Add to your canon" : "Find a show"}>
+          <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{searchMode === "canon" ? "Add to your canon" : "Find a show"}</div>
+          <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 22 }}>
+            Show:
+            <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
+              style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
+          </label>
+          {busyAdd && <div style={{ ...E.type.label10, color: E.color.inkMuted, padding: "12px 0" }}>adding<LoadingDots /></div>}
+          <div style={{ maxHeight: mobile ? undefined : 360, overflowY: mobile ? undefined : "auto" }}>
+            {catalogMatches.map((show) => (
+              <button key={show.id} type="button" style={edRow} disabled={busyAdd} onClick={() => (searchMode === "canon" ? openCanonCard(show) : openCard(show))}><span>{show.name}</span>{edTag(searchMode === "canon" ? "Add →" : "Pick →")}</button>
+            ))}
+            {tvToAdd.map(({ tv, id }) => (
+              <button key={id} type="button" style={edRow} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
+                {edTag(networkLabel(tv) ?? "Add →")}
+              </button>
+            ))}
+          </div>
+        </EdShell>
+      )}
+      {canonCard && (
+        <EdShell onClose={() => { if (!canonBusy) setCanonCard(null); }} label={canonCard.name}>
+          <div style={{ ...E.type.question30, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", paddingRight: 28 }}>{canonCard.name}</div>
+          <div style={{ ...E.type.label11, marginTop: 18 }}>Why is this in your canon?</div>
+          {canonCard.adding && <div style={edNote}>Adding a show to your canon sets your progress to its latest episode.</div>}
+          <textarea value={canonDraft} onChange={(ev) => setCanonDraft(ev.target.value)} maxLength={280} rows={5} autoFocus placeholder="Your take — as short or long as you like." style={{ ...NOTE_FIELD, marginTop: 14, fontFamily: E.font.display, fontSize: 15 }} />
+          {canonCard.show
+            ? <Block onClick={confirmCanon} disabled={canonBusy} style={{ marginTop: 16 }}>{canonBusy ? <>one moment<LoadingDots /></> : canonCard.adding ? "Add to your canon" : "Save"}</Block>
+            : <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 16 }}>one moment<LoadingDots /></div>}
+        </EdShell>
+      )}
+      {shareShow && (() => {
+        const entry = progress[shareShow.id];
+        const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
+        const shareName = (profile?.display_name || profile?.username || "My").trim();
+        return (
+          <EdShell onClose={() => setShareShow(null)} label={`${shareName}'s essentials`}>
+            <div style={{ ...E.type.label10, color: E.color.inkMuted }}>{shareName}&rsquo;s TV canon</div>
+            <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", marginTop: 6, paddingRight: 28 }}>{shareShow.name}</div>
+            {entry?.canonTake && <div style={{ ...E.type.quote14, fontSize: 15, marginTop: 12 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
+            <SectionHead style={{ marginTop: 22 }} right={<span style={{ color: E.color.inkMuted }}>{eps.length}</span>}>Essential episodes</SectionHead>
+            {eps.map((k) => {
+              const es = Math.floor(k / 10000), ee = k % 10000;
+              const title = shareRef?.seasons.find((se) => se.n === es)?.episodes.find((ep) => ep.e === ee)?.title;
+              return (
+                <div key={k} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "10px 0", borderBottom: `1px solid ${E.color.hairline}`, fontFamily: E.font.interface, fontSize: 14 }}>
+                  <span style={{ color: E.color.accent }}>★</span>
+                  <span style={{ ...E.type.label11, flexShrink: 0 }}>S{es} E{ee}</span>
+                  {title ? <span style={{ minWidth: 0 }}>{title}</span> : (!shareRef ? <LoadingDots /> : null)}
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 18 }}><SidebarLogo scale={0.4} blocksOpacity={1} bg="cream" /></div>
+          </EdShell>
+        );
+      })()}
+      {(cardShow || cardPending) && (
+        <EdShell onClose={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }} label={cardTitle}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: mobile ? 26 : 6, padding: "0 20px" }}>{cardTitle}</div>
+            <div style={{ ...E.type.label11, marginTop: 22 }}>How far in are you?</div>
+            <div style={edNote}>Set your episode. Nothing you see will ever go past it.</div>
+            {cardShow
+              ? <NumbersPicker show={cardShow} value={picked} onChange={(v) => setPicked(v)} />
+              : <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 14 }}>loading episodes<LoadingDots /></div>}
+            {cardShow && pickedReady && (
+              <>
+                <Block onClick={lookItUp} disabled={confirmBusy || logBusy} style={{ marginTop: 24 }}>{confirmBusy ? <>one moment<LoadingDots /></> : "Open show guide"}</Block>
+                <Frame onClick={justLogIt} disabled={confirmBusy || logBusy} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
+              </>
+            )}
+            {cardShow && !pickedReady && (
+              <>
+                {progress[cardShow.id]?.wantedAt ? (
+                  <div style={{ ...E.type.note13, marginTop: 24, display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
+                    <span>On your want-to-watch list</span>
+                    <UnderlineWord onClick={() => unwantShow(cardShow.id)}>Remove</UnderlineWord>
+                  </div>
+                ) : (
+                  <Block onClick={wantIt} disabled={wantBusy || logBusy} style={{ marginTop: 24 }}>{wantBusy ? <>one moment<LoadingDots /></> : "Want to watch"}</Block>
+                )}
+                <Frame onClick={justLogIt} disabled={wantBusy || logBusy} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
+              </>
+            )}
+            <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} /></div>
+          </div>
+        </EdShell>
+      )}
+    </>
+  );
+
   if (editorial) {
     const gutter = E.space.gutter;
     const openLookup = () => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); };
@@ -834,7 +942,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
             {browse}
           </>
         )}
-        {modals}
+        {editorialModals}
       </>
     );
   }

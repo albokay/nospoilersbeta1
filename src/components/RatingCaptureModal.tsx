@@ -3,6 +3,11 @@ import Modal from "./Modal";
 import StarFace from "./v2/StarFace";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY, LORA } from "../mobile/m";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { EditorialDialog } from "./editorial/GroupRoom";
+import { BottomSheet } from "./editorial/Overlays";
+import { UnderlineWord } from "./editorial/Chrome";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
 // forward progress advancement in V2/V3 surfaces only. Spec:
@@ -75,6 +80,7 @@ export default function RatingCaptureModal({
   // label-empty and all controls are disabled to prevent a second tap
   // during the 150ms commit window.
   const [selected, setSelected] = useState<number | null>(null);
+  const editorial = useEditorial();
 
   function pick(rating: number) {
     if (selected !== null) return;
@@ -83,6 +89,38 @@ export default function RatingCaptureModal({
   }
 
   const locked = selected !== null;
+
+  // The editorial capture (Alborz's notes, item 7): "How was episode N?" in
+  // Lora, the show and season in mono, the six ratings as hairline rows
+  // (the star face in its sky disc, the words), a tap commits; Cancel as a
+  // frame and Skip underlined in alert. The dialog on desktop, the sheet on
+  // the phone. Same commit, same skip.
+  if (editorial) {
+    const body = (
+      <>
+        <div style={E.type.letterTitle22}>How was episode {episode}?</div>
+        <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 6 }}>{showName ? `${showName} · ` : ""}season {season}</div>
+        <div style={{ marginTop: 18 }}>
+          {[6, 5, 4, 3, 2, 1].map((r) => {
+            const showLabel = !locked || selected === r;
+            return (
+              <button key={r} type="button" onClick={() => pick(r)} disabled={locked} style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", minHeight: 52, padding: "8px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: locked ? "default" : "pointer", color: E.color.ink, textAlign: "left", opacity: showLabel ? 1 : 0.35, WebkitTapHighlightColor: "transparent" }}>
+                <RatingStars rating={r} size={28} />
+                <span style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, visibility: showLabel ? "visible" : "hidden" }}>{RATING_LABELS[r]}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22 }}>
+          {onSkip ? <UnderlineWord onClick={onSkip} style={{ color: E.color.alert }}>Skip the rating</UnderlineWord> : <span />}
+          <button type="button" onClick={onCancel} disabled={locked} style={{ ...E.type.button16, height: 48, padding: "0 22px", border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Cancel</button>
+        </div>
+      </>
+    );
+    return mobile
+      ? <BottomSheet onClose={locked ? () => {} : onCancel} zIndex={1200} label="Rate the episode">{body}</BottomSheet>
+      : <EditorialDialog onClose={locked ? () => {} : onCancel} width={420} label="Rate the episode" align="left">{body}</EditorialDialog>;
+  }
 
   if (mobile) {
     return (

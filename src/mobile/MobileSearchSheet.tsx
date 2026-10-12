@@ -6,6 +6,11 @@ import OneSelectProgress from "../components/OneSelectProgress";
 import { createShow, type Show } from "../lib/db";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry } from "../types";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, EditorialTitle } from "../components/editorial/Chrome";
+import { NumbersPicker } from "../components/editorial/GroupRoom";
+import { Block, FORM_CSS } from "../components/editorial/Onboarding";
 
 /**
  * Full-screen show search (mobile idiom of the desktop group room's cream
@@ -52,6 +57,7 @@ export default function MobileSearchSheet({
   /** A TVMaze show was just created in the catalog — merge into parent state. */
   onCatalogAdd: (show: Show) => void;
 }) {
+  const editorial = useEditorial();
   const [query, setQuery] = useState("");
   const [pickShow, setPickShow] = useState<Show | null>(null);
   const [pickProgress, setPickProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
@@ -119,6 +125,62 @@ export default function MobileSearchSheet({
     } finally {
       setCreatingShow(false);
     }
+  }
+
+  // The editorial sheet (Alborz's notes, item 7): a page on cream with the
+  // folded corner as the way out, "Find a show" in Lora, the Show field on
+  // a rule, the matches as hairline rows (the group's own in mono), then
+  // the show in Lora with the numbers picker and the act as a block.
+  if (editorial) {
+    const row: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "13px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, WebkitTapHighlightColor: "transparent" };
+    const tag = (t: string) => <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{t}</span>;
+    return (
+      <div style={{ ...sheet, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
+        <style>{FORM_CSS}</style>
+        <CornerTab kind="back" label="Close" onClick={pickShow ? () => setPickShow(null) : onClose} />
+        <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop) }}>
+          {!pickShow ? (
+            <>
+              <EditorialTitle>Find a show</EditorialTitle>
+              <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 36 }}>
+                Show:
+                <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
+                  style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
+              </label>
+              {results.map((s) => (
+                groupContext?.groupShowIds.has(s.id) ? (
+                  <div key={s.id} style={{ ...row, cursor: "default", opacity: 0.55 }}><span>{s.name}</span>{tag("Already in this group")}</div>
+                ) : groupContext?.rejoinShowIds?.has(s.id) ? (
+                  <button key={s.id} type="button" style={row} onClick={() => groupContext.onRejoin?.(s)}><span>{s.name}</span>{tag("Rejoin →")}</button>
+                ) : groupContext?.restoreShowIds?.has(s.id) ? (
+                  <button key={s.id} type="button" style={row} onClick={() => groupContext.onRestore?.(s)}><span>{s.name}</span>{tag("Bring back →")}</button>
+                ) : groupContext ? (
+                  <button key={s.id} type="button" style={row} onClick={() => { if (progress[s.id]) { groupContext.onProposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}><span>{s.name}</span>{tag("Pitch →")}</button>
+                ) : (
+                  <button key={s.id} type="button" style={row} onClick={() => { setPickShow(s); setPickProgress({ s: 0, e: 0 }); }}><span>{s.name}</span>{tag("Pick →")}</button>
+                )
+              ))}
+              {tvToAdd.map(({ tv, id }) => (
+                <button key={id} type="button" style={row} disabled={creatingShow} onClick={() => addFromTvmaze(tv)}>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
+                  {tag(networkLabel(tv) ?? "Add →")}
+                </button>
+              ))}
+              {query.trim().length >= 2 && results.length === 0 && tvToAdd.length === 0 && (
+                <div style={{ ...E.type.label10, color: E.color.inkMuted, padding: "12px 0" }}>{creatingShow ? "adding…" : tvLoading ? "searching…" : "No shows found."}</div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 26 }}>{pickShow.name}</div>
+              <div style={{ ...E.type.label11, marginTop: 22 }}>How much have you watched?</div>
+              <NumbersPicker show={pickShow} value={pickProgress} onChange={(v) => setPickProgress(v)} />
+              <Block onClick={() => onAdd(pickShow, pickProgress)} style={{ marginTop: 28 }}>{addLabel ?? (groupContext ? "Pitch this show" : "Add to my shows")}</Block>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

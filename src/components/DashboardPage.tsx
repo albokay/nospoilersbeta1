@@ -117,7 +117,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
-import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "./editorial/GroupRoom";
+import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatTab, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
@@ -2538,7 +2538,59 @@ export default function DashboardPage() {
       )}
 
       {/* Search overlay (shared by both contexts) */}
-      {searchOpen && (
+      {searchOpen && editorial && (
+        // The editorial search (Alborz's notes, item 7): the bible's dialog —
+        // "Find a show" in Lora, the Show field on a rule, the matches as
+        // hairline rows (the group's own in mono), then the show with the
+        // numbers picker and "Pitch this show" as the block. Same acts.
+        <EditorialDialog onClose={closeSearch} width={480} label="Find a show" align="left">
+          <style>{FORM_CSS}</style>
+          {!pickShow ? (() => {
+            const rowS: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "12px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15 };
+            const tag = (t: string) => <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{t}</span>;
+            return (
+              <>
+                <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>Find a show</div>
+                <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 22 }}>
+                  Show:
+                  <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
+                    style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
+                </label>
+                <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                  {results.map(({ show: s, inPool, rejoin, restore }) => (
+                    inPool ? (
+                      <div key={s.id} style={{ ...rowS, cursor: "default", opacity: 0.55 }}><span>{s.name}</span>{tag(activeGroupId ? "Already in this group" : "Already on your shelf")}</div>
+                    ) : rejoin ? (
+                      <button key={s.id} type="button" style={rowS} onClick={() => rejoinRoom(s)}><span>{s.name}</span>{tag("Rejoin →")}</button>
+                    ) : restore ? (
+                      <button key={s.id} type="button" style={rowS} onClick={() => restoreShow(s)}><span>{s.name}</span>{tag("Bring back →")}</button>
+                    ) : (
+                      <button key={s.id} type="button" style={rowS} onClick={() => { if (progress[s.id]) { proposeExisting(s); } else { setPickShow(s); setPickProgress({ s: 0, e: 0 }); } }}><span>{s.name}</span>{tag("Pitch →")}</button>
+                    )
+                  ))}
+                  {tvToAdd.map(({ tv, id }) => (
+                    <button key={id} type="button" style={rowS} disabled={creatingShow} onClick={() => addFromTvmaze(tv)}>
+                      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
+                      {tag(networkLabel(tv) ?? "Add →")}
+                    </button>
+                  ))}
+                  {query.trim().length >= 2 && results.length === 0 && tvToAdd.length === 0 && (
+                    <div style={{ ...E.type.label10, color: E.color.inkMuted, padding: "12px 0" }}>{creatingShow ? "adding…" : tvLoading ? "searching…" : "No shows found."}</div>
+                  )}
+                </div>
+              </>
+            );
+          })() : (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 6, padding: "0 20px" }}>{pickShow.name}</div>
+              <div style={{ ...E.type.label11, marginTop: 22 }}>How much have you watched?</div>
+              <NumbersPicker show={pickShow} value={pickProgress} onChange={(v) => setPickProgress(v)} />
+              <Block onClick={() => addShow(pickShow, pickProgress)} style={{ marginTop: 28 }}>Pitch this show</Block>
+            </div>
+          )}
+        </EditorialDialog>
+      )}
+      {searchOpen && !editorial && (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeSearch(); }}>
           {!pickShow ? (
             <div style={searchCard}>

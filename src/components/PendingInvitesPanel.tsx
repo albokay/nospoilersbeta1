@@ -24,6 +24,10 @@ import {
 } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { UnderlineWord } from "./editorial/Chrome";
+import { NOTE_FIELD } from "./editorial/MapNotes";
 
 export const INVITE_STALE_MS = 3 * 86400 * 1000;
 
@@ -60,6 +64,11 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
   others?: OtherPendingInvite[];
   onRefresh: () => void;
 }) {
+  // The editorial rows (Alborz's notes, item 7): each pending friend a
+  // hairline row — the name, "(invite pending)" in mono, Nudge / Rescind as
+  // underlined words; the nudge box framed with Send nudge as a small block;
+  // the rescind confirm in alert. Same calls.
+  const editorial = useEditorial();
   const [nudgeFor, setNudgeFor] = useState<string | null>(null); // token
   const [nudgeText, setNudgeText] = useState("");
   const [sending, setSending] = useState(false);
@@ -136,6 +145,66 @@ export default function PendingInvitesPanel({ invites, others = [], onRefresh }:
     }
     setRescindFor(null);
     onRefresh();
+  }
+
+  if (editorial) {
+    const rowStyle: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${E.color.hairline}` };
+    const name: React.CSSProperties = { fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, color: E.color.ink, opacity: 0.7, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+    const small: React.CSSProperties = { ...E.type.label11, height: 36, padding: "0 14px", background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", cursor: "pointer" };
+    const nudgeBoxEd = (onSend: () => void) => (
+      <div style={{ margin: "10px 0 4px" }}>
+        <textarea value={nudgeText} onChange={(e) => setNudgeText(e.target.value)} rows={3} maxLength={500} style={{ ...NOTE_FIELD, fontSize: 13 }} />
+        <div style={{ display: "flex", gap: 16, alignItems: "center", marginTop: 8 }}>
+          <button type="button" style={{ ...small, opacity: sending || !nudgeText.trim() ? 0.6 : 1 }} disabled={sending || !nudgeText.trim()} onClick={onSend}>{sending ? "sending…" : "Send nudge"}</button>
+          <UnderlineWord onClick={() => setNudgeFor(null)}>Cancel</UnderlineWord>
+        </div>
+      </div>
+    );
+    return (
+      <div style={{ marginTop: 6 }}>
+        {staleCount > 0 && <div style={{ ...E.type.note13, color: E.color.inkSub, margin: "4px 0 6px" }}>{preventLastWordOrphan(`${staleInviteLine(staleCount)} A nudge might be all they need.`)}</div>}
+        {invites.map((inv) => (
+          <div key={inv.token}>
+            <div style={rowStyle}>
+              <span style={name}>{inviteeLabel(inv)}</span>
+              {sentFor === inv.token ? (
+                <span style={{ ...E.type.label10, color: E.color.inkMuted }}>nudge sent</span>
+              ) : (
+                <span style={{ display: "flex", gap: 14, flexShrink: 0 }}>
+                  <UnderlineWord onClick={() => (nudgeFor === inv.token ? setNudgeFor(null) : openNudge(inv))}>Nudge</UnderlineWord>
+                  <UnderlineWord onClick={() => { setNudgeFor(null); setActionError(null); setRescindFor(rescindFor === inv.token ? null : inv.token); }} style={{ color: E.color.alert }}>Rescind</UnderlineWord>
+                </span>
+              )}
+            </div>
+            {nudgeFor === inv.token && nudgeBoxEd(() => sendNudge(inv))}
+            {rescindFor === inv.token && (
+              <div style={{ margin: "10px 0 4px" }}>
+                <div style={{ ...E.type.note13, color: E.color.inkSub, marginBottom: 8 }}>{preventLastWordOrphan("Rescind this invite? Their link will stop working.")}</div>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  <button type="button" style={{ ...small, background: E.color.alert, opacity: rescinding ? 0.6 : 1 }} disabled={rescinding} onClick={() => doRescind(inv)}>{rescinding ? "rescinding…" : "Yes, rescind"}</button>
+                  <UnderlineWord onClick={() => setRescindFor(null)}>Cancel</UnderlineWord>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {others.map((inv, i) => (
+          <div key={`o${i}`}>
+            <div style={rowStyle}>
+              <span style={name}>{inv.name || "A friend"}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+                <span style={{ ...E.type.label10, color: E.color.inkMuted }}>invite pending</span>
+                {inv.inviteId && (sentFor === inv.inviteId
+                  ? <span style={{ ...E.type.label10, color: E.color.inkMuted }}>nudge sent</span>
+                  : <UnderlineWord onClick={() => (nudgeFor === inv.inviteId ? setNudgeFor(null) : openOtherNudge(inv))}>Nudge</UnderlineWord>)}
+              </span>
+            </div>
+            {inv.inviteId && nudgeFor === inv.inviteId && nudgeBoxEd(() => sendOtherNudge(inv))}
+          </div>
+        ))}
+        {actionError && <div style={{ ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 8 }}>{actionError}</div>}
+      </div>
+    );
   }
 
   return (
