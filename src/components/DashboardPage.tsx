@@ -116,8 +116,8 @@ import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
-import { Masthead, OpenRoomsDisc, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView } from "./editorial/GroupRoom";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
+import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
@@ -2027,14 +2027,6 @@ export default function DashboardPage() {
           <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back to dashboard" : "Feedback"} onClick={inGroup ? () => navigate("/dashboard") : () => setFeedbackOpen(true)} />
           <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
             <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
-              <ChatWord
-                key="chat"
-                hit={W.wordHit}
-                anchor="chat-tab"
-                isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
-                countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
-                onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
-              />,
               <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
               <GearWord
                 key="gear"
@@ -2058,8 +2050,16 @@ export default function DashboardPage() {
           </EditorialColumn>
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
-              <div style={{ position: "relative", paddingRight: 160 }}>
-                <OpenRoomsDisc desktop count={groupShelves.watching.length} style={{ left: W.groupsCol - W.disc, top: -4 }} />
+              <div style={{ position: "relative", paddingRight: 160, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
+                {/* The chat tab at the window's far right replaces the Open
+                    rooms disc and the Chat word (Alborz's notes, 2026-10-12). */}
+                <ChatTab
+                  desktop
+                  anchor="chat-tab"
+                  isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
+                  countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
+                  onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
+                />
                 {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: -224, top: 114, width: 320 }} />}
                 <EditorialTitle desktop>{groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}</EditorialTitle>
                 {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
@@ -2184,11 +2184,23 @@ export default function DashboardPage() {
                 {groupLoading ? (
                   <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 64 }}>loading<LoadingDots /></div>
                 ) : (
-                  <div style={{ display: "flex", gap: W.railGap, alignItems: "flex-start", marginTop: 64 }}>
+                  <div style={{ display: "flex", gap: W.railGap, alignItems: "flex-start", marginTop: settledCount > 0 ? 0 : 64 }}>
                     <div style={{ width: W.groupsCol, flexShrink: 0 }}>
+                      {/* The finished row (Alborz's notes, 2026-10-12): attached to
+                          the masthead's bottom edge, above "You're watching:". */}
+                      {settledCount > 0 && (
+                        <FinishedRow
+                          desktop
+                          count={settledCount}
+                          onClick={openFinishedDrawer}
+                          signal={finishedWriting
+                            ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} />
+                            : drawerUnseen ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, flexShrink: 0 }} /> : null}
+                        />
+                      )}
                       {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
                         <>
-                          <SectionHead right={settledCount > 0 ? <UnderlineWord onClick={openFinishedDrawer} title="shows you've finished together">Finished together · {settledCount} →</UnderlineWord> : null}>You&rsquo;re watching:</SectionHead>
+                          <SectionHead style={{ marginTop: settledCount > 0 ? 36 : 0 }}>You&rsquo;re watching:</SectionHead>
                           {celebrating.map((c) => (
                             <ShowRow desktop key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
                           ))}
@@ -2216,7 +2228,7 @@ export default function DashboardPage() {
                         </div>
                       )}
                     </div>
-                    <div style={{ width: W.railCol, flexShrink: 0 }}>
+                    <div style={{ width: W.railCol, flexShrink: 0, paddingTop: settledCount > 0 ? 64 : 0 }}>
                       <SectionHead>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                       {groupShelves.notStarted.map((r) => {
                         const st = myStanceFor(r.pill.showId);

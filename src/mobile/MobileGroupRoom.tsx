@@ -71,8 +71,8 @@ import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, ChatWord, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, UnderlineWord } from "../components/editorial/Chrome";
-import { Masthead, OpenRoomsDisc, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView } from "../components/editorial/GroupRoom";
+import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -1083,17 +1083,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    the way out, `Chat ? ⚙` as mono words at the top right, the
         //    group's name in Lora 46 at the title line with the members under
         //    it. The shelves under it are still classic until checkpoint 3. ──
-        <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px` }}>
+        <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
-          <OpenRoomsDisc count={groupShelves.watching.length} style={{ right: E.space.gutter, top: E.safe.plus(108) }} />
+          {/* The chat tab replaces the Open rooms disc and the Chat word
+              (Alborz's notes, 2026-10-12); the title keeps clear of it. */}
+          <ChatTab onClick={() => navigate(`/m/group/${groupId}/chat`)} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} />
           {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -6, top: E.safe.plus(208), width: 210 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
-            <ChatWord key="chat" hit={E.measure.phone.wordHit} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} onClick={() => navigate(`/m/group/${groupId}/chat`)} />,
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <GearWord key="gear" hit={E.measure.phone.wordHit} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />,
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
-          <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop) }}>
+          <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
             <EditorialTitle>{groupName}</EditorialTitle>
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>
@@ -1193,13 +1194,25 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    "Shows pitched(N):" rows with Answer, the two acts, the browse rows
         //    on a yellow band. Same data, same sheets as the classic room. ──
         <div style={{ padding: `0 ${E.space.gutter}px` }}>
+          {/* The finished row (Alborz's notes, 2026-10-12): the door to the
+              finished drawer, attached to the masthead's bottom edge — so a
+              room whose shows are all finished still has a way in. */}
+          {!loading && settledCount > 0 && (
+            <FinishedRow
+              count={settledCount}
+              onClick={openFinishedDrawer}
+              signal={finishedWriting
+                ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} className="m-dot-in" />
+                : drawerUnseen ? <span className="m-dot-in" style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, flexShrink: 0 }} /> : null}
+            />
+          )}
           {loading ? (
             <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 96 }}>loading<LoadingDots /></div>
           ) : (
             <>
               {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
                 <>
-                  <SectionHead style={{ marginTop: 96 }} right={settledCount > 0 ? <UnderlineWord onClick={openFinishedDrawer} title="shows you've finished together">Finished together · {settledCount} →</UnderlineWord> : null}>You&rsquo;re watching:</SectionHead>
+                  <SectionHead style={{ marginTop: settledCount > 0 ? 36 : 96 }}>You&rsquo;re watching:</SectionHead>
                   {celebrating.map((c) => (
                     <EditorialShowRow key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
                   ))}

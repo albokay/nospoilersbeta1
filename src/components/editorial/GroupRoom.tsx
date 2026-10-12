@@ -24,7 +24,8 @@
  *   OptionsSheet / OptionsDialog       the Sheet with its rows (and Cancel).
  */
 import React, { useEffect, useRef, useState } from "react";
-import { SquarePen } from "lucide-react";
+import { SquarePen, MessageCircle } from "lucide-react";
+import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
 import { fetchTvmazePoster } from "../../lib/tvmaze";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
@@ -55,6 +56,50 @@ export function OpenRoomsDisc({ count, desktop = false, style }: { count: number
       <span style={{ ...E.type.label9, fontSize: 8, letterSpacing: "0.12em" }}>Open rooms</span>
       <span style={{ ...E.type.disc30, fontSize: desktop ? 34 : 30, marginTop: 3 }}>{count}</span>
     </div>
+  );
+}
+
+/** The chat tab (Alborz's notes, 2026-10-12): a cream tab running off the
+ *  page's right edge at the title's height — the chat icon, CHAT and the
+ *  unread count or the new dot. It replaces the Open rooms disc; on desktop
+ *  it sits at the window's far right. */
+export function ChatTab({ onClick, countLabel, isNew = false, desktop = false, anchor, style }: {
+  onClick: () => void; countLabel?: string | null; isNew?: boolean; desktop?: boolean; anchor?: string; style?: React.CSSProperties;
+}) {
+  return (
+    <button
+      type="button" aria-label="Open chat" title="Open chat" onClick={onClick} data-tip-anchor={anchor}
+      style={{
+        position: desktop ? "fixed" : "absolute", right: desktop ? 0 : -E.space.gutter, top: desktop ? E.measure.desktop.titleTop + 12 : E.safe.plus(108),
+        height: desktop ? 44 : 40, padding: desktop ? "0 20px 0 18px" : "0 18px 0 14px", boxSizing: "border-box",
+        background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderRight: 0,
+        display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", zIndex: desktop ? 45 : 2,
+        ...E.type.label11, WebkitTapHighlightColor: "transparent", ...style,
+      }}
+    >
+      <MessageCircle size={desktop ? 18 : 16} strokeWidth={1.4} aria-hidden="true" />
+      <span>Chat</span>
+      {countLabel ? (
+        <span style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: E.radius.badge, background: E.color.alert, color: E.color.cream, fontSize: 10, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>{countLabel}</span>
+      ) : isNew ? (
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, display: "inline-block" }} />
+      ) : null}
+    </button>
+  );
+}
+
+/** "N finished together" (Alborz's notes, 2026-10-12; the live site's words
+ *  and star): the door to the finished drawer, a row attached to the
+ *  masthead's bottom edge above "You're watching:". `signal` = the letter
+ *  disc or the dot the classic pill carried. */
+export function FinishedRow({ count, onClick, signal, desktop = false, style }: { count: number; onClick: () => void; signal?: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
+  return (
+    <button type="button" onClick={onClick} title="shows you've finished together" style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", height: desktop ? 56 : 54, padding: 0, background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink, textAlign: "left", WebkitTapHighlightColor: "transparent", ...style }}>
+      <CelebrationStar size={16} color={E.color.accent} />
+      <span style={{ ...E.type.label11, flex: 1, minWidth: 0 }}>{count} finished together</span>
+      {signal}
+      <span style={{ ...E.type.label11, color: E.color.inkMuted }}>→</span>
+    </button>
   );
 }
 
