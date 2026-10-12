@@ -19,11 +19,15 @@ import { fetchPublicProfileByUsername, fetchContactNames } from "../../lib/db";
 import LoadingDots from "../LoadingDots";
 import FriendProfile from "./FriendProfile";
 import { onOpenFriendProfile } from "./friendProfileBus";
+import { useEditorial } from "../../lib/skin";
+import { E } from "../../styles/editorial";
+import { Drawer } from "../editorial/Overlays";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
 export default function FriendProfileDrawer() {
   const { user } = useAuth();
+  const editorial = useEditorial();
   const [username, setUsername] = useState<string | null>(null);
   // The username the resolved answer below is FOR — renders the loading line
   // until they match (no "couldn't find" flash, idempotent re-opens).
@@ -64,6 +68,22 @@ export default function FriendProfileDrawer() {
 
   if (!username) return null;
   const ready = loadedFor === username;
+  // The editorial drawer (Alborz's notes, item 7): the cream drawer with the
+  // friend's name in Lora; the profile body draws itself under the skin.
+  if (editorial) {
+    const found = ready && !notFound && !!ownerId;
+    return (
+      <Drawer onClose={() => setUsername(null)} zIndex={80} label="Friend" title={found ? ownerName : "Friend"} caption={found ? "What they're watching" : undefined}>
+        {!ready ? (
+          <div style={{ ...E.type.label11, color: E.color.inkMuted }} aria-busy="true">loading<LoadingDots /></div>
+        ) : !found ? (
+          <div style={E.type.letterTitle22}>We couldn&rsquo;t find that person.</div>
+        ) : (
+          <FriendProfile ownerId={ownerId as string} ownerName={ownerName} narrow />
+        )}
+      </Drawer>
+    );
+  }
   return (
     <>
     {/* Click-away: anywhere outside the drawer closes it (Alborz) — a

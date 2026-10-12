@@ -8,6 +8,10 @@ import SidebarLogo from "../components/SidebarLogo";
 import LoadingDots from "../components/LoadingDots";
 import FriendProfile from "../components/profile/FriendProfile";
 import { fetchPublicProfileByUsername, fetchContactNames } from "../lib/db";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, EditorialTitle, EditorialSub } from "../components/editorial/Chrome";
+import { Block } from "../components/editorial/Onboarding";
 
 /**
  * MobilePool — since 2026-09-08 this renders the friend-visible PROFILE
@@ -31,6 +35,7 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 export default function MobilePool({ username, overlay = false, onBack }: { username: string; overlay?: boolean; onBack?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const editorial = useEditorial();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -60,6 +65,30 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
   }, [username, user?.id]);
 
   const goBack = onBack ?? (() => navigate(-1));
+  // The editorial page (Alborz's notes, item 7): cream, the folded corner
+  // back, the friend's name in Lora at the title line, the profile under it.
+  if (editorial) {
+    const found = !loading && !notFound && !!ownerId;
+    return (
+      <div style={{ ...(overlay ? { position: "fixed" as const, inset: 0, zIndex: 1500, overflowY: "auto" as const, WebkitOverflowScrolling: "touch" as const } : { position: "relative" as const, minHeight: "100dvh" }), background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 48px)` }}>
+        <CornerTab kind="back" label="Back" onClick={goBack} />
+        <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop) }}>
+          {loading ? (
+            <div style={{ ...E.type.label11, color: E.color.inkMuted }} aria-busy="true">loading<LoadingDots /></div>
+          ) : !found ? (
+            <div style={E.type.letterTitle22}>We couldn&rsquo;t find that person.</div>
+          ) : (
+            <>
+              <EditorialTitle>{ownerName}</EditorialTitle>
+              <EditorialSub>What they&rsquo;re watching</EditorialSub>
+              <div style={{ marginTop: 40 }}><FriendProfile ownerId={ownerId as string} ownerName={ownerName} mobile /></div>
+              {!user && <Block onClick={() => navigate("/m")} style={{ marginTop: 40 }}>Sign in</Block>}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
   const rootStyle: React.CSSProperties = overlay
     ? { ...page, background: C.yellow, position: "fixed", inset: 0, zIndex: 1500, overflowY: "auto", WebkitOverflowScrolling: "touch" }
     : { ...page, background: C.yellow };

@@ -41,6 +41,11 @@ import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
 import SidebarLogo from "../SidebarLogo";
 import { yellowCard, yellowTitle, startBtn, modalClose } from "../dashboardChrome";
+import { useEditorial } from "../../lib/skin";
+import { E } from "../../styles/editorial";
+import { SectionHead, UnderlineWord } from "../editorial/Chrome";
+import { NumbersPicker, EditorialDialog, EditorialSheet } from "../editorial/GroupRoom";
+import { Block, Frame } from "../editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -74,6 +79,12 @@ export default function FriendProfile({
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // The editorial skin (Alborz's notes, item 7, 2026-10-12): the same
+  // profile — the canon as rows, the shelves as the site's tiles, the gap
+  // note as a framed paper, the log / want card and the essentials card as
+  // the bible's dialog or sheet — drawn in ink on cream. Same data, same
+  // gating, same acts.
+  const editorial = useEditorial();
   // Layout is slim for mobile AND the desktop drawer; interaction (hover vs
   // tap) and navigation targets stay keyed to `mobile` alone.
   const slim = mobile || narrow;
@@ -459,6 +470,149 @@ export default function FriendProfile({
 
   const nothingYet = canonList.length === 0 && watching.length === 0 && wantList.length === 0 && finishedList.length === 0;
   const pw = mobile ? 96 : 96, ph = mobile ? 136 : 136;
+
+  if (editorial) {
+    const reset: React.CSSProperties = { background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink, font: "inherit", textAlign: "left", WebkitTapHighlightColor: "transparent" };
+    const posterBox = (show: Show, w: number, h: number) => {
+      const p = posters[show.id];
+      return p
+        ? <img src={p} alt="" loading="lazy" draggable={false} style={{ width: w, height: h, objectFit: "cover", display: "block" }} />
+        : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: w, height: h, boxSizing: "border-box", background: E.color.draft, padding: 6, fontFamily: E.font.display, fontWeight: 700, fontSize: 12, textAlign: "center", color: E.color.ink }}>{show.name}</span>;
+    };
+    // One shared group's act for a show — the same four states, as an
+    // underline word (the gap note) or a frame (the card).
+    const inkGroupRow = (g: SharedGroup, show: Show, asFrame: boolean) => {
+      const roomId = g.rooms[show.id];
+      const busy = voteBusy === `${g.id}:${show.id}`;
+      const label = roomId ? <>Open your room in &ldquo;{g.label}&rdquo;</>
+        : g.left.has(show.id) ? <>Put back in the &ldquo;{g.label}&rdquo; pool</>
+        : g.myVotes.has(show.id) ? <>In the &ldquo;{g.label}&rdquo; pool ✓</>
+        : <>Want to watch it with {g.label}</>;
+      const act = roomId ? () => openRoom(roomId) : g.left.has(show.id) ? () => putBackInPool(g, show) : g.myVotes.has(show.id) ? null : () => wantWithGroup(g, show);
+      if (!act) return <div key={g.id} style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: asFrame ? 10 : 6 }}>{label}</div>;
+      return asFrame
+        ? <Frame key={g.id} onClick={act} disabled={busy} style={{ marginTop: 10, height: 48, ...E.type.label11 }}>{busy ? <>one moment<LoadingDots /></> : label}</Frame>
+        : <UnderlineWord key={g.id} onClick={act} style={{ ...E.type.label10, display: "block", marginTop: 6, whiteSpace: "normal" }}>{busy ? <>one moment<LoadingDots /></> : label}</UnderlineWord>;
+    };
+    const inkTile = (show: Show, caption?: string) => (
+      <div key={show.id} style={{ position: "relative", flexShrink: 0, width: 104 }} onMouseEnter={(e) => onTileHover(show, e.currentTarget)} onMouseLeave={scheduleClose}>
+        <button type="button" onClick={(e) => onTileTap(show, e.currentTarget)} style={{ ...reset, display: "block", width: 104, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}>
+          {posterBox(show, 104, 148)}
+          <span style={{ display: "block", fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1.3, marginTop: 10 }}>{show.name}</span>
+          {caption && <span style={{ display: "block", ...E.type.label10, color: E.color.inkMuted, marginTop: 3 }}>{caption}</span>}
+        </button>
+      </div>
+    );
+    const inkShelf = (label: string, list: Show[], caption?: (show: Show) => string | undefined) => list.length === 0 ? null : (
+      <div style={{ marginTop: 40 }}>
+        <SectionHead right={<span style={{ color: E.color.inkMuted }}>{list.length}</span>}>{label}</SectionHead>
+        <div className="e-strip" style={{ display: "flex", gap: 16, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 6, marginTop: 18 }}>{list.map((s) => inkTile(s, caption?.(s)))}</div>
+      </div>
+    );
+    const visibleCanon = mobile && !canonExpanded && canonList.length > 4 ? canonList.slice(0, 4) : canonList;
+    const shareBody = shareShow && (() => {
+      const entry = theirProg[shareShow.id];
+      const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
+      return (
+        <>
+          <div style={{ ...E.type.label10, color: E.color.inkMuted }}>{ownerName}&rsquo;s TV canon</div>
+          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", marginTop: 6, paddingRight: 28 }}>{shareShow.name}</div>
+          {entry?.canonTake && <div style={{ ...E.type.quote14, fontSize: 15, marginTop: 12 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
+          <SectionHead style={{ marginTop: 22 }} right={<span style={{ color: E.color.inkMuted }}>{eps.length}</span>}>Essential episodes</SectionHead>
+          {eps.map((k) => {
+            const es = Math.floor(k / 10000), ee = k % 10000;
+            const title = shareRef?.seasons.find((se) => se.n === es)?.episodes.find((ep) => ep.e === ee)?.title;
+            return (
+              <div key={k} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "10px 0", borderBottom: `1px solid ${E.color.hairline}`, fontFamily: E.font.interface, fontSize: 14 }}>
+                <span style={{ color: E.color.accent }}>★</span>
+                <span style={{ ...E.type.label11, flexShrink: 0 }}>S{es} E{ee}</span>
+                {title ? <span style={{ minWidth: 0 }}>{title}</span> : (!shareRef ? <LoadingDots /> : null)}
+              </div>
+            );
+          })}
+          <div style={{ marginTop: 18 }}><SidebarLogo scale={0.4} blocksOpacity={1} bg="cream" /></div>
+        </>
+      );
+    })();
+    const cardBody = cardShow && (
+      <div style={{ textAlign: "center" }}>
+        <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: narrow ? 6 : 26, padding: "0 20px" }}>{cardShow.name}</div>
+        <div style={{ ...E.type.label11, marginTop: 22 }}>How far in are you?</div>
+        <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 6 }}>Set your episode. Nothing you see will ever go past it.</div>
+        <NumbersPicker show={cardShow} value={picked} onChange={(v) => setPicked(v)} />
+        <Block onClick={pickedReady ? logIt : wantIt} disabled={cardBusy} style={{ marginTop: 24 }}>
+          {cardBusy ? <>one moment<LoadingDots /></> : pickedReady ? "Just log my progress" : "Want to watch"}
+        </Block>
+        {sharedGroups.length > 0 && <div style={{ marginTop: 4 }}>{sharedGroups.map((g) => inkGroupRow(g, cardShow, true))}</div>}
+        <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow.id} tvmazeId={cardShow.tvmazeId} /></div>
+      </div>
+    );
+    return (
+      <div style={{ width: "100%", color: E.color.ink, fontFamily: E.font.interface }}>
+        <style>{`.e-strip::-webkit-scrollbar{display:none}`}</style>
+        {canonList.length > 0 && (
+          <>
+            <SectionHead right={<span style={{ color: E.color.inkMuted }}>{canonList.length}</span>}>{ownerName}&rsquo;s canon</SectionHead>
+            <div>
+              {visibleCanon.map((show) => {
+                const entry = theirProg[show.id];
+                const take = entry?.canonTake;
+                const essCount = entry?.essentialEps?.length ?? 0;
+                const unlocked = atLatest(show, myProg[show.id]);
+                return (
+                  <div key={show.id} style={{ display: "flex", gap: 16, padding: "16px 0", borderBottom: `1px solid ${E.color.hairline}` }}>
+                    <div style={{ flexShrink: 0 }} onMouseEnter={(e) => onTileHover(show, e.currentTarget)} onMouseLeave={scheduleClose}>
+                      <button type="button" onClick={(e) => onTileTap(show, e.currentTarget)} style={{ ...reset, display: "block", cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}>{posterBox(show, 44, 62)}</button>
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ ...E.type.label10, color: E.color.inkMuted }}>Show: <span style={{ color: E.color.ink }}>{show.name}</span></div>
+                      {unlocked ? (
+                        <>
+                          {take && <div style={{ ...E.type.quote14, marginTop: 6 }}>&ldquo;{take}&rdquo;</div>}
+                          {essCount > 0 && <UnderlineWord onClick={() => openShare(show)} title={`${ownerName}'s essential episodes`} style={{ ...E.type.label10, marginTop: 6, display: "inline-block" }}>★ {essCount} essential episode{essCount === 1 ? "" : "s"} →</UnderlineWord>}
+                        </>
+                      ) : (
+                        <div style={{ marginTop: 8, padding: "12px 12px", border: `1px dashed ${E.color.friend}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <span style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={13} color={E.color.cream} strokeWidth={2.2} /></span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ ...E.type.note13, fontWeight: 600 }}>Finish {show.name} to read this.</div>
+                            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>{ownerName}&rsquo;s take could spoil what&rsquo;s ahead.</div>
+                            {sharedGroups.length > 0 && <UnderlineWord onClick={openChat} style={{ ...E.type.label10, marginTop: 8, display: "inline-block" }}>Chat with {ownerName} about it instead</UnderlineWord>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {mobile && !canonExpanded && canonList.length > 4 && (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}><UnderlineWord onClick={() => setCanonExpanded(true)}>Show all {canonList.length}</UnderlineWord></div>
+            )}
+          </>
+        )}
+        {inkShelf(`${ownerName} is watching`, watching, (s) => { const p = theirProg[s.id]; return p && started(p) ? `S${p.s} E${p.e}` : undefined; })}
+        {inkShelf(`${ownerName} wants to watch`, wantList)}
+        {inkShelf(`${ownerName} has finished`, finishedList)}
+        {nothingYet && <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 8 }}>{ownerName} hasn&rsquo;t filled out their personal dashboard yet.</div>}
+        {/* The gap note: a framed paper at the poster's spot. */}
+        {bubble && showsById[bubble.showId] && (
+          <div style={{ position: "fixed", left: bubble.x, top: bubble.y, zIndex: 1000, transform: bubble.below ? "translateX(-50%)" : "translate(-50%, -100%)", ...(bubble.below ? { paddingTop: 6 } : { paddingBottom: 6 }) }} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+            <div style={{ transform: "rotate(-2deg)", width: "max-content", maxWidth: 240, background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, padding: "10px 14px 11px 12px", ...E.type.note13, textAlign: "left" }}>
+              {bubble.text}
+              {sharedGroups.length > 0 && <div style={{ marginTop: 4 }}>{sharedGroups.map((g) => inkGroupRow(g, showsById[bubble.showId], false))}</div>}
+            </div>
+          </div>
+        )}
+        {shareShow && (mobile
+          ? <EditorialSheet onClose={() => setShareShow(null)}>{shareBody}</EditorialSheet>
+          : <EditorialDialog onClose={() => setShareShow(null)} width={480} label={`${ownerName}'s essentials`} align="left">{shareBody}</EditorialDialog>)}
+        {cardShow && (mobile
+          ? <EditorialSheet onClose={() => { if (!cardBusy) setCardShow(null); }}>{cardBody}</EditorialSheet>
+          : <EditorialDialog onClose={() => { if (!cardBusy) setCardShow(null); }} width={480} label={cardShow.name}>{cardBody}</EditorialDialog>)}
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: "100%", maxWidth: slim ? undefined : 1178, margin: "0 auto" }}>
