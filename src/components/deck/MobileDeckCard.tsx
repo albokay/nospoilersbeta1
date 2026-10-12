@@ -42,6 +42,7 @@ import { joinNames } from "../../lib/groupNames";
 import { useAuth } from "../../lib/auth";
 import SidebarLogo from "../SidebarLogo";
 import { CANON } from "../../styles/canon";
+import { DrawerTab } from "../editorial/Dashboard";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const WINDOW = 8;   // §7.6.1 "latest N" window
@@ -52,12 +53,15 @@ const ME_W = 48;    // (me) column
 const FR_W = 48;    // friend columns (pass 3: 56 → 48)
 const SHEET_CW = 48; // sheet answer columns (pass 3: 36 → 48 thumb hits)
 
-export default function MobileDeckCard({ mode, groupId, others = [], viewerId }: {
+export default function MobileDeckCard({ mode, groupId, others = [], viewerId, editorial = false }: {
   mode: "personal" | "group";
   groupId?: string;
   /** Group mode: the OTHER members (viewer excluded), display order. */
   others?: DeckMember[];
   viewerId: string;
+  /** The editorial skin (checkpoint 2, 2026-10-12): the docked state is the
+   *  mono drawer tab at the foot; the sheet and grid are unchanged. */
+  editorial?: boolean;
 }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null);
   const [answers, setAnswers] = useState<GroupDeckAnswer[]>([]);
@@ -232,6 +236,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId }:
 
   // ── DOCKED ────────────────────────────────────────────────────────────────
   if (ui === "docked") {
+    if (editorial) return <DrawerTab label={title} onClick={() => setUi("sheet")} />;
     return (
       <div
         role="button"

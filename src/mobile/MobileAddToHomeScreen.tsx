@@ -21,10 +21,11 @@ import { CANON } from "../styles/canon";
 import { OVERLAY } from "./m";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { canPromptInstall, promptInstall, onInstallPromptChange, isStandalone, installPath, type InstallPath } from "../lib/installPrompt";
+import { UnderlineWord } from "../components/editorial/Chrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function MobileAddToHomeScreen() {
+export default function MobileAddToHomeScreen({ editorial = false }: { editorial?: boolean } = {}) {
   const [, bump] = useState(0);
   const [guide, setGuide] = useState<InstallPath | null>(null);
   useEffect(() => onInstallPromptChange(() => bump((n) => n + 1)), []);
@@ -39,9 +40,16 @@ export default function MobileAddToHomeScreen() {
 
   return (
     <>
-      {/* The button IS the app icon (Alborz 2026-08-18, pass #2): the real
+      {/* The editorial skin (checkpoint 2, 2026-10-12): the aside is one
+          underlined mono word under the groups; the guide sheet is the same. */}
+      {editorial ? (
+        <div style={{ marginTop: 28 }}>
+          <UnderlineWord onClick={onTap}>Add Sidebar to your home screen →</UnderlineWord>
+        </div>
+      ) : (
+      /* The button IS the app icon (Alborz 2026-08-18, pass #2): the real
           home-screen icon with a drop shadow so green-on-green reads, and a
-          small encircled "+" tucked over its bottom-left corner. */}
+          small encircled "+" tucked over its bottom-left corner. */
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 64, padding: "0 24px" }}>
         <button onClick={onTap} aria-label="Add Sidebar to your home screen" style={iconBtn}>
           <img src="/icons/icon-192.png" alt="" draggable={false} style={iconImg} />
@@ -49,6 +57,7 @@ export default function MobileAddToHomeScreen() {
         </button>
         <div style={caption}>Add Sidebar to<br />your home screen</div>
       </div>
+      )}
 
       {guide && (
         <div style={dim} onClick={() => setGuide(null)}>

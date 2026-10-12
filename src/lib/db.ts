@@ -2687,6 +2687,26 @@ export async function fetchRoomDnfMap(roomIds: string[]): Promise<Record<string,
   return out;
 }
 
+/** Every show room of the given people-groups (the editorial dashboard's
+ *  rows name the room with the latest activity — checkpoint 2, 2026-10-12).
+ *  One query for all groups; show names come from the cached catalog. */
+export type ShowRoomOfGroup = { roomId: string; groupId: string; showId: string; createdAt: number };
+export async function fetchShowRoomsForGroups(groupIds: string[]): Promise<ShowRoomOfGroup[]> {
+  if (groupIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("friend_groups")
+    .select("id, parent_group_id, show_id, created_at")
+    .in("parent_group_id", groupIds)
+    .is("deleted_at", null);
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    roomId: r.id,
+    groupId: r.parent_group_id,
+    showId: r.show_id,
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : 0,
+  }));
+}
+
 /** The existing (group × show) room id, or null if none has been started yet. */
 export async function fetchRoomForGroupShow(groupId: string, showId: string): Promise<string | null> {
   const { data, error } = await supabase

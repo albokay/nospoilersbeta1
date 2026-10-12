@@ -153,6 +153,26 @@ export function TopRight({ items, right, textTop, gap, hit, zIndex = 4, style }:
   );
 }
 
+/** A section head: mono caps on a 1px ink rule, with an optional count or
+ *  underlined link at the right end. */
+export function SectionHead({ children, right, style }: { children: React.ReactNode; right?: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
+      <span>{children}</span>
+      {right}
+    </div>
+  );
+}
+
+/** An underlined mono word — the quiet act at the end of a head or a row. */
+export function UnderlineWord({ children, onClick, label, title, style }: { children: React.ReactNode; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; label?: string; title?: string; style?: React.CSSProperties }) {
+  return (
+    <button type="button" aria-label={label} title={title ?? label} onClick={onClick} style={{ ...E.type.label11, color: E.color.ink, background: "transparent", border: 0, padding: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", whiteSpace: "nowrap", WebkitTapHighlightColor: "transparent", textAlign: "left", ...style }}>
+      {children}
+    </button>
+  );
+}
+
 export function EditorialTitle({ children, desktop = false, style }: { children: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
   return <h1 style={{ ...(desktop ? E.type.title64 : E.type.title46), color: E.color.ink, margin: 0, ...style }}>{children}</h1>;
 }

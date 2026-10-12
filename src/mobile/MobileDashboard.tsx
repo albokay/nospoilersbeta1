@@ -19,7 +19,8 @@ import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, AccountWord, wordStyle } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, AccountWord, wordStyle, EditorialTitle } from "../components/editorial/Chrome";
+import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
 import MobileGhostRow from "./MobileGhostRow";
 import ReferenceLookupBand from "../components/reference/ReferenceLookupBand";
@@ -312,6 +313,14 @@ export default function MobileDashboard() {
     for (const a of chatActivity) if (chatHasNewActivity(a)) s.add(a.groupId);
     return s;
   }, [chatActivity]);
+  // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
+  // sentence from the same signals, named with the rows' group labels.
+  const dashNote = useMemo(() => dashboardNote(railGroups, (gid) => {
+    const r = railGroups.find((g) => g.group.id === gid);
+    if (!r) return "a group";
+    const others = r.members.filter((m) => m.userId !== selfUserId);
+    return groupDisplayName(r.group, others, contactNames, r.pendingInvites.map((p) => p.name || "a friend"), groupNumberById[gid]);
+  }, roomVis, chatActivity), [railGroups, selfUserId, contactNames, groupNumberById, roomVis, chatActivity]);
 
   async function refreshRailAndInvites() {
     if (!user) return;
@@ -359,7 +368,7 @@ export default function MobileDashboard() {
   // screen (the blank was the "feels broken" moment on cold opens).
   if (authLoading) {
     return (
-      <div style={page}>
+      <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink } : {}) }}>
         {editorial ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop }}>
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
@@ -376,7 +385,7 @@ export default function MobileDashboard() {
   if (!user) return <Navigate to="/m" replace />;
 
   return (
-    <div style={page}>
+    <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
       {editorial ? (
         // ── The editorial chrome (checkpoint 1, 2026-10-10): the feedback
         //    corner at the top-left, `? [account]` as mono words at the top
@@ -439,7 +448,46 @@ export default function MobileDashboard() {
       )}
       {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
-      {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
+      {editorial ? (
+        // ── The editorial dashboard (checkpoint 2, 2026-10-12; the E3Dash
+        //    board): the title with the paper note beside it, "Groups" as
+        //    hairline rows with envelopes, the look-up band, the shelves and
+        //    the canon (ReferenceLookupBand's editorial tree), the browse rows
+        //    on a yellow band, the drawer tab at the foot. Same data, same
+        //    cards and sheets as the classic page. ──
+        <>
+          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
+            <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
+            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -6, top: 78, width: 200 }} />}
+          </div>
+          {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
+            <div style={{ padding: `70px ${E.space.gutter}px 0` }}>
+              {loading ? (
+                <EditorialGroups groups={[]} pendingInvites={[]} contactNames={{}} groupNumberById={{}} selfUserId={selfUserId} roomVis={[]} chatActivity={[]} loading onEnter={() => {}} onInvite={() => {}} onNewGroup={() => {}} hideNewGroup />
+              ) : (
+                <div style={{ ...E.type.label11, color: E.color.inkMuted }}>loading<LoadingDots /></div>
+              )}
+            </div>
+          ) : (() => {
+            const groupsEl = (
+              <div style={{ marginTop: 70 }}>
+                <EditorialGroups
+                  groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
+                  roomVis={roomVis} chatActivity={chatActivity}
+                  onEnter={(id) => navigate(`/m/group/${id}`)}
+                  onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
+                  onNewGroup={() => setInviteOpen(true)}
+                  hideNewGroup={showSocialOnb}
+                />
+                {!showSocialOnb && <MobileAddToHomeScreen editorial />}
+              </div>
+            );
+            return showSocialOnb
+              ? <div style={{ padding: `0 ${E.space.gutter}px` }}>{groupsEl}</div>
+              : <ReferenceLookupBand mobile editorial groupsColumn={groupsEl} />;
+          })()}
+        </>
+      ) : (loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
         // The second clause (Alborz 2026-08-01): a BRAND-NEW account's
         // dashboard stays on the loading line until the onboarding gate
         // resolves — the welcome/first card must be the first thing seen,
@@ -590,7 +638,7 @@ export default function MobileDashboard() {
             </>
           )}
         </>
-      )}
+      ))}
 
       {/* ── Pending-invite prompt — the "You're in!" invitee card IS the
              confirmation (Alborz QA 2026-07-18; replaces the old Yes/no
@@ -645,7 +693,7 @@ export default function MobileDashboard() {
              user has answers; hidden while a first-run overlay owns the
              page. ── */}
       {user && !showSocialOnb && !postAccept && (
-        <MobileDeckCard mode="personal" viewerId={user.id} />
+        <MobileDeckCard mode="personal" viewerId={user.id} editorial={editorial} />
       )}
 
       {/* ── Swipe-deck arc CP4 — the drip / catch-up modal: up to 4 released,

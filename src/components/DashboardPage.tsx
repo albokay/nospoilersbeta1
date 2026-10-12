@@ -117,6 +117,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn } from "./editorial/Chrome";
+import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -1949,6 +1950,15 @@ export default function DashboardPage() {
     ...editorialGroup.pendingInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
   ] : [];
   const W = E.measure.desktop;
+  // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
+  // sentence from the dashboard's signals, named with the rows' group labels.
+  // (A plain call, not a memo: this sits after the loading return.)
+  const dashNote = inGroup ? null : dashboardNote(railGroups, (gid) => {
+    const r = railGroups.find((g) => g.group.id === gid);
+    if (!r) return "a group";
+    const others = r.members.filter((m) => m.userId !== selfUserId);
+    return groupDisplayName(r.group, others, contactNames, r.pendingInvites.map((p) => p.name || "a friend"), groupNumberById[gid]);
+  }, roomVis, chatActivity);
 
   const clustersEl = (
     <GroupClusters
@@ -1969,7 +1979,7 @@ export default function DashboardPage() {
 
   return (
     // Non-group dashboard is a flex column so its body can center vertically.
-    <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green, ...(inGroup ? null : { display: "flex", flexDirection: "column" }) }}>
+    <div style={{ ...pageStyle, background: inGroup ? C.sky : editorial ? E.color.cream : C.green, ...(inGroup || editorial ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
 
       {editorial ? (
@@ -2021,7 +2031,12 @@ export default function DashboardPage() {
                   <SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge />
                 </div>
               </div>
-            )) : (!socialOnbActive && !postAccept ? <EditorialTitle desktop>Your watch groups</EditorialTitle> : null)}
+            )) : (!socialOnbActive && !postAccept ? (
+              <div style={{ position: "relative" }}>
+                <EditorialTitle desktop>Your watch groups</EditorialTitle>
+                {dashNote && user && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -210, top: -19, width: 320 }} />}
+              </div>
+            ) : null)}
           </EditorialColumn>
         </div>
       ) : (
@@ -2268,6 +2283,30 @@ export default function DashboardPage() {
           </div>
         )}
         </>
+      ) : editorial ? (
+        // ── The editorial dashboard (checkpoint 2, 2026-10-12; the D3Dash
+        //    board): "Groups" as hairline rows in a 560 column with the look-up
+        //    band as a 288 rail beside it, the shelves and the canon under them
+        //    at the column, the browse rows on a yellow band across the window,
+        //    the drawer tab fixed at the foot. Same data, cards and sheets as
+        //    the classic page. ──
+        <div style={{ paddingBottom: 120 }}>
+          {(() => {
+            const groupsEl = (
+              <EditorialGroups
+                groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
+                roomVis={roomVis} chatActivity={chatActivity} loading={!railLoaded}
+                onEnter={(id) => navigate(`/dashboard?g=${id}`)}
+                onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
+                onNewGroup={() => openInvite()}
+                hideNewGroup={socialOnbActive}
+              />
+            );
+            return socialOnbActive
+              ? <EditorialColumn style={{ marginTop: 64 }}>{groupsEl}</EditorialColumn>
+              : <ReferenceLookupBand editorial groupsColumn={groupsEl} />;
+          })()}
+        </div>
       ) : (
         // ── Groups-only dashboard (green, CP2) ────────────────────────────────
         // The personal shelves are gone: the dashboard is your groups (the
@@ -2314,7 +2353,9 @@ export default function DashboardPage() {
             border (Alborz 2026-09-05): in-flow, its bottom sliding BEHIND
             the yellow zone — visually part of the green/group world, and it
             naturally pushes the reference further down. ── */}
-      {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (
+      {user && !socialOnbActive && !showTspDemo && !postAccept && !inGroup && (editorial ? (
+        <DeckGridCard mode="personal" viewerId={user.id} editorial />
+      ) : (
         <div style={{ marginTop: 140, marginBottom: -24, display: "flex", justifyContent: "center", alignItems: "flex-end", gap: 24 }}>
           {/* NO position/zIndex on this wrapper — a stacking context would
               trap the open grid's fixed overlay below the yellow band (z 2);
@@ -2347,11 +2388,11 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      )}
+      ))}
       {/* ── The spoiler-gated reference band (CP2, rev 2026-09-05): its OWN
             Accent-yellow zone below the fold — clearly separated from the
             group world, matching the reference tab's world color. ── */}
-      {!inGroup && !socialOnbActive && (
+      {!inGroup && !socialOnbActive && !editorial && (
         // Top padding 104 clears the collect/log note that now hangs into
         // the band from the signpost column above (16px under the border,
         // three lines) with room to breathe before the band's content.

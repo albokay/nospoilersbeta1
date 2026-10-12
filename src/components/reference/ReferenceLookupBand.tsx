@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search, SquarePen, X } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { useAuth } from "../../lib/auth";
 import {
@@ -30,6 +30,8 @@ import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
 import SidebarLogo from "../SidebarLogo";
 import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, searchPill } from "../dashboardChrome";
+import { E } from "../../styles/editorial";
+import { SectionHead, UnderlineWord, EditorialColumn } from "../editorial/Chrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -48,7 +50,17 @@ const cardCenterColumn: React.CSSProperties = {
   padding: "24px 16px", boxSizing: "border-box",
 };
 
-export default function ReferenceLookupBand({ mobile = false }: { mobile?: boolean }) {
+export default function ReferenceLookupBand({ mobile = false, editorial = false, groupsColumn }: {
+  mobile?: boolean;
+  /** The editorial skin (checkpoint 2, 2026-10-12; the E3Dash / D3Dash
+   *  boards): the same data and cards drawn as the look-up band (an accent
+   *  swath with the mono head and the Show field), the three poster shelves
+   *  and the canon rows on cream, and the browse rows on a yellow band. The
+   *  host hands in its groups section so the desktop can seat the band as a
+   *  rail beside it; on the phone the groups sit above the band. */
+  editorial?: boolean;
+  groupsColumn?: React.ReactNode;
+}) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -435,6 +447,394 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
 
   const cardTitle = cardShow?.name ?? cardPending?.name ?? "";
   const cardTvmazeId = cardShow?.tvmazeId ?? cardPending?.tvmazeId ?? null;
+
+  const modals = (
+    <>
+      {/* ── The search overlay — the group room's search grammar: dim +
+            cream card, input, results list scrolling inside the card. ── */}
+      {searchOpen && (
+        // TOP-ANCHORED (Alborz 2026-09-08): the box's top edge stays put as
+        // results populate — the card only grows DOWNWARD, so the result
+        // under your cursor never moves. No X — the dim-click closes.
+        <div style={{ ...overlay, alignItems: "flex-start", paddingTop: "14vh", boxSizing: "border-box" }} onClick={() => setSearchOpen(false)}>
+          <div style={{ ...searchCard, maxHeight: "70vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="find your show"
+              style={searchInput}
+            />
+            {busyAdd && <div style={{ color: CANON.personal, fontSize: 13, fontWeight: 700, padding: "8px 4px" }}>adding<LoadingDots /></div>}
+            {catalogMatches.map((show) => (
+              <button key={show.id} style={resultBtn} disabled={busyAdd} onClick={() => (searchMode === "canon" ? openCanonCard(show) : openCard(show))}>{show.name}</button>
+            ))}
+            {tvToAdd.map(({ tv, id }) => (
+              <button key={id} style={resultBtn} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
+                {tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 500, opacity: 0.75 }}> · {networkLabel(tv)}</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── The canon card (2026-09-07) — add/edit from the dashboard: the
+            yellow-card grammar; ADD also sets progress to the latest episode
+            (stated on the card); EDIT saves the blurb only. ── */}
+      {canonCard && (
+        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
+          <div style={cardCenterColumn} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
+            <div style={yellowCard}>
+              <button style={modalClose} onClick={() => { if (!canonBusy) setCanonCard(null); }} aria-label="Close">
+                <X size={16} color={CREAM} />
+              </button>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
+                {canonCard.name}
+              </div>
+              <div style={yellowTitle}>Why is this in your canon?</div>
+              {canonCard.adding && (
+                <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 0" }}>
+                  (Adding a show to your canon sets your<br />progress to its latest episode.)
+                </div>
+              )}
+              <textarea
+                value={canonDraft}
+                onChange={(ev) => setCanonDraft(ev.target.value)}
+                maxLength={280}
+                rows={5}
+                autoFocus
+                placeholder="Your take — as short or long as you like."
+                style={{ width: "100%", boxSizing: "border-box", border: "none", outline: "none", borderRadius: 12, padding: "10px 12px", marginTop: 14, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
+              />
+              <div style={{ marginTop: 16 }}>
+                {canonCard.show ? (
+                  <button style={{ ...startBtn, minWidth: 210, boxSizing: "border-box" }} disabled={canonBusy} onClick={confirmCanon}>
+                    {canonBusy ? <>one moment<LoadingDots /></> : canonCard.adding ? "add to your canon" : "save"}
+                  </button>
+                ) : (
+                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700 }}>one moment<LoadingDots /></div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── The shareable "{Name}'s TV Canon" card (CP4) — cream, centered,
+            screenshot-friendly; outside-click closes. ── */}
+      {shareShow && (() => {
+        const entry = progress[shareShow.id];
+        const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
+        const shareName = (profile?.display_name || profile?.username || "My").trim();
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.25)", overflowY: "auto" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
+          >
+            <div
+              style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", boxSizing: "border-box" }}
+              onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
+            >
+              <div style={{ background: CREAM, borderRadius: 24, padding: "32px 36px", width: "min(420px, 92vw)", boxSizing: "border-box", boxShadow: "0 12px 36px rgba(0,0,0,0.25)" }}>
+                <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark }}>{shareName}&rsquo;s TV Canon</div>
+                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, color: CANON.identity, margin: "2px 0 10px" }}>{shareShow.name}</div>
+                {entry?.canonTake && (
+                  <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 14, color: CANON.dark, lineHeight: 1.5, marginBottom: 18 }}>
+                    &ldquo;{entry.canonTake}&rdquo;
+                  </div>
+                )}
+                <div style={{ borderTop: "1px solid rgba(26,58,74,0.15)", paddingTop: 14 }}>
+                  <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>
+                    essential episodes according to {shareName}:
+                  </div>
+                  {eps.map((k) => {
+                    const es = Math.floor(k / 10000), ee = k % 10000;
+                    const title = shareRef?.seasons.find((se) => se.n === es)?.episodes.find((ep) => ep.e === ee)?.title;
+                    return (
+                      <div key={k} style={{ display: "flex", gap: 10, alignItems: "baseline", fontFamily: '"Inter", sans-serif', fontSize: 14, color: CANON.dark, marginBottom: 8 }}>
+                        <span style={{ color: CANON.accent, fontSize: 13 }}>★</span>
+                        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>S{es} E{ee}</span>
+                        {title ? <span>{title}</span> : (!shareRef ? <LoadingDots /> : null)}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* The dynamic logo with the GREEN wordmark (Alborz 2026-09-08):
+                    blocks as normal (cream block darkened on the cream card),
+                    the type masked to Personal green per the provided
+                    logotype. */}
+                <div style={{ marginTop: 16 }}>
+                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} wordmarkTint={CANON.accent} wordmarkTintOverBlocks={CANON.cream} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── The first-tap card (locked copy) — the group opt-in modal's EXACT
+            grammar (rev 2 2026-09-05): scrollable two-layer overlay centering
+            [yellowCard + 8px gap + TrailerCard] as a pair, Lora show-name
+            title, transparent progress pill, no outlines. Paints INSTANTLY on
+            a pick; the picker fills in when the catalog show resolves. The
+            "look it up" button exists only once an episode is picked. ── */}
+      {(cardShow || cardPending) && (
+        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
+          {/* Mobile top-anchors (Alborz 2026-09-13): the card used to
+              center alone, then jump up when the trailer populated —
+              mis-taps. It now sits where it lands WITH the trailer. */}
+          <div style={{ ...cardCenterColumn, ...(mobile ? { justifyContent: "flex-start", paddingTop: 40 } : {}) }} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
+            <div style={yellowCard}>
+              <button
+                style={modalClose}
+                onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
+                aria-label="Close"
+              >
+                <X size={16} color={CREAM} />
+              </button>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
+                {cardTitle}
+              </div>
+              <div style={yellowTitle}>How far in are you?</div>
+              <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
+                (Set your episode. Nothing you see<br />will ever go past it.)
+              </div>
+              {/* The pill + the want button share one width (Alborz mock). */}
+              <style>{`.ref-card-pick select{width:210px;box-sizing:border-box;text-overflow:ellipsis}`}</style>
+              <div className="ref-card-pick" style={{ display: "flex", justifyContent: "center" }}>
+                {cardShow ? (
+                  <OneSelectProgress
+                    show={cardShow}
+                    value={picked}
+                    allowZero
+                    requireConfirm={false}
+                    pillBg="transparent"
+                    onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
+                    onConfirm={() => {}}
+                  />
+                ) : (
+                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
+                )}
+              </div>
+              {/* Two-action grammar (Alborz 2026-09-08 — the group vote
+                  modal's pattern): blue hero opens the reference; the
+                  outlined "just log my progress" adds the show to the
+                  Watching shelf and stays right here. */}
+              {cardShow && pickedReady && (
+                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={confirmBusy || logBusy} onClick={lookItUp}>
+                    {confirmBusy ? <>one moment<LoadingDots /></> : "open show guide"}
+                  </button>
+                  <button
+                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
+                    disabled={confirmBusy || logBusy}
+                    onClick={justLogIt}
+                  >
+                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
+                  </button>
+                </div>
+              )}
+              {/* "haven't started" is no longer a dead end (CP2): the add is
+                  the declaration itself. The want button hides once the
+                  show's already on the want shelf; "just log my progress"
+                  stays either way (Alborz 2026-09-29), so a move back to
+                  zero always has a way to register. Never a proposal to any
+                  group. */}
+              {cardShow && !pickedReady && (
+                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                  {progress[cardShow.id]?.wantedAt ? (
+                    // Say so instead of hiding the button (Alborz 2026-09-29):
+                    // a wanted show that came back to zero looked broken.
+                    <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, minHeight: 44 }}>
+                      <span>On your want-to-watch list</span>
+                      <button
+                        type="button"
+                        onClick={() => unwantShow(cardShow.id)}
+                        style={{ background: "none", border: "none", padding: 0, color: CREAM, fontFamily: "inherit", fontSize: 13, fontWeight: 400, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", opacity: 0.85 }}
+                      >
+                        remove
+                      </button>
+                    </div>
+                  ) : (
+                    <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy || logBusy} onClick={wantIt}>
+                      {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
+                    </button>
+                  )}
+                  <button
+                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
+                    disabled={wantBusy || logBusy}
+                    onClick={justLogIt}
+                  >
+                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
+                  </button>
+                </div>
+              )}
+            </div>
+            <TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  if (editorial) {
+    const gutter = E.space.gutter;
+    const openLookup = () => { setSearchMode("lookup"); setSearchOpen(true); setQuery(""); setTvResults([]); };
+    const openCanonSearch = () => { setSearchMode("canon"); setSearchOpen(true); setQuery(""); setTvResults([]); };
+    const resetBtn: React.CSSProperties = { background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink, font: "inherit", textAlign: "left" };
+    const glyphBtn: React.CSSProperties = { ...resetBtn, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, lineHeight: 1 };
+    const posterBox = (show: Show, w: number, h: number) => {
+      const p = posters[show.id];
+      return p
+        ? <img src={p} alt="" loading="lazy" draggable={false} style={{ width: w, height: h, objectFit: "cover", display: "block" }} />
+        : <span aria-hidden="true" style={{ display: "block", width: w, height: h, background: E.color.draft }} />;
+    };
+    const xChip = (label: string, onClick: () => void) => (
+      <button type="button" className="e-x" aria-label={label} title={label} onClick={onClick} style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, boxSizing: "border-box", borderRadius: "50%", background: E.color.cream, border: `1px solid ${E.color.ink}`, color: E.color.ink, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+    );
+    const tile = (show: Show, position: string, onOpen: () => void, x: { label: string; onClick: () => void } | null, extra?: React.ReactNode) => (
+      <div key={show.id} className="e-tile" style={{ width: 104, flexShrink: 0, position: "relative" }}>
+        <button type="button" onClick={onOpen} title={show.name} style={{ ...resetBtn, display: "block", width: 104 }}>
+          {posterBox(show, 104, 148)}
+          <div style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1.3, marginTop: 10 }}>{show.name}</div>
+          <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 3 }}>{position}</div>
+        </button>
+        {extra}
+        {x && xChip(x.label, x.onClick)}
+      </div>
+    );
+    const shelf = (head: string, tiles: React.ReactNode[], marginTop: number) => (
+      <div style={{ marginTop }}>
+        <SectionHead right={<span style={{ color: E.color.inkMuted }}>{tiles.length}</span>}>{head}</SectionHead>
+        <div style={{ display: "flex", gap: mobile ? 16 : 24, marginTop: 20, overflowX: "auto", scrollbarWidth: "none", ...(mobile ? { marginRight: -gutter, paddingRight: gutter } : {}) }}>
+          {tiles}
+          {/* The one outlined slot, because it is empty: it adds a show. */}
+          <button type="button" aria-label="Add a show" title="Add a show" onClick={openLookup} style={{ width: 104, height: 148, flexShrink: 0, boxSizing: "border-box", border: "1px solid rgba(26,58,74,0.4)", background: "transparent", padding: 0, cursor: "pointer" }} />
+        </div>
+      </div>
+    );
+    const openRef = (show: Show) => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } });
+    const watchingTiles = watching.map((show) => {
+      const r = progress[show.id]!;
+      return tile(show, r.s >= 1 && r.e >= 1 ? `S${r.s} E${r.e}` : "Started", () => openRef(show), { label: `Hide ${show.name} from this shelf`, onClick: () => hideShow(show.id) });
+    });
+    const wantTiles = wantList.map((show) => tile(show, "Not started", () => openCard(show), { label: `Remove ${show.name} from your want-to-watch list`, onClick: () => unwantShow(show.id) }));
+    const finishedTiles = finishedList.map((show) => tile(
+      show, "Finished", () => openRef(show), { label: `Hide ${show.name} from this shelf`, onClick: () => hideShow(show.id) },
+      canonList.length < 12 ? <UnderlineWord onClick={() => openCanonCard(show)} title={`Add ${show.name} to your canon`} style={{ ...E.type.label10, marginTop: 6 }}>Add to canon →</UnderlineWord> : undefined,
+    ));
+    const shelves: React.ReactNode[] = [];
+    let firstGap = mobile ? 60 : 64;
+    const pushShelf = (head: string, tiles: React.ReactNode[]) => {
+      if (tiles.length === 0) return;
+      shelves.push(<React.Fragment key={head}>{shelf(head, tiles, firstGap)}</React.Fragment>);
+      firstGap = 56;
+    };
+    pushShelf("You're watching", watchingTiles);
+    pushShelf("You want to watch", wantTiles);
+    pushShelf("You've finished", finishedTiles);
+
+    const shownCanon = mobile && !canonExpanded && canonList.length > 4 ? canonList.slice(0, 4) : canonList;
+    const canon = (
+      <div ref={canonAnchorRef} style={{ marginTop: shelves.length ? 56 : firstGap, scrollMarginTop: 24 }}>
+        <SectionHead right={canonList.length < 12 ? <UnderlineWord onClick={openCanonSearch} title="Add a show to your canon">Add a show →</UnderlineWord> : null}>Your canon</SectionHead>
+        <div style={{ ...E.type.body14, color: "rgba(26,58,74,0.75)", marginTop: 14 }}>The shows you compare everything else to.</div>
+        {shownCanon.length > 0 && (
+          <div style={{ marginTop: 14, borderTop: `1px solid ${E.color.hairline}` }}>
+            {shownCanon.map((show) => {
+              const entry = progress[show.id];
+              const eps = entry?.essentialEps?.length ?? 0;
+              const hasProgress = !!entry && (entry.s > 1 || (entry.s === 1 && entry.e >= 1));
+              const goto = () => (hasProgress ? openRef(show) : openCard(show));
+              return (
+                <div key={show.id} className="e-tile" style={{ display: "flex", gap: 16, padding: "16px 0", borderBottom: `1px solid ${E.color.hairline}`, position: "relative" }}>
+                  <button type="button" onClick={goto} title={show.name} style={{ ...resetBtn, flexShrink: 0 }}>{posterBox(show, 44, 62)}</button>
+                  <div style={{ minWidth: 0, flex: 1, paddingRight: 64 }}>
+                    <div style={{ ...E.type.label10, color: E.color.inkMuted, display: "flex", justifyContent: "space-between", gap: 10 }}>
+                      <button type="button" onClick={goto} style={{ ...resetBtn, ...E.type.label10, color: E.color.inkMuted }}>Show: <span style={{ color: E.color.ink }}>{show.name}</span></button>
+                      {eps > 0 && <span aria-label={`${eps} essential episode${eps === 1 ? "" : "s"}`}>{"☆".repeat(Math.min(eps, 6))}</span>}
+                    </div>
+                    {entry?.canonTake && <div style={{ ...E.type.quote14, color: E.color.ink, marginTop: 6 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
+                    {eps > 0 ? (
+                      <button type="button" onClick={() => openShare(show)} title="Open your shareable essentials card" style={{ ...resetBtn, ...E.type.label10, color: E.color.inkMuted, marginTop: 6, display: "block" }}>Essentials: {eps} episode{eps === 1 ? "" : "s"}</button>
+                    ) : (
+                      <UnderlineWord onClick={() => navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true, essentialsNudge: true } })} title="Star this show's essential episodes on its show guide" style={{ ...E.type.label10, marginTop: 6 }}>Pick its essential episodes →</UnderlineWord>
+                    )}
+                  </div>
+                  <div style={{ position: "absolute", right: 0, top: 16, display: "flex", gap: 4 }}>
+                    <button type="button" className="e-x" aria-label={entry?.canonTake ? "Edit your note" : "Add a note"} title={entry?.canonTake ? "Edit your note" : "Add a note"} onClick={() => openCanonCard(show)} style={glyphBtn}><SquarePen size={16} strokeWidth={1.6} /></button>
+                    <button type="button" className="e-x" aria-label={`Remove ${show.name} from your canon`} title="Remove from your canon" onClick={() => removeCanon(show.id)} style={glyphBtn}>×</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {mobile && !canonExpanded && canonList.length > 4 && (
+          <UnderlineWord onClick={() => setCanonExpanded(true)} style={{ marginTop: 14 }}>Show all {canonList.length} →</UnderlineWord>
+        )}
+      </div>
+    );
+
+    const band = (
+      <div style={mobile
+        ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, padding: `30px ${gutter}px 32px`, background: E.color.accent }
+        : { width: 288, flexShrink: 0, padding: "26px 24px 28px", background: E.color.accent, boxSizing: "border-box", marginTop: 2 }}>
+        <div style={{ ...E.type.label11, color: E.color.ink, display: "flex", justifyContent: "space-between", gap: 10 }}>
+          <span>Need to look something up?</span><span style={{ opacity: 0.7 }}>Spoiler-safe</span>
+        </div>
+        <div style={{ ...E.type.body15, color: E.color.ink, marginTop: 14, maxWidth: mobile ? 300 : undefined }}>
+          Cast and plot. Everything filtered to how far you&rsquo;ve watched, so nothing spoils.
+        </div>
+        <label style={{ ...E.type.label11, color: E.color.ink, marginTop: 22, display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}` }}>
+          Show:
+          {/* The field is the search's door: focusing it opens the search card with the typing field. */}
+          <input type="text" aria-label="Show" value="" readOnly onFocus={openLookup} onClick={openLookup} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, cursor: "text" }} />
+        </label>
+      </div>
+    );
+
+    const browse = (
+      <div style={mobile
+        ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, padding: `30px ${gutter}px 8px`, background: E.color.accent }
+        : { marginTop: 64, padding: "30px 24px 8px", background: E.color.accent, boxSizing: "border-box" }}>
+        <div style={mobile ? undefined : { maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
+        <div style={{ marginTop: 8 }}>
+          {mobile
+            ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels flush />
+            : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />}
+        </div>
+      </div>
+    );
+
+    return (
+      <>
+        {!mobile && <style>{`.e-tile .e-x{opacity:0}.e-tile:hover .e-x{opacity:1}`}</style>}
+        {mobile ? (
+          <div style={{ padding: `0 ${gutter}px` }}>
+            {groupsColumn}
+            {band}
+            {shelves}
+            {canon}
+            {browse}
+          </div>
+        ) : (
+          <>
+            <EditorialColumn>
+              <div style={{ display: "flex", gap: 64, alignItems: "flex-start", marginTop: 64 }}>
+                <div style={{ width: 560, flexShrink: 0 }}>{groupsColumn}</div>
+                {band}
+              </div>
+              {shelves}
+              {canon}
+            </EditorialColumn>
+            {browse}
+          </>
+        )}
+        {modals}
+      </>
+    );
+  }
 
   return (
     // The band lives in its own Accent-yellow zone (the hosts paint it);
@@ -892,230 +1292,7 @@ export default function ReferenceLookupBand({ mobile = false }: { mobile?: boole
           : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />}
       </div>
 
-      {/* ── The search overlay — the group room's search grammar: dim +
-            cream card, input, results list scrolling inside the card. ── */}
-      {searchOpen && (
-        // TOP-ANCHORED (Alborz 2026-09-08): the box's top edge stays put as
-        // results populate — the card only grows DOWNWARD, so the result
-        // under your cursor never moves. No X — the dim-click closes.
-        <div style={{ ...overlay, alignItems: "flex-start", paddingTop: "14vh", boxSizing: "border-box" }} onClick={() => setSearchOpen(false)}>
-          <div style={{ ...searchCard, maxHeight: "70vh", overflowY: "auto", position: "relative" }} onClick={(e) => e.stopPropagation()}>
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="find your show"
-              style={searchInput}
-            />
-            {busyAdd && <div style={{ color: CANON.personal, fontSize: 13, fontWeight: 700, padding: "8px 4px" }}>adding<LoadingDots /></div>}
-            {catalogMatches.map((show) => (
-              <button key={show.id} style={resultBtn} disabled={busyAdd} onClick={() => (searchMode === "canon" ? openCanonCard(show) : openCard(show))}>{show.name}</button>
-            ))}
-            {tvToAdd.map(({ tv, id }) => (
-              <button key={id} style={resultBtn} disabled={busyAdd} onClick={() => pickTvShow(tv)}>
-                {tv.name}{networkLabel(tv) ? <span style={{ fontWeight: 500, opacity: 0.75 }}> · {networkLabel(tv)}</span> : null}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── The canon card (2026-09-07) — add/edit from the dashboard: the
-            yellow-card grammar; ADD also sets progress to the latest episode
-            (stated on the card); EDIT saves the blurb only. ── */}
-      {canonCard && (
-        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
-          <div style={cardCenterColumn} onClick={(e) => { if (e.target === e.currentTarget && !canonBusy) setCanonCard(null); }}>
-            <div style={yellowCard}>
-              <button style={modalClose} onClick={() => { if (!canonBusy) setCanonCard(null); }} aria-label="Close">
-                <X size={16} color={CREAM} />
-              </button>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
-                {canonCard.name}
-              </div>
-              <div style={yellowTitle}>Why is this in your canon?</div>
-              {canonCard.adding && (
-                <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 0" }}>
-                  (Adding a show to your canon sets your<br />progress to its latest episode.)
-                </div>
-              )}
-              <textarea
-                value={canonDraft}
-                onChange={(ev) => setCanonDraft(ev.target.value)}
-                maxLength={280}
-                rows={5}
-                autoFocus
-                placeholder="Your take — as short or long as you like."
-                style={{ width: "100%", boxSizing: "border-box", border: "none", outline: "none", borderRadius: 12, padding: "10px 12px", marginTop: 14, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.5, resize: "vertical", textAlign: "left" }}
-              />
-              <div style={{ marginTop: 16 }}>
-                {canonCard.show ? (
-                  <button style={{ ...startBtn, minWidth: 210, boxSizing: "border-box" }} disabled={canonBusy} onClick={confirmCanon}>
-                    {canonBusy ? <>one moment<LoadingDots /></> : canonCard.adding ? "add to your canon" : "save"}
-                  </button>
-                ) : (
-                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700 }}>one moment<LoadingDots /></div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── The shareable "{Name}'s TV Canon" card (CP4) — cream, centered,
-            screenshot-friendly; outside-click closes. ── */}
-      {shareShow && (() => {
-        const entry = progress[shareShow.id];
-        const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
-        const shareName = (profile?.display_name || profile?.username || "My").trim();
-        return (
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(26,58,74,0.25)", overflowY: "auto" }}
-            onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
-          >
-            <div
-              style={{ minHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", boxSizing: "border-box" }}
-              onClick={(e) => { if (e.target === e.currentTarget) setShareShow(null); }}
-            >
-              <div style={{ background: CREAM, borderRadius: 24, padding: "32px 36px", width: "min(420px, 92vw)", boxSizing: "border-box", boxShadow: "0 12px 36px rgba(0,0,0,0.25)" }}>
-                <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark }}>{shareName}&rsquo;s TV Canon</div>
-                <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 30, color: CANON.identity, margin: "2px 0 10px" }}>{shareShow.name}</div>
-                {entry?.canonTake && (
-                  <div style={{ fontFamily: '"Inter", sans-serif', fontStyle: "italic", fontSize: 14, color: CANON.dark, lineHeight: 1.5, marginBottom: 18 }}>
-                    &ldquo;{entry.canonTake}&rdquo;
-                  </div>
-                )}
-                <div style={{ borderTop: "1px solid rgba(26,58,74,0.15)", paddingTop: 14 }}>
-                  <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>
-                    essential episodes according to {shareName}:
-                  </div>
-                  {eps.map((k) => {
-                    const es = Math.floor(k / 10000), ee = k % 10000;
-                    const title = shareRef?.seasons.find((se) => se.n === es)?.episodes.find((ep) => ep.e === ee)?.title;
-                    return (
-                      <div key={k} style={{ display: "flex", gap: 10, alignItems: "baseline", fontFamily: '"Inter", sans-serif', fontSize: 14, color: CANON.dark, marginBottom: 8 }}>
-                        <span style={{ color: CANON.accent, fontSize: 13 }}>★</span>
-                        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>S{es} E{ee}</span>
-                        {title ? <span>{title}</span> : (!shareRef ? <LoadingDots /> : null)}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* The dynamic logo with the GREEN wordmark (Alborz 2026-09-08):
-                    blocks as normal (cream block darkened on the cream card),
-                    the type masked to Personal green per the provided
-                    logotype. */}
-                <div style={{ marginTop: 16 }}>
-                  <SidebarLogo scale={0.4} blocksOpacity={1} surfaceBg={CANON.cream} wordmarkTint={CANON.accent} wordmarkTintOverBlocks={CANON.cream} />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── The first-tap card (locked copy) — the group opt-in modal's EXACT
-            grammar (rev 2 2026-09-05): scrollable two-layer overlay centering
-            [yellowCard + 8px gap + TrailerCard] as a pair, Lora show-name
-            title, transparent progress pill, no outlines. Paints INSTANTLY on
-            a pick; the picker fills in when the catalog show resolves. The
-            "look it up" button exists only once an episode is picked. ── */}
-      {(cardShow || cardPending) && (
-        <div style={cardScrollOverlay} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
-          {/* Mobile top-anchors (Alborz 2026-09-13): the card used to
-              center alone, then jump up when the trailer populated —
-              mis-taps. It now sits where it lands WITH the trailer. */}
-          <div style={{ ...cardCenterColumn, ...(mobile ? { justifyContent: "flex-start", paddingTop: 40 } : {}) }} onClick={(e) => { if (e.target === e.currentTarget && !confirmBusy) { setCardShow(null); setCardPending(null); } }}>
-            <div style={yellowCard}>
-              <button
-                style={modalClose}
-                onClick={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }}
-                aria-label="Close"
-              >
-                <X size={16} color={CREAM} />
-              </button>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 26, color: CREAM, textAlign: "center", marginBottom: 18 }}>
-                {cardTitle}
-              </div>
-              <div style={yellowTitle}>How far in are you?</div>
-              <div style={{ fontFamily: '"Inter", sans-serif', fontSize: 12, color: CREAM, opacity: 0.85, margin: "6px 0 14px" }}>
-                (Set your episode. Nothing you see<br />will ever go past it.)
-              </div>
-              {/* The pill + the want button share one width (Alborz mock). */}
-              <style>{`.ref-card-pick select{width:210px;box-sizing:border-box;text-overflow:ellipsis}`}</style>
-              <div className="ref-card-pick" style={{ display: "flex", justifyContent: "center" }}>
-                {cardShow ? (
-                  <OneSelectProgress
-                    show={cardShow}
-                    value={picked}
-                    allowZero
-                    requireConfirm={false}
-                    pillBg="transparent"
-                    onChangeSelected={(v: { s: number; e: number }) => setPicked(v)}
-                    onConfirm={() => {}}
-                  />
-                ) : (
-                  <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, padding: "10px 0" }}>loading episodes<LoadingDots /></div>
-                )}
-              </div>
-              {/* Two-action grammar (Alborz 2026-09-08 — the group vote
-                  modal's pattern): blue hero opens the reference; the
-                  outlined "just log my progress" adds the show to the
-                  Watching shelf and stays right here. */}
-              {cardShow && pickedReady && (
-                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-                  <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={confirmBusy || logBusy} onClick={lookItUp}>
-                    {confirmBusy ? <>one moment<LoadingDots /></> : "open show guide"}
-                  </button>
-                  <button
-                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
-                    disabled={confirmBusy || logBusy}
-                    onClick={justLogIt}
-                  >
-                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
-                  </button>
-                </div>
-              )}
-              {/* "haven't started" is no longer a dead end (CP2): the add is
-                  the declaration itself. The want button hides once the
-                  show's already on the want shelf; "just log my progress"
-                  stays either way (Alborz 2026-09-29), so a move back to
-                  zero always has a way to register. Never a proposal to any
-                  group. */}
-              {cardShow && !pickedReady && (
-                <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-                  {progress[cardShow.id]?.wantedAt ? (
-                    // Say so instead of hiding the button (Alborz 2026-09-29):
-                    // a wanted show that came back to zero looked broken.
-                    <div style={{ color: CREAM, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, minHeight: 44 }}>
-                      <span>On your want-to-watch list</span>
-                      <button
-                        type="button"
-                        onClick={() => unwantShow(cardShow.id)}
-                        style={{ background: "none", border: "none", padding: 0, color: CREAM, fontFamily: "inherit", fontSize: 13, fontWeight: 400, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", opacity: 0.85 }}
-                      >
-                        remove
-                      </button>
-                    </div>
-                  ) : (
-                    <button style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0 }} disabled={wantBusy || logBusy} onClick={wantIt}>
-                      {wantBusy ? <>one moment<LoadingDots /></> : "want to watch"}
-                    </button>
-                  )}
-                  <button
-                    style={{ ...startBtn, width: 210, boxSizing: "border-box", paddingLeft: 0, paddingRight: 0, background: "transparent", border: `2px solid ${CREAM}`, color: CREAM }}
-                    disabled={wantBusy || logBusy}
-                    onClick={justLogIt}
-                  >
-                    {logBusy ? <>one moment<LoadingDots /></> : "just log my progress"}
-                  </button>
-                </div>
-              )}
-            </div>
-            <TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} />
-          </div>
-        </div>
-      )}
+      {modals}
     </div>
   );
 }

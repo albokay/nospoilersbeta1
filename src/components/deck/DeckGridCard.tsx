@@ -32,6 +32,7 @@ import {
 import { pairHeaderLine, computeFindings, type DeckMember } from "../../lib/deckFindings";
 import { CANON } from "../../styles/canon";
 import { D } from "../dashboardChrome";
+import { DrawerTab } from "../editorial/Dashboard";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -39,7 +40,7 @@ const STATEMENT_W = 440;
 const MEMBER_W = 104;
 const ROW_MIN_H = 52;
 
-export default function DeckGridCard({ mode, groupId, others = [], viewerId, dockInFlow = false }: {
+export default function DeckGridCard({ mode, groupId, others = [], viewerId, dockInFlow = false, editorial = false }: {
   mode: "personal" | "group";
   groupId?: string;
   /** Group mode: the OTHER members (viewer excluded), in display order. */
@@ -48,6 +49,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   /** Dock IN FLOW (relative) instead of fixed at the viewport bottom — the
    *  personal dashboard anchors it to the reference band (2026-09-05). */
   dockInFlow?: boolean;
+  /** The editorial skin (checkpoint 2, 2026-10-12): the docked state is the
+   *  mono drawer tab fixed at the window's foot; the open card is unchanged. */
+  editorial?: boolean;
 }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null);
   const [answers, setAnswers] = useState<GroupDeckAnswer[]>([]);
@@ -319,7 +323,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
         </div>
       </div>
   );
-  if (ui === "docked") return dockedCard;
+  if (ui === "docked") return editorial ? <DrawerTab desktop label={title} onClick={() => setUi("open")} anchor="deck-dock" /> : dockedCard;
 
   // ── OPEN / EDIT — centered card over the dimmed page ──────────────────────
   const openOverlay = (
