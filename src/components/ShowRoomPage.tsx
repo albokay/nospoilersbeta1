@@ -1400,17 +1400,21 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* ── Compose: the existing ComposeForm, constrained to this room + private ── */}
       {composeOpen && createPortal(
         <>
-        <div style={{ ...composeBackdrop, ...(composeMinimized ? { display: "none" } : {}) }}>
-          <div style={composeCardOuter}>
+        {/* The editorial skin (checkpoint 6): the letter is a full-window
+            page on cream — the form draws its own corner, band and
+            minimize ring, so the card and its circles stay classic-only. */}
+        <div style={{ ...(editorial ? editorialComposeShell : composeBackdrop), ...(composeMinimized ? { display: "none" } : {}) }}>
+          <div style={editorial ? { position: "relative", minHeight: "100%" } : composeCardOuter}>
             {/* Pass 3: 30 → 44 circles, FIXED at the card's top-right
                 corner (the card scrolls; absolute buttons rode away with
                 long drafts). Card = 85vw×90vh centered → corner sits at
                 5vh / 7.5vw. × still routes through attemptDiscard. */}
-            <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>
-            <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: "calc(7.5vw + 80px)", border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>
+            {!editorial && <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>}
+            {!editorial && <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" title="Minimize — check the room or show guide; your draft stays" style={{ ...composeCloseX, right: "calc(7.5vw + 80px)", border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>}
             <ComposeForm
               ref={composeFormRef}
               autoPrompt={composeAuto}
+              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true } : undefined}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}
@@ -1435,9 +1439,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           </div>
         </div>
         {composeMinimized && (
+          editorial ? (
+            <button onClick={() => setComposeMinimized(false)} style={editorialContinueBlock}>
+              <SquarePen size={14} color={E.color.cream} /> Continue writing
+            </button>
+          ) : (
           <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: CANON.identity }}>
             <SquarePen size={16} color={CANON.identity} /> continue writing
           </button>
+          )
         )}
         </>,
         document.body,
@@ -1578,6 +1588,16 @@ const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize
 // docked-tab grammar — cream, rounded-top, flush to the page bottom, text
 // in the current tab's body color; nudged left toward the entry column.
 // Small type so the tab stays modest (the label color is set inline).
+// The editorial compose (checkpoint 6): the letter fills the window on
+// cream; minimized, an ink block at the window's foot brings it back.
+const editorialComposeShell: React.CSSProperties = {
+  position: "fixed", inset: 0, zIndex: 1000, background: E.color.cream, overflowY: "auto",
+};
+const editorialContinueBlock: React.CSSProperties = {
+  position: "fixed", bottom: 24, right: 32, zIndex: 1001, height: 48, padding: "0 20px",
+  background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer",
+  display: "inline-flex", alignItems: "center", gap: 8, ...E.type.label11,
+};
 const continueChip: React.CSSProperties = {
   position: "fixed", bottom: 0, right: 220, zIndex: 1001,
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,

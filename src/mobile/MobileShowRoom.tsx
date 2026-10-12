@@ -1372,8 +1372,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              band once the head has scrolled away (checkpoint 4). ── */}
       {editorial && tab !== "reference" && (
         <WriteBlock
-          label={tab === "private" ? "Draft a letter" : "Write a letter"}
-          onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
+          label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
+          onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
           style={{ position: "fixed", left: E.space.gutter, right: E.space.gutter, bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)", zIndex: 20 }}
         />
       )}
@@ -1394,12 +1394,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <div style={{ ...composeShell, ...(composeMinimized ? { display: "none" } : {}) }}>
           {/* Pass 3: 40 → 44 circles at the standard top-bar spots —
               minimize LEFT, discard RIGHT; the caption between them
-              (rendered by ComposeForm) names destination · tag. */}
-          <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>
-          <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: "auto", left: 12, border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>
+              (rendered by ComposeForm) names destination · tag. The
+              editorial skin (checkpoint 6) draws its own corner and ring. */}
+          {!editorial && <button onClick={() => composeFormRef.current?.attemptDiscard()} aria-label="Discard and close" style={composeCloseX}><X size={20} color={CANON.alert} /></button>}
+          {!editorial && <button onClick={() => setComposeMinimized(true)} aria-label="Minimize — your draft stays" style={{ ...composeCloseX, right: "auto", left: 12, border: `2px solid ${CANON.identity}` }}><Minus size={20} color={CANON.identity} /></button>}
           <ComposeForm
             ref={composeFormRef}
             autoPrompt={composeAuto}
+            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true) } : undefined}
             mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}
@@ -1421,7 +1423,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             }}
           />
         </div>
-        {composeMinimized && (
+        {composeMinimized && !editorial && (
           <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: CANON.identity }}>
             <SquarePen size={14} color={CANON.identity} /> continue writing
           </button>

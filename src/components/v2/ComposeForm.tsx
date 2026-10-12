@@ -25,6 +25,9 @@ import { Sparkles, X, ArrowRight } from "lucide-react";
 import { CANON } from "../../styles/canon";
 import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
+import { E } from "../../styles/editorial";
+import { CornerTab } from "../editorial/Chrome";
+import { COMPOSE_CSS, MinimizeRing, PromptButton, TITLE_INPUT, PAPER_TEXTAREA, ComposeFoot, DiscardConfirm } from "../editorial/Compose";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
 // chrome (white on green/mustard) wouldn't read on cream, and compose has
@@ -177,6 +180,14 @@ type ComposeFormProps = {
    *  the destination half ("Draft" or the room name); the form appends
    *  the live " · S01 E04" tag itself. */
   mobileHeaderContext?: string;
+  /** The editorial skin (checkpoint 6, 2026-10-12; the bible's ComposeShell):
+   *  the same form, drawn as the full-screen letter — the folded corner as
+   *  the way out, the `friend` band with "{context} · S1 E3", the minimize
+   *  ring (the host keeps the draft), the show's name and the writer's
+   *  stamp in cream, the title on a hairline, the ruled paper on cream, the
+   *  prompt button, the foot. `desktop` = the full-window page with the
+   *  672 column. The episode is the room's (its picker), not the band's. */
+  editorial?: { context: string; onMinimize?: () => void; desktop?: boolean };
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -191,7 +202,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext, onProgressPersisted },
+  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext, onProgressPersisted, editorial },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -601,6 +612,120 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // letter's stamp wears the rewatch tag, like its ticket will.
   const isRewatchTag = !!progress.isRewatching && progress.rewatchS != null && progress.rewatchE != null;
   const stampLabel = isRewatchTag ? `S${progress.rewatchS} E${progress.rewatchE}` : `S${tag.s} E${tag.e}`;
+
+  // ── The editorial letter (checkpoint 6) ──────────────────────────────
+  // The same state and handlers; only the drawing changes. The band's tag
+  // is the natural "S1 E3" (the classic caption's zero-padded form stays
+  // classic). No episode picker here: the room's picker is the one place,
+  // and the minimize ring keeps the draft while you go there.
+  if (editorial) {
+    const desk = !!editorial.desktop;
+    const bandTag = `S${tag.s} E${tag.e}`;
+    const initial = (profile?.display_name || profile?.username || "").trim().charAt(0).toUpperCase();
+    const stampEl = (scale: number, ink: string) => (
+      <Stamp spec={stampSpecFor(user?.id ?? "")} label={stampLabel} initial={initial} ink={ink} scale={scale} lineWidth={1.4} rewatch={isRewatchTag} style={{ flexShrink: 0 }} />
+    );
+    const eyebrow = autoPrompt
+      ? <span style={{ display: "inline-block", maxWidth: 300 }}>Write down your immediate thoughts before reading your friends&rsquo;:</span>
+      : "Capture your thoughts on";
+    const hasContent = postTitle.trim() !== "" && postBody.trim() !== "" && destination !== null;
+    const canSubmit = hasContent && !submitting;
+    const sendLabel = submitting
+      ? <>{externalSubmit?.submittingLabel ?? "sending"}<LoadingDots /></>
+      : <>{externalSubmit ? externalSubmit.label : destination === "private" ? privateSubmitLabel : "Send letter"} →</>;
+    const column: React.CSSProperties = desk
+      ? { width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", margin: "0 auto", padding: "0 0 64px" }
+      : { padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` };
+    return (
+      <div style={{ minHeight: "100vh", position: "relative", background: E.color.cream, color: E.color.ink, animation: "v2-compose-fade-in 350ms linear" }}>
+        <style>{`@keyframes v2-compose-fade-in { from { opacity: 0; } to { opacity: 1; } }${COMPOSE_CSS}`}</style>
+        <CornerTab kind="back" desktop={desk} label="Not now" title="Not now — back to the room" onClick={attemptDiscard} zIndex={1012} />
+        {/* The band */}
+        {desk ? (
+          <div style={{ position: "relative", height: 230, background: E.color.friend }}>
+            <div style={{ position: "absolute", left: 0, right: 0, top: E.measure.desktop.wordsTop, height: 40, display: "flex", alignItems: "center", justifyContent: "center", ...E.type.label11, color: E.color.ink }}>
+              {editorial.context} · {bandTag}
+            </div>
+            {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", top: E.measure.desktop.wordsTop, right: "max(24px, calc(50% - 456px))" }} />}
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", top: 116, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ ...E.type.label10, letterSpacing: "0.1em", color: E.color.inkMuted }}>{eyebrow}</div>
+                <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 8 }}>{show.name}</div>
+              </div>
+              {stampEl(1.1, E.color.cream)}
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: "14px 16px 22px", background: E.color.friend }}>
+            <div style={{ position: "relative", height: 40, display: "flex", alignItems: "center", justifyContent: "center", ...E.type.label11, color: E.color.ink, padding: "0 44px" }}>
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{editorial.context} · {bandTag}</span>
+              {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", right: 0, top: 0 }} />}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22, padding: "0 12px" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ ...E.type.label10, letterSpacing: "0.1em", color: E.color.inkMuted }}>{eyebrow}</div>
+                <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 8, overflowWrap: "anywhere" }}>{show.name}</div>
+              </div>
+              {stampEl(0.95, E.color.cream)}
+            </div>
+          </div>
+        )}
+        <main style={column}>
+          {progress.isRewatching && (
+            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 18 }}>
+              Your letter is automatically marked to {tagShort} — your highest prior progress as a re-watcher. It will only show to people who've watched at least that far.
+            </div>
+          )}
+          {fromRating && (
+            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 18 }}>
+              Get your first thoughts down. Your gut reaction is worth catching before you read anyone else's. Doesn't have to be profound — you can edit later, or even keep it private for now.
+            </div>
+          )}
+          <div style={{ position: "relative" }}>
+            {/* The send moment: the stamp lands on the paper's corner, in ink. */}
+            {submitting && (
+              <div aria-hidden style={{ position: "absolute", top: desk ? 22 : 12, right: 0, pointerEvents: "none", zIndex: 1 }}>
+                {stampEl(desk ? 0.9 : 0.8, E.color.ink)}
+              </div>
+            )}
+            <input
+              className="e-compose-title"
+              type="text"
+              aria-label="Title"
+              placeholder="a title"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              maxLength={200}
+              style={{ ...TITLE_INPUT(desk), marginTop: desk ? 34 : 22, paddingRight: submitting ? 112 : 0 }}
+            />
+            <textarea
+              ref={bodyRef}
+              className="e-compose-paper"
+              aria-label="Your letter"
+              placeholder={activePrompt ? "(insert a prompt below to get started, or just write)" : (bodyPlaceholder ?? "What's something that's gonna stay with you?")}
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              maxLength={10000}
+              style={{ ...PAPER_TEXTAREA(desk, BODY_MIN_LINES), marginTop: desk ? 16 : 14 }}
+            />
+            {promptEntries.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                {!activePrompt
+                  ? <PromptButton onClick={handlePromptBtn} label={promptButton?.label} background={promptButton?.background} />
+                  : <PromptCard editorial prompt={activePrompt} onClose={() => setActivePrompt(null)} onShuffle={handlePromptShuffle} onInsert={handlePromptInsert} />}
+              </div>
+            )}
+          </div>
+          <ComposeFoot onNotNow={attemptDiscard} onSend={submitPost} canSubmit={canSubmit} submitting={submitting} sendLabel={sendLabel} hideCancel={hideCancel} style={{ marginTop: desk ? 36 : 26 }} />
+          {submitError && <div style={{ ...E.type.note13, color: E.color.alert, textAlign: "right", marginTop: 10 }}>{submitError}</div>}
+        </main>
+        {discardOpen && <DiscardConfirm desktop={desk} onKeep={() => setDiscardOpen(false)} onDiscard={doDiscard} />}
+        {pendingRating && (
+          <RatingCaptureModal mobile={mobileIdiom} season={pendingRating.s} episode={pendingRating.e} onCommit={handleRatingCommit} onCancel={handleRatingCancel} onSkip={handleRatingSkip} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", position: "relative", animation: "v2-compose-fade-in 350ms linear" }}>
