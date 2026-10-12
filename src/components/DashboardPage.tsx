@@ -119,7 +119,7 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
-import { FORM_CSS, FriendRows, ShowField, PickBand, Block } from "./editorial/Onboarding";
+import { FORM_CSS, FriendRows, ShowField, PickBand, Block, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
@@ -2260,7 +2260,7 @@ export default function DashboardPage() {
               {!groupLoading && (
                 <div style={{ padding: "30px 24px 8px", background: E.color.accent }}>
                   <div style={{ maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
-                  <div style={{ marginTop: 8, paddingBottom: 60 }}><BrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} subLabels /></div>
+                  <div style={{ maxWidth: 912, margin: "-2px auto 0", paddingBottom: 60 }}><EditorialStrips size="tile" desktop excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} /></div>
                 </div>
               )}
             </>

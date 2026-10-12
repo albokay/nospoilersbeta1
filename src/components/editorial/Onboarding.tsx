@@ -7,6 +7,7 @@
  * poster strips, the friend rows, the link rows, the blocks.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { E } from "../../styles/editorial";
 import { useBrowseRows } from "../BrowseRows";
 import type { BrowseShow, Show } from "../../lib/db";
@@ -218,28 +219,65 @@ function stripTitle(key: string, title: string): string {
   return title.replace(/:\s*$/, "");
 }
 
-/** The poster strips: 72×104 thumbnails with the name and "Pick →" / "Pitch →", bleeding off the phone's right edge. */
-export function EditorialStrips({ excludeTvmazeIds, onPick, action = "Pick", desktop = false, style }: { excludeTvmazeIds: Set<number>; onPick: (s: BrowseShow) => void; action?: string; desktop?: boolean; style?: React.CSSProperties }) {
+/** One strip: the mono title (with the desktop's arrows at its right) over a scrolling row of tiles. */
+function StripRow({ title, shows, onPick, action, desktop, size, bleed }: { title: string; shows: BrowseShow[]; onPick: (s: BrowseShow) => void; action: string; desktop: boolean; size: "thumb" | "tile"; bleed: number }) {
+  const w = size === "tile" ? 104 : 72;
+  const h = size === "tile" ? 148 : 104;
+  const gap = desktop ? (size === "tile" ? 24 : 28) : (size === "tile" ? 16 : 14);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+  function measure() {
+    const el = scroller.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }
+  useEffect(() => {
+    measure();
+    const el = scroller.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shows.length]);
+  const nudge = (dir: -1 | 1) => scroller.current?.scrollBy({ left: dir * (w + gap) * 3, behavior: "smooth" });
+  const arrow = (dir: -1 | 1, on: boolean) => (
+    <button type="button" aria-label={dir < 0 ? "Scroll left" : "Scroll right"} onClick={() => nudge(dir)} disabled={!on} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", border: 0, padding: 0, cursor: on ? "pointer" : "default", color: E.color.ink, opacity: on ? 1 : 0.25 }}>
+      {dir < 0 ? <ChevronLeft size={18} strokeWidth={1.4} /> : <ChevronRight size={18} strokeWidth={1.4} />}
+    </button>
+  );
+  return (
+    <div style={{ marginTop: 26 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ ...E.type.label10, letterSpacing: "0.06em", color: E.color.inkMuted }}>{title}</div>
+        {/* Arrows on desktop (Alborz's notes, 2026-10-12) — the row still scrolls. */}
+        {desktop && (canLeft || canRight) && <div style={{ display: "inline-flex", gap: 2 }}>{arrow(-1, canLeft)}{arrow(1, canRight)}</div>}
+      </div>
+      <div ref={scroller} onScroll={measure} className="e-strip" style={{ display: "flex", gap, marginTop: 12, overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", paddingBottom: 4, ...(desktop ? {} : { marginRight: -bleed, paddingRight: bleed }) }}>
+        {shows.map((s) => (
+          <button key={s.tvmazeId} type="button" onClick={() => onPick(s)} title={s.name} aria-label={`${s.name} — ${action.toLowerCase()}`} style={{ width: w, flexShrink: 0, background: "transparent", border: 0, padding: 0, cursor: "pointer", textAlign: "left", scrollSnapAlign: "start", color: E.color.ink, WebkitTapHighlightColor: "transparent" }}>
+            <span style={{ display: "block", width: w, height: h, background: E.color.draft, overflow: "hidden" }}>
+              {s.imageUrl && <img src={s.imageUrl} alt="" loading="lazy" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+            </span>
+            <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: E.font.interface, fontWeight: 600, fontSize: size === "tile" ? 13 : 12, marginTop: size === "tile" ? 10 : 8, lineHeight: size === "tile" ? 1.3 : 1.2 }}>{s.name}</span>
+            <span style={{ display: "block", ...(size === "tile" ? E.type.label10 : { ...E.type.label9, letterSpacing: "0.08em" }), color: E.color.inkMuted, marginTop: 3 }}>{action} →</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The poster strips: thumbnails with the name and "Pick →" / "Pitch →", bleeding off the phone's right edge.
+ *  `size` "thumb" = 72×104 (the onboarding and the invite wall); "tile" = the shelves' 104×148 (the browse bands). */
+export function EditorialStrips({ excludeTvmazeIds, onPick, action = "Pick", desktop = false, size = "thumb", bleed = E.space.gutter, style }: { excludeTvmazeIds: Set<number>; onPick: (s: BrowseShow) => void; action?: string; desktop?: boolean; size?: "thumb" | "tile"; bleed?: number; style?: React.CSSProperties }) {
   const rows = useBrowseRows(excludeTvmazeIds);
   if (rows.length === 0) return null;
   return (
     <div style={style}>
-      {rows.map((r) => (
-        <div key={r.key} style={{ marginTop: 26 }}>
-          <div style={{ ...E.type.label10, letterSpacing: "0.06em", color: E.color.inkMuted }}>{stripTitle(r.key, r.title)}</div>
-          <div className="e-strip" style={{ display: "flex", gap: desktop ? 28 : 14, marginTop: 12, overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", paddingBottom: 4, ...(desktop ? {} : { marginRight: -E.space.gutter, paddingRight: E.space.gutter }) }}>
-            {r.shows.map((s) => (
-              <button key={s.tvmazeId} type="button" onClick={() => onPick(s)} title={s.name} aria-label={`${s.name} — ${action.toLowerCase()}`} style={{ width: 72, flexShrink: 0, background: "transparent", border: 0, padding: 0, cursor: "pointer", textAlign: "left", scrollSnapAlign: "start", color: E.color.ink, WebkitTapHighlightColor: "transparent" }}>
-                <span style={{ display: "block", width: 72, height: 104, background: E.color.draft, overflow: "hidden" }}>
-                  {s.imageUrl && <img src={s.imageUrl} alt="" loading="lazy" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
-                </span>
-                <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontFamily: E.font.interface, fontWeight: 600, fontSize: 12, marginTop: 8, lineHeight: 1.2 }}>{s.name}</span>
-                <span style={{ display: "block", ...E.type.label9, letterSpacing: "0.08em", color: E.color.inkMuted, marginTop: 3 }}>{action} →</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+      {rows.map((r) => <StripRow key={r.key} title={stripTitle(r.key, r.title)} shows={r.shows} onPick={onPick} action={action} desktop={desktop} size={size} bleed={bleed} />)}
     </div>
   );
 }

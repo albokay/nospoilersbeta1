@@ -72,6 +72,7 @@ import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/group
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { EditorialStrips } from "../components/editorial/Onboarding";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
@@ -1270,7 +1271,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               </div>
               <div style={{ marginTop: 60, marginLeft: -E.space.gutter, marginRight: -E.space.gutter, padding: `30px ${E.space.gutter}px 8px`, background: E.color.accent }}>
                 <SectionHead>Find something new to watch</SectionHead>
-                <div style={{ marginTop: 8 }}><MobileBrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} subLabels flush /></div>
+                <div style={{ marginTop: -2, paddingBottom: 12 }}><EditorialStrips size="tile" excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} /></div>
               </div>
             </>
           )}

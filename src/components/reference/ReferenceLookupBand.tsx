@@ -25,6 +25,7 @@ import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markW
 import { upsertRewatchStatus, setCanonPin, setShelfBlurb } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
+import { EditorialStrips } from "../editorial/Onboarding";
 import OneSelectProgress from "../OneSelectProgress";
 import TrailerCard from "../TrailerCard";
 import LoadingDots from "../LoadingDots";
@@ -801,10 +802,10 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, padding: `30px ${gutter}px 8px`, background: E.color.accent }
         : { marginTop: 64, padding: "30px 24px 8px", background: E.color.accent, boxSizing: "border-box" }}>
         <div style={mobile ? undefined : { maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
-        <div style={{ marginTop: 8 }}>
-          {mobile
-            ? <MobileBrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels flush />
-            : <BrowseRows excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} subLabels />}
+        {/* The rows as the shelves' tiles (Alborz's notes, 2026-10-12): 104×148,
+            the name and "Pick →", mono row titles; desktop adds arrows. */}
+        <div style={mobile ? { marginTop: -2, paddingBottom: 12 } : { maxWidth: 912, margin: "-2px auto 0", paddingBottom: 12 }}>
+          <EditorialStrips size="tile" desktop={!mobile} excludeTvmazeIds={EMPTY_EXCLUDE} onPick={pickBrowseShow} />
         </div>
       </div>
     );
