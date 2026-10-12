@@ -23,8 +23,8 @@ import LoadingDots from "../LoadingDots";
 /** The page's frame: the wordmark centred at the top, the content under it. */
 export function InvitePage({ desktop = false, children, style }: { desktop?: boolean; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ position: "relative", minHeight: desktop ? "100vh" : "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: desktop ? "0 0 80px" : `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 48px)`, ...style }}>
-      <div style={{ position: "absolute", left: "50%", top: desktop ? 36 : 24, transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={desktop ? 34 : 26} /></div>
+    <div style={{ position: "relative", minHeight: desktop ? "100vh" : "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: desktop ? "0 0 80px" : `${E.safe.top} ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 48px)`, ...style }}>
+      <div style={{ position: "absolute", left: "50%", top: desktop ? 36 : E.safe.plus(24), transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={desktop ? 34 : 26} /></div>
       {children}
     </div>
   );

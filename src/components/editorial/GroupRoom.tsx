@@ -44,7 +44,7 @@ export function groupRoomNote(rooms: { roomId: string | null; name: string }[], 
   return null;
 }
 
-export function Masthead({ height }: { height: number }) {
+export function Masthead({ height }: { height: number | string }) {
   return <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height, background: E.color.friend, zIndex: 0 }} />;
 }
 
@@ -334,6 +334,7 @@ export function StanceSurface({ view, inset }: { view: StanceView; inset: number
 /** The phone's sheet: the veil, the cream panel from the title line down,
  *  the grabber; swipe down or tap the veil to close. */
 export function EditorialSheet({ onClose, top = 96, children }: { onClose: () => void; top?: number; children: React.ReactNode }) {
+  // The sheet starts below the phone's status bar (Alborz's notes, 2026-10-12).
   const scrollRef = useRef<HTMLDivElement>(null);
   const swipe = useSheetSwipeDown(onClose, { open: true, scrollRef });
   return (
@@ -342,7 +343,7 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
       <div
         ref={scrollRef}
         {...swipe.handlers}
-        style={{ position: "absolute", left: 0, right: 0, top, bottom: 0, background: E.color.cream, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
+        style={{ position: "absolute", left: 0, right: 0, top: E.safe.plus(top), bottom: 0, background: E.color.cream, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
       >
         <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto" }} />
         {children}

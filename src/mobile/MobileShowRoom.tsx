@@ -1063,12 +1063,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    tabs and the body under it are still classic until checkpoint 4. ──
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
-            <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+            <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
               ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
               ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.phone.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />
-            <div style={{ paddingTop: E.measure.phone.titleTop, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+            <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
               <div style={{ minWidth: 0 }}>
               <EditorialTitle>{show?.name ?? "Show"}</EditorialTitle>
               {tab === "reference" && refCreatedBy.length > 0 ? (
@@ -1370,12 +1370,17 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
       {/* ── The editorial room's write block, fixed at the foot, and the pinned
              band once the head has scrolled away (checkpoint 4). ── */}
+      {/* The write block sits on a cream foot that runs to the screen's
+          bottom edge, so nothing scrolls behind or beside it (Alborz's
+          notes, 2026-10-12). */}
       {editorial && tab !== "reference" && (
-        <WriteBlock
-          label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
-          onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
-          style={{ position: "fixed", left: E.space.gutter, right: E.space.gutter, bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)", zIndex: 20 }}
-        />
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `12px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 12px)` }}>
+          <WriteBlock
+            label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
+            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
+            style={{ width: "100%" }}
+          />
+        </div>
       )}
       {editorial && pinned && (
         <PinnedBand

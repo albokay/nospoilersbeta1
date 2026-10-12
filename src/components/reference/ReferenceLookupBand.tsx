@@ -709,7 +709,9 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         <div style={{ display: "flex", gap: mobile ? 16 : 24, marginTop: 20, overflowX: "auto", scrollbarWidth: "none", ...(mobile ? { marginRight: -gutter, paddingRight: gutter } : {}) }}>
           {tiles}
           {/* The one outlined slot, because it is empty: it adds a show. */}
-          <button type="button" aria-label="Add a show" title="Add a show" onClick={openLookup} style={{ width: 104, height: 148, flexShrink: 0, boxSizing: "border-box", border: "1px solid rgba(26,58,74,0.4)", background: "transparent", padding: 0, cursor: "pointer" }} />
+          <button type="button" aria-label="Add a show" title="Add a show" onClick={openLookup} style={{ width: 104, height: 148, flexShrink: 0, boxSizing: "border-box", border: "1px solid rgba(26,58,74,0.4)", background: "transparent", padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", color: E.color.inkMuted }}>
+            <Plus size={28} strokeWidth={1.4} aria-hidden="true" />
+          </button>
         </div>
       </div>
     );

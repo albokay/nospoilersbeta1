@@ -117,7 +117,7 @@ const MAP_GLYPH = (
 /** The phone's pinned band: shown by the host once the head has scrolled away. */
 export function PinnedBand({ tab, show, position, onBack, onTop, onMap }: { tab: RoomTabKey; show: string; position: string | null; onBack: () => void; onTop: () => void; onMap?: () => void }) {
   return (
-    <div style={{ position: "fixed", left: 0, right: 0, top: 0, height: E.space.pinnedBand, background: TAB_COLOUR[tab], display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: onMap ? 8 : 0, zIndex: 30, color: E.color.ink }}>
+    <div style={{ position: "fixed", left: 0, right: 0, top: 0, height: E.safe.plus(E.space.pinnedBand), background: TAB_COLOUR[tab], display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: E.safe.top, paddingRight: onMap ? 8 : 0, boxSizing: "border-box", zIndex: 30, color: E.color.ink }}>
       <button type="button" aria-label="Back" onClick={onBack} style={{ width: 48, height: 48, display: "inline-flex", alignItems: "center", justifyContent: "center", background: E.color.identity, border: 0, padding: 0, cursor: "pointer", flexShrink: 0 }}>
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={E.color.cream} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
       </button>

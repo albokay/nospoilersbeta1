@@ -272,7 +272,7 @@ export default function MobileInviteSheet({
         <div style={{ ...sheet, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
           <style>{FORM_CSS}</style>
           <CornerTab kind="back" onClick={close} label="Close" />
-          <div style={{ paddingTop: E.measure.phone.titleTop }}>
+          <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop) }}>
             <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.15, letterSpacing: "-0.01em" }}>
               {targetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
             </div>

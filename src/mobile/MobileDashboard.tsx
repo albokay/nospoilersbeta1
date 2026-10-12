@@ -370,7 +370,7 @@ export default function MobileDashboard() {
     return (
       <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink } : {}) }}>
         {editorial ? (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop }}>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop) }}>
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" />
           </div>
         ) : (
@@ -395,13 +395,13 @@ export default function MobileDashboard() {
           {!showSocialOnb && !postAccept && (
             <>
               <CornerTab kind="feedback" onClick={() => setFeedbackOpen(true)} />
-              <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.dashboard} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+              <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.dashboard} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
                 ...(user && onbResolved ? [<MobileTipsSheet key="tips" page="dashboard" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
                 <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
               ]} />
             </>
           )}
-          <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop, cursor: "pointer" }}>
+          <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop), cursor: "pointer" }}>
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
           </div>
         </div>

@@ -208,7 +208,7 @@ export default function MobileAuth() {
     return (
       <div style={{ position: "relative", minHeight: "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
         <style>{FORM_CSS}</style>
-        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 213, background: E.color.friend }} />
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: E.safe.plus(213), background: E.color.friend }} />
         <CornerTab kind="back" onClick={back} />
         <div style={{ position: "absolute", left: "50%", top: "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={26} /></div>
         <div style={{ position: "relative", zIndex: 2, paddingTop: "calc(env(safe-area-inset-top, 0px) + 110px)" }}>

@@ -125,6 +125,17 @@ export const E_MEASURE = {
   },
 } as const;
 
+/** The phone's own insets (Alborz's notes, 2026-10-12): in the home-screen
+ *  app the page paints under the status bar, so the top chrome — the folded
+ *  corner, the words, the title, the bands' content — drops by the phone's
+ *  reported top inset (0 in a browser tab and on desktop). */
+export const E_SAFE = {
+  top: "env(safe-area-inset-top, 0px)",
+  bottom: "env(safe-area-inset-bottom, 0px)",
+  /** `calc(px + the top inset)` */
+  plus: (px: number) => `calc(${px}px + env(safe-area-inset-top, 0px))`,
+} as const;
+
 export const E = {
-  font: E_FONT, color: E_COLOR, type: E_TYPE, space: E_SPACE, radius: E_RADIUS, shadow: E_SHADOW, border: E_BORDER, measure: E_MEASURE,
+  font: E_FONT, color: E_COLOR, type: E_TYPE, space: E_SPACE, radius: E_RADIUS, shadow: E_SHADOW, border: E_BORDER, measure: E_MEASURE, safe: E_SAFE,
 } as const;

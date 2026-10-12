@@ -1070,7 +1070,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   return (
     <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
-      {editorial && <Masthead height={E.measure.phone.masthead} />}
+      {editorial && <Masthead height={E.safe.plus(E.measure.phone.masthead)} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1085,15 +1085,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    it. The shelves under it are still classic until checkpoint 3. ──
         <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px` }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
-          <OpenRoomsDisc count={groupShelves.watching.length} style={{ right: E.space.gutter, top: 108 }} />
-          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -6, top: 208, width: 210 }} />}
-          <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+          <OpenRoomsDisc count={groupShelves.watching.length} style={{ right: E.space.gutter, top: E.safe.plus(108) }} />
+          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -6, top: E.safe.plus(208), width: 210 }} />}
+          <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             <ChatWord key="chat" hit={E.measure.phone.wordHit} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} onClick={() => navigate(`/m/group/${groupId}/chat`)} />,
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <GearWord key="gear" hit={E.measure.phone.wordHit} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />,
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
-          <div style={{ paddingTop: E.measure.phone.titleTop }}>
+          <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop) }}>
             <EditorialTitle>{groupName}</EditorialTitle>
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>

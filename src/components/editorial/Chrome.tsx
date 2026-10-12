@@ -45,7 +45,7 @@ export function CornerTab({ kind, onClick, desktop = false, label, title, zIndex
       title={title ?? aria}
       onClick={onClick}
       style={{
-        position: desktop ? "fixed" : "absolute", left: 0, top: 0, width: size, height: size,
+        position: desktop ? "fixed" : "absolute", left: 0, top: desktop ? 0 : E.safe.top, width: size, height: size,
         padding: 0, border: 0, background: "transparent", cursor: "pointer", display: "block", zIndex,
         clipPath: "polygon(0 0, 100% 0, 0 100%)", WebkitTapHighlightColor: "transparent",
       }}
@@ -142,12 +142,15 @@ export function ChatWord({ onClick, hit, countLabel, isNew = false, anchor }: { 
 
 /** The row at the top right. `right` and `textTop` are the boards' measures
  *  of the TEXT (the words' hit boxes reach past them). */
-export function TopRight({ items, right, textTop, gap, hit, zIndex = 4, style }: {
-  items: React.ReactNode[]; right: number; textTop: number; gap: number; hit: number; zIndex?: number; style?: React.CSSProperties;
+export function TopRight({ items, right, textTop, gap, hit, zIndex = 4, safe = false, style }: {
+  items: React.ReactNode[]; right: number; textTop: number; gap: number; hit: number; zIndex?: number;
+  /** The phone: the row drops by the status bar's inset. */
+  safe?: boolean; style?: React.CSSProperties;
 }) {
   const lineHeight = 13; // label-11 at 1.2
+  const top = textTop - (hit - lineHeight) / 2;
   return (
-    <div style={{ position: "absolute", right: right - WORD_PAD, top: textTop - (hit - lineHeight) / 2, display: "flex", alignItems: "center", gap: Math.max(0, gap - 2 * WORD_PAD), zIndex, ...style }}>
+    <div style={{ position: "absolute", right: right - WORD_PAD, top: safe ? E.safe.plus(top) : top, display: "flex", alignItems: "center", gap: Math.max(0, gap - 2 * WORD_PAD), zIndex, ...style }}>
       {items}
     </div>
   );

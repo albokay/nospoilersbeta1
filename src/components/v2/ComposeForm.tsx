@@ -660,7 +660,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               </div>
             </div>
           ) : (
-            <div style={{ padding: "30px 28px 22px", background: E.color.accent }}>
+            <div style={{ padding: `${E.safe.plus(30)} 28px 22px`, background: E.color.accent }}>
               {editorial.banner.step != null && <div style={{ display: "flex", justifyContent: "flex-end" }}><StepsBars step={editorial.banner.step} /></div>}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: editorial.banner.step != null ? 52 : 24 }}>
                 <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 23, lineHeight: 1.2, minWidth: 0 }}>{editorial.banner.title}</div>
@@ -684,7 +684,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             </div>
           </div>
         ) : (
-          <div style={{ padding: "14px 16px 22px", background: E.color.friend }}>
+          <div style={{ padding: `${E.safe.plus(14)} 16px 22px`, background: E.color.friend }}>
             <div style={{ position: "relative", height: 40, display: "flex", alignItems: "center", justifyContent: "center", ...E.type.label11, color: E.color.ink, padding: "0 44px" }}>
               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{editorial.context ?? ""} · {bandTag}</span>
               {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", right: 0, top: 0 }} />}

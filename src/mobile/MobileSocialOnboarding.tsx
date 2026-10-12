@@ -414,7 +414,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
       return (
         <div style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 30px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
           <style>{FORM_CSS}</style>
-          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 250, background: E.color.friend }} />
+          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: E.safe.plus(250), background: E.color.friend }} />
           <CornerTab kind="back" onClick={() => setStep(1)} />
           <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "flex-end" }}><StepsBars step={2} /></div>
           <OnbQuestion align="left" sub="You can invite more later." style={{ position: "relative", zIndex: 2, paddingTop: 56 }}>Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
