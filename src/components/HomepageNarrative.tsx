@@ -3,6 +3,7 @@ import { ArrowDown, ArrowRight } from "lucide-react";
 import { CANON } from "../styles/canon";
 import SidebarLogo from "./SidebarLogo";
 import { HERO_LINES, HERO_EMPHASIS } from "../lib/homepageCopy";
+import { E } from "../styles/editorial";
 
 const BUBBLE_MAX = 560;
 
@@ -132,11 +133,13 @@ function CloudBubble({ src, top, left, width, rate = 0 }: {
 }
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
-function Copy({ children, size = 32, delay = 0, balance = false }: {
+function Copy({ children, size = 32, delay = 0, balance = false, editorial = false }: {
   children: React.ReactNode; size?: number; delay?: number;
   /** Balanced wrap (the invitee opening, Alborz 2026-09-28): even lines at
    *  any width via the `.sb-balance` rule instead of a hand-placed break. */
   balance?: boolean;
+  /** The editorial skin (checkpoint 8): the copy in Lora 30 (34 for the big line). */
+  editorial?: boolean;
 }) {
   const { ref, visible } = useReveal(0.3);
   return (
@@ -146,9 +149,31 @@ function Copy({ children, size = 32, delay = 0, balance = false }: {
       transition: `opacity 0.8s ease ${delay}s, transform 0.8s ease ${delay}s`,
       textAlign: "center", maxWidth: 560, margin: "0 auto",
     }}>
-      <p className={balance ? "sb-balance" : undefined} style={{ fontSize: size, fontWeight: 800, color: CANON.cream, lineHeight: 1.25, margin: 0 }}>
+      <p className={balance ? "sb-balance" : undefined} style={editorial
+        ? { fontFamily: E.font.display, fontWeight: 700, fontSize: size >= 38 ? 34 : 30, lineHeight: 1.2, color: E.color.cream, margin: 0 }
+        : { fontSize: size, fontWeight: 800, color: CANON.cream, lineHeight: 1.25, margin: 0 }}>
         {children}
       </p>
+    </div>
+  );
+}
+
+// The editorial scroll's foot (checkpoint 8; the E3Scroll board): the logo's
+// five blocks scattered on the green, settling as they come into view.
+function BlockScatter() {
+  const { ref, visible } = useReveal(0.2);
+  const blocks: { x: number; y: number; color: string; z: number }[] = [
+    { x: 222, y: 0, color: E.color.cream, z: 2 },
+    { x: 182, y: 26, color: E.color.identity, z: 3 },
+    { x: 151, y: 57, color: E.color.friend, z: 1 },
+    { x: 55, y: 79, color: E.color.alert, z: 2 },
+    { x: 116, y: 106, color: E.color.accent, z: 1 },
+  ];
+  return (
+    <div ref={ref} aria-hidden style={{ position: "relative", width: 390, maxWidth: "100%", height: 156, margin: "60px auto 0", overflow: "hidden" }}>
+      {blocks.map((b, i) => (
+        <div key={i} style={{ position: "absolute", left: b.x, top: b.y, width: 50, height: 50, borderRadius: 14, background: b.color, zIndex: b.z, opacity: visible ? 1 : 0, transform: visible ? "none" : `translateY(${24 + i * 6}px)`, transition: `opacity 0.7s ease ${i * 0.08}s, transform 0.7s ease ${i * 0.08}s` }} />
+      ))}
     </div>
   );
 }
@@ -318,19 +343,27 @@ function StaticLogo() {
 //     (StaticLogo — "talk. together. whenever." is on its way out);
 //   • a LANDING section after the logo: "Sidebar is where you can talk
 //     freely." + the "Join {name} →" button (onJoin → the door questions).
-export default function HomepageNarrative({ headerHeight = 56, invitee }: {
+export default function HomepageNarrative({ headerHeight = 56, invitee, editorial = false }: {
   headerHeight?: number;
   invitee?: { inviterName: string; onJoin: () => void };
+  /** The editorial skin (checkpoint 8, 2026-10-12; the E3Scroll and
+   *  E3OnbInvitee / D3OnbInvitee boards): the same bubbles, the copy in
+   *  Lora, no docking logo — the homepage's scroll ends on "Sidebar is where
+   *  you can talk freely." over the logo's scattered blocks; the invitee's
+   *  opens on "{name} wants you to join them on Sidebar." and ends on the
+   *  big line, the logo settling and "Join {name} →" as a block. */
+  editorial?: boolean;
 }) {
+  const ed = editorial;
   return (
     <>
       {invitee && (
         <>
           <Screen extraTop={0}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
-              <Copy balance>{invitee.inviterName} wants you to join them on Sidebar.</Copy>
-              <StaticLogo />
-              <Copy balance delay={0.15}>It&rsquo;s a place for you and your friends to talk about TV, spoiler-free.</Copy>
+              <Copy balance editorial={ed}>{invitee.inviterName} wants you to join them on Sidebar.</Copy>
+              {!ed && <StaticLogo />}
+              {!ed && <Copy balance delay={0.15}>It&rsquo;s a place for you and your friends to talk about TV, spoiler-free.</Copy>}
             </div>
           </Screen>
           <ScrollCue />
@@ -344,7 +377,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
 
       {/* 2 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy>You're an episode<br />behind your friend.</Copy>
+        <Copy editorial={ed}>You're an episode<br />behind your friend.</Copy>
       </section>
 
       {/* 3 — Friend white bubble, pushed well below copy */}
@@ -354,7 +387,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
 
       {/* 4 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy>
+        <Copy editorial={ed}>
           {headerHeight === 0 ? (
             <>Another friend<br />is two episodes<br />behind you.</>
           ) : (
@@ -373,7 +406,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
           width: "min(520px, 80vw)", zIndex: 10,
           padding: "0 0 40px",
         }}>
-          <Copy>You're all dying to talk about<br />your favorite show right now.</Copy>
+          <Copy editorial={ed}>You're all dying to talk about<br />your favorite show right now.</Copy>
         </div>
 
         {/* Above copy — spread evenly across full width, no right-side clustering */}
@@ -398,7 +431,23 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
       {/* 6 — Finale. Homepage: unchanged (copy 450px above the docking logo).
           Invitee: the HERO alone, centered on its own screen — exactly three
           lines at every width (the responsive HeroCopy). */}
-      {invitee ? (
+      {ed ? (
+        // The editorial finale: the big line, then (homepage) the scattered
+        // blocks or (invitee) the logo settling and "Join {name} →".
+        <section style={{ minHeight: "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box" }}>
+          <Copy size={38} editorial>Sidebar is where<br />you can talk freely.</Copy>
+          {invitee ? (
+            <>
+              <div style={{ marginTop: 56 }}><StaticLogo /></div>
+              <div style={{ marginTop: 40, width: "min(480px, 100%)" }}>
+                <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} editorial />
+              </div>
+            </>
+          ) : (
+            <BlockScatter />
+          )}
+        </section>
+      ) : invitee ? (
         <Screen>
           <HeroCopy />
         </Screen>
@@ -419,7 +468,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee }: {
 
       {/* 7 (invitee only) — the landing: logo + copy + Join as ONE centered
           unit mid-screen (Alborz 2026-08-19). */}
-      {invitee && (
+      {invitee && !ed && (
         <section style={{
           minHeight: "100svh", display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center", gap: 44,
@@ -485,8 +534,17 @@ function ScrollCue() {
 }
 
 // The invitee landing's CTA — accent stadium pill (the wall's JOIN grammar).
-function JoinButton({ name, onClick }: { name: string; onClick: () => void }) {
+function JoinButton({ name, onClick, editorial = false }: { name: string; onClick: () => void; editorial?: boolean }) {
   const { ref, visible } = useReveal(0.3);
+  if (editorial) {
+    return (
+      <div ref={ref} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.8s ease 0.2s" }}>
+        <button type="button" onClick={onClick} style={{ ...E.type.button16, width: "100%", height: 56, background: E.color.ink, color: E.color.cream, border: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
+          Join {name} →
+        </button>
+      </div>
+    );
+  }
   return (
     <div ref={ref} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.8s ease 0.2s" }}>
       <button

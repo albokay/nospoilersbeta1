@@ -45,6 +45,8 @@ const HomepageLab = lazyWithReload(() => import("./components/HomepageLab"), "./
 const HowItWorks = lazyWithReload(() => import("./components/HowItWorks"), "./components/HowItWorks");
 const HowItWorksV2 = lazyWithReload(() => import("./components/HowItWorksV2"), "./components/HowItWorksV2");
 import HomepageNarrative from "./components/HomepageNarrative";
+import EditorialHomepage from "./components/editorial/Homepage";
+import { useEditorial } from "./lib/skin";
 const InviteAcceptPage = lazyWithReload(() => import("./components/InviteAcceptPage"), "./components/InviteAcceptPage");
 const AllowResponsePage = lazyWithReload(() => import("./components/AllowResponsePage"), "./components/AllowResponsePage");
 const ConfirmEmailPage = lazyWithReload(() => import("./components/ConfirmEmailPage"), "./components/ConfirmEmailPage");
@@ -385,6 +387,10 @@ function AppShell() {
   }, []);
 
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  // The editorial skin (checkpoint 8, 2026-10-12): a signed-out visit with
+  // ?skin=editorial (or an editorial account on /) gets the homepage drawn
+  // as the E3Home / D3Home boards; everything classic stays as it is.
+  const editorial = useEditorial();
   const username = profile?.username ?? null;
   const [showAuthModal, setShowAuthModal] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1313,7 +1319,19 @@ function AppShell() {
           {isHomepage && user && !isAdmin && (
             <StuckSessionLoader onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } }} />
           )}
-          {isHomepage && (
+          {isHomepage && editorial && (
+            <div style={{ position: "absolute", left: 0, top: 0, width: "100%", zIndex: 95 }}>
+              <EditorialHomepage
+                desktop
+                onSignIn={() => { setAuthInitialMode("signin"); setShowAuthModal(true); }}
+                onJoin={() => { setAuthInitialMode("signup"); setShowAuthModal(true); }}
+                onDetails={() => setShowHowItWorks(true)}
+                betaOpen={betaOpen}
+                onToggleBeta={() => setBetaOpen((o) => !o)}
+              />
+            </div>
+          )}
+          {isHomepage && !editorial && (
             <>
               {/* ── Gradient fade-in overlay (fixed, tracks narrative scroll) ── */}
               <div style={{
@@ -1488,7 +1506,7 @@ function AppShell() {
             </>
           )}
 
-          {!expandedShowId && (
+          {!expandedShowId && !(isHomepage && editorial) && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 48, paddingBottom: 96 }}>
               {/* Beta message pill toggle */}
               <button

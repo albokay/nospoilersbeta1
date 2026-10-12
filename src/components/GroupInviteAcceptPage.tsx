@@ -212,9 +212,10 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     // the door questions. Normal document flow — the scroll IS the page.
     if (!prologueDone && !info.inviteeHasAccount) {
       return (
-        <div style={{ minHeight: "100svh" }}>
+        <div style={{ minHeight: "100svh", ...(editorial ? { background: "var(--canon-personal,#7abd8e)" } : {}) }}>
           <HomepageNarrative
             headerHeight={0}
+            editorial={editorial}
             invitee={{
               inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
               onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },

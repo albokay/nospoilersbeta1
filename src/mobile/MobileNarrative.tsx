@@ -18,6 +18,8 @@ import {
 } from "../lib/homepageCopy";
 
 const MobileHowItWorks = lazyWithReload(() => import("./MobileHowItWorks"), "./MobileHowItWorks");
+import { useEditorial } from "../lib/skin";
+import EditorialHomepage from "../components/editorial/Homepage";
 
 // Mobile homepage narrative scroll for signed-out users (CP1 of the mobile
 // rebuild). The desktop homepage is the source of truth; this surface renders
@@ -42,6 +44,8 @@ export default function MobileNarrative() {
   const location = useLocation();
   const [betaOpen, setBetaOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  // The editorial skin (checkpoint 8): the E3Home + E3Scroll boards.
+  const editorial = useEditorial();
 
   // Preserve invite context on the auth shortcut: /m/invite/:token currently
   // falls through to this narrative (the mobile invite flow is rebuilt in
@@ -56,6 +60,25 @@ export default function MobileNarrative() {
   const joinTarget = onInvitePath
     ? `/m/auth?mode=signup&returnTo=${encodeURIComponent(location.pathname)}`
     : "/m/auth?mode=signup";
+
+  if (editorial) {
+    return (
+      <>
+        <EditorialHomepage
+          onSignIn={() => navigate(signInTarget)}
+          onJoin={() => navigate(joinTarget)}
+          onDetails={() => setShowDetails(true)}
+          betaOpen={betaOpen}
+          onToggleBeta={() => setBetaOpen((o) => !o)}
+        />
+        {showDetails && (
+          <Suspense fallback={null}>
+            <MobileHowItWorks onClose={() => setShowDetails(false)} onSignup={() => { setShowDetails(false); navigate(joinTarget); }} />
+          </Suspense>
+        )}
+      </>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100dvh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))", color: CANON.cream }}>

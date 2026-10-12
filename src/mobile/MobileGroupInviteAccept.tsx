@@ -261,6 +261,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         <div style={{ minHeight: "100dvh", background: "var(--dos-bg, var(--canon-personal,#7abd8e))" }}>
           <HomepageNarrative
             headerHeight={0}
+            editorial={editorial}
             invitee={{
               inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
               onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },
