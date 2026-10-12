@@ -6,6 +6,11 @@ import { useAuth } from "../lib/auth";
 import { insertFeedback } from "../lib/db";
 import LoadingDots from "../components/LoadingDots";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { BottomSheet } from "../components/editorial/Overlays";
+import { Block } from "../components/editorial/Onboarding";
+import { NOTE_FIELD } from "../components/editorial/MapNotes";
 
 /**
  * MobileFeedbackSheet — the desktop FeedbackWidget's form as a bottom sheet.
@@ -37,6 +42,7 @@ const C = { sky: CANON.friend, blue: CANON.identity, red: CANON.alert, cream: CA
 export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const editorial = useEditorial();
   const [message, setMessage] = useState("");
   const [phase, setPhase] = useState<"idle" | "sending" | "sent" | "rate-limited" | "error">("idle");
 
@@ -65,6 +71,22 @@ export default function MobileFeedbackSheet({ onClose }: { onClose: () => void }
   // Swipe-down dismiss (2026-07-28 rollout); drags starting in the textarea
   // don't move the sheet, so typing/selection is untouched.
   const swipe = useSheetSwipeDown(onClose);
+
+  // The editorial sheet (Alborz's notes, item 7): the bottom sheet, the
+  // prompts in ink, the field framed, Send as the block. Same send path.
+  if (editorial) {
+    return (
+      <BottomSheet onClose={onClose} title="Send Sidebar feedback" caption="Your gut reactions are as important as your considered thoughts">
+        <div style={{ ...E.type.body15, color: E.color.inkSub, marginBottom: 14 }}>{PROMPT_LINES.join(" ")}</div>
+        <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MAX_CHARS))} placeholder="Your thoughts…" autoFocus rows={5} style={{ ...NOTE_FIELD, minHeight: 120 }} />
+        <div style={{ ...E.type.label10, color: E.color.inkMuted, textAlign: "right", marginTop: 6 }}>{message.length} / {MAX_CHARS}</div>
+        {phase === "sent" && <div style={{ ...E.type.note13, fontWeight: 600, color: E.color.identity, marginTop: 10 }}>Thanks for your thoughts!</div>}
+        {phase === "rate-limited" && <div style={{ ...E.type.note13, fontWeight: 600, marginTop: 10 }}>Give it a moment before sending another.</div>}
+        {phase === "error" && <div style={{ ...E.type.note13, fontWeight: 600, color: E.color.alert, marginTop: 10 }}>Couldn&rsquo;t send &mdash; please try again.</div>}
+        <Block onClick={handleSend} disabled={!message.trim() || phase === "sending"} style={{ marginTop: 16 }}>{phase === "sending" ? <>Sending<LoadingDots /></> : "Send"}</Block>
+      </BottomSheet>
+    );
+  }
 
   return (
     // pointerdown (not click) so the FIRST tap outside closes the sheet even

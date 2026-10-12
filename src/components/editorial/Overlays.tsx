@@ -25,13 +25,14 @@ const G = E.space.gutter;
  *  1px ink edge; the head carries the title in Lora and a mono caption, the
  *  × at its right; the body scrolls; `foot` pins under it. No dim — the
  *  page stays readable beside it; a click outside closes it. */
-export function Drawer({ onClose, title, caption, head, children, foot, width = 440, zIndex = 1300, label, bodyStyle }: {
-  onClose: () => void; title?: React.ReactNode; caption?: React.ReactNode; head?: React.ReactNode; children: React.ReactNode; foot?: React.ReactNode; width?: number; zIndex?: number; label?: string; bodyStyle?: React.CSSProperties;
+export function Drawer({ onClose, title, caption, head, children, foot, width = 440, zIndex = 1300, label, bodyStyle, side = "right" }: {
+  onClose: () => void; title?: React.ReactNode; caption?: React.ReactNode; head?: React.ReactNode; children: React.ReactNode; foot?: React.ReactNode; width?: number; zIndex?: number; label?: string; bodyStyle?: React.CSSProperties; side?: "left" | "right";
 }) {
+  const left = side === "left";
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: zIndex - 1, background: "transparent" }} />
-      <div role="dialog" aria-label={label ?? (typeof title === "string" ? title : undefined)} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: `min(${width}px, 44vw)`, background: E.color.cream, color: E.color.ink, borderLeft: `1px solid ${E.color.ink}`, display: "flex", flexDirection: "column", zIndex, fontFamily: E.font.interface, animation: "eDrawerIn 180ms ease-out", boxSizing: "border-box" }}>
+      <div role="dialog" aria-label={label ?? (typeof title === "string" ? title : undefined)} style={{ position: "fixed", top: 0, bottom: 0, ...(left ? { left: 0, borderRight: `1px solid ${E.color.ink}` } : { right: 0, borderLeft: `1px solid ${E.color.ink}` }), width: `min(${width}px, 44vw)`, background: E.color.cream, color: E.color.ink, display: "flex", flexDirection: "column", zIndex, fontFamily: E.font.interface, animation: `${left ? "eDrawerInLeft" : "eDrawerIn"} 180ms ease-out`, boxSizing: "border-box" }}>
         <div style={{ padding: "26px 28px 16px", borderBottom: `1px solid ${E.color.ink}`, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             {head ?? (
@@ -46,7 +47,7 @@ export function Drawer({ onClose, title, caption, head, children, foot, width = 
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 28px 32px", ...bodyStyle }}>{children}</div>
         {foot}
       </div>
-      <style>{`@keyframes eDrawerIn { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }`}</style>
+      <style>{`@keyframes eDrawerIn { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } } @keyframes eDrawerInLeft { from { transform: translateX(-24px); opacity: 0 } to { transform: none; opacity: 1 } }`}</style>
     </>
   );
 }

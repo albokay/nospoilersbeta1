@@ -9,6 +9,12 @@ import { CANON } from "../styles/canon";
 import { M, OVERLAY, LORA } from "../mobile/m";
 import { D } from "./dashboardChrome";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { SectionHead } from "./editorial/Chrome";
+import { AnswerRow, EditorialDialog } from "./editorial/GroupRoom";
+import { BottomSheet } from "./editorial/Overlays";
+import { Field, Block, Frame, FORM_CSS } from "./editorial/Onboarding";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
 // flow (ANONYMIZE model): personal info + private notes are erased, shared-room
@@ -28,6 +34,7 @@ const SKIN_CHOICES: [ProfileSkin, string][] = [["classic", "Classic"], ["editori
 // of the two truly irreversible confirms on /m). Desktop path byte-identical.
 export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: () => void; onSignOut?: () => void | Promise<void>; mobile?: boolean }) {
   const { user, profile, refreshProfile } = useAuth() as any;
+  const editorial = useEditorial();
   const [phase, setPhase] = useState<"main" | "confirm">("main");
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -109,6 +116,61 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
       }
     } catch { /* ignore */ }
     window.location.replace("/");
+  }
+
+  // The editorial card (Alborz's notes, item 7): "Account" in Lora with the
+  // email in mono, each section on a rule — the name as a field with Save,
+  // Look as the answer row, Delete in alert, Sign out as a frame; the
+  // type-DELETE step as the same frame. The dialog on desktop, the sheet on
+  // the phone. Same saves, same delete.
+  if (editorial) {
+    const note: React.CSSProperties = { ...E.type.note13, color: E.color.inkSub, marginTop: 10 };
+    const err: React.CSSProperties = { ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 10 };
+    const main = (
+      <>
+        <div style={E.type.letterTitle22}>Account</div>
+        {user?.email && <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 6 }}>{user.email}</div>}
+        <SectionHead style={{ marginTop: 28 }}>Your name</SectionHead>
+        <div style={note}>How you show up for your friends, unless they&rsquo;ve saved their own name for you.</div>
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-end", marginTop: 14 }}>
+          <Field label="Your name" value={nameDraft} onChange={(v) => { setNameDraft(v); setNameError(null); }} placeholder="your first name" maxLength={40} autoComplete="given-name" readOnly={nameSaving} style={{ flex: 1, minWidth: 0 }} />
+          <Block onClick={saveName} disabled={nameSaving || !nameDirty} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>{nameSaving ? <LoadingDots /> : nameSaved ? "Saved" : "Save"}</Block>
+        </div>
+        {nameError && <div style={err}>{nameError}</div>}
+        {canPickSkin && (
+          <>
+            <SectionHead style={{ marginTop: 28 }}>Look</SectionHead>
+            <div style={note}>The editorial look is being built page by page. Switch back any time.</div>
+            <AnswerRow label="Look" options={[{ value: "classic", label: "Classic" }, { value: "editorial", label: "Editorial" }]} value={currentSkin} onChange={(v) => { void chooseSkin(v as ProfileSkin); }} />
+          </>
+        )}
+        <SectionHead style={{ marginTop: 28, color: E.color.alert, borderBottomColor: E.color.alert }}>Delete account</SectionHead>
+        <div style={note}>Permanently deletes your account, personal info and private notes. Posts in shared rooms stay, shown as &ldquo;(deleted user)&rdquo;. This can&rsquo;t be undone.</div>
+        <Frame onClick={() => setPhase("confirm")} style={{ marginTop: 14, height: 48, ...E.type.label11, color: E.color.alert, borderColor: E.color.alert }}>Delete my account…</Frame>
+        {onSignOut && (
+          <>
+            <SectionHead style={{ marginTop: 28 }}>Signed in</SectionHead>
+            <Frame onClick={() => { void onSignOut(); }} style={{ marginTop: 14, height: 48, ...E.type.label11 }}><LogOut size={14} /> Sign out</Frame>
+          </>
+        )}
+      </>
+    );
+    const confirm = (
+      <>
+        <div style={E.type.letterTitle22}>Delete your account?</div>
+        <div style={note}>This is permanent. Type <strong>DELETE</strong> to confirm.</div>
+        <Field label="Type DELETE" value={confirmText} onChange={(v) => { setConfirmText(v); setError(null); }} placeholder="DELETE" autoFocus readOnly={busy} autoComplete="off" style={{ marginTop: 18 }} />
+        {error && <div style={err}>{error}</div>}
+        <div style={{ display: "flex", gap: 12, marginTop: 22 }}>
+          <button type="button" onClick={doDelete} disabled={busy || !canDelete} style={{ ...E.type.button16, flex: 1, height: 54, border: 0, background: E.color.alert, color: E.color.cream, cursor: busy || !canDelete ? "not-allowed" : "pointer", opacity: busy || !canDelete ? 0.6 : 1 }}>{busy ? <LoadingDots /> : "Permanently delete"}</button>
+          <button type="button" onClick={() => { setPhase("main"); setConfirmText(""); setError(null); }} disabled={busy} style={{ ...E.type.button16, flex: 1, height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Cancel</button>
+        </div>
+      </>
+    );
+    const body = <><style>{FORM_CSS}</style>{phase === "confirm" ? confirm : main}</>;
+    return mobile
+      ? <BottomSheet onClose={() => { if (!busy) onClose(); }} zIndex={phase === "confirm" ? 1300 : 1000} label="Account">{body}</BottomSheet>
+      : <EditorialDialog onClose={() => { if (!busy) onClose(); }} width={480} label="Account" align="left">{body}</EditorialDialog>;
   }
 
   if (mobile) {

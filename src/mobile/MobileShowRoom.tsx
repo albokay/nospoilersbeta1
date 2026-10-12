@@ -23,6 +23,8 @@ import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButto
 import { RowPoster } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import { MapLegend } from "../components/editorial/MapNotes";
+import { BottomSheet } from "../components/editorial/Overlays";
+import { Block, Frame } from "../components/editorial/Onboarding";
 import AccountModal from "../components/AccountModal";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
@@ -1452,7 +1454,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              your own icon → the rating edit mode (Save commits; closing
              the sheet mid-edit drops unsaved taps). Red dots have no
              dismiss here (Alborz 2026-09-23). ── */}
-      {mapSheetOpen && roomId && show && user && mapEmpty && (
+      {mapSheetOpen && roomId && show && user && mapEmpty && (editorial ? (
+        <BottomSheet onClose={() => setMapSheetOpen(false)} title="Season map">
+          <div style={{ width: "100%", aspectRatio: "1 / 1", boxSizing: "border-box", border: `1px dashed ${E.color.friend}`, color: E.color.inkSub, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 28, ...E.type.body15 }}>
+            Once you start watching, an episode map will appear here to help you navigate your writing.
+          </div>
+        </BottomSheet>
+      ) : (
         // A brand-new room (Alborz 2026-10-07): nobody has reached an episode,
         // so the sheet holds only its title and a square Sky-dashed box with
         // the note, and is only as tall as that — not a map's 80dvh.
@@ -1475,7 +1483,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             </div>
           </div>
         </div>
-      )}
+      ))}
       {mapSheetOpen && roomId && show && user && !mapEmpty && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setMapSheetOpen(false); }}>
           <div
@@ -1531,7 +1539,32 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              (polish pass 2026-09-14): grabber, room title, labelled Email
              updates section with the explanation BEFORE the button, then the
              two-path leave/done section with a caption under each exit. ── */}
-      {digestModalOpen && roomId && (
+      {digestModalOpen && roomId && (editorial ? (
+        <BottomSheet onClose={() => { if (!digestBusy) setDigestModalOpen(false); }} title={`${show?.name ?? "Show"} room`} caption={groupName ? `with ${groupName}` : undefined}>
+          <SectionHead>Email updates</SectionHead>
+          {digestOptOut === null ? (
+            <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 12 }}>loading<LoadingDots /></div>
+          ) : digestOptOut ? (
+            <>
+              <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+              <Frame onClick={() => applyDigest(false)} disabled={digestBusy} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>Resubscribe</Frame>
+            </>
+          ) : (
+            <>
+              <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
+              <Frame onClick={() => applyDigest(true)} disabled={digestBusy} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>Unsubscribe</Frame>
+            </>
+          )}
+          <SectionHead style={{ marginTop: 28 }}>Leaving, or done watching?</SectionHead>
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <Frame onClick={() => doLeaveRoom("out")} disabled={leaveBusy} style={{ height: 48, ...E.type.label11 }}>Sit this out</Frame>
+            <Frame onClick={() => doLeaveRoom("seen")} disabled={leaveBusy} style={{ height: 48, ...E.type.label11 }}>I’ve seen it</Frame>
+          </div>
+          <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Both take you out of this room. Your letters stay, and everyone else keeps going. Your answer shows on your friends’ shelves.</div>
+          <Block onClick={doDnfRoom} disabled={dnfBusy} style={{ marginTop: 18, height: 48, ...E.type.label11 }}>{dnfBusy ? "one moment…" : "We’re done with this one"}</Block>
+          <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Parks the show for the whole group. Anyone can bring it back later.</div>
+        </BottomSheet>
+      ) : (
         <div style={dim} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
           <div style={{ ...sheetShell, background: C.yellow, ...digestSwipe.style }} {...digestSwipe.handlers} onClick={(e) => e.stopPropagation()}>
             <div style={OVERLAY.grabber(CANON.cream)} />
@@ -1566,7 +1599,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div style={{ ...digestSub, marginTop: 10 }}>Parks the show for the whole group. Anyone can bring it back later.</div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Swipe-deck arc CP4 — the drip / catch-up modal fires wherever
              the user is (once per session; self-skipping). ── */}

@@ -27,6 +27,9 @@ import { CANON } from "../styles/canon";
 import { OVERLAY, LORA } from "../mobile/m";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { BottomSheet } from "./editorial/Overlays";
 
 /** Presentation-only paren strip (polish pass 2026-09-14): asides render as
  *  italic captions without their wrapping parentheses — the SOURCE strings in
@@ -38,6 +41,7 @@ function deparen(t: string): string {
 
 export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page: TipsPage; tabStyle?: React.CSSProperties }) {
   const { user } = useAuth();
+  const editorial = useEditorial();
   // First-visit auto-open ARRIVES, it doesn't preexist (Alborz 2026-08-01):
   // the page paints tip-less first, then the sheet rises in after a beat —
   // so the tip reads as an event, not furniture. Manual "?" opens stay
@@ -65,6 +69,25 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
 
   if (!open) {
     return <button onClick={() => setOpen(true)} aria-label="tips" style={{ ...tabStyle, ...tabOverride }}>?</button>;
+  }
+
+  // The editorial sheet (Alborz's notes, item 7): the bottom sheet with
+  // "Tips" in Lora, the tips in ink; asides italic and muted.
+  if (editorial) {
+    return (
+      <BottomSheet onClose={close} zIndex={990} title="Tips" maxHeight="60dvh">
+        {tips.map((t, i) => (
+          <div key={i} style={{ marginTop: i === 0 ? 0 : 16 }}>
+            {t.body.split("\n\n").map((p, j) => (
+              <p key={j} style={{ margin: j === 0 ? 0 : "6px 0 0", ...E.type.body15, color: E.color.ink, ...(p.trim().startsWith("(") ? { ...E.type.note13, fontStyle: "italic", color: E.color.inkSub } : {}) }}>
+                <TipText text={p.trim().startsWith("(") ? deparen(p) : p} />
+              </p>
+            ))}
+            {t.aside && <p style={{ margin: "6px 0 0", ...E.type.note13, fontStyle: "italic", color: E.color.inkSub }}><TipText text={deparen(t.aside)} /></p>}
+          </div>
+        ))}
+      </BottomSheet>
+    );
   }
 
   return (

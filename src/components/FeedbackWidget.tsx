@@ -5,6 +5,11 @@ import { useAuth } from "../lib/auth";
 import { useLocation } from "react-router-dom";
 import { insertFeedback } from "../lib/db";
 import LoadingDots from "./LoadingDots";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { Drawer, BottomSheet } from "./editorial/Overlays";
+import { Block } from "./editorial/Onboarding";
+import { NOTE_FIELD } from "./editorial/MapNotes";
 
 const MAX_CHARS = 2000;
 const PROMPT_LINES = [
@@ -39,6 +44,7 @@ export default function FeedbackWidget({
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const editorial = useEditorial();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [phase, setPhase] = useState<"idle" | "sending" | "sent" | "rate-limited" | "error">("idle");
@@ -79,6 +85,33 @@ export default function FeedbackWidget({
       setPhase("error");
     }
   };
+
+  // The editorial panel (Alborz's notes, item 7): a cream drawer from the
+  // left edge on desktop, the bottom sheet on the phone; the trigger, where
+  // a page still shows one, is a mono tab running off the left edge.
+  if (editorial) {
+    const form = (
+      <>
+        <div style={{ ...E.type.body15, color: E.color.inkSub, marginBottom: 14 }}>{PROMPT_LINES.join(" ")}</div>
+        <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MAX_CHARS))} rows={6} placeholder="Your thoughts…" style={{ ...NOTE_FIELD, minHeight: 140 }} />
+        <div style={{ ...E.type.label10, color: message.length > MAX_CHARS * 0.85 ? E.color.alert : E.color.inkMuted, textAlign: "right", marginTop: 6 }}>{message.length} / {MAX_CHARS}</div>
+        {phase === "sent" && <div style={{ ...E.type.note13, fontWeight: 600, color: E.color.identity, marginTop: 10 }}>Thanks for your thoughts!</div>}
+        {phase === "rate-limited" && <div style={{ ...E.type.note13, fontWeight: 600, marginTop: 10 }}>Give it a moment before sending another.</div>}
+        {phase === "error" && <div style={{ ...E.type.note13, fontWeight: 600, color: E.color.alert, marginTop: 10 }}>Couldn&rsquo;t send &mdash; please try again.</div>}
+        {phase !== "sent" && <Block onClick={handleSend} disabled={!message.trim() || phase === "sending"} style={{ marginTop: 16 }}>{phase === "sending" ? <>Sending<LoadingDots /></> : "Send"}</Block>}
+      </>
+    );
+    return (
+      <>
+        {!open && !hideTrigger && (
+          <button type="button" onClick={handleOpen} style={{ position: "fixed", left: 0, top: "85%", transform: "translateY(-50%)", zIndex: 10000, height: 40, padding: "0 14px 0 18px", background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderLeft: 0, ...E.type.label11, display: "inline-flex", alignItems: "center", cursor: "pointer" }}>Feedback</button>
+        )}
+        {open && (isMobile
+          ? <BottomSheet onClose={handleClose} zIndex={10001} title="Send Sidebar feedback">{form}</BottomSheet>
+          : <Drawer onClose={handleClose} side="left" width={380} zIndex={10001} title="Feedback" caption="Send me your thoughts">{form}</Drawer>)}
+      </>
+    );
+  }
 
   return (
     <>

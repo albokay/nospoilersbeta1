@@ -1,6 +1,8 @@
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import { X } from "lucide-react";
 import { CANON, withAlpha } from "../styles/canon";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
 
 // ============================================================================
 // StickyNote — the shared shell for the app's cream/yellow sticky-notes.
@@ -90,6 +92,10 @@ export default function StickyNote({
   entranceDelayMs = STICKY.ENTRY_DELAY_MS,
   containerProps,
 }: StickyNoteProps) {
+  // The editorial skin (Alborz's notes, item 7): every sticky is the
+  // bible's paper note — cream, a 1px ink frame, the accent bar at its
+  // left, no shadow, the tilt kept, the words in ink.
+  const editorial = useEditorial();
   const [wide, setWide] = useState(
     () => ignoreViewportGate ||
       (typeof window !== "undefined" && window.innerWidth >= STICKY.MIN_VIEWPORT_PX),
@@ -138,6 +144,7 @@ export default function StickyNote({
         boxShadow,
         fontSize,
         lineHeight,
+        ...(editorial ? { background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, boxShadow: "none", fontFamily: E.font.interface, fontSize: Math.min(fontSize, 14) } : {}),
         ...style,
       }}
     >
@@ -153,7 +160,7 @@ export default function StickyNote({
             background: "transparent",
             border: "none",
             padding: 6,
-            color: xColor,
+            color: editorial ? E.color.ink : xColor,
             cursor: dismissDisabled ? "default" : "pointer",
             display: "flex",
             alignItems: "center",

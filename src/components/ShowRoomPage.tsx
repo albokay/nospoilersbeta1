@@ -55,9 +55,10 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead } from "./editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
-import { RowPoster } from "./editorial/GroupRoom";
+import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
 import { MapLegend } from "./editorial/MapNotes";
+import { Frame } from "./editorial/Onboarding";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -1478,7 +1479,24 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* Email-digest subscription gear modal (friend room only). Mirrors the
           dashboard "Leave this group?" modal. Backend: get/set_room_digest_opt_out. */}
-      {digestModalOpen && roomId && (
+      {digestModalOpen && roomId && (editorial ? (
+        <EditorialDialog onClose={() => { if (!digestBusy) setDigestModalOpen(false); }} width={420} label="Email updates" align="left">
+          <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>Email updates</div>
+          {digestOptOut === null ? (
+            <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 12 }}>loading<LoadingDots /></div>
+          ) : digestOptOut ? (
+            <>
+              <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>You'll get the daily digest again when this room has new activity you haven't seen.</div>
+              <Frame onClick={() => applyDigest(false)} disabled={digestBusy} style={{ marginTop: 18, height: 48, ...E.type.label11 }}>Resubscribe</Frame>
+            </>
+          ) : (
+            <>
+              <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>A daily digest when this room has activity you haven't seen. You can resubscribe here anytime.</div>
+              <Frame onClick={() => applyDigest(true)} disabled={digestBusy} style={{ marginTop: 18, height: 48, ...E.type.label11 }}>Unsubscribe</Frame>
+            </>
+          )}
+        </EditorialDialog>
+      ) : (
         // Yellow dialog (polish pass 2026-09-15): labelled section with the
         // explanation BEFORE the button (mobile room-settings parity).
         <div style={digestOverlay} onClick={() => { if (!digestBusy) setDigestModalOpen(false); }}>
@@ -1507,7 +1525,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* Feedback tab — left-edge widget on every live desktop surface
           (2026-07-03). Sits at 85% height; the back tab lives at 18%. */}

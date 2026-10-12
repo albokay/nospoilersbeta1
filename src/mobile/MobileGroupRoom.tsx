@@ -72,7 +72,7 @@ import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/group
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
-import { EditorialStrips } from "../components/editorial/Onboarding";
+import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
@@ -1588,7 +1588,28 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* ── Gear: group settings (yellow sheet; polish pass 2026-09-14 —
              grabber + sheet title, group name leads, then friends' names
              with the pending panel inside, then leave; captions 13). ── */}
-      {gearOpen && (
+      {gearOpen && (editorial ? (
+        <BottomSheet onClose={() => setGearOpen(false)} title="Group settings" caption={groupName}>
+          <style>{FORM_CSS}</style>
+          <SectionHead>Group name</SectionHead>
+          <Field label="Group name" value={renameValue} onChange={setRenameValue} placeholder="group name" style={{ marginTop: 14 }} />
+          <Block onClick={doRename} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>Save name</Block>
+          {(others.length > 0 || myInvites.length > 0 || othersPending.length > 0) && (
+            <>
+              <SectionHead style={{ marginTop: 28 }}>Your names for your friends</SectionHead>
+              {others.length > 0 && <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Names default to your friends&rsquo; log-in info. Enter your own names for them, like your phone&rsquo;s contacts.</div>}
+              {others.map((m) => (
+                <Field key={m.userId} label={m.displayName ?? m.username} value={contactEdits[m.userId] ?? ""} onChange={(v) => setContactEdits((prev) => ({ ...prev, [m.userId]: v }))} placeholder={m.displayName ?? m.username} maxLength={40} style={{ marginTop: 14 }} />
+              ))}
+              <div style={{ marginTop: 14 }}><PendingInvitesPanel invites={myInvites} others={othersPending} onRefresh={reloadMyInvites} /></div>
+              {others.length > 0 && <Block onClick={saveContactNames} disabled={contactsSaving} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>{contactsSaving ? "saving…" : "Save names"}</Block>}
+            </>
+          )}
+          <SectionHead style={{ marginTop: 28, color: E.color.alert, borderBottomColor: E.color.alert }}>Leave this group</SectionHead>
+          <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>You can join again if someone sends you another invite.</div>
+          <Frame onClick={doLeave} style={{ marginTop: 14, height: 48, ...E.type.label11, color: E.color.alert, borderColor: E.color.alert }}>Leave group</Frame>
+        </BottomSheet>
+      ) : (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setGearOpen(false); }}>
           <div
             {...gearSwipe.handlers}
@@ -1633,7 +1654,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <button style={dangerBtn} onClick={doLeave}>Leave group</button>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Invite compose (full-screen; targets THIS group) ── */}
       {inviteOpen && (
