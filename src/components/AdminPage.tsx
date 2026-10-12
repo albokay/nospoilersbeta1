@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { CANON } from "../styles/canon";
 import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
-import type { Show, FeedbackRow, PromptRow, AdminUserOverviewRow, AdminUserActivityRow } from "../lib/db";
-import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt, fetchAdminUserOverview, fetchAdminUserActivity } from "../lib/db";
+import type { Show, FeedbackRow, PromptRow, AdminUserOverviewRow, AdminUserActivityRow, ProfileSkin } from "../lib/db";
+import { adminDeleteShow, adminToggleHidden, fetchFeedback, updateFeedbackStatus, markFeedbackRead, deleteFeedback, fetchAllPrompts, togglePromptActive, deletePrompt, updatePrompt, createPrompt, fetchAdminUserOverview, fetchAdminUserActivity, fetchProfileSkins, adminSetProfileSkin } from "../lib/db";
 import { timeAgo } from "../lib/utils";
 
 // Section ids used for the collapse-state map. Default collapsed for all
@@ -197,6 +197,9 @@ export default function AdminPage({
 
   // ── Activity (per-user overview) state ───────────────────────────────────
   const [activityRows, setActivityRows] = useState<AdminUserOverviewRow[]>([]);
+  // Which look each account sees (the editorial skin's switch, checkpoint 1
+  // 2026-10-10) — loaded with the rows, flipped per row.
+  const [skins, setSkins] = useState<Record<string, ProfileSkin>>({});
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   const [activityHasLoaded, setActivityHasLoaded] = useState(false);
@@ -213,14 +216,28 @@ export default function AdminPage({
     setActivityLoading(true);
     setActivityError(null);
     try {
-      const rows = await fetchAdminUserOverview();
+      const [rows, skinMap] = await Promise.all([fetchAdminUserOverview(), fetchProfileSkins()]);
       setActivityRows(rows);
+      setSkins(skinMap);
       setActivityHasLoaded(true);
     } catch (err: any) {
       console.error("[admin] fetchAdminUserOverview failed:", err);
       setActivityError(err?.message ?? String(err));
     } finally {
       setActivityLoading(false);
+    }
+  };
+
+  // Flip one account between the classic and editorial looks
+  // (admin_set_profile_skin). The account sees it on its next profile load.
+  const flipSkin = async (userId: string) => {
+    const next: ProfileSkin = skins[userId] === "editorial" ? "classic" : "editorial";
+    try {
+      await adminSetProfileSkin(userId, next);
+      setSkins((prev) => ({ ...prev, [userId]: next }));
+    } catch (err: any) {
+      console.error("[admin] adminSetProfileSkin failed:", err);
+      setActivityError(err?.message ?? String(err));
     }
   };
 
@@ -1035,6 +1052,7 @@ export default function AdminPage({
                         </th>
                       );
                     })}
+                    <th style={{ padding: "6px 8px", fontWeight: 700, whiteSpace: "nowrap" }} title="Which look the account sees — click a cell to flip it">Look</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1061,6 +1079,17 @@ export default function AdminPage({
                       <td style={{ padding: "5px 8px", textAlign: "right", color: "#888" }}>{row.repliesCountTsp}</td>
                       <td style={{ padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap" }}>{row.postsPerWeek.toFixed(2)}</td>
                       <td style={{ padding: "5px 8px", whiteSpace: "nowrap", color: "#666" }}>{fmtDateTimeShort(row.lastActivityAt)}</td>
+                      <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn"
+                          onClick={() => { void flipSkin(row.userId); }}
+                          disabled={!(row.userId in skins)}
+                          title={row.userId in skins ? "Click to flip" : "The skin column isn't there yet (run 20261010_profile_skin.sql)"}
+                          style={{ fontSize: 11, padding: "2px 8px" }}
+                        >
+                          {skins[row.userId] ?? "—"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

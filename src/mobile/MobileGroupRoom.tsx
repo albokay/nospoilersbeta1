@@ -68,7 +68,11 @@ import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, type 
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
-import { groupGenericName, personDisplayName } from "../lib/groupNames";
+import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, TopRight, ChatWord, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub } from "../components/editorial/Chrome";
+import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 
 /**
@@ -115,7 +119,7 @@ const C = {
  *  "(A is interested.)" / "(A and B are interested.)" / "(A, B, and C are
  *  interested.)" */
 export default function MobileGroupRoom({ groupId }: { groupId: string }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const selfUserId = user?.id ?? "";
 
@@ -203,6 +207,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
+  // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the
+  // header branches on it — the back corner, `Chat ? ⚙` as words, the name
+  // in Lora 46 with the members under it. The shelves stay classic until
+  // checkpoint 3.
+  const editorial = useEditorial();
+  // The account card from the room (Alborz 2026-10-10: the account control
+  // sits in every page's top-right under the editorial skin).
+  const [showAccount, setShowAccount] = useState(false);
   // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
   // scrolls, so the drag only engages when it's scrolled to the top.
   const gearSwipe = useSheetSwipeDown(() => setGearOpen(false), { open: gearOpen });
@@ -1012,8 +1024,46 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
+  // The group's settings sheet — the gear beside the classic title, the gear
+  // word in the editorial chrome.
+  function openGear() {
+    setRenameValue(group?.name ?? "");
+    // Seed the contact-rename inputs with the viewer's current names.
+    const edits: Record<string, string> = {};
+    for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+    setContactEdits(edits);
+    setGearOpen(true);
+  }
+
   return (
     <div style={page}>
+      {showAccount && (
+        <AccountModal
+          mobile
+          onClose={() => setShowAccount(false)}
+          onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
+        />
+      )}
+      {editorial ? (
+        // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
+        //    the way out, `Chat ? ⚙` as mono words at the top right, the
+        //    group's name in Lora 46 at the title line with the members under
+        //    it. The shelves under it are still classic until checkpoint 3. ──
+        <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
+          <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
+          <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+            <ChatWord key="chat" hit={E.measure.phone.wordHit} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} onClick={() => navigate(`/m/group/${groupId}/chat`)} />,
+            ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
+            <GearWord key="gear" hit={E.measure.phone.wordHit} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />,
+            <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
+          ]} />
+          <div style={{ paddingTop: E.measure.phone.titleTop }}>
+            <EditorialTitle>{groupName}</EditorialTitle>
+            {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
+          </div>
+        </div>
+      ) : (
+      <>
       {/* ── Header: back · group name + gear (+ with members) — the gear
              sits right beside the name, desktop-style (Alborz 2026-08-13;
              it used to hang at the bar's far right). ── */}
@@ -1026,14 +1076,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <h1 style={{ ...headerTitle, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{groupName}</h1>
             {/* margin -8px 0 so the 44px hit doesn't inflate the title row
                 (polish pass — the "with" line below gets real spacing). */}
-            <button style={{ ...iconBtn, position: "relative", margin: "-8px 0" }} title="group options" onClick={() => {
-              setRenameValue(group?.name ?? "");
-              // Seed the contact-rename inputs with the viewer's current names.
-              const edits: Record<string, string> = {};
-              for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
-              setContactEdits(edits);
-              setGearOpen(true);
-            }}>
+            <button style={{ ...iconBtn, position: "relative", margin: "-8px 0" }} title="group options" onClick={openGear}>
               {staleInviteCount > 0 && <span style={gearStaleDot} />}
               <Settings size={20} color={C.cream} />
             </button>
@@ -1065,6 +1108,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ── Chat: a right-edge tab (matches desktop; 2026-07-09) — the old
              shows/chat toggle wasn't a real toggle, just a link to chat. ── */}

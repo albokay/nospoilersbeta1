@@ -3030,6 +3030,34 @@ export async function setOwnDisplayName(userId: string, name: string): Promise<v
   if (error) throw error;
 }
 
+// ── The editorial skin's switch (checkpoint 1, 2026-10-10; src/lib/skin.tsx) ─
+export type ProfileSkin = "classic" | "editorial";
+
+/** The caller's own look (profiles.skin — the account card's Look section).
+ *  RLS: owner write; the column carries its own UPDATE grant
+ *  (20261010_profile_skin.sql — profiles UPDATE is column-locked). */
+export async function setOwnSkin(userId: string, skin: ProfileSkin): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ skin }).eq("id", userId);
+  if (error) throw error;
+}
+
+/** Admin: flip any account's look (admin_set_profile_skin — SECURITY
+ *  DEFINER, gated on public.is_admin(), like admin_set_show_hidden). */
+export async function adminSetProfileSkin(userId: string, skin: ProfileSkin): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_profile_skin", { p_user_id: userId, p_skin: skin });
+  if (error) throw error;
+}
+
+/** Every account's look, for the admin page's Activity table. profiles is
+ *  public-read; empty until the column exists (the select fails, tolerated). */
+export async function fetchProfileSkins(): Promise<Record<string, ProfileSkin>> {
+  const { data, error } = await supabase.from("profiles").select("id, skin");
+  if (error || !data) return {};
+  const out: Record<string, ProfileSkin> = {};
+  for (const r of data as any[]) out[r.id] = r.skin === "editorial" ? "editorial" : "classic";
+  return out;
+}
+
 export async function setContactName(userId: string, contactId: string, name: string): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) {

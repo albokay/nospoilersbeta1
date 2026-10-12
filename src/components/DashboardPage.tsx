@@ -95,7 +95,7 @@ import { answerLines, endOfShow, indexPasses, passSlotLabel, type PassKind, type
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
-import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
+import { groupDisplayName, groupGenericName, joinNames, joinNameNodes, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill, composeBackdrop, composeCardOuter } from "./dashboardChrome";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import { bootstrapGroupWithLetter, type FirstLetter } from "../lib/firstLetterBootstrap";
@@ -114,6 +114,9 @@ import SocialOnboarding from "./SocialOnboarding";
 import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn } from "./editorial/Chrome";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -197,6 +200,12 @@ export default function DashboardPage() {
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAccount, setShowAccount] = useState(false);
+  // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): this
+  // page's chrome branches on it — the folded corner, the top-right words,
+  // the logo's seat and the title block. The page under them stays classic
+  // until checkpoints 2 (dashboard) and 3 (group room).
+  const editorial = useEditorial();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // TSP onboarding demo (spec §9). Force-show for testing with ?tspdemo=1; the
   // real once-only post-signup auto-show is gated behind TSP_DEMO_ENABLED
@@ -1880,6 +1889,16 @@ export default function DashboardPage() {
     // header's circles wait for the loaded page (they carry state/handlers).
     return (
       <div style={{ ...pageStyle, background: C.green, display: "flex", flexDirection: "column" }} aria-busy="true">
+        {editorial ? (
+          <>
+            <EditorialColumn style={{ height: E.measure.desktop.dashboardTitleTop }}>
+              <div style={{ position: "absolute", left: "50%", top: E.measure.desktop.logoTop, marginLeft: -70 }}>
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
+              </div>
+            </EditorialColumn>
+            <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>
+          </>
+        ) : (
         <div style={topBar}>
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
@@ -1889,6 +1908,7 @@ export default function DashboardPage() {
           </div>
           <div />
         </div>
+        )}
         <div style={{ flex: 1 }} />
         <div style={clustersRow}>
           <GhostCluster barWidth={96} />
@@ -1905,6 +1925,31 @@ export default function DashboardPage() {
   // Group clusters / group heading — the same component in both contexts.
   // Extracted so the dashboard can wrap it (with the create button) in a
   // vertically-centering column while the group context keeps it at the top.
+  // The group's settings card — opened by the gear beside the classic heading
+  // and by the editorial chrome's gear word.
+  function openGroupOptions(id: string, rect: DOMRect) {
+    setOptionsFor(id);
+    setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 });
+    setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? "");
+    const others = (railGroups.find((r) => r.group.id === id)?.members ?? []).filter((m) => m.userId !== selfUserId);
+    const edits: Record<string, string> = {};
+    for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
+    setContactEdits(edits);
+  }
+
+  // The editorial head's group title: the same name and members the classic
+  // heading (GroupClusters) shows, at the column.
+  const editorialGroup = inGroup ? (railGroups.find((g) => g.group.id === activeGroupId) ?? null) : null;
+  const editorialNames = editorialGroup ? [
+    ...editorialGroup.members.filter((m) => m.userId !== selfUserId).map((m) => (
+      <span key={m.userId} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(m.username)}>
+        {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
+      </span>
+    )),
+    ...editorialGroup.pendingInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
+  ] : [];
+  const W = E.measure.desktop;
+
   const clustersEl = (
     <GroupClusters
       groups={railGroups}
@@ -1917,15 +1962,7 @@ export default function DashboardPage() {
       staleInviteCount={myGroupInvites.filter(isInviteStale).length}
       onEnter={(id) => navigate(`/dashboard?g=${id}`)}
       onInviteClick={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
-      onGearClick={(id, rect) => {
-        setOptionsFor(id);
-        setOptionsAnchor({ x: rect.left, y: rect.bottom + 8 });
-        setRenameValue(railGroups.find((r) => r.group.id === id)?.group.name ?? "");
-        const others = (railGroups.find((r) => r.group.id === id)?.members ?? []).filter((m) => m.userId !== selfUserId);
-        const edits: Record<string, string> = {};
-        for (const m of others) edits[m.userId] = contactNames[m.userId] ?? "";
-        setContactEdits(edits);
-      }}
+      onGearClick={openGroupOptions}
       onTip={moveTip}
     />
   );
@@ -1935,6 +1972,60 @@ export default function DashboardPage() {
     <div style={{ ...pageStyle, background: inGroup ? C.sky : C.green, ...(inGroup ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
 
+      {editorial ? (
+        // ── The editorial chrome (checkpoint 1, 2026-10-10): the folded corner
+        //    in the window's corner (feedback on the dashboard, back in a
+        //    group), the mono words at the column's top right, the logo centred
+        //    over the dashboard's title / beside a group's headline, the title
+        //    in Lora at the column. The page under it is still classic until
+        //    checkpoints 2 and 3. ──
+        <div style={socialOnbActive ? { position: "relative", zIndex: 1001 } : undefined}>
+          <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back to dashboard" : "Feedback"} onClick={inGroup ? () => navigate("/dashboard") : () => setFeedbackOpen(true)} />
+          <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
+            <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
+              <ChatWord
+                key="chat"
+                hit={W.wordHit}
+                anchor="chat-tab"
+                isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
+                countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
+                onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
+              />,
+              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
+              <GearWord
+                key="gear"
+                hit={W.wordHit}
+                label="Group settings"
+                title={myGroupInvites.filter(isInviteStale).length > 0 ? staleInviteLine(myGroupInvites.filter(isInviteStale).length) : "Group settings"}
+                dot={myGroupInvites.filter(isInviteStale).length > 0}
+                onClick={(e) => { moveTip(null); if (activeGroupId) openGroupOptions(activeGroupId, e.currentTarget.getBoundingClientRect()); }}
+              />,
+              <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
+            ] : [
+              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
+              <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
+              ...(profile?.is_admin ? [<Word key="admin" hit={W.wordHit} label="Admin" onClick={() => navigate("/?admin")}>Admin</Word>] : []),
+            ]} />
+            {!inGroup && (
+              <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", left: "50%", top: W.logoTop, marginLeft: -70, cursor: "pointer" }}>
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
+              </div>
+            )}
+          </EditorialColumn>
+          <EditorialColumn>
+            {inGroup ? (editorialGroup && (
+              <div style={{ position: "relative", paddingRight: 160 }}>
+                <EditorialTitle desktop>{groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}</EditorialTitle>
+                {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
+                <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: W.logoLift, cursor: "pointer" }}>
+                  <SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge />
+                </div>
+              </div>
+            )) : (!socialOnbActive && !postAccept ? <EditorialTitle desktop>Your watch groups</EditorialTitle> : null)}
+          </EditorialColumn>
+        </div>
+      ) : (
+      <>
       {/* ── The 96px header bar (polish pass 2026-09-15): logo · centered
              page title · circles — one architecture on every desktop page.
              QA round 7: while onboarding overlays are up, the bar rides
@@ -1983,6 +2074,8 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {showAccount && (
         <AccountModal
@@ -2000,12 +2093,12 @@ export default function DashboardPage() {
           open-show pill row at rest; Alborz 2026-08-20), pinned while the
           page scrolls. Styling unchanged (the pressable-plate try was
           reverted same day — tabs keep their drop shadow). */}
-      {inGroup && (
+      {inGroup && !editorial && (
         <button style={backTab} title="back to dashboard" onClick={() => navigate("/dashboard")}>
           <ArrowLeft size={24} color={C.green} />
         </button>
       )}
-      {inGroup && (
+      {inGroup && !editorial && (
         <button style={chatTab} title="open chat" data-tip-anchor="chat-tab" onClick={() => activeGroupId && setChatGroupId(activeGroupId)}>
           {!!activeGroupId && chatNewByGroup.get(activeGroupId) && (
             <span style={notifDotChat}>
@@ -3083,7 +3176,12 @@ export default function DashboardPage() {
 
       {/* Feedback tab — same left-edge widget the homepage has, so feedback
           is reachable from every live desktop surface (2026-07-03). */}
-      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
+      <FeedbackWidget
+        isMobile={typeof window !== "undefined" && window.innerWidth <= 600}
+        hideTrigger={editorial}
+        forcedOpen={feedbackOpen}
+        onForcedClose={() => setFeedbackOpen(false)}
+      />
 
       {/* The friend-profile drawer (2026-09-08 pt 4) — opens on the group
           heading's "with…" name clicks via the bus. */}

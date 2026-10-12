@@ -3,7 +3,10 @@ import { supabase } from "./supabaseClient";
 import { claimPendingDeckAnswers } from "./deckPending";
 import type { User } from "@supabase/supabase-js";
 
-type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null };
+// skin: which look the account sees — "classic" (the live site) or
+// "editorial" (the round-3 design behind a per-account switch; see
+// src/lib/skin.tsx). Classic until profiles.skin exists and says otherwise.
+type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null; skin: "classic" | "editorial" };
 
 // Sign-out cleanup (security pass 2026-08-14; refined 2026-08-15 after the
 // tips-reappear regression). Clear ONLY the DATA-bearing keys — cached
@@ -76,17 +79,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // to /journal and /profile rendering blank (both gate on
     // profile.username) and breaks first-login routing.
     //
+    //   tier -1: + skin             (20261010 applied — the editorial skin's switch)
     //   tier 0: + display_name      (20260710 applied)
     //   tier 1: bio + onboarded_at  (20260510 + 20260608 applied)
     //   tier 2: bio                 (only 20260510 applied)
     //   tier 3: legacy              (neither applied)
+    let skinSupported = true;
     let displayNameSupported = true;
     let onboardedSupported = true;
     let res = await supabase
       .from("profiles")
-      .select("id, username, display_name, is_seed, is_admin, bio, onboarded_at")
+      .select("id, username, display_name, is_seed, is_admin, bio, onboarded_at, skin")
       .eq("id", userId)
       .single();
+    if (res.error) {
+      skinSupported = false;
+      res = await supabase
+        .from("profiles")
+        .select("id, username, display_name, is_seed, is_admin, bio, onboarded_at")
+        .eq("id", userId)
+        .single();
+    }
     if (res.error) {
       displayNameSupported = false;
       res = await supabase
@@ -121,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_admin: row.is_admin,
         bio: bioSupported ? (row.bio ?? null) : null,
         onboarded_at: onboardedSupported ? (row.onboarded_at ?? null) : null,
+        skin: skinSupported && row.skin === "editorial" ? "editorial" : "classic",
       });
     } else {
       setProfile(null);

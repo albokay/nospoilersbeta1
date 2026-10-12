@@ -27,11 +27,15 @@ export default function FeedbackWidget({
   forcedOpen,
   prefillMessage,
   onForcedClose,
+  hideTrigger,
 }: {
   isMobile: boolean;
   forcedOpen?: boolean;
   prefillMessage?: string;
   onForcedClose?: () => void;
+  /** No left-edge "feedback" tab: the page opens the panel itself (the
+   *  editorial skin's feedback corner, checkpoint 1 2026-10-10). */
+  hideTrigger?: boolean;
 }) {
   const { user, profile } = useAuth();
   const location = useLocation();
@@ -82,7 +86,7 @@ export default function FeedbackWidget({
           LEFT edge of the viewport (was right). writing-mode vertical-rl
           gives natural top-to-bottom text without needing the 180deg flip
           that the right-side version used. */}
-      {!open && (
+      {!open && !hideTrigger && (
         <div
           onClick={handleOpen}
           style={{

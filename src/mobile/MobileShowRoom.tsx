@@ -16,6 +16,10 @@ import {
 } from "../lib/db";
 import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub } from "../components/editorial/Chrome";
+import AccountModal from "../components/AccountModal";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
@@ -78,7 +82,7 @@ type Tab = "friend" | "private" | "reference";
 
 export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: string; privateShowId?: string }) {
   const privateOnly = !!privateShowId && !roomId;
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Digest deep-links arrive as ?entry=<threadId> (same param as desktop);
@@ -94,6 +98,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // 2026-09-26). null = auth not resolved yet; first resolution honors the
   // per-account flag.
   const [letterOpen, setLetterOpen] = useState<boolean | null>(null);
+  // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the
+  // header branches on it — the back corner, `? ⚙` as words, the show's name
+  // in Lora 46 with the group under it. The tabs and the body stay classic
+  // until checkpoint 4.
+  const editorial = useEditorial();
+  // The account card from the room (Alborz 2026-10-10: the account control
+  // sits in every page's top-right under the editorial skin).
+  const [showAccount, setShowAccount] = useState(false);
   useEffect(() => {
     if (!user) return;
     setLetterOpen((cur) => {
@@ -983,6 +995,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
+      {showAccount && (
+        <AccountModal
+          mobile
+          onClose={() => setShowAccount(false)}
+          onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/m", { replace: true }); }}
+        />
+      )}
       {/* Fit the reused OneSelectProgress pill to the phone: the select sizes
           to its widest option label ("you've watched: S02 E08"), which pushed
           it offscreen. Cap it at the cell's width — the browser truncates the
@@ -1013,6 +1032,34 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div style={{ background: tab === "private" ? C.sky : C.green }}>
+        {editorial ? (
+          // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
+          //    the way out, `? ⚙` as mono words at the top right, the show's
+          //    name in Lora 46 at the title line with the group under it. The
+          //    tabs and the body under it are still classic until checkpoint 4. ──
+          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
+            <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+              ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
+              ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.phone.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
+              <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
+            ]} />
+            <div style={{ paddingTop: E.measure.phone.titleTop }}>
+              <EditorialTitle>{show?.name ?? "Show"}</EditorialTitle>
+              {tab === "reference" && refCreatedBy.length > 0 ? (
+                <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
+              ) : groupName ? (
+                <EditorialSub>
+                  With {groupPeople?.length
+                    ? joinNameNodes(groupPeople.map((p) => (
+                        <span key={p.username} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openPool(p.username)}>{p.label}</span>
+                      )))
+                    : groupName}
+                </EditorialSub>
+              ) : null}
+            </div>
+          </div>
+        ) : (
         <div style={topBar}>
           <button style={iconBtn} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
             <ArrowLeft size={20} color={C.cream} />
@@ -1057,8 +1104,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             </button>
           )}
         </div>
+        )}
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: editorial ? `${E.measure.phone.tabsGap}px 16px 0` : "8px 16px 0" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}

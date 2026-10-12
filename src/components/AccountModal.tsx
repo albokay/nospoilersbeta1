@@ -4,7 +4,7 @@ import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
-import { deleteAccount, setOwnDisplayName } from "../lib/db";
+import { deleteAccount, setOwnDisplayName, setOwnSkin, type ProfileSkin } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY, LORA } from "../mobile/m";
 import { D } from "./dashboardChrome";
@@ -15,6 +15,8 @@ import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 // posts are kept but shown as "[deleted]". Two-step, type-to-confirm guard
 // because the action is permanent and irreversible.
 const C = { red: CANON.alert, cream: CANON.cream, midnight: CANON.dark, greyblue: CANON.business };
+// The two looks (the editorial skin's switch, checkpoint 1 2026-10-10).
+const SKIN_CHOICES: [ProfileSkin, string][] = [["classic", "Classic"], ["editorial", "Editorial"]];
 
 // onSignOut (opt-in; mobile polish 2026-09-14): when passed, a "Signed in"
 // section with a Sign out button renders — LAST, after the delete section
@@ -57,6 +59,25 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
   }
 
   const canDelete = confirmText.trim().toUpperCase() === "DELETE";
+
+  // Look (the editorial skin's switch, checkpoint 1 2026-10-10): an account
+  // that has been given the editorial look — or an admin — can go back and
+  // forth here. Everyone else never sees the section (classic stays classic).
+  const currentSkin: ProfileSkin = profile?.skin === "editorial" ? "editorial" : "classic";
+  const canPickSkin = !!profile && (!!profile.is_admin || currentSkin === "editorial");
+  const [skinSaving, setSkinSaving] = useState(false);
+  async function chooseSkin(next: ProfileSkin) {
+    if (!user?.id || next === currentSkin || skinSaving) return;
+    setSkinSaving(true);
+    try {
+      await setOwnSkin(user.id, next);
+      await refreshProfile?.();
+    } catch (err) {
+      console.error("[account] setOwnSkin failed:", err);
+    } finally {
+      setSkinSaving(false);
+    }
+  }
 
   // Mobile sheet swipe-down (hook must run unconditionally; inert on desktop).
   const sheetSwipe = useSheetSwipeDown(onClose, { enabled: mobile && !busy && phase === "main", open: mobile });
@@ -163,6 +184,26 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
           </div>
           {nameError && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.red, fontWeight: 600 }}>{nameError}</p>}
 
+          {canPickSkin && (
+            <>
+              <div style={mDivider} />
+              <div style={mLabel}>Look</div>
+              <div style={{ ...mCaption, marginBottom: 12 }}>The editorial look is being built page by page. Switch back any time.</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                {SKIN_CHOICES.map(([s, name]) => (
+                  <button
+                    key={s}
+                    onClick={() => { void chooseSkin(s); }}
+                    disabled={skinSaving}
+                    style={{ ...M.pill.M, flex: 1, ...(currentSkin === s ? { background: C.midnight, color: CANON.cream } : { background: "transparent", color: C.midnight, border: `2px solid ${C.midnight}` }), opacity: skinSaving ? M.disabledOpacity : 1 }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div style={mDivider} />
           <div style={{ ...mLabel, color: C.red }}>Delete account</div>
           <div style={{ ...mCaption, marginBottom: 12 }}>
@@ -242,6 +283,28 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
             </button>
           </div>
           {nameError && <p style={{ margin: "10px 0 0", fontSize: 14, color: C.red, fontWeight: 600 }}>{nameError}</p>}
+        </div>
+      )}
+
+      {phase === "main" && canPickSkin && (
+        <div>
+          <div style={D.divider(C.midnight)} />
+          <p style={{ ...D.type.label, margin: "0 0 6px", color: C.midnight }}>Look</p>
+          <p style={{ ...D.type.caption, margin: "0 0 14px", color: C.midnight, opacity: 0.7 }}>
+            The editorial look is being built page by page. Switch back any time.
+          </p>
+          <div style={{ display: "flex", gap: 12 }}>
+            {SKIN_CHOICES.map(([s, name]) => (
+              <button
+                key={s}
+                onClick={() => { void chooseSkin(s); }}
+                disabled={skinSaving}
+                style={{ ...D.pill.M, flex: 1, ...(currentSkin === s ? { background: C.midnight, color: CANON.cream } : { background: "transparent", color: C.midnight, border: `2px solid ${C.midnight}` }), opacity: skinSaving ? D.disabledOpacity : 1, cursor: skinSaving ? "default" : "pointer" }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

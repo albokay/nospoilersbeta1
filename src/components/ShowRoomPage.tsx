@@ -51,6 +51,9 @@ import IncomingPingSticky from "./IncomingPingSticky";
 import PollSticky from "./PollSticky";
 import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, EditorialColumn } from "./editorial/Chrome";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -68,6 +71,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // Account circle in the header bar (polish pass 2026-09-15 — this page
   // had no account chrome before).
   const [showAccount, setShowAccount] = useState(false);
+  // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the
+  // chrome branches on it — the corner, the top-right words, the headline
+  // with the logo. The tabs and the body stay classic until checkpoint 4.
+  const editorial = useEditorial();
   const navigate = useNavigate();
   const location = useLocation();
   // CP7: digest-email deep-links arrive as /show-room/<id>?entry=<threadId>
@@ -969,9 +976,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
       {/* ── Back-to-group tab — partial pill at the left edge (mirrors chat) ── */}
-      <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
-        <ArrowLeft size={24} color={C.green} />
-      </button>
+      {!editorial && (
+        <button style={backTab} title={privateOnly ? "back to dashboard" : "back to group"} onClick={closeRoom}>
+          <ArrowLeft size={24} color={C.green} />
+        </button>
+      )}
 
       {/* ── Header band: the shared 96px bar (logo · name + gear + caption ·
             account circle) with the tab row under it, left-aligned to the
@@ -980,6 +989,45 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             friend = green header / sky body, private = sky header / green
             body (the inactive tab shows through). ── */}
       <div style={{ background: tab === "private" ? C.sky : C.green }}>
+        {editorial ? (
+          // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
+          //    the way out, `? ⚙` at the column's top right, the show's name
+          //    in Lora at the 1080 column with the logo at its right edge. The
+          //    tabs and the body under it are still classic until checkpoint 4. ──
+          <>
+            <CornerTab desktop kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
+              <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
+                ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
+                ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.desktop.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
+                <AccountWord key="account" hit={E.measure.desktop.wordHit} onClick={() => setShowAccount(true)} />,
+              ]} />
+            </EditorialColumn>
+            <EditorialColumn wide>
+              <div style={{ position: "relative" }}>
+                <div style={{ width: E.measure.desktop.letters }}>
+                  <EditorialTitle desktop>{show?.name ?? "Show"}</EditorialTitle>
+                  {tab === "reference" && refCreatedBy.length > 0 ? (
+                    <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
+                  ) : groupName ? (
+                    <EditorialSub desktop>
+                      With {groupPeople?.length
+                        ? joinNameNodes(groupPeople.map((p) => (
+                            <span key={p.username} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(p.username)}>
+                              {p.label}
+                            </span>
+                          )))
+                        : groupName}
+                    </EditorialSub>
+                  ) : null}
+                </div>
+                <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: E.measure.desktop.logoLift, cursor: "pointer" }}>
+                  <SidebarLogo scale={0.5} blocksOpacity={1} betaBadge />
+                </div>
+              </div>
+            </EditorialColumn>
+          </>
+        ) : (
         <div style={D.header.bar}>
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div
@@ -1042,10 +1090,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </button>
           </div>
         </div>
+        )}
 
         {/* Tab row: mirrors the body grid ([672 feed | 64 | map]) so the
             tabs line up with the content they switch. */}
-        <div style={{ padding: "0 24px" }}>
+        <div style={{ padding: editorial ? `${E.measure.desktop.tabsGap}px 24px 0` : "0 24px" }}>
           <div style={{ display: "flex", gap: 64, alignItems: "flex-end", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ flex: "0 1 672px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
               {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
@@ -1360,7 +1409,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* Feedback tab — left-edge widget on every live desktop surface
           (2026-07-03). Sits at 85% height; the back tab lives at 18%. */}
-      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} />
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} hideTrigger={editorial} />
 
       {/* Swipe-deck arc CP4 — the drip / catch-up modal fires wherever the
           user is (once per session; self-skipping when nothing is owed). */}

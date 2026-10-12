@@ -17,6 +17,9 @@ import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, TopRight, AccountWord, wordStyle } from "../components/editorial/Chrome";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
 import MobileGhostRow from "./MobileGhostRow";
 import ReferenceLookupBand from "../components/reference/ReferenceLookupBand";
@@ -174,6 +177,10 @@ export default function MobileDashboard() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the top
+  // chrome branches on it — the feedback corner, `? [account]` as words, the
+  // logo centred. The page under it stays classic until checkpoint 2.
+  const editorial = useEditorial();
 
   // ── Loads (same calls + tolerance as desktop DashboardPage) ──────────────
   const loadRail = useCallback(async (uid: string): Promise<RailGroup[]> => {
@@ -353,9 +360,15 @@ export default function MobileDashboard() {
   if (authLoading) {
     return (
       <div style={page}>
+        {editorial ? (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop }}>
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
+          </div>
+        ) : (
         <div style={topBar}>
           <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
         </div>
+        )}
         <div style={{ textAlign: "center", padding: 48, color: C.cream, fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>loading<LoadingDots /></div>
       </div>
     );
@@ -364,6 +377,27 @@ export default function MobileDashboard() {
 
   return (
     <div style={page}>
+      {editorial ? (
+        // ── The editorial chrome (checkpoint 1, 2026-10-10): the feedback
+        //    corner at the top-left, `? [account]` as mono words at the top
+        //    right, the logo centred under them. The page under it is still
+        //    classic until checkpoint 2. ──
+        <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
+          {!showSocialOnb && !postAccept && (
+            <>
+              <CornerTab kind="feedback" onClick={() => setFeedbackOpen(true)} />
+              <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.dashboard} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+                ...(user && onbResolved ? [<MobileTipsSheet key="tips" page="dashboard" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
+                <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
+              ]} />
+            </>
+          )}
+          <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop, cursor: "pointer" }}>
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
+          </div>
+        </div>
+      ) : (
+      <>
       {/* ── Top bar: logo (home) · feedback · account · sign-out ── */}
       <div style={topBar}>
         <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ cursor: "pointer" }}>
@@ -393,6 +427,8 @@ export default function MobileDashboard() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {showAccount && (
         <AccountModal
