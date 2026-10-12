@@ -19,6 +19,7 @@
  * the top: `const editorial = useEditorial();` — the data under both looks is
  * the same.
  */
+import { createContext, useContext } from "react";
 import { useAuth } from "./auth";
 
 export type Skin = "classic" | "editorial";
@@ -62,4 +63,13 @@ export function useSkin(): Skin {
 
 export function useEditorial(): boolean {
   return useSkin() === "editorial";
+}
+
+/** The editorial scope: true inside a surface already drawn under the skin
+ *  (the feed's wrapper provides it), so leaf pieces that float out of it —
+ *  the notes papers, the note box, the pick card — take the same look
+ *  without a prop through every layer. */
+export const EditorialScope = createContext<boolean>(false);
+export function useEditorialScope(): boolean {
+  return useContext(EditorialScope);
 }

@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useEditorialScope } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { NOTE_FIELD, MONO_WORD, INK_SMALL } from "./editorial/MapNotes";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { CANON } from "../styles/canon";
@@ -43,6 +46,7 @@ interface Props {
 }
 
 export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfirm, color = CANON_YELLOW }: Props) {
+  const editorialScope = useEditorialScope();
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const [rect, setRect] = useState<DOMRect>(anchorRect);
   useEffect(() => {
@@ -137,17 +141,18 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
       style={{
         ...positionStyle,
         background: CREAM,
-        borderRadius: 24,
+        borderRadius: editorialScope ? 0 : 24,
         width: 320,
         boxSizing: "border-box",
-        padding: 16,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+        padding: editorialScope ? "16px 18px 18px" : 16,
+        boxShadow: editorialScope ? "0 1px 0 rgba(26,58,74,0.35)" : "0 8px 24px rgba(0,0,0,0.18)",
+        border: editorialScope ? `1px solid ${E.color.ink}` : undefined,
         zIndex: 70,
       }}
     >
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: CANON_NAVY, fontFamily: '"Inter", sans-serif' }}>
+        <div style={editorialScope ? { ...E.type.letterTitle22, color: E.color.ink } : { fontSize: 14, fontWeight: 700, color: CANON_NAVY, fontFamily: '"Inter", sans-serif' }}>
           Add a note
         </div>
         <button
@@ -181,7 +186,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
           maxLength={NOTE_MAX}
           rows={5}
           placeholder="Write your note…"
-          style={{
+          style={editorialScope ? NOTE_FIELD : {
             width: "100%",
             fontSize: 14,
             lineHeight: 1.5,
@@ -205,7 +210,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
         <button
           onClick={handleOk}
           disabled={!canSubmit}
-          style={{
+          style={editorialScope ? { ...INK_SMALL, opacity: canSubmit ? 1 : 0.6, cursor: canSubmit ? "pointer" : "not-allowed" } : {
             background: color,
             color: CANON.cream,
             border: `2px solid ${color}`,
@@ -223,7 +228,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
         </button>
         <button
           onClick={onClose}
-          style={{
+          style={editorialScope ? { ...MONO_WORD, padding: "0 10px", height: 34 } : {
             background: "transparent",
             color: TEXT_MUTED,
             border: `2px solid ${TEXT_MUTED}`,

@@ -2,6 +2,9 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Lock, ThumbsUp, X } from "lucide-react";
 import type { Highlight } from "../../lib/db";
 import { timeAgo } from "../../lib/utils";
+import { useEditorialScope } from "../../lib/skin";
+import { E } from "../../styles/editorial";
+import { paperStyle, NOTE_BYLINE, NOTE_TEXT, NOTE_FIELD, MONO_WORD, INK_SMALL, FRAME_SMALL, SealedNoteBody } from "../editorial/MapNotes";
 import { CANON } from "../../styles/canon";
 import SidebarAvatar from "../SidebarAvatar";
 
@@ -146,6 +149,7 @@ export function HighlightHoverPopup({ anchorEl, readable, sealed, currentUserId,
   onEnter: () => void;
   onLeave: () => void;
 }) {
+  const editorialScope = useEditorialScope();
   const boxes = useAnchorRects(anchorEl);
   if (!boxes) return null;
   const vw = window.innerWidth;
@@ -163,9 +167,10 @@ export function HighlightHoverPopup({ anchorEl, readable, sealed, currentUserId,
         position: "fixed", top: boxes.first.top - 10, left: cx,
         transform: `translate(-50%, -100%) rotate(${POPUP_TILT}deg)`, transformOrigin: "bottom center",
         maxWidth: maxW, boxSizing: "border-box",
-        background: CANON.cream, color: CANON.dark, borderRadius: 12, padding: "8px 12px",
+        background: CANON.cream, color: CANON.dark, borderRadius: editorialScope ? 0 : 12, padding: "8px 12px",
         fontFamily: INTER, fontSize: 12, fontWeight: 500, lineHeight: 1.4,
-        boxShadow: "0 4px 14px rgba(0,0,0,0.25)", zIndex: 9999,
+        boxShadow: editorialScope ? "0 1px 0 rgba(26,58,74,0.35)" : "0 4px 14px rgba(0,0,0,0.25)", zIndex: 9999,
+        border: editorialScope ? `1px solid ${CANON.dark}` : undefined,
         display: "flex", flexDirection: "column", gap: 4, pointerEvents: "auto",
       }}
     >
@@ -209,6 +214,7 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
   /** Writes another note onto this same stretch; rejects with a message. */
   onAddNote?: (note: string) => Promise<void>;
 }) {
+  const editorialScope = useEditorialScope();
   const boxes = useAnchorRects(anchorEl);
   const paperRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
@@ -290,21 +296,26 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
     >
     {notes.length > 1 && (
       // The card behind: one is enough to say "there's more here".
-      <div aria-hidden style={{ position: "absolute", left: 7, top: 9, right: -7, bottom: -9, background: CANON.cream, borderRadius: PAPER_RADIUS, boxShadow: "0 8px 24px rgba(0,0,0,0.16)", transform: "rotate(1.6deg)", transformOrigin: "bottom center" }} />
+      <div aria-hidden style={{ position: "absolute", left: 7, top: 9, right: -7, bottom: -9, background: CANON.cream, borderRadius: editorialScope ? 0 : PAPER_RADIUS, boxShadow: editorialScope ? "0 1px 0 rgba(26,58,74,0.35)" : "0 8px 24px rgba(0,0,0,0.16)", border: editorialScope ? `1px solid ${CANON.dark}` : undefined, transform: "rotate(1.6deg)", transformOrigin: "bottom center" }} />
     )}
     <div
       role="dialog"
       aria-label={note.sealed ? `Sealed note from ${nameOf(note, displayNames)}` : `Note from ${nameOf(note, displayNames)}`}
       style={{
         position: "relative", zIndex: 1, minHeight: 0, maxHeight: "inherit", boxSizing: "border-box",
-        background: CANON.cream, color: CANON.dark, borderRadius: PAPER_RADIUS,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-        padding: "12px 14px 10px", display: "flex", flexDirection: "column", gap: 8,
+        background: CANON.cream, color: CANON.dark, borderRadius: editorialScope ? 0 : PAPER_RADIUS,
+        boxShadow: editorialScope ? "0 1px 0 rgba(26,58,74,0.35)" : "0 8px 24px rgba(0,0,0,0.2)",
+        border: editorialScope ? `1px solid ${CANON.dark}` : undefined,
+        padding: editorialScope ? "14px 16px 12px" : "12px 14px 10px", display: "flex", flexDirection: "column", gap: 8,
         fontFamily: INTER,
       }}
     >
       {/* Header: who, from where, when — and × */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingRight: 32, position: "relative" }}>
+        {editorialScope ? (
+          <span style={NOTE_BYLINE}>{nameOf(note, displayNames)} · S{note.authorSeason} E{note.authorEpisode} · {timeAgo(note.createdAt)}</span>
+        ) : (
+        <>
         <span style={{ display: "inline-flex", width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
           <SidebarAvatar userId={note.authorId} username={note.authorUsername} size={26} />
         </span>
@@ -312,6 +323,8 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
           <span style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nameOf(note, displayNames)}</span>
           <span style={{ fontSize: 11, opacity: 0.65 }}>{progressTag(note)} · {timeAgo(note.createdAt)}</span>
         </span>
+        </>
+        )}
         <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", right: -8, top: -6, width: 32, height: 32, border: "none", background: "transparent", color: CANON.dark, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
           <X size={16} />
         </button>
@@ -319,7 +332,9 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
 
       {/* The note — scrolls inside when it is taller than the room it has.
           A sealed note shows the lock where its writing would be. */}
-      {note.sealed ? (
+      {note.sealed && editorialScope ? (
+        <SealedNoteBody s={note.authorSeason} e={note.authorEpisode} />
+      ) : note.sealed ? (
         // His 10-07 note: the sealed letter's dashed frame, in Friend blue,
         // where the writing would be, a bigger lock, and when it unseals.
         <div aria-label={`This note will unseal when you watch S${note.authorSeason} E${note.authorEpisode}.`} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "22px 14px 20px", margin: "2px 0 4px", border: `2px dashed ${CANON.friend}`, borderRadius: 12 }}>
@@ -327,7 +342,7 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
           <span style={{ fontSize: 13, lineHeight: 1.45, textAlign: "center", opacity: 0.8 }}>This note will unseal when you watch S{note.authorSeason} E{note.authorEpisode}.</span>
         </div>
       ) : (
-        <div style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", paddingRight: 2 }}>
+        <div style={{ overflowY: "auto", minHeight: 0, flex: "1 1 auto", fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", wordBreak: "break-word", paddingRight: 2, ...(editorialScope ? { ...NOTE_TEXT, marginTop: 0 } : {}) }}>
           {note.note}
         </div>
       )}
@@ -341,13 +356,13 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
             maxLength={NOTE_MAX}
             rows={4}
             placeholder="Add your note…"
-            style={{ width: "100%", boxSizing: "border-box", border: "none", borderRadius: 10, padding: "10px 12px", fontFamily: INTER, fontSize: 14, lineHeight: 1.5, color: CANON.dark, background: CANON.cream, boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)", resize: "vertical", outline: "none" }}
+            style={editorialScope ? NOTE_FIELD : { width: "100%", boxSizing: "border-box", border: "none", borderRadius: 10, padding: "10px 12px", fontFamily: INTER, fontSize: 14, lineHeight: 1.5, color: CANON.dark, background: CANON.cream, boxShadow: "inset 0 0 0 2px rgba(26,58,74,0.15)", resize: "vertical", outline: "none" }}
           />
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 11, opacity: 0.55 }}>{draft.length}/{NOTE_MAX}</span>
             <span style={{ flex: 1 }} />
-            <button type="button" onClick={() => { setWriting(false); setDraft(""); setError(null); }} style={{ ...footBtn, opacity: 0.7 }}>Cancel</button>
-            <button type="button" onClick={save} disabled={!draft.trim() || saving} style={{ ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px", opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
+            <button type="button" onClick={() => { setWriting(false); setDraft(""); setError(null); }} style={editorialScope ? MONO_WORD : { ...footBtn, opacity: 0.7 }}>Cancel</button>
+            <button type="button" onClick={save} disabled={!draft.trim() || saving} style={editorialScope ? { ...INK_SMALL, opacity: !draft.trim() || saving ? 0.6 : 1 } : { ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px", opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save"}</button>
           </div>
           {error && <div style={{ fontSize: 12, color: CANON.alert, fontStyle: "italic" }}>{error}</div>}
         </div>
@@ -358,21 +373,21 @@ export function HighlightNotePaper({ anchorEl, notes, currentUserId, displayName
       {(prev || next || (isLast && onAddNote && !writing)) && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", marginTop: 2 }}>
           <span style={{ justifySelf: "start" }}>
-            {prev && <button type="button" onClick={() => { setPage(i - 1); setWriting(false); }} style={footBtn}><ChevronLeft size={14} />{nameOf(prev, displayNames)}</button>}
+            {prev && <button type="button" onClick={() => { setPage(i - 1); setWriting(false); }} style={editorialScope ? MONO_WORD : footBtn}>{editorialScope ? "← " : <ChevronLeft size={14} />}{nameOf(prev, displayNames)}</button>}
           </span>
-          <span style={{ justifySelf: "center", fontSize: 11, opacity: 0.6 }}>{notes.length > 1 ? `${i + 1} of ${notes.length}` : ""}</span>
+          <span style={{ justifySelf: "center", fontSize: 11, opacity: 0.6, ...(editorialScope ? E.type.label10 : {}) }}>{notes.length > 1 ? `${i + 1} of ${notes.length}` : ""}</span>
           <span style={{ justifySelf: "end" }}>
             {next
-              ? <button type="button" onClick={() => { setPage(i + 1); setWriting(false); }} style={footBtn}>{nameOf(next, displayNames)}<ChevronRight size={14} /></button>
+              ? <button type="button" onClick={() => { setPage(i + 1); setWriting(false); }} style={editorialScope ? MONO_WORD : footBtn}>{nameOf(next, displayNames)}{editorialScope ? " →" : <ChevronRight size={14} />}</button>
               : (isLast && onAddNote && !writing)
-                ? <button type="button" onClick={() => { setWriting(true); setError(null); }} style={{ ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px" }}>Add note</button>
+                ? <button type="button" onClick={() => { setWriting(true); setError(null); }} style={editorialScope ? { ...FRAME_SMALL, height: 28, padding: "0 8px", ...E.type.label10 } : { ...footBtn, background: CANON.accent, color: CANON.cream, padding: "6px 14px" }}>{editorialScope ? "Add a note" : "Add note"}</button>
                 : null}
           </span>
         </div>
       )}
       {isOwn && onDelete && !note.sealed && (
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <button type="button" onClick={() => onDelete(note.id)} style={{ ...footBtn, color: CANON.alert }}>Delete</button>
+          <button type="button" onClick={() => onDelete(note.id)} style={editorialScope ? { ...MONO_WORD, color: CANON.alert, textDecoration: "underline" } : { ...footBtn, color: CANON.alert }}>Delete</button>
         </div>
       )}
     </div>

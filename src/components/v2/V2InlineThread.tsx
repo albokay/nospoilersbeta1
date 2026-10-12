@@ -1,4 +1,6 @@
 import WhatsNextPanel from "../WhatsNextPanel";
+import { useEditorialScope } from "../../lib/skin";
+import { E } from "../../styles/editorial";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -133,6 +135,7 @@ export default function V2InlineThread({
   onReplyAdded,
   mobileIdiom = false,
 }: V2InlineThreadProps) {
+  const editorialScope = useEditorialScope();
   const { profile } = useAuth();
   const isOwn = !!profile && thread.author === profile.username;
   const isTombstone = !!thread.isDeleted;
@@ -804,18 +807,22 @@ export default function V2InlineThread({
         // Pick mode (the phone): a cream card in the action row's place
         // that says what a note is and how to pick (his 10-07 note: the
         // one-line hint was too cryptic and too easy to miss).
-        <div style={{ position: "relative", marginTop: 16, padding: "14px 44px 14px 16px", borderRadius: 16, background: CANON.cream, color: CANON.dark }}>
+        <div style={{ position: "relative", marginTop: 16, padding: editorialScope ? "16px 44px 18px 18px" : "14px 44px 14px 16px", borderRadius: editorialScope ? 0 : 16, background: CANON.cream, color: CANON.dark, ...(editorialScope ? { border: `1px solid ${E.color.ink}`, boxShadow: "0 1px 0 rgba(26,58,74,0.35)" } : {}) }}>
           <button type="button" onClick={endPick} aria-label="Close" style={{ position: "absolute", top: 6, right: 6, width: 36, height: 36, border: "none", background: "transparent", color: CANON.dark, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
             <X size={18} />
           </button>
-          <div style={{ fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 18, lineHeight: 1.3, marginBottom: 6 }}>Add a note</div>
-          <div style={{ fontSize: 14, lineHeight: 1.5 }}>
+          <div style={editorialScope ? { ...E.type.letterTitle22, marginBottom: 8 } : { fontFamily: '"Lora", Georgia, serif', fontWeight: 700, fontSize: 18, lineHeight: 1.3, marginBottom: 6 }}>Add a note</div>
+          <div style={editorialScope ? { ...E.type.note13, lineHeight: 1.5, color: "rgba(26,58,74,0.8)" } : { fontSize: 14, lineHeight: 1.5 }}>
             {pickRange
               ? "Tap more sentences to add them, or tap the first or last one to let it go. Then tap Next to write your note."
               : "A note is a thought you leave on part of a letter. Tap the sentences above that you want to write about — they'll light up. Then tap Next."}
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-            <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: editorialScope ? 14 : 12 }}>
+            {editorialScope ? (
+              <button type="button" onClick={pickNext} disabled={!pickRange} style={{ ...E.type.button16, width: "100%", height: 48, background: E.color.ink, color: E.color.cream, border: 0, cursor: pickRange ? "pointer" : "default", opacity: pickRange ? 1 : 0.5 }}>Next</button>
+            ) : (
+              <button className="btn sb-hl-entry" onClick={pickNext} disabled={!pickRange} style={{ ...sPillGeom, opacity: pickRange ? 1 : 0.5 }}>Next</button>
+            )}
           </div>
         </div>
       )}

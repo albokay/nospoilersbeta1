@@ -22,6 +22,7 @@ import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, E
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import { RowPoster } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
+import { MapLegend } from "../components/editorial/MapNotes";
 import AccountModal from "../components/AccountModal";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
@@ -1471,10 +1472,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {mapSheetOpen && roomId && show && user && !mapEmpty && (
         <div style={dim} onClick={(e) => { if (e.target === e.currentTarget) setMapSheetOpen(false); }}>
           <div
-            style={{ ...sheetShell, background: C.cream, padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px)", height: "80dvh", display: "flex", flexDirection: "column", overflowY: "hidden", ...mapSwipe.style }}
+            style={{ ...sheetShell, background: C.cream, padding: "12px 0 calc(env(safe-area-inset-bottom, 0px) + 12px)", height: "80dvh", display: "flex", flexDirection: "column", overflowY: "hidden", ...(editorial ? { borderTopLeftRadius: 0, borderTopRightRadius: 0 } : {}), ...mapSwipe.style }}
             {...mapSwipe.handlers}
           >
-            <div style={OVERLAY.grabber(CANON.dark)} />
+            {editorial ? <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto 14px" }} /> : <div style={OVERLAY.grabber(CANON.dark)} />}
             <div style={{ ...M.type.title, color: C.midnight, padding: "0 20px" }}>Season map</div>
             <div style={{ ...M.type.caption, color: withAlpha(CANON.dark, 0.7), padding: "0 20px", marginTop: 4 }}>
               {mapEditing
@@ -1484,6 +1485,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <div ref={mapScrollRef} style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", marginTop: 14, WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
               <V2RoomMap
                 mobile
+                editorial={editorial}
                 members={mapMembers}
                 displayNames={displayNames}
                 seasons={show.seasons ?? []}
@@ -1500,6 +1502,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 onEditModeChange={setMapEditing}
               />
             </div>
+            {editorial && <div style={{ padding: "0 20px", flexShrink: 0 }}><MapLegend /></div>}
           </div>
         </div>
       )}

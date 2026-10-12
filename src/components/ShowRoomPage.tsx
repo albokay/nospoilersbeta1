@@ -57,6 +57,7 @@ import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, E
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
+import { MapLegend } from "./editorial/MapNotes";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -1367,8 +1368,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               Omitted entirely in the private-only standalone (no group). */}
           {!privateOnly && roomId && (
             <div style={{ flex: editorial ? `0 0 ${E.measure.desktop.rail}px` : "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
-              <div style={{ position: "sticky", top: 24 }}>
+              {/* The editorial rail (checkpoint 5): scrolls on its own, the
+                  legend pinned at its foot on a cream fill. */}
+              <div style={editorial ? { position: "sticky", top: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto", display: "flex", flexDirection: "column", scrollbarWidth: "none" } : { position: "sticky", top: 24 }}>
+              {editorial && <SectionHead right={<span style={{ color: E.color.inkMuted }}>Click a cell to open its letter</span>}>Season map</SectionHead>}
               <V2RoomMap
+                editorial={editorial}
                 members={mapMembers}
                 displayNames={displayNames}
                 seasons={show?.seasons ?? []}
@@ -1385,6 +1390,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 firstHighlightedSet={firstHighlightedSet}
                 filteredUserId={userFilter}
               />
+              {editorial && <MapLegend pinned style={{ marginTop: "auto" }} />}
               </div>
             </div>
           )}

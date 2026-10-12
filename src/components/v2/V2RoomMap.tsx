@@ -9,6 +9,8 @@ import { M } from "../../mobile/m";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
+import { E } from "../../styles/editorial";
+import { RoadRule } from "../editorial/ShowRoom";
 import NudgePopover, { type NudgeDirection } from "../NudgePopover";
 import PollComposer from "../PollComposer";
 
@@ -223,6 +225,13 @@ export type V2RoomMapProps = {
    *  affordances (tooltips, nudges, polls). Everything else — cell states,
    *  signals, folding, the rating edit mode — is the desktop logic. */
   mobile?: boolean;
+  /** The editorial skin (checkpoint 5, 2026-10-12; the bible's MapCell): the
+   *  same map in ink on cream — the YOU column `identity`, friends `friend`,
+   *  spines in the column's colour, a sealed cell `alert` with its ?, the
+   *  never-opened letter doubled in `identity`, friends dimmed while you
+   *  rate, "You are here" as a mono rule after your row; the phone's header
+   *  as the word "you" with the pen and sky discs with initials. */
+  editorial?: boolean;
   /** Mobile only: a friend's header cluster (avatar + name) opens their
    *  profile — the retired roster's job, moved here. */
   onMemberClick?: (username: string) => void;
@@ -315,6 +324,7 @@ export default function V2RoomMap({
   mobile = false,
   onMemberClick,
   onEditModeChange,
+  editorial = false,
 }: V2RoomMapProps) {
   // Predicate for the user-filter dim treatment. When a filter is
   // active, columns belonging to other members render at opacity 0.35
@@ -358,6 +368,7 @@ export default function V2RoomMap({
     [members, viewerUserId],
   );
   const dn = (u: string) => displayNames?.[u] ?? u;
+  const selfColIdx = viewerUserId ? members.findIndex((m) => m.userId === viewerUserId) : -1;
   // Self-view (first-name identity arc CP3): the viewer's own column is
   // labeled just "(you)" — no name. Bylines still publish the name.
   const SELF_LABEL = "(you)";
@@ -707,17 +718,40 @@ export default function V2RoomMap({
                 const isSelfCol = !!viewerUserId && m.userId === viewerUserId;
                 const dimmed = isDimmed(m.userId);
                 const initial = (dn(m.username)[0] ?? "?").toUpperCase();
-                const avatar = (
+                const avatar = editorial ? (
+                  <span aria-hidden style={{ width: 30, height: 30, borderRadius: "50%", background: CANON.friend, color: CANON.dark, ...E.type.label11, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {initial}
+                  </span>
+                ) : (
                   <span aria-hidden style={{ ...mAvatar, background: isSelfCol ? CANON.personal : m.isDeparted ? CANON.friend : CANON.identity }}>
                     {initial}
                   </span>
                 );
                 const wrap: React.CSSProperties = {
                   ...mCluster,
-                  opacity: dimmed ? 0.35 : m.isDeparted ? 0.55 : undefined,
+                  opacity: dimmed ? 0.35 : m.isDeparted ? 0.55 : (editorial && editMode && !isSelfCol) ? 0.35 : undefined,
                   pointerEvents: dimmed ? "none" : undefined,
                   transition: "opacity 180ms ease-out",
                 };
+                if (isSelfCol && editorial) {
+                  // The YOU column's head: the word with the pen, or Save while rating.
+                  return editMode ? (
+                    <div key={m.userId} style={{ ...wrap, paddingTop: 4 }}>
+                      <button aria-label="Save rating changes" onClick={() => { void handleToggleEditMode(); }} style={{ ...E.type.label11, height: 30, padding: "0 14px", background: CANON.dark, color: CANON.cream, border: 0, display: "inline-flex", alignItems: "center", cursor: committing ? "wait" : "pointer" }}>
+                        {committing ? <LoadingDots /> : "Save"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button key={m.userId} aria-label="Rate the episodes you've watched" onClick={() => { void handleToggleEditMode(); }} style={{ ...wrap, ...mClusterBtn, ...E.type.label10, color: CANON.dark, flexDirection: "row", gap: 5, height: 30 }}>
+                      you <SquarePen size={12} />
+                    </button>
+                  );
+                }
+                if (editorial) {
+                  return m.isDeparted || !onMemberClick
+                    ? <div key={m.userId} style={wrap}>{avatar}</div>
+                    : <button key={m.userId} aria-label={dn(m.username)} title={dn(m.username)} onClick={() => onMemberClick(m.username)} style={{ ...wrap, ...mClusterBtn }}>{avatar}</button>;
+                }
                 if (isSelfCol) {
                   return editMode ? (
                     <div key={m.userId} style={{ ...wrap, paddingTop: 8 }}>
@@ -790,7 +824,7 @@ export default function V2RoomMap({
               display: "grid",
               gridTemplateColumns: `${SEASON_LABEL_W}px ${EPISODE_LABEL_W}px repeat(${members.length}, ${CELL}px)`,
               columnGap: COL_GAP,
-              background: "var(--dos-bg)",
+              background: editorial ? CANON.cream : "var(--dos-bg)",
               paddingBottom: 8,
             }}
           >
@@ -824,7 +858,7 @@ export default function V2RoomMap({
                     border: "none",
                     padding: 0,
                     cursor: "pointer",
-                    color: CANON.cream,
+                    color: editorial ? CANON.dark : CANON.cream,
                     display: "inline-flex",
                     alignItems: "center",
                   }}
@@ -859,7 +893,7 @@ export default function V2RoomMap({
                   fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
                   fontStyle: "italic",
                   fontSize: 13,
-                  color: "var(--dos-border)",
+                  color: editorial ? E.color.inkMuted : "var(--dos-border)",
                   lineHeight: 1.25,
                   whiteSpace: "nowrap",
                 }}
@@ -1042,9 +1076,9 @@ export default function V2RoomMap({
                     textOverflow: "ellipsis",
                     fontSize: 13,
                     fontWeight: 400,
-                    color: CANON.cream, // "(you)" matches the friends' names (2026-09-25)
+                    color: editorial ? CANON.dark : CANON.cream, // "(you)" matches the friends' names (2026-09-25)
                     fontStyle: isClickable ? "italic" : undefined,
-                    borderBottom: isClickable ? "1px dotted var(--canon-cream,#fef8ea)" : undefined,
+                    borderBottom: isClickable ? `1px dotted ${editorial ? CANON.dark : "var(--canon-cream,#fef8ea)"}` : undefined,
                     cursor: isClickable ? "pointer" : undefined,
                   };
                   const usernameDiv = (
@@ -1115,7 +1149,7 @@ export default function V2RoomMap({
               scrolling up disappear behind the username row's bg (which
               has solid var(--dos-bg) above this line); the line itself is
               the visible chrome boundary. */}
-          <div aria-hidden style={{ height: 2, background: CANON.cream }} />
+          <div aria-hidden style={{ height: editorial ? 1 : 2, background: editorial ? CANON.dark : CANON.cream }} />
         </div>
         )}
 
@@ -1139,9 +1173,9 @@ export default function V2RoomMap({
               minWidth: 240,
               maxWidth: 320,
               boxSizing: "border-box",
-              border: `2px dashed ${mobile ? "rgba(26,58,74,0.35)" : "rgba(254,248,234,0.8)"}`,
-              borderRadius: 24,
-              color: mobile ? CANON.dark : CANON.cream,
+              border: `2px dashed ${mobile || editorial ? "rgba(26,58,74,0.35)" : "rgba(254,248,234,0.8)"}`,
+              borderRadius: editorial ? 0 : 24,
+              color: mobile || editorial ? CANON.dark : CANON.cream,
               fontFamily: '"Inter", sans-serif',
               fontSize: 13,
               lineHeight: 1.5,
@@ -1317,8 +1351,8 @@ export default function V2RoomMap({
                   {/* Episode label: sticky against the sheet's left edge,
                       aligned to the cell (not the row's gap). */}
                   <div style={{ position: "sticky", left: 0, zIndex: 2, background: CANON.cream, height: ROW_HEIGHT, paddingLeft: 20, boxSizing: "border-box" }}>
-                    <div style={{ height: CELL, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13, color: withAlpha(CANON.dark, 0.7), whiteSpace: "nowrap" }}>
-                      S{row.season} E{row.episode}
+                    <div style={{ height: CELL, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 13, color: withAlpha(CANON.dark, 0.7), whiteSpace: "nowrap", ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : {}) }}>
+                      {editorial ? `E${row.episode}` : `S${row.season} E${row.episode}`}
                     </div>
                   </div>
                 </>
@@ -1344,10 +1378,10 @@ export default function V2RoomMap({
                     onClick={() => toggleSeason(row.season)}
                     aria-label={`Collapse season ${row.season}`}
                     aria-expanded
-                    style={seasonToggleBtn}
+                    style={{ ...seasonToggleBtn, ...(editorial ? { color: CANON.dark, fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13 } : {}) }}
                   >
                     Season {row.season}
-                    <ChevronUp size={14} color={CANON.cream} strokeWidth={2.5} />
+                    <ChevronUp size={14} color={editorial ? CANON.dark : CANON.cream} strokeWidth={2.5} />
                   </button>
                 )}
               </div>
@@ -1364,9 +1398,10 @@ export default function V2RoomMap({
                   paddingRight: 4,
                   fontSize: 12,
                   color: CANON.cream,
+                  ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : {}),
                 }}
               >
-                e{row.episode}
+                {editorial ? `E${row.episode}` : `e${row.episode}`}
               </div>
               </>
               )}
@@ -1665,7 +1700,8 @@ export default function V2RoomMap({
                   </span>
                 );
 
-                const cellDimmed = isDimmed(m.userId);
+                // Rating your own episodes under the editorial skin dims the friends' cells.
+                const cellDimmed = isDimmed(m.userId) || (editorial && editMode && !isSelf);
                 return (
                   <div
                     key={m.userId}
@@ -1693,7 +1729,7 @@ export default function V2RoomMap({
                       // entries, so the new-indicator doesn't belong there
                       // and would visually contaminate the grey hidden-cell
                       // fill with a contrasting outline color.
-                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer, mobile);
+                      const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer, mobile, editorial);
                       // Identity blue since 2026-09-13 — one rule everywhere:
                       // blue outline = an entry you haven't opened.
                       const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
@@ -1702,7 +1738,7 @@ export default function V2RoomMap({
                         // solid Identity cell, a Friend ring, then an Identity
                         // ring outside — blue-on-blue alone would vanish. Same
                         // on the cream sheet.
-                        ? { boxShadow: `0 0 0 2px ${CANON.friend}, 0 0 0 4px ${CANON.identity}` }
+                        ? { boxShadow: `0 0 0 2px ${editorial ? CANON.cream : CANON.friend}, 0 0 0 4px ${CANON.identity}` }
                         : {};
 
                       // Receding back layers (multi-entry cells only). Each
@@ -1776,7 +1812,7 @@ export default function V2RoomMap({
                             // UNRATED cells only — a rating keeps its star
                             // (Alborz's adjustment; ratings aren't spoilers,
                             // so the star is the more informative mark).
-                            <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: mobile ? CANON.cream : CANON.friend, userSelect: "none" }}>?</span>
+                            <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: mobile || editorial ? CANON.cream : CANON.friend, userSelect: "none" }}>?</span>
                           ) : isReached && rating && (
                             // Pass the CONTENT area size, not the cell's
                             // declared width. theme.ts sets a global
@@ -1785,7 +1821,7 @@ export default function V2RoomMap({
                             // (32 - 2*2 = 28). Without this the star face
                             // overflows the content area 2px right + 2px
                             // down, shifting it off-center.
-                            <StarFace rating={rating} size={CELL - 4} />
+                            <StarFace rating={rating} size={CELL - 4} color={editorial && !entry && !(editMode && isSelf) ? (isSelf ? CANON.identity : CANON.friend) : undefined} />
                           )}
                         </div>
                       );
@@ -1836,7 +1872,7 @@ export default function V2RoomMap({
                         hover-X was the last way to dismiss one by hand —
                         red now stays until you catch up, everywhere. */}
                     {signal && entry && (
-                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={mobile ? CANON.cream : CANON.friend} />
+                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={mobile || editorial ? CANON.cream : CANON.friend} />
                     )}
 
                     {/* Spine segment below the cell — only when both this
@@ -1850,7 +1886,7 @@ export default function V2RoomMap({
                           width: 2,
                           height: GAP_BELOW,
                           // Flat canon greyblue (Alborz 2026-08-21).
-                          background: lineColor,
+                          background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor,
                         }}
                       />
                     )}
@@ -1872,13 +1908,13 @@ export default function V2RoomMap({
                             height: 10,
                             // Canon greyblue — flat, no opacity, so the line +
                             // dot don't darken where they overlap.
-                            background: lineColor,
+                            background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor,
                           }}
                         />
                         {mobile ? (
                           <div
                             aria-hidden
-                            style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8, borderRadius: "50%", background: lineColor }}
+                            style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8, borderRadius: "50%", background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor }}
                           />
                         ) : (
                         <Tooltip
@@ -1905,6 +1941,9 @@ export default function V2RoomMap({
                   </div>
                 );
               })}
+              {editorial && selfColIdx >= 0 && rowIdx === memberMaps[selfColIdx].lastReachedIdx && (
+                <div style={{ gridColumn: "1 / -1" }}><RoadRule text={`You are here · S${row.season} E${row.episode}`} /></div>
+              )}
             </React.Fragment>
           );
         })}
@@ -2032,8 +2071,8 @@ function MapCellDot({
 // Mobile (2026-09-23): the soft colour — others' outlines, the hidden-entry
 // fill, every unseen dashed ring — is Friend blue on the sheet's cream
 // instead of desktop's Business.
-function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false, mobile: boolean = false): React.CSSProperties {
-  const soft = mobile ? CANON.friend : CANON.business;
+function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, editMode: boolean, aboveViewer: boolean = false, mobile: boolean = false, editorial: boolean = false): React.CSSProperties {
+  const soft = mobile || editorial ? CANON.friend : CANON.business;
   if (editMode && isSelf && isReached) {
     return {
       background: CANON.alert,
@@ -2043,11 +2082,13 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   }
   // Flipped 2026-09-25 (Alborz): the viewer's column is Personal green, a
   // friend's readable entry is Identity blue — blue = a letter you can open.
-  const filledBg = isSelf ? CANON.personal : CANON.identity;
+  // The editorial map (checkpoint 5): the YOU column is identity, friends are
+  // friend blue; a never-opened friend letter gets its doubled identity ring.
+  const filledBg = editorial ? (isSelf ? CANON.identity : CANON.friend) : isSelf ? CANON.personal : CANON.identity;
   // Full-opacity outline color (2026-07-07): the non-self border used the
   // translucent var(--dos-border) (rgba .3), which read as washed-out; the
   // opaque greyblue equivalent keeps the look but at full opacity.
-  const outlineColor = isSelf ? CANON.personal : soft;
+  const outlineColor = editorial ? (isSelf ? CANON.identity : CANON.friend) : isSelf ? CANON.personal : soft;
   // Hidden-entry cell: the member authored at (s, e) but the viewer
   // hasn't reached it yet — the entry is invisible to them. OPAQUE canon
   // greyblue fill (var(--canon-business,#8daaba), flat — no opacity) so a multi-entry stack's
@@ -2057,7 +2098,7 @@ function cellShapeStyle(isReached: boolean, hasEntry: boolean, isSelf: boolean, 
   // (keep the fill flat). Notification dots still render on top.
   if (isReached && hasEntry && aboveViewer) {
     return {
-      background: soft,
+      background: editorial ? CANON.alert : soft,
       borderRadius: "50%",
     };
   }

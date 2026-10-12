@@ -7,6 +7,7 @@ import { linkifyText } from "../../lib/linkify";
 import { useSeenNoteIds, loadSeenNoteIds, markNoteIdsSeen } from "../../lib/noteSeen";
 import type { Highlight } from "../../lib/db";
 import { CANON } from "../../styles/canon";
+import { useEditorialScope } from "../../lib/skin";
 
 // Same regex as src/lib/promptTokens.ts — keep in sync if that ever changes.
 const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
@@ -162,6 +163,7 @@ function HighlightableSegment({
   onLeave: () => void;
   onPick: (active: Active, hasReadableNote: boolean) => void;
 }) {
+  const editorialScope = useEditorialScope();
   const renderText = (s: string): React.ReactNode => (linkify ? linkifyText(s) : s);
   const bodyEnd = bodyStart + text.length;
   const pieces = piecesFor(bodyStart, bodyEnd, highlights);
@@ -181,7 +183,9 @@ function HighlightableSegment({
         // vanished, Alborz 2026-10-08): there it's a pale cream wash with the
         // sealed-letter dashed underline; on a cream response card it stays
         // Friend blue.
-        const sealedStyle: React.CSSProperties = sealedTone === "sky"
+        // The editorial letter sits on cream, so a sealed stretch takes the
+        // friend-blue fill there (the cream wash is the classic sky card's).
+        const sealedStyle: React.CSSProperties = sealedTone === "sky" && !editorialScope
           ? { background: "rgba(254,248,236,0.45)", borderBottom: "2px dashed rgba(254,248,236,0.9)" }
           : { background: SEALED_COLOR };
         const restStyle: React.CSSProperties = readable ? { background: color } : sealedStyle;

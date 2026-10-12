@@ -14,6 +14,7 @@ import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY
 import { E } from "../../styles/editorial";
 import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIEW, SidebarPaper, EntryFoot, FEED_VARS, DraftRow } from "../editorial/ShowRoom";
 import { UnderlineWord } from "../editorial/Chrome";
+import { EditorialScope } from "../../lib/skin";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
 import Stamp, { stampSpecFor, stampBox } from "../Stamp";
@@ -847,6 +848,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   }, []);
 
   return (
+    <EditorialScope.Provider value={editorial}>
     <div style={editorial ? FEED_VARS : undefined}>
       {sorted.map((entry) => {
         const roadHere = markerBefore.get(entry.threadId);
@@ -1544,6 +1546,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         </Modal>
       )}
     </div>
+    </EditorialScope.Provider>
   );
 });
 
