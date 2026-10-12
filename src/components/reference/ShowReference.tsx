@@ -11,6 +11,9 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
+import { E } from "../../styles/editorial";
+import { SectionHead, UnderlineWord } from "../editorial/Chrome";
+import { CastRow, EpisodeRow, SelectWord } from "../editorial/ShowRoom";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
@@ -25,8 +28,14 @@ const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false,
 }: {
+  /** The editorial skin (checkpoint 4, 2026-10-12; the bible's GuideRows):
+   *  the same guide as hairline rows in ink — the stops line, CAST with the
+   *  as-of episode, PLOT SO FAR in Lora, EPISODES with Watched / You are
+   *  here / After you watch it (the unwatched rows keep their titles back,
+   *  as the live guide does), the trailers. */
+  editorial?: boolean;
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
   viewerProgress: { s: number; e: number };
@@ -226,19 +235,135 @@ export default function ShowReference({
 
   if (failed) {
     return (
-      <div style={{ color: CREAM, fontSize: 14, lineHeight: 1.5, maxWidth: 460 }}>
+      <div style={{ color: editorial ? E.color.ink : CREAM, fontSize: 14, lineHeight: 1.5, maxWidth: 460 }}>
         The show guide couldn&rsquo;t load just now. Try again in a minute.
       </div>
     );
   }
   if (!ref) {
     return (
-      <div style={{ color: CREAM }}>
+      <div style={{ color: editorial ? E.color.ink : CREAM }}>
         <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14 }}>
           building this show&rsquo;s guide<LoadingDots />
         </span>
         <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, fontStyle: "italic" }}>
           (first visit only — takes a few seconds)
+        </div>
+      </div>
+    );
+  }
+
+  if (editorial) {
+    const seasonsVisible = [...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => a.n - b.n);
+    const current = ref.seasons.find((x) => x.n === prog.s);
+    const castList = castExpanded ? (episodeCast ?? visiblePeople) : foldedCast;
+    const roleOf = (p: (typeof visiblePeople)[number]) => {
+      const since = idx(p.firstS, p.firstE) > idx(1, 1) ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`) : null;
+      return [p.character, since].filter(Boolean).join(" · ") || null;
+    };
+    const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary));
+    return (
+      <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
+        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>Everything below stops at S{prog.s} E{prog.e}. Nothing past it.</div>
+        {user && (canonOn || roomLinks.length > 0) && (
+          <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
+            {canonOn && <UnderlineWord onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })} title="See your canon on the dashboard">In your canon →</UnderlineWord>}
+            {roomLinks.map((r) => (
+              <UnderlineWord key={r.roomId} onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)} title={`Open your show room with ${r.label}`}>Open your room with {r.label} →</UnderlineWord>
+            ))}
+          </div>
+        )}
+        {visiblePeople.length > 0 && (
+          <>
+            <SectionHead style={{ marginTop: 22 }} right={episodeCast ? (
+              <SelectWord
+                ariaLabel="Cast as of episode"
+                label={`S${selCastEp.s} E${selCastEp.e}`}
+                value={`${selCastEp.s}-${selCastEp.e}`}
+                onChange={(v) => { const [ss, ee] = v.split("-").map(Number); setCastEpisode({ s: ss, e: ee }); setCastExpanded(false); }}
+              >
+                {[...new Set(watchedEpisodes.map((ep) => ep.s))].map((sn) => (
+                  <optgroup key={sn} label={`Season ${sn}`}>
+                    {watchedEpisodes.filter((ep) => ep.s === sn).map((ep) => (
+                      <option key={`${ep.s}-${ep.e}`} value={`${ep.s}-${ep.e}`}>S{ep.s} E{ep.e} · {ep.title}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </SelectWord>
+            ) : null}>{episodeCast ? "Cast" : "Cast so far"}</SectionHead>
+            {castList.map((p) => (
+              <CastRow key={p.name} img={p.img ? `https://image.tmdb.org/t/p/w185${p.img}` : null} name={p.name} role={roleOf(p)} onClick={() => openActorImdb(p)} />
+            ))}
+            {(episodeCast ?? visiblePeople).length > 8 && (
+              <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                <UnderlineWord onClick={() => setCastExpanded((v) => !v)}>{castExpanded ? "Show fewer" : "See whole cast →"}</UnderlineWord>
+              </div>
+            )}
+          </>
+        )}
+        {plotEpisodes.length > 0 && (
+          <>
+            <SectionHead style={{ marginTop: 28 }}>Plot so far</SectionHead>
+            {plotEpisodes.map((ep) => (
+              <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
+                <div style={{ ...E.type.label10, color: E.color.inkMuted }}>S{ep.s} E{ep.e} · {ep.title}</div>
+                <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
+              </div>
+            ))}
+          </>
+        )}
+        {current && (
+          <>
+            <SectionHead style={{ marginTop: 28 }} right={<span style={{ color: E.color.inkMuted }}>Season {current.n}</span>}>Episodes</SectionHead>
+            {current.episodes.map((ep) => {
+              const i = idx(ep.s, ep.e);
+              const state: "watched" | "here" | "ahead" = i < vIdx ? "watched" : i === vIdx ? "here" : "ahead";
+              return (
+                <EpisodeRow key={ep.e} n={ep.e} title={state === "ahead" ? "" : ep.title} state={state}>
+                  {user && canonOn && state !== "ahead" && (
+                    <button
+                      type="button"
+                      onClick={() => toggleEssential(ep.s, ep.e)}
+                      aria-pressed={essentials.has(i)}
+                      title={essentials.has(i) ? "Un-star this essential" : "Star as an essential episode"}
+                      style={{ background: "transparent", border: 0, padding: "0 4px", cursor: "pointer", color: E.color.accent, fontSize: 15, lineHeight: 1 }}
+                    >{essentials.has(i) ? "★" : "☆"}</button>
+                  )}
+                </EpisodeRow>
+              );
+            })}
+          </>
+        )}
+        {(ref.launchTrailerKey || ref.seasons.some((season) => season.n >= 2 && season.trailerKey)) && (
+          <>
+            <SectionHead style={{ marginTop: 28 }}>Trailers</SectionHead>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560, marginTop: 14 }}>
+              {ref.launchTrailerKey && <RefTrailer label="the launch trailer" trailerKey={ref.launchTrailerKey} />}
+              {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
+                const prev = ref.seasons.find((x) => x.n === season.n - 1);
+                const prevLast = prev?.episodes[prev.episodes.length - 1];
+                const unlocked = !!prevLast && vIdx >= idx(prevLast.s, prevLast.e);
+                if (unlocked) return <RefTrailer key={season.n} label={`season ${season.n}`} trailerKey={season.trailerKey!} />;
+                if (season.n === prog.s + 1) {
+                  return <div key={season.n} style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>The season {season.n} trailer unlocks when you finish season {season.n - 1}.</div>;
+                }
+                return null;
+              })}
+            </div>
+          </>
+        )}
+        <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 48, maxWidth: 620 }}>
+          Episode and cast data from{" "}
+          <a href="https://www.tvmaze.com" target="_blank" rel="noreferrer" style={{ color: E.color.ink }}>TVMaze</a>{" "}
+          (CC BY-SA) and{" "}
+          <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer" style={{ color: E.color.ink }}>TMDB</a>.
+          This product uses the TMDB API but is not endorsed or certified by TMDB.
+          {ref.wikipediaTitle && (
+            <>{" "}Episode summaries from{" "}
+              <a href={`https://en.wikipedia.org/wiki/${encodeURIComponent(ref.wikipediaTitle)}`} target="_blank" rel="noreferrer" style={{ color: E.color.ink }}>Wikipedia</a>{" "}
+              (CC BY-SA).
+            </>
+          )}
         </div>
       </div>
     );

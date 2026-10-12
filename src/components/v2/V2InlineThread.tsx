@@ -657,7 +657,7 @@ export default function V2InlineThread({
       style={{
         background: "transparent",
         border: "none",
-        color: CANON.cream,
+        color: "var(--dos-fg)",
         cursor: "pointer",
         fontSize: 13,
         fontWeight: 700,
@@ -672,7 +672,7 @@ export default function V2InlineThread({
         boxSizing: "border-box",
       }}
     >
-      <ChevronUp size={16} color={CANON.cream} /> Close
+      <ChevronUp size={16} color="var(--dos-fg)" /> Close
     </button>
   );
   // "Write back" — the letter's reply CTA (cream outline + text,
@@ -918,7 +918,7 @@ export default function V2InlineThread({
       {/* Reply count indicator — under entry, above replies. */}
       {replyCount > 0 && (
         // Cream Label (polish pass 2026-09-15 — dark at 0.7 on sky was weak).
-        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, marginTop: 24, color: CANON.cream }}>
+        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, marginTop: 24, color: "var(--dos-fg)" }}>
           {replyCount} {replyCount === 1 ? "response" : "responses"}
         </div>
       )}

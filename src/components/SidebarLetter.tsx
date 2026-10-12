@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { CANON } from "../styles/canon";
 import Stamp from "./Stamp";
 import { ROOM_LETTER, roomLetterKey } from "../lib/tipsContent";
+import { E } from "../styles/editorial";
+import { SidebarPaper, FROM_LINE, FrameButton } from "./editorial/ShowRoom";
 
 // The letter from Sidebar (Alborz 2026-09-26): the show room's one
 // explainer, leading the feed — where Sidebar says the letters framing
@@ -14,13 +16,17 @@ import { ROOM_LETTER, roomLetterKey } from "../lib/tipsContent";
 // Episode: a stamp, never the logo.
 const LORA = '"Lora", Georgia, serif';
 
-export default function SidebarLetter({ idiom, userId, firstName, open, onDismiss }: {
+export default function SidebarLetter({ idiom, userId, firstName, open, onDismiss, editorial = false }: {
   idiom: "desktop" | "mobile";
   userId: string;
   firstName: string;
   /** Controlled visibility (desktop "?"); omitted = self-managed (mobile). */
   open?: boolean;
   onDismiss?: () => void;
+  /** The editorial skin (checkpoint 4, 2026-10-12): the letter on its paper
+   *  — a hairline frame with the sky stack, Sidebar's framed stamp, the mono
+   *  FROM line, Lora throughout, "Got it" as a frame. Same words. */
+  editorial?: boolean;
 }) {
   const [selfDismissed, setSelfDismissed] = useState<boolean>(() => {
     try { return !!localStorage.getItem(roomLetterKey(userId)); } catch { return false; }
@@ -35,6 +41,26 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
   }
 
   const m = idiom === "mobile";
+  if (editorial) {
+    const pr = m ? 90 : 120;
+    return (
+      <SidebarPaper style={{ marginTop: 22, marginBottom: 16 }}>
+        <span style={{ position: "absolute", right: 14, top: 12 }}>
+          <Stamp spec={{ family: 2, ornament: 5, cancel: 0, tilt: 3 }} label={"Season\nEpisode"} ink={CANON.friend} lineWidth={1.4} scale={m ? 0.72 : 0.9} />
+        </span>
+        <div style={{ ...FROM_LINE, paddingRight: pr }}>From: Sidebar · Pinned</div>
+        <div style={{ ...E.type.letterTitle22, marginTop: 12, paddingRight: pr }}>Dear {firstName},</div>
+        <div className="sb-balance" style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 8, paddingRight: pr }}>{ROOM_LETTER.headline}</div>
+        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1}</p>
+        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1b}</p>
+        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+          <span style={{ ...E.type.quote14, color: E.color.ink }}>{ROOM_LETTER.signoff}</span>
+          <FrameButton onClick={dismiss}>{ROOM_LETTER.cta}</FrameButton>
+        </div>
+      </SidebarPaper>
+    );
+  }
   const body: React.CSSProperties = { margin: 0, fontFamily: '"Inter", sans-serif', fontSize: m ? 14 : 17, lineHeight: 1.55, color: CANON.dark, maxWidth: 640 };
   return (
     <div

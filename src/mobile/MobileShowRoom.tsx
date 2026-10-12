@@ -18,7 +18,10 @@ import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
+import { RowPoster } from "../components/editorial/GroupRoom";
+import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import { effectiveProgress } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
@@ -121,6 +124,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   }
   const composeFormRef = useRef<ComposeFormHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  // The pinned band (checkpoint 4): once the head — title, poster, tabs and
+  // the picker band — scrolls away, a 48px band in the tab's colour pins.
+  const headRef = useRef<HTMLDivElement>(null);
+  const pinned = useScrolledPast(pageRef, headRef, editorial);
 
   const [show, setShow] = useState<Show | null>(null);
   const [parentGroupId, setParentGroupId] = useState<string | null>(null);
@@ -976,7 +983,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     );
   }
 
-  const bodyBg = tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
+  const bodyBg = editorial ? E.color.cream : tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
   const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
   const effectiveSortOrder = userFilter ? "desc" : sortOrder;
 
@@ -992,6 +999,22 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // feed components + roster + filter — desktop's displayNames convention.
   const displayNames: Record<string, string> = {};
   for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
+
+  // The room's paper note (checkpoint 4): the letters you haven't opened yet,
+  // by writer; hidden when nothing waits. Dismissed per account and room.
+  const roomNote = editorial ? (() => {
+    const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
+    if (fresh.length === 0) return null;
+    const by = new Map<string, number>();
+    for (const e of fresh) by.set(e.authorUsername, (by.get(e.authorUsername) ?? 0) + 1);
+    const at = Math.max(...fresh.map((e) => e.updatedAt));
+    if (by.size === 1) {
+      const [u, n] = [...by.entries()][0];
+      const name = displayNames[u] ?? u;
+      return { text: n === 1 ? `${name} left you a letter.` : `${name} left you ${n} letters.`, at };
+    }
+    return { text: "Letters are waiting for you.", at };
+  })() : null;
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg }}>
@@ -1031,7 +1054,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         .m-progress-cell--left select { text-align: left; text-align-last: left; }
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
-      <div style={{ background: tab === "private" ? C.sky : C.green }}>
+      <div ref={headRef} style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
           //    the way out, `? ⚙` as mono words at the top right, the show's
@@ -1044,7 +1067,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.phone.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />
-            <div style={{ paddingTop: E.measure.phone.titleTop }}>
+            <div style={{ paddingTop: E.measure.phone.titleTop, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ minWidth: 0 }}>
               <EditorialTitle>{show?.name ?? "Show"}</EditorialTitle>
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
@@ -1057,6 +1081,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                     : groupName}
                 </EditorialSub>
               ) : null}
+              </div>
+              <span style={{ marginTop: 12, flexShrink: 0 }}><RowPoster tvmazeId={show?.tvmazeId} w={64} h={90} /></span>
             </div>
           </div>
         ) : (
@@ -1106,27 +1132,75 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         </div>
         )}
         {/* Tabs on the header/body boundary (same swap rule as desktop). */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: editorial ? `${E.measure.phone.tabsGap}px 16px 0` : "8px 16px 0" }}>
+        {editorial ? (
+          // ── The folder tabs on the band (checkpoint 4): the selected tab in
+          //    its section's colour, the band under it the same, carrying the
+          //    picker. ──
+          <>
+            <div style={{ padding: `${E.measure.phone.tabsGap}px ${E.space.gutter}px 0` }}>
+              <FolderTabs
+                tabs={[...(!privateOnly ? ["friend"] : []), ...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]}
+                active={tab}
+                onChange={(t) => setTab(t)}
+              />
+            </div>
+            <RoomBand tab={tab}>
+              {show && progressForShow ? (
+                <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+              ) : null}
+            </RoomBand>
+          </>
+        ) : (
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
           <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
+        )}
       </div>
 
-      <div style={{ padding: "16px 16px 120px" }}>
+      <div style={editorial ? { padding: `0 ${E.space.gutter}px 140px`, position: "relative" } : { padding: "16px 16px 120px" }}>
+        {editorial && roomNote && user && (
+          <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ position: "relative", marginLeft: "auto", marginRight: -6, marginTop: -22, width: 210, transform: "rotate(-2.5deg)" }} />
+        )}
         {/* The letter from Sidebar (2026-09-26) sits ABOVE the control card on
             /m — the old progress pointer's slot (Alborz: mobile only; desktop
             keeps it at the top of the feed). Its picker sentence says "just
             below" here. Controlled by the header "?" like desktop. */}
         {tab === "friend" && user && letterOpen === true && (
-          <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
+          <SidebarLetter idiom="mobile" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} editorial={editorial} />
         )}
+        {editorial && tab === "friend" && !privateOnly && roomId && mapMembers.length > 0 && (
+          <MapButton onClick={() => setMapSheetOpen(true)} style={{ marginTop: 14 }} />
+        )}
+        {editorial && tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
+          const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
+          const label = fm ? `Only ${fm.userId === user?.id ? "you" : (displayNames[fm.username] ?? fm.username)}` : "Episode order";
+          return (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <SelectWord dim ariaLabel="Sort or filter the letters" label={label} value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`} onChange={(v) => {
+                if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+              }}>
+                <optgroup label="Sort"><option value="sort:desc">episode order</option></optgroup>
+                {mapMembers.length > 0 && (
+                  <optgroup label="Filter by member">
+                    {mapMembers.map((m) => (
+                      <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </SelectWord>
+            </div>
+          );
+        })()}
         {/* ── Control card (polish pass 2026-09-14; map pass 2026-09-23):
                sort + progress · Map · Write in ONE cream card, dark ink.
                Friend tab = all rows; drafts = picker + Write; guide =
                picker only. (The roster row that led the card until the
                map sheet arrived is gone — the map's header is the roster.) ── */}
+        {!editorial && (
         <div style={controlCard}>
           {/* Row 1 — sort/filter as text-with-chevron · "you've watched"
               picker (the <select>s stay; only the chrome changed). */}
@@ -1204,26 +1278,30 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             </div>
           )}
         </div>
+        )}
 
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
-          <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+          <div style={editorial ? { marginTop: 18 } : undefined}>
+            <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} />
+          </div>
         )}
         {/* Friend + drafts columns stay MOUNTED (display:none) on the other
             tabs, so in-progress replies/drafts survive a guide check
             (Alborz 2026-09-08). */}
         {!privateOnly && (
-        <div style={{ display: tab === "friend" ? undefined : "none" }}>
-          {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
+        <div style={{ display: tab === "friend" ? undefined : "none", marginTop: editorial ? 20 : 0 }}>
+          {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} editorial={editorial} />}
           {feedEntries.length === 0 ? (
             <div style={{ maxWidth: 420 }}>
-              <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-              <p style={emptyCopy}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
-              <p style={emptyCopy}>Think of it as sending them letters from the future!</p>
+              <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: editorial ? E.color.ink : C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
+              <p style={{ ...emptyCopy, ...(editorial ? { color: E.color.ink } : {}) }}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
+              <p style={{ ...emptyCopy, ...(editorial ? { color: E.color.ink } : {}) }}>Think of it as sending them letters from the future!</p>
             </div>
           ) : (
             <V2RoomFeed
               ref={feedRef}
+              editorial={editorial}
               mobileIdiom
               displayNames={displayNames}
               entries={visibleFriendEntries}
@@ -1260,8 +1338,13 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         </div>
         )}
         <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
+            {editorial && (
+              <SectionHead style={{ marginTop: 24 }} right={<span style={{ color: E.color.inkMuted }}>{privateFeedEntries.length}</span>}>Your drafts</SectionHead>
+            )}
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
+                editorial={editorial}
+                editorialDrafts={editorial}
                 mobileIdiom
                 displayNames={displayNames}
                 entries={privateFeedEntries}
@@ -1272,16 +1355,37 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 onThreadDeleted={() => load()}
               />
             )}
-            {/* Pass 3: the explainer is the dashed-cream "not here yet"
-                card, three levels, copy verbatim; below drafts when they
-                exist, the empty state otherwise. */}
+            {editorial ? (
+              <div style={{ ...E.type.label11, letterSpacing: "0.06em", textTransform: "none", fontSize: 12, color: E.color.inkMuted, marginTop: 18 }}>Drafts are yours alone until you send them.</div>
+            ) : (
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
               <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
               <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
             </div>
+            )}
         </div>
       </div>
+
+      {/* ── The editorial room's write block, fixed at the foot, and the pinned
+             band once the head has scrolled away (checkpoint 4). ── */}
+      {editorial && tab !== "reference" && (
+        <WriteBlock
+          label={tab === "private" ? "Draft a letter" : "Write a letter"}
+          onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
+          style={{ position: "fixed", left: E.space.gutter, right: E.space.gutter, bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)", zIndex: 20 }}
+        />
+      )}
+      {editorial && pinned && (
+        <PinnedBand
+          tab={tab}
+          show={show?.name ?? "Show"}
+          position={progressForShow ? (() => { const p = effectiveProgress(progressForShow); return p && (p.s > 0 || p.e > 0) ? `S${p.s} E${p.e}` : null; })() : null}
+          onBack={closeRoom}
+          onTop={() => pageRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          onMap={tab === "friend" && !privateOnly && roomId && mapMembers.length > 0 ? () => setMapSheetOpen(true) : undefined}
+        />
+      )}
 
       {/* ── Compose — full-screen (mobile idiom of desktop's centered card) ── */}
       {composeOpen && createPortal(

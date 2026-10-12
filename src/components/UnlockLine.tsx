@@ -35,14 +35,14 @@ export function describeUnlock(n: UnlockNote, nameOf: (username: string) => stri
   return `Caught up to S${n.s} E${n.e}. ${what[0].toUpperCase()}${what.slice(1)} ${total === 1 ? "is" : "are"} open now.`;
 }
 
-export default function UnlockLine({ note, nameOf }: { note: UnlockNote; nameOf: (username: string) => string }) {
+export default function UnlockLine({ note, nameOf, editorial = false }: { note: UnlockNote; nameOf: (username: string) => string; /** The editorial skin: ink on cream. */ editorial?: boolean }) {
   return (
     <div
       role="status"
       style={{
         display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 8,
-        color: CANON.cream, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.45, opacity: 0.9,
-        margin: "0 0 16px",
+        color: editorial ? CANON.dark : CANON.cream, fontFamily: '"Inter", sans-serif', fontSize: 13, lineHeight: 1.45, opacity: 0.9,
+        margin: editorial ? "16px 0" : "0 0 16px",
       }}
     >
       <LetterDisc kind="open" />

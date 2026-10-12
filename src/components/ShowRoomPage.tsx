@@ -53,7 +53,10 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, EditorialColumn } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead } from "./editorial/Chrome";
+import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
+import { RowPoster } from "./editorial/GroupRoom";
+import { PaperNote } from "./editorial/Dashboard";
 import { CANON } from "../styles/canon";
 
 const C = { green: CANON.personal, sky: CANON.friend, blue: CANON.identity, yellow: CANON.accent, cream: CANON.cream, midnight: CANON.dark };
@@ -953,7 +956,22 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }
 
   // Reference tab = the accent (look-things-up) world; drafts stay green.
-  const bodyBg = tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
+  const bodyBg = editorial ? E.color.cream : tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
+  // The room's paper note (checkpoint 4): the letters you haven't opened yet,
+  // by writer; hidden when nothing waits. Dismissed per account and room.
+  const roomNote = editorial ? (() => {
+    const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
+    if (fresh.length === 0) return null;
+    const by = new Map<string, number>();
+    for (const e of fresh) by.set(e.authorUsername, (by.get(e.authorUsername) ?? 0) + 1);
+    const at = Math.max(...fresh.map((e) => e.updatedAt));
+    if (by.size === 1) {
+      const [u, n] = [...by.entries()][0];
+      const name = displayNames[u] ?? u;
+      return { text: n === 1 ? `${name} left you a letter.` : `${name} left you ${n} letters.`, at };
+    }
+    return { text: "Letters are waiting for you.", at };
+  })() : null;
 
 
   // Private entries rendered through the same V2RoomFeed as the friend feed so
@@ -988,7 +1006,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             positioned 104px strip). Header + body colors still swap by mode:
             friend = green header / sky body, private = sky header / green
             body (the inactive tab shows through). ── */}
-      <div style={{ background: tab === "private" ? C.sky : C.green }}>
+      <div style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
           //    the way out, `? ⚙` at the column's top right, the show's name
@@ -1005,7 +1023,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </EditorialColumn>
             <EditorialColumn wide>
               <div style={{ position: "relative" }}>
-                <div style={{ width: E.measure.desktop.letters }}>
+                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><RowPoster tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
+                <div style={{ width: E.measure.desktop.letters - 120 }}>
                   <EditorialTitle desktop>{show?.name ?? "Show"}</EditorialTitle>
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
@@ -1094,7 +1113,29 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
         {/* Tab row: mirrors the body grid ([672 feed | 64 | map]) so the
             tabs line up with the content they switch. */}
-        <div style={{ padding: editorial ? `${E.measure.desktop.tabsGap}px 24px 0` : "0 24px" }}>
+        {editorial ? (
+          // ── The folder tabs on the band (checkpoint 4): the selected tab in
+          //    its section's colour, the band under it the same, carrying the
+          //    picker; the band runs off the window's right edge. ──
+          <>
+            <EditorialColumn wide style={{ marginTop: E.measure.desktop.tabsGap }}>
+              <FolderTabs
+                width={E.measure.desktop.letters}
+                tabs={[...(!privateOnly ? ["friend"] : []), ...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]}
+                active={tab}
+                onChange={(t) => setTab(t)}
+              />
+            </EditorialColumn>
+            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto" }}>
+              <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))" }}>
+                {show && progressForShow ? (
+                  <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+                ) : null}
+              </RoomBand>
+            </div>
+          </>
+        ) : (
+        <div style={{ padding: "0 24px" }}>
           <div style={{ display: "flex", gap: 64, alignItems: "flex-end", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ flex: "0 1 672px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
               {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
@@ -1106,6 +1147,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <div style={{ flex: "0 0 300px" }} aria-hidden />
           </div>
         </div>
+        )}
       </div>
 
       {showAccount && (
@@ -1120,8 +1162,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             Write + progress live at the top of the column. The private tab
             reuses the same column at the same position; the map area is kept
             (visibility:hidden) so the column doesn't shift between tabs. ── */}
-      <div style={{ padding: "24px 24px 0" }}>
-        <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
+      <div style={editorial ? { maxWidth: E.measure.desktop.wide, margin: "24px auto 0", position: "relative" } : { padding: "24px 24px 0" }}>
+        {roomNote && user && (
+          <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ right: -224, top: -8, width: 320 }} />
+        )}
+        <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: editorial ? "flex-start" : "center", maxWidth: editorial ? undefined : 1400, margin: editorial ? 0 : "0 auto" }}>
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
           <div style={{ flex: "0 1 672px", minWidth: 0, paddingBottom: 120 }}>
             {/* ── Toolbar row (Alborz 2026-09-16): the cream control card is
@@ -1139,6 +1184,35 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               }
               .d-room-progress svg { width: 16px; height: 16px; right: 12px !important; }
             `}</style>
+            {editorial ? (
+              // ── The room's acts (checkpoint 4): "Write a letter" as an ink
+              //    block, the sort / filter as a mono word; the picker lives
+              //    on the band above. ──
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                {tab !== "reference" ? (
+                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
+                ) : <span />}
+                {tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
+                  const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
+                  const label = fm ? `Only ${fm.userId === user?.id ? "you" : (displayNames[fm.username] ?? fm.username)}` : "Episode order";
+                  return (
+                    <SelectWord dim ariaLabel="Sort or filter the letters" label={label} value={userFilter ? `user:${userFilter}` : `sort:${sortOrder}`} onChange={(v) => {
+                      if (v.startsWith("sort:")) { setSortOrder(v.slice(5) as "asc" | "desc"); setUserFilter(null); }
+                      else if (v.startsWith("user:")) setUserFilter(v.slice(5));
+                    }}>
+                      <optgroup label="Sort"><option value="sort:desc">episode order</option></optgroup>
+                      {mapMembers.length > 0 && (
+                        <optgroup label="Filter by member">
+                          {mapMembers.map((m) => (
+                            <option key={m.userId} value={`user:${m.userId}`}>only {m.userId === user?.id ? "you" : (displayNames[m.username] ?? m.username)}{m.isDeparted ? " (left)" : ""}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </SelectWord>
+                  );
+                })()}
+              </div>
+            ) : (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                 {/* No write on the reference tab (Alborz 2026-09-05) — it's a
@@ -1187,29 +1261,33 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 </div>
               )}
             </div>
+            )}
 
             {tab === "reference" && show && refEff && (
-              <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} />
+              <div style={editorial ? { marginTop: 28 } : undefined}>
+                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} />
+              </div>
             )}
             {/* Friend + drafts columns stay MOUNTED (display:none) on the
                 other tabs, so in-progress replies/drafts survive a guide
                 check (Alborz 2026-09-08). */}
             {!privateOnly && (
-            <div style={{ display: tab === "friend" ? undefined : "none" }}>
+            <div style={{ display: tab === "friend" ? undefined : "none", marginTop: editorial ? 28 : 0 }}>
               {/* The letter from Sidebar leads the feed (2026-09-26). */}
               {user && letterOpen === true && (
-                <SidebarLetter idiom="desktop" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} />
+                <SidebarLetter idiom="desktop" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} editorial={editorial} />
               )}
-              {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} />}
+              {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} editorial={editorial} />}
               {feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
-                  <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
-                  <p style={emptyCopy}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
-                  <p style={emptyCopy}>Think of it as sending them letters from the future!</p>
+                  <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: editorial ? E.color.ink : C.cream, margin: "16px 0 12px" }}>Be a trailblazer.</p>
+                  <p style={{ ...emptyCopy, ...(editorial ? { color: E.color.ink } : {}) }}>You're the first one in here. Start writing so your friends have letters to open as they finish episodes.</p>
+                  <p style={{ ...emptyCopy, ...(editorial ? { color: E.color.ink } : {}) }}>Think of it as sending them letters from the future!</p>
                 </div>
               ) : (
                 <V2RoomFeed
                   ref={feedRef}
+                  editorial={editorial}
                   displayNames={displayNames}
                   entries={visibleFriendEntries}
                   sortOrder={effectiveSortOrder}
@@ -1244,8 +1322,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
             )}
             <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
+                {editorial && (
+                  <SectionHead style={{ marginTop: 32 }} right={<span style={{ color: E.color.inkMuted }}>{privateFeedEntries.length}</span>}>Your drafts</SectionHead>
+                )}
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
+                    editorial={editorial}
+                    editorialDrafts={editorial}
                     displayNames={displayNames}
                     entries={privateFeedEntries}
                     responsesOff={!privateOnly && lettersOnly !== false}
@@ -1255,32 +1338,35 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     onThreadDeleted={() => load()}
                   />
                 )}
-                {/* Pass 3: the explainer is the dashed-cream "not here
-                    yet" card (D.gatedStub border grammar), three levels,
-                    copy verbatim; below drafts when they exist. */}
+                {editorial ? (
+                  <div style={{ ...E.type.label11, letterSpacing: "0.06em", textTransform: "none", fontSize: 12, color: E.color.inkMuted, marginTop: 18 }}>Drafts are yours alone until you send them.</div>
+                ) : (
                 <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
                   <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
                   <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
                 </div>
+                )}
             </div>
 
             {/* Help-system arc CP3/CP4: the tour entry point — centered in
                 the entry column, scrolling below the writing as the room
                 fills (moved from header chrome per Alborz). The ONLY
                 re-askable "how does this work?" on the signed-in site. */}
-            {tab === "friend" && !privateOnly && (
+            {tab === "friend" && !privateOnly && (editorial ? (
+              <TourWord onClick={() => setTourOpen(true)} />
+            ) : (
               <div style={{ display: "flex", justifyContent: "center", margin: "116px 0 8px" }}>
                 <button style={tourBtn} onClick={() => setTourOpen(true)}>How does this room work?</button>
               </div>
-            )}
+            ))}
           </div>
 
           {/* RIGHT pane: season map. Reserved but hidden on the private tab so
               the left column keeps the exact same placement across tabs.
               Omitted entirely in the private-only standalone (no group). */}
           {!privateOnly && roomId && (
-            <div style={{ flex: "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
+            <div style={{ flex: editorial ? `0 0 ${E.measure.desktop.rail}px` : "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
               <div style={{ position: "sticky", top: 24 }}>
               <V2RoomMap
                 members={mapMembers}

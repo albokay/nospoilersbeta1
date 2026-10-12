@@ -11,6 +11,9 @@ import React, {
 import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Lock, Mail, Mails, MessageSquareText, Users, Sparkles, Flag } from "lucide-react";
 import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY_NAME, type SidebarLetterKind } from "../../lib/sidebarLetters";
+import { E } from "../../styles/editorial";
+import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIEW, SidebarPaper, EntryFoot, FEED_VARS, DraftRow } from "../editorial/ShowRoom";
+import { UnderlineWord } from "../editorial/Chrome";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
 import Stamp, { stampSpecFor, stampBox } from "../Stamp";
@@ -274,6 +277,12 @@ export type V2RoomFeedProps = {
   /** Letters-only room (the switch, 2026-10-07): no Write back, no Quote…,
       no composer — notes stand in for responses. */
   responsesOff?: boolean;
+  /** The editorial skin (checkpoint 4, 2026-10-12): letters as hairline
+   *  entries with their stamps in ink, "You are here" as a mono rule, a
+   *  sealed letter as one dim line with the lock; `editorialDrafts` draws
+   *  the drafts lane's rows. Same data, same thread inside. */
+  editorial?: boolean;
+  editorialDrafts?: boolean;
   /** Notes inside each letter (notes arc, 2026-10-07): threadId → how many
       notes sit on that letter's body, all of them and the readable ones. A
       closed letter shows the count beside the chevron like its response
@@ -371,6 +380,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     preserveOrder = false,
     publicRoomGate,
     responsesOff = false,
+    editorial = false,
+    editorialDrafts = false,
     noteCounts,
     onNotesOpened,
     onReplyAdded,
@@ -493,6 +504,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     const who = started
       ? `${list} ${plural ? "are" : "is"} here`
       : `${list} ${plural ? "haven't" : "hasn't"} started watching`;
+    if (editorial) {
+      return <RoadRule key={`road-${m.idx}`} ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who} text={started ? `${who} · S${m.s} E${m.e}` : who} />;
+    }
     return (
       <RoadMarkerRow
         key={`road-${m.idx}`}
@@ -833,7 +847,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   }, []);
 
   return (
-    <div>
+    <div style={editorial ? FEED_VARS : undefined}>
       {sorted.map((entry) => {
         const roadHere = markerBefore.get(entry.threadId);
         return (<React.Fragment key={`slot-${entry.threadId}`}>{roadHere ? renderMarkers(roadHere) : null}{(() => {
@@ -842,6 +856,27 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // reply stub (same `card redacted` shell). One stub per gated entry;
         // catching up replaces it with the real ticket on the next load.
         // No signals/outlines/expansion apply.
+        if (entry.gatedStub && editorial) {
+          // The editorial sealed letter: FROM · SEALED UNTIL, one dim line,
+          // the lock on the writer's stamp (drawn at hairline weight in ink).
+          const aheadBy = seasons
+            ? linearIndex(entry.s, entry.e, seasons) - linearIndex(viewerProgress?.s ?? 0, viewerProgress?.e ?? 0, seasons)
+            : null;
+          const sv = stampSpecFor(entry.authorId || entry.authorUsername);
+          const line = aheadBy != null && aheadBy > 0
+            ? `A letter to ${gatedStubAudience} from ${aheadBy} episode${aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.`
+            : `A letter to ${gatedStubAudience} from S${entry.s} E${entry.e}. It opens when you catch up.`;
+          return (
+            <div key={entry.threadId} ref={(el) => { ticketRefs.current[entry.threadId] = el; }} data-thread-id={entry.threadId} style={{ position: "relative", scrollMarginTop: 72 }}>
+              <SealedEntry
+                from={dn(entry.authorUsername)}
+                until={`S${entry.s} E${entry.e}`}
+                line={line}
+                stamp={<Stamp spec={sv} label={`S${entry.s} E${entry.e}`} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={mobileIdiom ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
+              />
+            </div>
+          );
+        }
         if (entry.gatedStub) {
           // Gated-writing idiom (polish pass 2026-09-15): dashed cream, no
           // fill, lock glyph — "not yet" reads through the outline. The old
@@ -928,6 +963,140 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
         const stampReserve = stampEl ? Math.round(stampSize.w * stampScale) + 12 : 0;
         const stampMinH = stampEl ? Math.round(stampSize.h * stampScale) : 0;
+        if (editorial && !demoMode) {
+          // ── The editorial letter (checkpoint 4, 2026-10-12; the bible's
+          //    LetterEntry): an ink rule above, the mono FROM line, the Lora
+          //    title, the Lora preview, the writer's stamp at hairline weight
+          //    at the right, a hairline below; the head clears the stamp.
+          //    Opened, the same thread as the classic card, in ink. A closed
+          //    letter from Sidebar is its paper. A draft is its row. ──
+          const eScale = mobileIdiom ? 0.78 : 0.9;
+          const eStamp = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={eScale} rewatch={isRewatchTag} ink={isSb ? E.color.friend : E.color.ink} lineWidth={1.4} />;
+          const eReserve = eStamp ? Math.round(stampSize.w * eScale) + 12 : 0;
+          const authorName = isSb ? SIDEBAR_DISPLAY_NAME : dn(entry.authorUsername);
+          const canOpenProfile = !isSb && !!onClickProfile;
+          const threadEl = (
+            <div onClick={(e) => e.stopPropagation()}>
+              <V2InlineThread
+                      thread={entry.thread}
+                      sidebarKind={entry.sidebarKind ?? null}
+                      whatsNextGroupId={parentGroupId}
+                      onOpenRoom={onOpenRoom}
+                      displayNames={displayNames}
+                      groupId={groupId}
+                      mobileIdiom={mobileIdiom}
+                      viewerProgress={viewerProgress}
+                      userId={userId}
+                      replyCount={entry.replyCount}
+                      onClickProfile={onClickProfile}
+                      onCollapseTop={() => handleCollapseTop(entry.threadId)}
+                      onAuthRequired={onAuthRequired}
+                      onThreadEdited={onThreadEdited}
+                      onThreadDeleted={(tid) => {
+                        // Auto-collapse the deleted thread so the user sees
+                        // the post-delete state of the feed (drop or
+                        // tombstone) without it still being expanded.
+                        setExpandedThreadId(null);
+                        setHasDraft(false);
+                        onThreadDeleted?.(tid);
+                      }}
+                      onDraftChange={setHasDraft}
+                      onThreadLikeStateChange={(likedByMe) =>
+                        setExpandedLikeState((prev) =>
+                          prev ? { ...prev, likedByMe } : prev,
+                        )
+                      }
+                      focusReplyId={
+                        entry.threadId === initialExpandedThreadId
+                          ? pendingFocusReplyId
+                          : undefined
+                      }
+                      publicRoomGate={publicRoomGate}
+                      responsesOff={responsesOff}
+                      onNotesOpened={onNotesOpened}
+                      onReplyAdded={onReplyAdded}
+                    />
+            </div>
+          );
+          const refProps = { ref: (el: HTMLDivElement | null) => { ticketRefs.current[entry.threadId] = el; }, "data-thread-id": entry.threadId };
+          if (editorialDrafts && !isExpanded) {
+            return (
+              <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72 }}>
+                <DraftRow
+                  title={entry.isDeleted ? "(deleted)" : entry.title}
+                  meta={`Draft · S${entry.s} E${entry.e} · edited ${timeAgo(entry.updatedAt)}`}
+                  line={entry.isDeleted ? null : entry.preview}
+                  onClick={(ev) => toggleExpand(entry.threadId, ev)}
+                />
+              </div>
+            );
+          }
+          if (sbClosed) {
+            return (
+              <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, marginTop: 16 }} onClick={(e) => toggleExpand(entry.threadId, e)}>
+                <SidebarPaper stack={false} style={{ cursor: "pointer" }}>
+                  <span style={{ position: "absolute", right: 14, top: 12 }}><Stamp spec={stampSpec} label={stampLabel} scale={0.66} ink={E.color.friend} lineWidth={1.4} /></span>
+                  <div style={{ ...FROM_LINE, paddingRight: 80 }}>From: {SIDEBAR_DISPLAY_NAME} · {timeAgo(entry.updatedAt)}</div>
+                  <div style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 10, paddingRight: 80 }}>{entry.title}</div>
+                  <div className="clamp3" style={{ ...E.type.letterBody15, fontSize: 14, lineHeight: 1.5, marginTop: 6, color: "rgba(26,58,74,0.8)" }}>{entry.preview}</div>
+                </SidebarPaper>
+              </div>
+            );
+          }
+          const cd = !isExpanded && !entry.isDeleted ? countdownFor(entry) : null;
+          const nc = noteCounts?.[entry.threadId];
+          const dot = (kind: "blue" | "red") => <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: kind === "blue" ? E.color.identity : E.color.alert, display: "inline-block", marginRight: 6 }} />;
+          const footParts: React.ReactNode[] = [];
+          if (cd) footParts.push(<span key="cd">{cd}</span>);
+          if (entry.replyCount > 0) footParts.push(<span key="r">{pillKind && dot(pillKind)}{entry.replyCount} response{entry.replyCount === 1 ? "" : "s"}</span>);
+          if ((nc?.all ?? 0) > 0) { const noteKind = entry.replyCount > 0 ? null : pillKind; footParts.push(<span key="n">{noteKind && dot(noteKind)}{nc!.all} note{nc!.all === 1 ? "" : "s"}</span>); }
+          const foot = !isExpanded && !entry.isDeleted && footParts.length > 0 ? (
+            <EntryFoot
+              left={footParts.flatMap((f, fi) => (fi ? [<span key={`sep-${fi}`}> · </span>, f] : [f]))}
+              right={!responsesOff && entry.replyCount > 0 ? <UnderlineWord onClick={(ev) => toggleExpand(entry.threadId, ev)}>Write back →</UnderlineWord> : null}
+            />
+          ) : null;
+          return (
+            <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72 }}>
+              <EntryShell
+                stamp={eStamp}
+                stampReserve={eReserve}
+                dim={isEngaged && !isExpanded}
+                highlighted={isHighlighted}
+                onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
+                head={(
+                  <>
+                    <div style={{ ...FROM_LINE, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      {isNew && !entry.isInstructional && <span aria-label="new" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} />}
+                      <span>
+                        From:{" "}
+                        <span
+                          onClick={canOpenProfile ? (ev) => { ev.stopPropagation(); onClickProfile!(entry.authorUsername); } : undefined}
+                          style={canOpenProfile ? { cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 } : undefined}
+                        >{authorName}</span>
+                        {" · "}{timeAgo(entry.updatedAt)}
+                        {entry.isDeparted ? " · has left the room" : ""}
+                        {!entry.isDeleted && entry.isEdited ? " · edited" : ""}
+                      </span>
+                    </div>
+                    <h2 style={{ ...ENTRY_TITLE, opacity: entry.isDeleted ? 0.35 : 1 }}>{entry.isDeleted ? "(deleted letter)" : entry.title}</h2>
+                  </>
+                )}
+              >
+                {isExpanded ? threadEl : entry.isDeleted ? (
+                  <div style={{ fontStyle: "italic", opacity: 0.35 }}>{dn(entry.authorUsername)} deleted their entry.</div>
+                ) : isSb ? null : (
+                  <div className="clamp3" style={ENTRY_PREVIEW}>
+                    {parsePromptTokens(entry.preview).map((part, pi) => (
+                      <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>
+                    ))}
+                  </div>
+                )}
+                {foot}
+              </EntryShell>
+            </div>
+          );
+        }
         return (
           <div
             key={entry.threadId}
