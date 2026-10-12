@@ -76,20 +76,20 @@ export function OnbQuestion({ children, sub, align = "center", desktop = false, 
 }
 
 /** A band across the page: the phone bleeds past the gutter; desktop runs across the window with the column inside. */
-export function Band({ color, children, desktop = false, inner, style }: { color: string; children: React.ReactNode; desktop?: boolean; inner?: React.CSSProperties; style?: React.CSSProperties }) {
+export function Band({ color, children, desktop = false, inset = E.space.gutter, inner, style }: { color: string; children: React.ReactNode; desktop?: boolean; /** The host's side padding the band bleeds past (the page gutter; a dialog's own). */ inset?: number; inner?: React.CSSProperties; style?: React.CSSProperties }) {
   return desktop ? (
     <div style={{ background: color, padding: "28px 0", ...style }}><div style={{ ...COLUMN, ...inner }}>{children}</div></div>
   ) : (
-    <div style={{ margin: `0 -${E.space.gutter}px`, padding: `20px ${E.space.gutter}px 22px`, background: color, ...style }}><div style={inner}>{children}</div></div>
+    <div style={{ margin: `0 -${inset}px`, padding: `20px ${inset}px 22px`, background: color, ...style }}><div style={inner}>{children}</div></div>
   );
 }
 
 /** YOUR PICK on the accent band: the poster, the name, the seasons, "Pick a different show". */
-export function PickBand({ show, onChangePick, desktop = false, style }: { show: Show; onChangePick: () => void; desktop?: boolean; style?: React.CSSProperties }) {
+export function PickBand({ show, onChangePick, desktop = false, inset, style }: { show: Show; onChangePick: () => void; desktop?: boolean; inset?: number; style?: React.CSSProperties }) {
   const n = show.seasons?.length ?? 0;
   const meta = [show.status === "Running" || show.status === "In Development" ? "Returning" : null, n ? `${n} season${n === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ");
   return (
-    <Band color={E.color.accent} desktop={desktop} style={style}>
+    <Band color={E.color.accent} desktop={desktop} inset={inset} style={style}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", ...E.type.label11, color: E.color.ink }}>
         <span>Your pick</span>
         <UnderlineWord onClick={onChangePick}>Pick a different show</UnderlineWord>
@@ -106,9 +106,9 @@ export function PickBand({ show, onChangePick, desktop = false, style }: { show:
 }
 
 /** "Have you started watching?" on the personal band, with the numbers. */
-export function ProgressBand({ show, value, onChange, desktop = false, style }: { show: Show; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void; desktop?: boolean; style?: React.CSSProperties }) {
+export function ProgressBand({ show, value, onChange, desktop = false, inset = E.space.gutter, style }: { show: Show; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void; desktop?: boolean; inset?: number; style?: React.CSSProperties }) {
   return (
-    <Band color={E.color.personal} desktop={desktop} style={{ textAlign: "center", ...(desktop ? { padding: "16px 0 18px" } : { padding: `16px ${E.space.gutter}px 18px` }), ...style }}>
+    <Band color={E.color.personal} desktop={desktop} inset={inset} style={{ textAlign: "center", ...(desktop ? { padding: "16px 0 18px" } : { padding: `16px ${inset}px 18px` }), ...style }}>
       <div style={{ ...E.type.label11, color: E.color.ink }}>Have you started watching?</div>
       <NumbersPicker show={show} value={value} onChange={onChange} />
     </Band>

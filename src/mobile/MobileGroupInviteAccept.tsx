@@ -15,6 +15,8 @@ import YoureInCard from "../components/deck/YoureInCard";
 import HomepageNarrative from "../components/HomepageNarrative";
 import { readPendingDeckAnswers } from "../lib/deckPending";
 import { preventLastWordOrphan } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import { InviteWall, InviteStatePage, InvitePage } from "../components/editorial/Invite";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
@@ -48,6 +50,8 @@ type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" 
 export default function MobileGroupInviteAccept({ token }: { token: string }) {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  // The editorial skin (checkpoint 7, 2026-10-12): see the desktop page.
+  const editorial = useEditorial();
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
@@ -269,6 +273,18 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     // has an account skips them and lands on the wall (Alborz 2026-08-18;
     // desktop parity) — the post-join wave self-skips for them anyway.
     const wallReady = prewallDone || !!info.inviteeHasAccount;
+    if (editorial) {
+      return (
+        <>
+          {!wallReady && (
+            <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="mobile" onComplete={() => setPrewallDone(true)} />
+          )}
+          {wallReady
+            ? <InviteWall token={token} info={info} inviterName={inviterShown} onJoin={goAuth} />
+            : <InvitePage><div /></InvitePage>}
+        </>
+      );
+    }
     return (
       <div style={welcomePage}>
         {!wallReady && (
@@ -360,6 +376,16 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   }
 
   // ── Everything else: centered card states (desktop copy) ──────────────────
+  if (editorial) {
+    const tail = detail && (status === "error" || status === "expired" || status === "already") ? ` (${detail})` : "";
+    if (status === "loading") return <InviteStatePage title={<>loading<LoadingDots /></>} />;
+    if (status === "ready" && !user && authLoading) return <InviteStatePage title="Signing you in…" />;
+    if (status === "wrong") return <InviteStatePage title="This invite was sent to a different email." note={<>It&rsquo;s addressed to {masked}. Sign in with that email, then try again with your email invite link.</>} action={{ label: "Sign out", onClick: async () => { await signOut(); window.location.reload(); } }} />;
+    if (status === "already") return <InviteStatePage title="This invite was already used." note={tail || undefined} action={{ label: "Go to dashboard", onClick: () => navigate("/m/dashboard") }} />;
+    if (status === "expired") return <InviteStatePage title="This invitation has expired." note={tail || undefined} />;
+    if (status === "invalid") return <InviteStatePage title="This invitation link isn't valid." note="This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one." />;
+    return <InviteStatePage title="Something went wrong. Try the link again." note={tail || undefined} />;
+  }
   return (
     <div style={page}>
       <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 16 }}>

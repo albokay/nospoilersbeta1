@@ -7,6 +7,10 @@ import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import { maskEmailEnds } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, UnderlineWord } from "./editorial/Chrome";
+import { pageStyle, COLUMN, FORM_CSS, Field, Block, Frame, Wordmark } from "./editorial/Onboarding";
 
 type Mode = "signin" | "signup" | "recovery";
 
@@ -32,6 +36,7 @@ const authX: React.CSSProperties = {
 
 export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false, signupRedirectTo }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean; signupRedirectTo?: string }) {
   const { signIn, signUp } = useAuth();
+  const editorial = useEditorial();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
@@ -102,6 +107,85 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     if (err) { setError(err); return; }
     onSuccess?.(mode);
     onClose();
+  }
+
+  // ── The editorial skin (checkpoint 7, 2026-10-12; the D3InvAuth board, the
+  // bible's Form): the account form as a full-window page on cream — the
+  // sky band, the wordmark, the line in Lora, the fields on rules, the block.
+  if (editorial) {
+    const para: React.CSSProperties = { ...E.type.body15, lineHeight: 1.6, margin: "0 0 12px" };
+    const note: React.CSSProperties = { ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, margin: 0 };
+    const err: React.CSSProperties = { ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 12 };
+    const title = confirmSent ? "Check your email" : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
+    let body: React.ReactNode;
+    if (confirmSent) {
+      body = (
+        <>
+          <p style={para}>We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Click it to finish setting up your account — it&rsquo;ll sign you in automatically.</p>
+          <p style={para}>You can close this tab. The link opens Sidebar in a new one.</p>
+          <p style={{ ...note, marginTop: 12 }}>It can take a minute to arrive. If you don&rsquo;t see it, check your spam folder.</p>
+        </>
+      );
+    } else if (mode === "recovery") {
+      body = recoverySent ? (
+        <>
+          <p style={para}>We&rsquo;ve sent a recovery link to <strong>{maskEmailEnds(email.trim())}</strong>. Click the link in your email to set a new password.</p>
+          <p style={{ ...note, marginTop: 12 }}>The link expires in about an hour. If you don&rsquo;t see it, check spam.</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 28 }}>
+            <UnderlineWord onClick={() => { setRecoverySent(false); setError(null); }}>Send again</UnderlineWord>
+            <Frame onClick={() => switchMode("signin")} style={{ width: "auto", padding: "0 24px" }}>Back to sign in</Frame>
+          </div>
+        </>
+      ) : (
+        <>
+          <p style={note}>Enter the email you signed up with. We&rsquo;ll send you a link to set a new password.</p>
+          <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
+            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="email" autoFocus autoComplete="email" />
+            {error && <div style={err}>{error}</div>}
+            <Block type="submit" disabled={loading} style={{ marginTop: 36 }}>{loading ? <LoadingDots /> : "Send recovery email"}</Block>
+          </form>
+          <div style={{ marginTop: 14, textAlign: "center" }}><UnderlineWord onClick={() => switchMode("signin")}>Remembered it? Back to sign in</UnderlineWord></div>
+        </>
+      );
+    } else {
+      body = (
+        <>
+          <form onSubmit={handleSubmit}>
+            {mode === "signup" && (
+              <>
+                <Field label="Your first name" value={firstName} onChange={setFirstName} placeholder="your first name" autoFocus autoComplete="given-name" maxLength={40} />
+                <div style={{ fontFamily: E.font.interface, fontSize: 12, lineHeight: 1.5, color: "rgba(26,58,74,0.65)", marginTop: 8 }}>This is how you&rsquo;ll show up for your friends. Think of it like saving a name in their contact list.</div>
+              </>
+            )}
+            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="email" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" style={{ marginTop: mode === "signup" ? 24 : 0 }} />
+            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 24 }} />
+            {error && <div style={err}>{error}</div>}
+            <Block type="submit" disabled={loading} style={{ marginTop: 36 }}>{loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}</Block>
+          </form>
+          <div style={{ marginTop: 14, textAlign: "center" }}>
+            {mode === "signin"
+              ? <UnderlineWord onClick={() => switchMode("signup")}>No account? Create one</UnderlineWord>
+              : <UnderlineWord onClick={() => switchMode("signin")}>Already have an account? Sign in</UnderlineWord>}
+          </div>
+          {mode === "signin" && <div style={{ marginTop: 14, textAlign: "center" }}><UnderlineWord onClick={() => switchMode("recovery")}>Forgot password?</UnderlineWord></div>}
+          {mode === "signup" && (
+            <p style={{ ...note, marginTop: 24, textAlign: "center" }}>Sidebar only uses your email to sign you in and to send a daily update of your friends&rsquo; writing (only if there&rsquo;s new writing you haven&rsquo;t seen). Emails are never shared or sold.</p>
+          )}
+        </>
+      );
+    }
+    return (
+      <div style={pageStyle(1100)}>
+        <style>{FORM_CSS}</style>
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 230, background: E.color.friend }} />
+        <CornerTab kind="back" desktop onClick={onClose} zIndex={1112} />
+        <div style={{ position: "absolute", left: "50%", top: 36, transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={34} /></div>
+        <div style={{ ...COLUMN, position: "relative", zIndex: 2, paddingTop: 120 }}>
+          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
+        </div>
+        <div style={{ ...COLUMN, marginTop: 64, paddingBottom: 80 }}>{body}</div>
+      </div>
+    );
   }
 
   // ── CONFIRM-EMAIL SENT — shown after sign-up when "Confirm email" is on.

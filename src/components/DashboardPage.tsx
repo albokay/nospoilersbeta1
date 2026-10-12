@@ -119,6 +119,8 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
 import { Masthead, OpenRoomsDisc, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
+import { FORM_CSS, FriendRows, ShowField, PickBand, Block } from "./editorial/Onboarding";
+import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -2615,6 +2617,28 @@ export default function DashboardPage() {
         const friendCount = inviteRows.filter((r) => r.email.includes("@") && r.name.trim()).length;
         const prog = progress[show.id];
         const fresh = !prog || prog.s < 1 || (prog.s === 1 && prog.e <= 4);
+        if (editorial) {
+          const many = friendCount > 1;
+          return (
+            <div style={{ position: "fixed", inset: 0, zIndex: 1002, background: E.color.cream, overflowY: "auto" }}>
+              <ComposeForm
+                ref={inviteComposeRef}
+                showId={show.id}
+                privateOnly
+                hideTopRightClose
+                hideCancel
+                onCancel={() => setInviteStep("form")}
+                onSubmitted={() => {}}
+                initialTitle="Let's do this!"
+                editorial={{ desktop: true, banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+                promptButton={{ label: "Want help with what to write?" }}
+                promptPoolTag={fresh ? "onb-fresh" : "onb-returning"}
+                bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}
+                externalSubmit={{ label: "Send letter", submittingLabel: "sending", onSubmit: publishFirstLetter }}
+              />
+            </div>
+          );
+        }
         return (
           <div style={{ ...composeBackdrop, zIndex: 1002 }}>
             <div style={composeCardOuter}>
@@ -2657,6 +2681,40 @@ export default function DashboardPage() {
         const filledRows = inviteRows.filter((r) => r.email.trim() || r.name.trim());
         const completeRows = filledRows.filter((r) => r.email.includes("@") && (!creating || r.name.trim()));
         const ready = completeRows.length >= 1 && completeRows.length === filledRows.length && (!creating || inviteShows.length >= 1);
+        // The editorial skin (checkpoint 7): the bible's Form in a 480 dialog;
+        // sent = the personal band with the friends' Copy link rows.
+        if (editorial) {
+          const pick = inviteShows[0];
+          return (
+            <InviteDialog onClose={closeInviteModal} label={inviteLinks ? "Invites sent" : "Invite friends"}>
+              {inviteLinks ? (
+                <InvitesSentBody links={inviteLinks} onDone={closeInviteModal} inset={28} />
+              ) : (
+                <div style={{ padding: "30px 32px 4px" }}>
+                  <style>{FORM_CSS}</style>
+                  <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", paddingRight: 8 }}>
+                    {inviteTargetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
+                  </div>
+                  <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Their name is how they&rsquo;ll show up for you.</div>
+                  <div style={{ marginTop: 28 }}>
+                    <FriendRows desktop rows={inviteRows} onChange={(i, f, v) => setInviteRows((prev) => prev.map((r, j) => (j === i ? { ...r, [f]: v } : r)))} onAdd={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])} />
+                  </div>
+                  {creating && (pick ? (
+                    <PickBand show={pick} onChangePick={() => setInviteShows([])} inset={32} style={{ marginTop: 28 }} />
+                  ) : (
+                    <>
+                      <SectionHead style={{ marginTop: 28 }}>And pick a show to watch together</SectionHead>
+                      <ShowField shows={shows.filter((s) => !s.isHidden)} onPickShow={pickInviteShow} onPickTv={pickInviteTvShow} busy={creatingShow} style={{ marginTop: 18 }} />
+                    </>
+                  ))}
+                  <Block onClick={creating ? () => setInviteStep("letter") : sendInvites} disabled={inviteSending || !ready} style={{ marginTop: 32 }}>
+                    {inviteSending ? <>sending invite<LoadingDots /></> : creating ? "Next" : "Send invite"}
+                  </Block>
+                </div>
+              )}
+            </InviteDialog>
+          );
+        }
         return (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) closeInviteModal(); }}>
           {/* The SENT state wears the "You're in!" look (Alborz 2026-09-16):

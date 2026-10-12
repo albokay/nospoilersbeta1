@@ -22,6 +22,11 @@ import {
 } from "../lib/db";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, type TVmazeShow } from "../lib/tvmaze";
 import type { ProgressEntry } from "../types";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, SectionHead } from "../components/editorial/Chrome";
+import { FORM_CSS, FriendRows, ShowField, PickBand, Block } from "../components/editorial/Onboarding";
+import { InvitesSentBody, SentSheet } from "../components/editorial/Invite";
 
 /**
  * MobileInviteSheet — full-screen mobile idiom of the desktop dashboard's
@@ -62,6 +67,12 @@ export default function MobileInviteSheet({
 }) {
   const { user, profile } = useAuth();
   const creating = !targetGroupId;
+  // The editorial skin (checkpoint 7, 2026-10-12; the bible's Form, the
+  // E3InvSent board): the sheet on cream with the folded corner, the title
+  // in Lora, the friends' name and email on one rule, the pick on its
+  // accent band or the Show field, Next / Send invite as a block; sent =
+  // the rising sheet with the personal band and the Copy link rows.
+  const editorial = useEditorial();
 
   const [rows, setRows] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
   const [sending, setSending] = useState(false);
@@ -222,6 +233,69 @@ export default function MobileInviteSheet({
   const letterFriendCount = rows.filter((r) => r.email.includes("@") && r.name.trim()).length;
   const letterProg = letterShow ? progress[letterShow.id] : undefined;
   const letterFresh = !letterProg || letterProg.s < 1 || (letterProg.s === 1 && letterProg.e <= 4);
+
+  if (editorial) {
+    const many = letterFriendCount > 1;
+    const letter = creating && step === "letter" && letterShow && user && createPortal(
+      <div style={composeShell}>
+        <ComposeForm
+          ref={composeRef}
+          mobileIdiom
+          showId={letterShow.id}
+          privateOnly
+          hideTopRightClose
+          hideCancel
+          onCancel={() => setStep("form")}
+          onSubmitted={() => {}}
+          initialTitle="Let's do this!"
+          editorial={{ banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{letterShow.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+          promptButton={{ label: "Want help with what to write?" }}
+          promptPoolTag={letterFresh ? "onb-fresh" : "onb-returning"}
+          bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}
+          externalSubmit={{ label: "Send letter", submittingLabel: "sending", onSubmit: publishFirstLetter }}
+        />
+      </div>,
+      document.body,
+    );
+    if (links) {
+      return (
+        <>
+          {letter}
+          <SentSheet><InvitesSentBody links={links} onDone={close} inset={E.space.gutter} /></SentSheet>
+        </>
+      );
+    }
+    const pick = inviteShows[0];
+    return (
+      <>
+        {letter}
+        <div style={{ ...sheet, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
+          <style>{FORM_CSS}</style>
+          <CornerTab kind="back" onClick={close} label="Close" />
+          <div style={{ paddingTop: E.measure.phone.titleTop }}>
+            <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.15, letterSpacing: "-0.01em" }}>
+              {targetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
+            </div>
+            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Their name is how they&rsquo;ll show up for you.</div>
+          </div>
+          <div style={{ marginTop: 40 }}>
+            <FriendRows rows={rows} onChange={(i, f, v) => setRows((prev) => prev.map((r, j) => (j === i ? { ...r, [f]: v } : r)))} onAdd={() => setRows((prev) => [...prev, { name: "", email: "" }])} />
+          </div>
+          {creating && (pick ? (
+            <PickBand show={pick} onChangePick={() => setInviteShows([])} style={{ marginTop: 32 }} />
+          ) : (
+            <>
+              <SectionHead style={{ marginTop: 32 }}>And pick a show to watch together</SectionHead>
+              <ShowField shows={shows.filter((s) => !s.isHidden)} onPickShow={pickShow} onPickTv={pickTvShow} busy={creatingShow} style={{ marginTop: 18 }} />
+            </>
+          ))}
+          <Block onClick={creating ? () => setStep("letter") : sendInvites} disabled={sending || !ready} style={{ marginTop: 40 }}>
+            {sending ? <>sending invite<LoadingDots /></> : creating ? "Next" : "Send invite"}
+          </Block>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div style={sheet}>

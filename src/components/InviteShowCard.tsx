@@ -5,6 +5,9 @@ import { CANON } from "../styles/canon";
 import { D, yellowCard, modalClose } from "./dashboardChrome";
 import { M } from "../mobile/m";
 import { preventLastWordOrphan } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { EditorialDialog, EditorialSheet } from "./editorial/GroupRoom";
 
 // The invite wall's show card (Alborz 2026-09-28): a version of the group
 // room's yellow opt-in modal for the invited friend's landing. The show's
@@ -23,6 +26,19 @@ export default function InviteShowCard({ idiom, show, onClose, children }: {
   /** Rendered under the title, above the trailer (the toggle, when there is one). */
   children?: React.ReactNode;
 }) {
+  const editorial = useEditorial();
+  if (editorial) {
+    const body = (
+      <>
+        <div style={{ ...E.type.letterTitle22, color: E.color.ink, paddingRight: 28 }}>{show.name}</div>
+        {children && <div style={{ marginTop: 16 }}>{children}</div>}
+        <div style={{ marginTop: 20, display: "flex", justifyContent: "center" }}><TrailerCard showId={show.id} tvmazeId={show.tvmazeId} /></div>
+      </>
+    );
+    return idiom === "mobile"
+      ? <EditorialSheet onClose={onClose}>{body}</EditorialSheet>
+      : <EditorialDialog onClose={onClose} width={560} label={show.name} align="left">{body}</EditorialDialog>;
+  }
   if (idiom === "mobile") {
     return (
       <div style={sheet} role="dialog" aria-label={show.name}>

@@ -24,6 +24,9 @@ import HomepageNarrative from "./HomepageNarrative";
 import { readPendingDeckAnswers } from "../lib/deckPending";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import LoadingDots from "./LoadingDots";
+import { InviteWall, InviteStatePage, InvitePage } from "./editorial/Invite";
 
 // After an invite sign-up, route the new account to /dashboard (where the
 // guided tour auto-fires) instead of the old onboarding. App's post-login
@@ -39,6 +42,10 @@ type Status = "loading" | "ready" | "invalid" | "expired" | "already" | "wrong" 
 export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  // The editorial skin (checkpoint 7, 2026-10-12): the wall, the account
+  // form, the You're in card and the wave draw themselves under the skin;
+  // the other states become a page on cream.
+  const editorial = useEditorial();
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
@@ -186,6 +193,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
 
   // Account just created — brief "setting up" screen while routing to /dashboard.
   if (phase === "entering") {
+    if (editorial) return <InviteStatePage desktop title="Welcome to Sidebar! Setting up your account…" />;
     return (
       <div style={page}>
         <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
@@ -226,7 +234,11 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             they'd only be re-answering, and the post-join wave self-skips
             for them anyway. */}
         {(prewallDone || info.inviteeHasAccount) ? (
-          <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
+          editorial
+            ? <InviteWall desktop token={token} info={info} inviterName={inviterLabel} onJoin={openAuth} />
+            : <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
+        ) : editorial ? (
+          <InvitePage desktop><div /></InvitePage>
         ) : (
           <div style={page}>
             <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
@@ -253,6 +265,17 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         )}
       </>
     );
+  }
+
+  if (editorial) {
+    const tail = detail && (status === "error" || status === "expired" || status === "already") ? ` (${detail})` : "";
+    if (status === "loading") return <InviteStatePage desktop title={<>loading<LoadingDots /></>} />;
+    if (status === "ready" && !user && postSignin) return <InviteStatePage desktop title="Signing you in…" />;
+    if (status === "wrong") return <InviteStatePage desktop title="This invite was sent to a different email." note={<>It&rsquo;s addressed to {masked}. Sign in with that email, then try again with your email invite link.</>} action={{ label: "Sign out", onClick: async () => { await signOut(); window.location.reload(); } }} />;
+    if (status === "already") return <InviteStatePage desktop title="This invite was already used." note={tail || undefined} action={{ label: "Go to dashboard", onClick: () => navigate("/dashboard") }} />;
+    if (status === "expired") return <InviteStatePage desktop title="This invitation has expired." note={tail || undefined} />;
+    if (status === "invalid") return <InviteStatePage desktop title="This invitation link isn't valid." note="This link is no longer active. The invite may have been canceled, or the link is incomplete — ask your friend to send you a new one." />;
+    return <InviteStatePage desktop title="Something went wrong. Try the link again." note={tail || undefined} />;
   }
 
   return (

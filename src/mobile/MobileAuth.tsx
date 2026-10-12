@@ -7,6 +7,10 @@ import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
 import LoadingDots from "../components/LoadingDots";
 import { maskEmailEnds } from "../lib/utils";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab, UnderlineWord } from "../components/editorial/Chrome";
+import { FORM_CSS, Field, Block, Frame, Wordmark } from "../components/editorial/Onboarding";
 
 type Mode = "signin" | "signup" | "recovery";
 
@@ -41,6 +45,7 @@ export default function MobileAuth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp } = useAuth();
+  const editorial = useEditorial();
   const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
 
   // ?mode=signup opens in create-account mode — the mobile idiom for
@@ -132,6 +137,87 @@ export default function MobileAuth() {
     padding: "0 24px",
     marginTop: -2,
   };
+
+  // ── The editorial skin (checkpoint 7, 2026-10-12; the E3InvAuth board, the
+  // bible's Form): the page on cream — the sky band, the wordmark, the line
+  // in Lora, the fields on rules, the block; the folded corner as the back.
+  if (editorial) {
+    const back = () => {
+      const b = new URLSearchParams(location.search).get("returnTo");
+      navigate(b && b.startsWith("/m/") && !b.includes("//") ? b : "/m");
+    };
+    const para: React.CSSProperties = { ...E.type.body15, lineHeight: 1.6, margin: "0 0 12px" };
+    const note: React.CSSProperties = { ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, margin: 0 };
+    const err: React.CSSProperties = { ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 12 };
+    const title = confirmSent ? "Check your email" : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
+    let body: React.ReactNode;
+    if (confirmSent) {
+      body = (
+        <>
+          <p style={para}>We sent a confirmation link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap it to finish setting up your account — it&rsquo;ll sign you in automatically.</p>
+          <p style={para}>You can close this tab. The link opens Sidebar in a new one.</p>
+          <p style={{ ...note, marginTop: 12 }}>It can take a minute to arrive. If you don&rsquo;t see it, check your spam folder.</p>
+        </>
+      );
+    } else if (mode === "recovery") {
+      body = recoverySent ? (
+        <>
+          <p style={para}>We&rsquo;ve sent a recovery link to <strong>{maskEmailEnds(email.trim())}</strong>. Tap the link in your email to set a new password.</p>
+          <p style={{ ...note, marginTop: 12 }}>The link expires in about an hour. If you don&rsquo;t see it, check spam.</p>
+          <div style={{ marginTop: 24, textAlign: "center" }}><UnderlineWord onClick={() => { setRecoverySent(false); setError(null); }}>Send again</UnderlineWord></div>
+          <Frame onClick={() => switchMode("signin")} style={{ marginTop: 20 }}>Back to sign in</Frame>
+        </>
+      ) : (
+        <>
+          <p style={note}>Enter the email you signed up with. We&rsquo;ll send you a link to set a new password.</p>
+          <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
+            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="email" autoFocus autoComplete="email" autoCapitalize="none" autoCorrect="off" />
+            {error && <div style={err}>{error}</div>}
+            <Block type="submit" disabled={loading} style={{ marginTop: 32 }}>{loading ? <LoadingDots /> : "Send recovery email"}</Block>
+          </form>
+          <div style={{ marginTop: 14, textAlign: "center" }}><UnderlineWord onClick={() => switchMode("signin")}>Remembered it? Back to sign in</UnderlineWord></div>
+        </>
+      );
+    } else {
+      body = (
+        <>
+          <form onSubmit={handleSubmit}>
+            {mode === "signup" && (
+              <>
+                <Field label="Your first name" value={firstName} onChange={setFirstName} placeholder="your first name" autoFocus autoComplete="given-name" autoCorrect="off" maxLength={40} />
+                <div style={{ fontFamily: E.font.interface, fontSize: 12, lineHeight: 1.5, color: "rgba(26,58,74,0.65)", marginTop: 8 }}>This is how you&rsquo;ll show up for your friends. Think of it like saving a name in their contact list.</div>
+              </>
+            )}
+            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="email" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" autoCapitalize="none" autoCorrect="off" style={{ marginTop: mode === "signup" ? 22 : 0 }} />
+            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 22 }} />
+            {error && <div style={err}>{error}</div>}
+            <Block type="submit" disabled={loading} style={{ marginTop: 32 }}>{loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}</Block>
+          </form>
+          <div style={{ marginTop: 14, textAlign: "center" }}>
+            {mode === "signin"
+              ? <UnderlineWord onClick={() => { setMode("signup"); setError(null); }}>No account? Create one</UnderlineWord>
+              : <UnderlineWord onClick={() => { setMode("signin"); setError(null); }}>Already have an account? Sign in</UnderlineWord>}
+          </div>
+          {mode === "signin" && <div style={{ marginTop: 14, textAlign: "center" }}><UnderlineWord onClick={() => switchMode("recovery")}>Forgot password?</UnderlineWord></div>}
+          {mode === "signup" && (
+            <p style={{ ...note, marginTop: 24, textAlign: "center" }}>Sidebar only uses your email to sign you in and to send a daily update of your friends&rsquo; writing (only if there&rsquo;s new writing you haven&rsquo;t seen). Emails are never shared or sold.</p>
+          )}
+        </>
+      );
+    }
+    return (
+      <div style={{ position: "relative", minHeight: "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
+        <style>{FORM_CSS}</style>
+        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 213, background: E.color.friend }} />
+        <CornerTab kind="back" onClick={back} />
+        <div style={{ position: "absolute", left: "50%", top: "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={26} /></div>
+        <div style={{ position: "relative", zIndex: 2, paddingTop: "calc(env(safe-area-inset-top, 0px) + 110px)" }}>
+          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
+        </div>
+        <div style={{ marginTop: 58 }}>{body}</div>
+      </div>
+    );
+  }
 
   // ── RECOVERY MODE — separate render path, mirrors AuthModal's. ──────────
   if (mode === "recovery") {

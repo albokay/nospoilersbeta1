@@ -22,10 +22,14 @@ import MobileBrowseRows from "../mobile/MobileBrowseRows";
 import type { BrowseShow } from "../lib/db";
 import InviteShowCard from "./InviteShowCard";
 import YesNoToggle from "./YesNoToggle";
+import { E } from "../styles/editorial";
+import { SectionHead, UnderlineWord } from "./editorial/Chrome";
+import { ShowField, EditorialStrips } from "./editorial/Onboarding";
+import { AnswerRow } from "./editorial/GroupRoom";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
-export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0, children }: {
+export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0, children, editorial }: {
   token: string;
   idiom: "desktop" | "mobile";
   /** The inviter's shows shown on the wall above (already on the table) —
@@ -38,6 +42,10 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
    *  their JOIN YOUR FRIEND cluster here (Alborz 2026-08-18: the button and
    *  "…and start writing." sit above the thumbnails). */
   children?: React.ReactNode;
+  /** The editorial skin (checkpoint 7): "Add your own picks · Optional" on a
+   *  rule, the sentence naming the inviter, the picks as hairline rows, the
+   *  Show field, the strips with "Pitch →". Same parking, same card. */
+  editorial?: { inviterName: string; desktop: boolean };
 }) {
   const mobile = idiom === "mobile";
   const [shows, setShows] = useState<Show[]>([]);
@@ -165,6 +173,58 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
     if (hasResults) ensureVisible();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasResults]);
+
+  if (editorial) {
+    const desk = editorial.desktop;
+    const unpicked = shows.filter((s) => !s.isHidden && !pickedIds.has(s.id));
+    return (
+      <div style={{ marginTop: 56, textAlign: "left" }}>
+        {desk ? (
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 10, borderBottom: `1px solid ${E.color.ink}` }}>
+            <span style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 26, lineHeight: 1.1, letterSpacing: "-0.01em", color: E.color.ink }}>Add your own picks</span>
+            <span style={{ ...E.type.label11, color: E.color.inkMuted }}>Optional</span>
+          </div>
+        ) : (
+          <SectionHead right={<span style={{ color: E.color.inkMuted }}>Optional</span>}>Add your own picks</SectionHead>
+        )}
+        <div style={{ fontFamily: E.font.interface, fontSize: 14, lineHeight: 1.5, color: "rgba(26,58,74,0.8)", marginTop: 14 }}>
+          Pitch the shows you&rsquo;d want to watch with {editorial.inviterName}. They land in the group as proposals once you&rsquo;re in.
+        </div>
+        {picks.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            {picks.map((p, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderTop: i === 0 ? `1px solid ${E.color.ink}` : undefined, borderBottom: `1px solid ${E.color.hairline}` }}>
+                <span style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, color: E.color.ink }}>{p.name}</span>
+                <UnderlineWord onClick={() => removePick(i)} label={`remove ${p.name}`}>Remove</UnderlineWord>
+              </div>
+            ))}
+          </div>
+        )}
+        <ShowField
+          shows={unpicked}
+          excludeSlugs={pickedIds}
+          style={{ marginTop: 18 }}
+          onPickShow={(s) => openFromSearch({ kind: "catalog", id: s.id, name: s.name }, s.tvmazeId ? Number(s.tvmazeId) : null)}
+          onPickTv={(tv) => openFromSearch({ kind: "tv", tvmazeId: tv.id, name: tv.name, status: tv.status }, tv.id)}
+        />
+        <EditorialStrips desktop={desk} excludeTvmazeIds={browseExclude} onPick={setBrowseOpen} action="Pitch" />
+        {browseOpen && (() => {
+          const p = pickOf(browseOpen);
+          const cardShow = { id: p.kind === "catalog" ? p.id : `tv-${browseOpen.tvmazeId}`, name: browseOpen.name, tvmazeId: browseOpen.tvmazeId };
+          return (
+            <InviteShowCard idiom={idiom} show={cardShow} onClose={() => setBrowseOpen(null)}>
+              <AnswerRow
+                label="Do you want to watch this?"
+                options={[{ value: true, label: "Yes, pitch it" }, { value: false, label: "No" }]}
+                value={isPicked(browseOpen) ? true : null}
+                onChange={(v) => { setPicked(browseOpen, v); if (v) { setBrowseOpen(null); } }}
+              />
+            </InviteShowCard>
+          );
+        })()}
+      </div>
+    );
+  }
 
   return (
     // Mobile marginTop 16 (was 48; Alborz 2026-08-11) — the shelves and this
