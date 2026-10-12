@@ -73,6 +73,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
 import { EditorialStrips } from "../components/editorial/Onboarding";
+import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
@@ -1737,7 +1738,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
       {/* ── Finished-together drawer (2026-09-13) — same sheet shell:
              grabber, Lora title, no ×, swipe-down. ── */}
-      {finishedDrawerOpen && (
+      {finishedDrawerOpen && (editorial ? (
+        <BottomSheet onClose={() => setFinishedDrawerOpen(false)} label="Finished together" head={<FinishedHead count={drawerItems.finished.length} />}>
+          <FinishedTiles
+            finished={drawerItems.finished}
+            dnf={drawerItems.dnf}
+            poster={(it) => drawerPosters[it.showId]}
+            dot={(it) => roomDotByRoomId.get(it.roomId)}
+            onOpen={(it) => { setFinishedDrawerOpen(false); navigate(`/m/show-room/${it.roomId}`); }}
+            onRevive={(it) => setReviveConfirm(it)}
+          />
+        </BottomSheet>
+      ) : (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setFinishedDrawerOpen(false); }}>
           <div {...drawerSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...drawerSwipe.style }}>
             <div style={OVERLAY.grabber(C.midnight)} />
@@ -1765,12 +1777,20 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             )}
           </div>
         </div>
-      )}
+      ))}
 
       {/* Revive a DNF'd show — from the drawer's x. The ONE overlay that
           earns a centered dialog (irreversible for the whole group);
           Cancel is the exit — no ×, no tap-out shortcut lost (kept). */}
-      {reviveConfirm && (
+      {reviveConfirm && (editorial ? (
+        <Confirm
+          title="Start watching again?"
+          note={<>This brings <b>{reviveConfirm.name}</b> back to the group&rsquo;s open show rooms for everyone.</>}
+          confirmLabel="Bring it back"
+          onConfirm={() => doReviveRoom(reviveConfirm.roomId)}
+          onCancel={() => setReviveConfirm(null)}
+        />
+      ) : (
         <div style={{ ...OVERLAY.dialogWrap, zIndex: 1300 }} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
           <div style={{ ...OVERLAY.dialog, background: C.yellow }}>
             <div style={{ ...M.type.title, color: CANON.cream, marginBottom: 10 }}>Start watching again?</div>
@@ -1783,7 +1803,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

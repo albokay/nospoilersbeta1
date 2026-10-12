@@ -18,6 +18,10 @@ import {
 import { personDisplayName, groupGenericName } from "../lib/groupNames";
 import { M } from "./m";
 import type { PeopleGroup, PeopleGroupMember } from "../types";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab } from "../components/editorial/Chrome";
+import { ChatMessages, ChatComposer, type ChatRow } from "../components/editorial/Overlays";
 
 /**
  * MobileGroupChat (CP5) — the chat side of the group room's shows↔chat
@@ -40,6 +44,10 @@ const C = {
 export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  // The editorial chat page (Alborz's notes, item 7, 2026-10-12): cream,
+  // the folded corner back, the title in Lora, messages as blocks, the
+  // composer on its foot. Same messages, same send, same realtime.
+  const editorial = useEditorial();
   const selfUserId = user?.id ?? "";
 
   const [members, setMembers] = useState<PeopleGroupMember[]>([]);
@@ -174,6 +182,21 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const connected = others.length
     ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
     : "your friends haven't joined yet";
+
+  if (editorial) {
+    const rows: ChatRow[] = messages.map((m) => ({ id: m.id, mine: m.authorId === selfUserId, name: personDisplayName(contactNames, m.authorId, m.username, m.displayName), body: m.body, pending: m.id.startsWith("temp-") }));
+    return (
+      <div style={{ position: "fixed", inset: 0, height: "100dvh", display: "flex", flexDirection: "column", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface }}>
+        <div style={{ position: "relative", flexShrink: 0, padding: `${E.safe.plus(E.measure.phone.titleTop)} ${E.space.gutter}px 16px`, borderBottom: `1px solid ${E.color.ink}` }}>
+          <CornerTab kind="back" label="Back to group" onClick={() => navigate(`/m/group/${groupId}`)} />
+          <div style={{ ...E.type.letterTitle22, fontSize: 26 }}>{group ? groupGenericName(group, viewerNumber) : "Group"} chat</div>
+          <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 8 }}>with {connected} &middot; not spoiler-gated</div>
+        </div>
+        <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
+        <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
+      </div>
+    );
+  }
 
   return (
     <div style={page}>

@@ -121,6 +121,7 @@ import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, Optio
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
+import { Drawer, Confirm, FinishedTiles, FinishedHead, ChatMessages, ChatComposer, type ChatRow } from "./editorial/Overlays";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -3179,6 +3180,28 @@ export default function DashboardPage() {
         const connected: React.ReactNode = others.length
           ? others.map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)).join(", ")
           : <em>(your friends haven&rsquo;t joined yet)</em>;
+        // The editorial chat drawer (Alborz's notes, item 7, 2026-10-12): the
+        // cream drawer with the ink edge, messages as blocks, the composer
+        // on its foot. Same messages, same send, same realtime.
+        if (editorial) {
+          const rows: ChatRow[] = chatMessages.map((m) => ({
+            id: m.id, mine: m.authorId === selfUserId, name: personDisplayName(contactNames, m.authorId, m.username, m.displayName), body: m.body,
+            pending: m.id.startsWith("temp-"), failed: chatFailedIds.has(m.id), onRetry: () => retryChatMessage(m.id, m.body),
+          }));
+          return (
+            <Drawer
+              onClose={() => setChatGroupId(null)}
+              zIndex={1300}
+              label="Chat"
+              title={`${cg ? groupGenericName(cg.group, groupNumberById[cg.group.id]) : "Group"} chat`}
+              caption={<>with {connected} &middot; not spoiler-gated</>}
+              bodyStyle={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
+              foot={<ChatComposer value={chatInput} onChange={setChatInput} onSend={sendChat} />}
+            >
+              <ChatMessages rows={rows} bodyRef={chatBodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
+            </Drawer>
+          );
+        }
         return (
           <>
             {/* Click-outside closes the chat (Alborz 2026-08-01) — an
@@ -3257,7 +3280,19 @@ export default function DashboardPage() {
           buttons). One version covers both the wrote / never-wrote cases. */}
       {/* ── Finished-together drawer (2026-09-13) — the chat panel's
             geometry; thumbnails open their rooms. ── */}
-      {finishedDrawerOpen && (
+      {finishedDrawerOpen && (editorial ? (
+        <Drawer onClose={() => setFinishedDrawerOpen(false)} zIndex={70} label="Finished together" head={<FinishedHead count={drawerItems.finished.length} />}>
+          <FinishedTiles
+            desktop
+            finished={drawerItems.finished}
+            dnf={drawerItems.dnf}
+            poster={(it) => drawerPosters[it.showId]}
+            dot={(it) => roomDotByRoomId.get(it.roomId)}
+            onOpen={(it) => navigate(`/show-room/${it.roomId}`)}
+            onRevive={(it) => setReviveConfirm(it)}
+          />
+        </Drawer>
+      ) : (
         <>
         <div style={{ position: "fixed", inset: 0, zIndex: 69, background: "transparent" }} onClick={() => setFinishedDrawerOpen(false)} />
         <div style={finishedPanel}>
@@ -3288,12 +3323,21 @@ export default function DashboardPage() {
           </div>
         </div>
         </>
-      )}
+      ))}
 
       {/* Revive a DNF'd show (2026-09-13) — from the drawer's hover x.
           Yellow dialog (polish pass 2026-09-15): Subtitle + Body, primary
           first, Cancel exits — no ×. */}
-      {reviveConfirm && (
+      {reviveConfirm && (editorial ? (
+        <Confirm
+          desktop
+          title="Start watching again?"
+          note={<>This brings <b>{reviveConfirm.name}</b> back to the group&rsquo;s open show rooms for everyone.</>}
+          confirmLabel="Bring it back"
+          onConfirm={() => doReviveRoom(reviveConfirm.roomId)}
+          onCancel={() => setReviveConfirm(null)}
+        />
+      ) : (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setReviveConfirm(null); }}>
           <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
             <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Start watching again?</div>
@@ -3309,7 +3353,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* Cleared proposals (2026-09-29): the proposal pill's "x" — clears it
           from YOUR shelf only (copy: Alborz's brief; the leave dialog's
