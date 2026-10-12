@@ -28,6 +28,10 @@ import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPend
 import { CANON } from "../../styles/canon";
 import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
+import { useEditorial } from "../../lib/skin";
+import { E } from "../../styles/editorial";
+import SidebarLogo from "../SidebarLogo";
+import { WelcomeHead, questionCardStyle, cardTabStyle } from "../editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -99,6 +103,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   onComplete: () => void;
 }) {
   const { user } = useAuth();
+  const editorial = useEditorial();
   const [queue, setQueue] = useState<DeckCard[] | null>(null); // null = loading
   const [idx, setIdx] = useState(0);
   // Cards answered during THIS mount. The queue is rebuilt from a fresh
@@ -236,6 +241,65 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
       setQueue([]);
       onComplete();
     }, 240);
+  }
+
+  // ── The editorial deck (checkpoint 7, 2026-10-12; the bible's QuestionCard):
+  // the welcome wave on a solid accent ground with the words in ink, the
+  // card lifted by the flat friend stack, NOPE / YES as tabs breaking its
+  // edges, "Swipe, or tap a stamp" in cream under it; the later waves keep
+  // the veil over the page. Same answers, same swipe. ────────────────────
+  if (editorial) {
+    const welcome = heading === "welcome";
+    const n = Math.min(idx, queue.length - 1) + 1;
+    const touch = mobile ? {
+      onTouchStart: (e: React.TouchEvent) => { if (exit || flung) return; dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; },
+      onTouchMove: (e: React.TouchEvent) => { if (!dragStart.current || flung) return; setDragX(e.touches[0].clientX - dragStart.current.x); },
+      onTouchEnd: () => { if (!dragStart.current || flung) return; dragStart.current = null; if (Math.abs(dragX) > SWIPE_COMMIT_PX) answer(dragX > 0, true); else setDragX(0); },
+      onTouchCancel: () => { dragStart.current = null; setDragX(0); },
+    } : {};
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 900, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: welcome ? E.color.accent : E.color.veil, color: E.color.ink, fontFamily: E.font.interface, display: "flex", justifyContent: "center", alignItems: welcome ? "flex-start" : "center", padding: mobile ? `calc(env(safe-area-inset-top, 0px) + ${welcome ? 64 : 24}px) ${E.space.gutter}px 40px` : welcome ? "170px 24px 60px" : "24px" }}>
+        {welcome && !mobile && (
+          <div style={{ position: "absolute", left: "50%", top: 44, marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="accent" betaBadge /></div>
+        )}
+        <div style={{ width: mobile ? "100%" : 560, maxWidth: "100%" }}>
+          {welcome && <WelcomeHead desktop={!mobile} />}
+          <div
+            key={card.id}
+            {...touch}
+            style={{
+              ...questionCardStyle(mobile, { marginTop: welcome ? 30 : 0 }),
+              ...(mobile ? { touchAction: "none" as const } : {}),
+              transform: flung
+                ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
+                : dragX !== 0 ? `translateX(${dragX}px) rotate(${dragX / 18}deg)` : undefined,
+              transition: flung ? "transform .24s ease" : dragStart.current != null ? "none" : "transform .18s ease",
+              animation: exit ? `${exit === "right" ? "deckExitRight" : "deckExitLeft"} .22s ease forwards` : flung || dragX !== 0 ? undefined : "deckCardIn .24s ease",
+            }}
+          >
+            <div style={{ position: "absolute", top: mobile ? 14 : 16, left: 0, right: 0, textAlign: "center", ...E.type.label11, color: E.color.inkMuted, pointerEvents: "none" }}>{n} of {queue.length}</div>
+            <div style={{ maxWidth: mobile ? "82%" : "80%" }}>
+              {heading === "more" && idx === 0 && (
+                <div style={{ ...E.type.label11, color: E.color.identity, marginBottom: 12 }}>a few more&hellip;</div>
+              )}
+              <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: mobile ? 30 : 34, lineHeight: 1.25, letterSpacing: "-0.01em" }}>{card.statement}</div>
+            </div>
+            <button type="button" style={cardTabStyle(E.color.alert, mobile, { top: mobile ? 20 : 24, left: -14 })} onClick={() => answer(false)}>NOPE</button>
+            <button type="button" style={cardTabStyle(E.color.personal, mobile, { bottom: mobile ? 24 : 28, right: -14 })} onClick={() => answer(true)}>YES</button>
+          </div>
+          {welcome && !hasAnswered && (
+            <div style={{ marginTop: 22, textAlign: "center", ...E.type.note13, lineHeight: 1.45, color: E.color.cream }}>
+              {mobile ? "Swipe, or tap a stamp" : "Tap a stamp, or use ← / →"}
+            </div>
+          )}
+        </div>
+        <style>{`
+          @keyframes deckCardIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+          @keyframes deckExitRight { to { opacity: 0; transform: translateX(140px) rotate(2deg); } }
+          @keyframes deckExitLeft { to { opacity: 0; transform: translateX(-140px) rotate(-2deg); } }
+        `}</style>
+      </div>
+    );
   }
 
   return (

@@ -54,6 +54,12 @@ import {
 } from "../lib/db";
 import { ensureCatalogShow } from "../lib/browseCatalog";
 import MobileBrowseRows from "./MobileBrowseRows";
+import { createShow } from "../lib/db";
+import { tvmazeEpisodes, slugify, type TVmazeShow } from "../lib/tvmaze";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { CornerTab } from "../components/editorial/Chrome";
+import { pageStyle, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, BrowseHead, FriendRows, LinkRows } from "../components/editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = {
@@ -74,6 +80,11 @@ const MAX_FRIENDS = 7;
 
 export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone: (groupId: string | null) => void; onWarmRail?: () => void }) {
   const { user, profile } = useAuth();
+  // The editorial skin (checkpoint 7, 2026-10-12): the same steps drawn as
+  // the E3Onb* boards — pages on cream at the gutter, the step bars, the
+  // pick and progress bands, the Show field and the strips, the friend rows
+  // on rules, the first letter on its accent banner.
+  const editorial = useEditorial();
   // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
   // the welcome copy), steps 1–3 = the original show → friend → seed-entry
   // screens, step 4 = WAVE 2 ("a few more…"), step 5 = the "You're in!" card.
@@ -114,6 +125,22 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
     fetchShows().then((rows) => { if (!cancelled) setShows(rows); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // The editorial Show field's TVMaze hit (desktop's pickTvShow): add the
+  // show to the catalog, then select it. The classic path keeps the sheet.
+  const [creatingShow, setCreatingShow] = useState(false);
+  async function pickTvShow(tv: TVmazeShow) {
+    if (creatingShow) return;
+    setCreatingShow(true);
+    try {
+      const seasons = await tvmazeEpisodes(tv.id);
+      const created = await createShow({ id: slugify(tv.name), name: tv.name, seasons, tvmazeId: String(tv.id), status: tv.status });
+      setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
+      setShow(created);
+      setProg({ s: 0, e: 0 });
+    } catch (e) { console.error("[m-onboarding] add show from TVMaze failed", e); }
+    finally { setCreatingShow(false); }
+  }
 
   // Screen 2 — at least one friend, up to MAX_FRIENDS at once (the "+" row).
   const [friends, setFriends] = useState<{ name: string; email: string }[]>([{ name: "", email: "" }]);
@@ -295,6 +322,25 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   //    picker panel (back-from-screen-2 state) so progress can be revisited
   //    without re-searching. ─────────────────────────────────────────────────
   if (step === 1) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 30px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
+          <style>{FORM_CSS}</style>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}><StepsBars step={1} /></div>
+          <OnbQuestion sub="You can add more later." style={{ paddingTop: 56 }}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</OnbQuestion>
+          {show && (
+            <>
+              <PickBand show={show} onChangePick={() => setShow(null)} style={{ marginTop: 30 }} />
+              <ProgressBand show={show} value={prog} onChange={setProg} />
+              <Block onClick={() => setStep(2)} style={{ marginTop: 28 }}>Next</Block>
+            </>
+          )}
+          {show && <BrowseHead style={{ marginTop: 56 }} />}
+          <ShowField shows={shows} onPickShow={(s) => { setShow(s); setProg({ s: 0, e: 0 }); }} onPickTv={pickTvShow} busy={creatingShow || browseBusy} style={{ marginTop: show ? 18 : 40 }} />
+          <EditorialStrips excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
+        </div>
+      );
+    }
     return (
       <>
         <div style={{ ...fullScreen, background: "transparent", justifyContent: "flex-start", paddingTop: "18vh" }}>
@@ -364,6 +410,24 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
 
   // ── Screen 2: the one required friend (sky; the invite sheet's language) ──
   if (step === 2) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 30px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
+          <style>{FORM_CSS}</style>
+          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 250, background: E.color.friend }} />
+          <CornerTab kind="back" onClick={() => setStep(1)} />
+          <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "flex-end" }}><StepsBars step={2} /></div>
+          <OnbQuestion align="left" sub="You can invite more later." style={{ position: "relative", zIndex: 2, paddingTop: 56 }}>Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
+          <div style={{ marginTop: 70 }}>
+            <FriendRows rows={friends} onChange={setFriendField} onAdd={() => setFriends((prev) => [...prev, { name: "", email: "" }])} max={MAX_FRIENDS} />
+          </div>
+          <div style={{ ...E.type.note13, lineHeight: 1.55, color: "rgba(26,58,74,0.7)", textAlign: "center", marginTop: 26 }}>
+            Their name is how they&rsquo;ll show up for you — think of it like saving them in your contacts.
+          </div>
+          <Block onClick={advanceToCompose} disabled={!screen2Ready || advancing} style={{ marginTop: 40 }}>{advancing ? <>one moment<LoadingDots /></> : "Invite"}</Block>
+        </div>
+      );
+    }
     return (
       <div style={{ ...fullScreen, background: C.sky }}>
         {/* Standard top bar (polish pass 2026-09-14): 44px back arrow +
@@ -434,6 +498,29 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
 
   // ── Screen 3: the REAL mobile compose (or the copy-link fallback panel) ──
   if (step === 3 && show) {
+    if (editorial) {
+      const many = completeRows.length > 1;
+      return (
+        <div style={composeShell}>
+          <ComposeForm
+            ref={composeRef}
+            mobileIdiom
+            showId={show.id}
+            privateOnly
+            hideTopRightClose
+            hideCancel
+            onCancel={() => setStep(2)}
+            onSubmitted={() => {}}
+            initialTitle="Let's do this!"
+            editorial={{ banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+            promptButton={{ label: "Want help with what to write?" }}
+            promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
+            bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}
+            externalSubmit={{ label: "Send letter", submittingLabel: "sending", onSubmit: publishAndInvite }}
+          />
+        </div>
+      );
+    }
     return (
       <div style={composeShell}>
         {/* Back replaces the compose exits (no skipping out) — routed through
@@ -488,6 +575,13 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   // background during wave 2 — hold for a beat if a speed-swiper beat them;
   // failures surface on the same copy-the-link card, now AFTER the wave. ────
   if (sendState === "pending") {
+    if (editorial) {
+      return (
+        <div style={{ ...pageStyle(1000), display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ ...E.type.label11, color: E.color.ink }}>one moment<LoadingDots /></span>
+        </div>
+      );
+    }
     return (
       <div style={{ ...fullScreen, background: C.yellow }}>
         <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>one moment<LoadingDots /></span>
@@ -495,6 +589,19 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
     );
   }
   if (fallbackLinks && !fallbackAcked) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 96px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
+          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, color: E.color.ink }}>Your letter is sent!</div>
+          <div style={{ ...E.type.body15, lineHeight: 1.6, marginTop: 14 }}>
+            But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
+            Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
+          </div>
+          <LinkRows links={fallbackLinks} style={{ marginTop: 18 }} />
+          <Block onClick={() => setFallbackAcked(true)} style={{ marginTop: 28 }}>Continue →</Block>
+        </div>
+      );
+    }
     return (
       <div style={{ ...fullScreen, background: C.yellow }}>
         <div style={{ width: "100%", maxWidth: 420, padding: "0 24px", boxSizing: "border-box", textAlign: "center" }}>

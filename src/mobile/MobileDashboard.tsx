@@ -371,7 +371,7 @@ export default function MobileDashboard() {
       <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink } : {}) }}>
         {editorial ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: E.measure.phone.logoTop }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" />
           </div>
         ) : (
         <div style={topBar}>

@@ -21,6 +21,10 @@ import { preventLastWordOrphan } from "../../lib/utils";
 import { CANON } from "../../styles/canon";
 import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
+import { useEditorial } from "../../lib/skin";
+import { E } from "../../styles/editorial";
+import SidebarLogo from "../SidebarLogo";
+import { LinkRows, cardTabStyle } from "../editorial/Onboarding";
 
 export type YoureInVariant =
   /** inviteLinks (2026-08-18): the just-sent invites' links, one per friend,
@@ -46,6 +50,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
   onDismiss?: () => void;
 }) {
   const mobile = idiom === "mobile";
+  const editorial = useEditorial();
   // Mobile swipe = GET STARTED! (Alborz 2026-08-11): the card follows the
   // finger like the question cards and a fling past the threshold — EITHER
   // direction — proceeds, same as tapping the tab. Applies everywhere the
@@ -61,6 +66,71 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
   useEffect(() => {
     if (busy || errorText) { setFlung(null); setDragX(0); }
   }, [busy, errorText]);
+  // ── The editorial You're in (checkpoint 7; the bible's QuestionCard on a
+  // `personal` ground): the same card lifted by the friend stack, the body
+  // with the show, the friend and "left them a letter" in alert, each friend
+  // on a hairline row with Copy link, GET STARTED! breaking the bottom-right.
+  if (editorial) {
+    const touch = mobile ? {
+      onTouchStart: (e: React.TouchEvent) => { if (busy || flung) return; dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; },
+      onTouchMove: (e: React.TouchEvent) => { if (!dragStart.current || flung) return; setDragX(e.touches[0].clientX - dragStart.current.x); },
+      onTouchEnd: () => { if (!dragStart.current || flung) return; dragStart.current = null; if (Math.abs(dragX) > SWIPE_COMMIT_PX && !busy) { setFlung(dragX > 0 ? "right" : "left"); onDone(); } else setDragX(0); },
+      onTouchCancel: () => { dragStart.current = null; setDragX(0); },
+    } : {};
+    const alert: React.CSSProperties = { color: E.color.alert, fontWeight: 600 };
+    return (
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 900, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, padding: mobile ? `calc(env(safe-area-inset-top, 0px) + 120px) ${E.space.gutter}px 40px` : "190px 24px 60px" }}
+        onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
+      >
+        {!mobile && <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} betaBadge /></div>}
+        <div style={{ width: mobile ? "100%" : 560, maxWidth: "100%", margin: "0 auto" }}>
+          <div
+            {...touch}
+            style={{
+              position: "relative", background: E.color.cream, boxShadow: E.shadow.cardStack, padding: mobile ? "28px 24px 96px" : "32px 32px 100px", boxSizing: "border-box",
+              ...(mobile ? { touchAction: "none" as const } : {}),
+              transform: flung
+                ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
+                : dragX !== 0 ? `translateX(${dragX}px) rotate(${dragX / 18}deg)` : undefined,
+              transition: flung ? "transform .24s ease" : dragStart.current != null ? "none" : "transform .18s ease",
+            }}
+          >
+            <div style={E.type.youreIn40}>You&rsquo;re in!</div>
+            <div style={{ ...E.type.body15, lineHeight: 1.6, marginTop: 20 }}>
+              {variant.kind === "inviter" ? (
+                <>
+                  <p style={{ margin: 0 }}>
+                    You&rsquo;ve now created a show room for <span style={alert}>{variant.showName}</span>, invited <span style={alert}>{variant.friendName}</span>, and <span style={alert}>left them a letter</span> to open.
+                  </p>
+                  {variant.inviteLinks && variant.inviteLinks.length > 0 && (
+                    <>
+                      <p style={{ margin: "14px 0 0" }}>
+                        {preventLastWordOrphan(variant.emailFailure
+                          ? `Sidebar couldn’t email ${variant.emailFailure.names} right now. Copy the link${variant.emailFailure.count > 1 ? "s" : ""} below and send ${variant.emailFailure.count > 1 ? "them" : "it"} yourself — ${variant.emailFailure.count > 1 ? "they work" : "it works"} the same.`
+                          : `Sidebar has emailed your ${variant.inviteLinks.length > 1 ? "friends" : "friend"}. You can also text them an invite link.`)}
+                      </p>
+                      <LinkRows links={variant.inviteLinks} topRule="hairline" nameStyle="mono" style={{ marginTop: 8 }} />
+                    </>
+                  )}
+                  <p style={{ margin: "14px 0 0" }}>{preventLastWordOrphan("Once you’re in, you can invite more friends you want to watch with.")}</p>
+                </>
+              ) : (
+                <p style={{ margin: 0 }}>
+                  Your friend, <span style={alert}>{variant.friendName}</span> is waiting for you inside your group room. See the letters they&rsquo;ve already left you and let them know what you want to watch together.
+                </p>
+              )}
+              {errorText && <p style={{ margin: "14px 0 0", color: E.color.alert, fontWeight: 700 }}>{errorText}</p>}
+            </div>
+            <button type="button" style={{ ...cardTabStyle(E.color.identity, mobile, { right: -14, bottom: 28 }), height: 50, padding: "0 20px", opacity: busy ? 0.7 : 1 }} disabled={busy} onClick={onDone}>
+              {busy ? <>one moment<LoadingDots /></> : "GET STARTED!"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ ...dimWrap, background: mobile ? "rgba(26,58,74,0.35)" : "rgba(26,58,74,0.25)", zIndex: mobile ? 1000 : 900 }}

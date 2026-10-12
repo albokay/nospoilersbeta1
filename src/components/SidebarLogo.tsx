@@ -127,8 +127,13 @@ export interface SidebarLogoProps {
    * prop — not the body class — because the body palette (group-context) and
    * the logo's local header colour can differ (the show room's header is green
    * even though its body palette is sky). Default "green".
+   *
+   * The editorial skin (checkpoint 7, 2026-10-12) adds "cream" and "accent":
+   * the block that would vanish on that ground — the cream block on cream,
+   * the yellow block on the accent band — turns green instead, as the
+   * boards colour it. Nothing else about the logo changes.
    */
-  bg?: "green" | "sky";
+  bg?: "green" | "sky" | "cream" | "accent";
   /**
    * "beta!" badge (Alborz 2026-09-13 trial): an Alert pill with cream text
    * and the blocks' corner radius, 12px right of the wordmark's "r". It
@@ -244,12 +249,17 @@ export default function SidebarLogo({
             // any other block that matches the context bg is darkened 10% so it
             // doesn't vanish against the page.
             const matchBg = surfaceBg ?? contextBg; // the immediate surface wins over the body class
+            // The block that matches the ground turns green: sky on sky (the
+            // group room), cream on cream and yellow on accent (editorial).
+            const swapId = bg === "sky" ? "lightBlue" : bg === "cream" ? "white" : bg === "accent" ? "green" : null;
             const blockBg =
-              block.id === "lightBlue"
-                ? (bg === "sky" ? CANON.personal : block.color) // sky cell: green on sky bg, sky on green bg
-                : matchBg && matchBg.toLowerCase() === block.color.toLowerCase()
-                  ? darken10(block.color)
-                  : block.color;
+              block.id === swapId
+                ? CANON.personal
+                : block.id === "lightBlue"
+                  ? block.color // sky cell: sky on every other ground
+                  : matchBg && matchBg.toLowerCase() === block.color.toLowerCase()
+                    ? darken10(block.color)
+                    : block.color;
             return (
             <div
               key={block.id}

@@ -1042,7 +1042,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   ) : null}
                 </div>
                 <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: E.measure.desktop.logoLift, cursor: "pointer" }}>
-                  <SidebarLogo scale={0.5} blocksOpacity={1} betaBadge />
+                  <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
                 </div>
               </div>
             </EditorialColumn>

@@ -1923,7 +1923,7 @@ export default function DashboardPage() {
           <>
             <EditorialColumn style={{ height: E.measure.desktop.dashboardTitleTop }}>
               <div style={{ position: "absolute", left: "50%", top: E.measure.desktop.logoTop, marginLeft: -70 }}>
-                <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
               </div>
             </EditorialColumn>
             <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>

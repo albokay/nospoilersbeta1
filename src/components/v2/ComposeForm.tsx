@@ -28,6 +28,7 @@ import { D } from "../dashboardChrome";
 import { E } from "../../styles/editorial";
 import { CornerTab } from "../editorial/Chrome";
 import { COMPOSE_CSS, MinimizeRing, PromptButton, TITLE_INPUT, PAPER_TEXTAREA, ComposeFoot, DiscardConfirm } from "../editorial/Compose";
+import { StepsBars } from "../editorial/Onboarding";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
 // chrome (white on green/mustard) wouldn't read on cream, and compose has
@@ -186,8 +187,13 @@ type ComposeFormProps = {
    *  ring (the host keeps the draft), the show's name and the writer's
    *  stamp in cream, the title on a hairline, the ruled paper on cream, the
    *  prompt button, the foot. `desktop` = the full-window page with the
-   *  672 column. The episode is the room's (its picker), not the band's. */
-  editorial?: { context: string; onMinimize?: () => void; desktop?: boolean };
+   *  672 column. The episode is the room's (its picker), not the band's.
+   *  `banner` (checkpoint 7): the onboarding's first letter — the same
+   *  screen on an `accent` banner with the step bars at its top-right, the
+   *  "Tell your friend why you're excited about {show}:" line with the
+   *  S0 E0 stamp raised beside it, and the one line under; no context, no
+   *  minimize. */
+  editorial?: { context?: string; onMinimize?: () => void; desktop?: boolean; banner?: { step?: number; title: React.ReactNode; sub: string } };
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -640,11 +646,33 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
       <div style={{ minHeight: "100vh", position: "relative", background: E.color.cream, color: E.color.ink, animation: "v2-compose-fade-in 350ms linear" }}>
         <style>{`@keyframes v2-compose-fade-in { from { opacity: 0; } to { opacity: 1; } }${COMPOSE_CSS}`}</style>
         <CornerTab kind="back" desktop={desk} label="Not now" title="Not now — back to the room" onClick={attemptDiscard} zIndex={1012} />
-        {/* The band */}
-        {desk ? (
+        {/* The band — or the first letter's banner */}
+        {editorial.banner ? (
+          desk ? (
+            <div style={{ position: "relative", height: 240, background: E.color.accent }}>
+              {editorial.banner.step != null && <div style={{ position: "absolute", right: "max(24px, calc(50% - 456px))", top: 52, zIndex: 3 }}><StepsBars step={editorial.banner.step} /></div>}
+              <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", top: 104, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, zIndex: 2 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.2 }}>{editorial.banner.title}</div>
+                  <div style={{ ...E.type.note13, fontSize: 14, lineHeight: 1.5, color: E.color.inkSub, marginTop: 10 }}>{editorial.banner.sub}</div>
+                </div>
+                <div style={{ transform: "translateY(-8px)", flexShrink: 0 }}>{stampEl(1.1, E.color.cream)}</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "30px 28px 22px", background: E.color.accent }}>
+              {editorial.banner.step != null && <div style={{ display: "flex", justifyContent: "flex-end" }}><StepsBars step={editorial.banner.step} /></div>}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: editorial.banner.step != null ? 52 : 24 }}>
+                <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 23, lineHeight: 1.2, minWidth: 0 }}>{editorial.banner.title}</div>
+                <div style={{ transform: "translateY(-8px)", flexShrink: 0 }}>{stampEl(0.85, E.color.cream)}</div>
+              </div>
+              <div style={{ ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, marginTop: 8 }}>{editorial.banner.sub}</div>
+            </div>
+          )
+        ) : desk ? (
           <div style={{ position: "relative", height: 230, background: E.color.friend }}>
             <div style={{ position: "absolute", left: 0, right: 0, top: E.measure.desktop.wordsTop, height: 40, display: "flex", alignItems: "center", justifyContent: "center", ...E.type.label11, color: E.color.ink }}>
-              {editorial.context} · {bandTag}
+              {editorial.context ?? ""} · {bandTag}
             </div>
             {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", top: E.measure.desktop.wordsTop, right: "max(24px, calc(50% - 456px))" }} />}
             <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", top: 116, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
@@ -658,7 +686,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         ) : (
           <div style={{ padding: "14px 16px 22px", background: E.color.friend }}>
             <div style={{ position: "relative", height: 40, display: "flex", alignItems: "center", justifyContent: "center", ...E.type.label11, color: E.color.ink, padding: "0 44px" }}>
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{editorial.context} · {bandTag}</span>
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{editorial.context ?? ""} · {bandTag}</span>
               {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", right: 0, top: 0 }} />}
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22, padding: "0 12px" }}>

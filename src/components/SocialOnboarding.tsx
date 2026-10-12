@@ -56,6 +56,11 @@ import {
   overlay, searchCard, pickerCard, searchInput, invitePill, searchPill,
   composeBackdrop, composeCardOuter, yellowCard, yellowTitle, startBtn,
 } from "./dashboardChrome";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import SidebarLogo from "./SidebarLogo";
+import { CornerTab } from "./editorial/Chrome";
+import { pageStyle, COLUMN, RIGHT_OF_COLUMN, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, BrowseHead, FriendRows, LinkRows } from "./editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -68,6 +73,11 @@ const MAX_FRIENDS = 7;
 
 export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (groupId: string | null) => void; onWarmRail?: () => void }) {
   const { user, profile } = useAuth();
+  // The editorial skin (checkpoint 7, 2026-10-12): the same steps drawn as
+  // the E3Onb* / D3Onb* boards — full-window pages on cream, the step bars,
+  // the pick and progress bands, the Show field and the strips, the friend
+  // rows on rules, the first letter on its accent banner.
+  const editorial = useEditorial();
   // Swipe-deck arc CP2 (spec §12.1): step 0 = WAVE 1 (4 question cards with
   // the welcome copy), steps 1–3 = the original show → friend → seed-entry
   // screens, step 4 = WAVE 2 ("a few more…"), step 5 = the "You're in!" card.
@@ -350,6 +360,30 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   // Anchored near the top (NOT flex-centered): the heading holds its position
   // while the card beneath grows/shrinks with the results.
   if (step === 1) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1002)}>
+          <style>{FORM_CSS}</style>
+          <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70, zIndex: 3 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge /></div>
+          <div style={{ position: "absolute", right: RIGHT_OF_COLUMN, top: 52, zIndex: 3 }}><StepsBars step={1} /></div>
+          <div style={{ ...COLUMN, paddingTop: 150 }}>
+            <OnbQuestion desktop sub="You can add more later.">What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</OnbQuestion>
+          </div>
+          {show && (
+            <>
+              <PickBand desktop show={show} onChangePick={() => setShow(null)} style={{ marginTop: 40 }} />
+              <ProgressBand desktop show={show} value={prog} onChange={setProg} />
+              <div style={{ ...COLUMN, marginTop: 28 }}><Block onClick={() => setStep(2)}>Next</Block></div>
+            </>
+          )}
+          <div style={{ ...COLUMN, marginTop: show ? 56 : 40, paddingBottom: 80 }}>
+            {show && <BrowseHead style={{ marginBottom: 18 }} />}
+            <ShowField shows={shows} onPickShow={pickShow} onPickTv={pickTvShow} busy={creatingShow} autoFocus={!show} />
+            <EditorialStrips desktop excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{ ...overlay, background: "transparent", flexDirection: "column", justifyContent: "flex-start", paddingTop: "16vh", gap: 28, overflowY: "auto" }}>
         <div style={{ textAlign: "center", maxWidth: 640, padding: "0 24px" }}>
@@ -432,6 +466,27 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
 
   // ── Screen 2: the site's invite card (sky) ──────────────────────────────────
   if (step === 2) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1002)}>
+          <style>{FORM_CSS}</style>
+          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 310, background: E.color.friend }} />
+          <CornerTab kind="back" desktop onClick={() => setStep(1)} zIndex={1012} />
+          <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70, zIndex: 3 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge /></div>
+          <div style={{ position: "absolute", right: RIGHT_OF_COLUMN, top: 52, zIndex: 3 }}><StepsBars step={2} /></div>
+          <div style={{ ...COLUMN, position: "relative", zIndex: 2, paddingTop: 150 }}>
+            <OnbQuestion desktop align="left" sub="You can invite more later.">Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
+          </div>
+          <div style={{ ...COLUMN, marginTop: 96, paddingBottom: 80 }}>
+            <FriendRows desktop rows={friends} onChange={setFriendField} onAdd={() => setFriends((prev) => [...prev, { name: "", email: "" }])} max={MAX_FRIENDS} />
+            <div style={{ ...E.type.note13, lineHeight: 1.55, color: "rgba(26,58,74,0.7)", textAlign: "center", maxWidth: 480, margin: "26px auto 0" }}>
+              Their name is how they&rsquo;ll show up for you — think of it like saving them in your contacts.
+            </div>
+            <Block onClick={advanceToCompose} disabled={!screen2Ready || advancing} style={{ marginTop: 40 }}>{advancing ? <>one moment<LoadingDots /></> : "Invite"}</Block>
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={overlay}>
         <div style={{ ...searchCard, background: CANON.friend, position: "relative" }}>
@@ -493,6 +548,28 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
 
   // ── Screen 3: the REAL compose modal ───────────────────────────────────────
   if (step === 3 && show) {
+    if (editorial) {
+      const many = completeRows.length > 1;
+      return (
+        <div style={pageStyle(1002)}>
+          <ComposeForm
+            ref={composeRef}
+            showId={show.id}
+            privateOnly
+            hideTopRightClose
+            hideCancel
+            onCancel={() => setStep(2)}
+            onSubmitted={() => {}}
+            initialTitle="Let's do this!"
+            editorial={{ desktop: true, banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+            promptButton={{ label: "Want help with what to write?" }}
+            promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
+            bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}
+            externalSubmit={{ label: "Send letter", submittingLabel: "sending", onSubmit: publishAndInvite }}
+          />
+        </div>
+      );
+    }
     return (
       // zIndex 1002 lifts the compose screen ABOVE the dashboard top bar
       // (which rides at 1001 during onboarding as the QA-round-7 escape
@@ -554,6 +631,13 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   // failures surface on the same copy-the-link card as before — now AFTER
   // the wave — then the You're-in card (with the couldn't-email copy). ─────
   if (sendState === "pending") {
+    if (editorial) {
+      return (
+        <div style={{ ...pageStyle(1002), display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ ...E.type.label11, color: E.color.ink }}>one moment<LoadingDots /></span>
+        </div>
+      );
+    }
     return (
       <div style={overlay}>
         <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.cream }}>one moment<LoadingDots /></span>
@@ -561,6 +645,21 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
     );
   }
   if (fallbackLinks && !fallbackAcked) {
+    if (editorial) {
+      return (
+        <div style={pageStyle(1002)}>
+          <div style={{ ...COLUMN, paddingTop: 150, paddingBottom: 80 }}>
+            <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.1, color: E.color.ink }}>Your letter is sent!</div>
+            <div style={{ ...E.type.body15, lineHeight: 1.6, marginTop: 14 }}>
+              But Sidebar couldn&rsquo;t email {joinNames(fallbackLinks.map((f) => f.name)) || "your friends"} right now.
+              Copy the link{fallbackLinks.length > 1 ? "s" : ""} and send them yourself — they work the same.
+            </div>
+            <LinkRows links={fallbackLinks} style={{ marginTop: 18 }} />
+            <Block onClick={() => setFallbackAcked(true)} style={{ marginTop: 28 }}>Continue →</Block>
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={overlay}>
         <div style={{ ...yellowCard, width: "min(460px, 88vw)", textAlign: "left" }}>
