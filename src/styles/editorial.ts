@@ -99,6 +99,8 @@ export const E_MEASURE = {
     wordHit: 44,                // the touch height of a word
     logoTop: 62,                // the dashboard's centred logo
     tabsGap: 26,                // from a title block to the folder tabs under it
+    masthead: 252,              // a group room's sky masthead
+    disc: 84,                   // the Open rooms disc
   },
   desktop: {
     column: 1040,               // the page column, centred
@@ -116,6 +118,10 @@ export const E_MEASURE = {
     wordsGap: 20,
     wordHit: 32,
     tabsGap: 26,                // from a title block to the folder tabs under it
+    masthead: 236,              // a group room's sky masthead, across the window
+    disc: 96,                   // the Open rooms disc
+    groupsCol: 560,             // a group room's watching column
+    railCol: 288,               // the pitched rail / the look-up rail
   },
 } as const;
 

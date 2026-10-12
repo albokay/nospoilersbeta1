@@ -64,14 +64,16 @@ import { ensureCatalogShow } from "../lib/browseCatalog";
 import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, ChatWord, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, ChatWord, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, UnderlineWord } from "../components/editorial/Chrome";
+import { Masthead, OpenRoomsDisc, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView } from "../components/editorial/GroupRoom";
+import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
 
@@ -212,6 +214,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // in Lora 46 with the members under it. The shelves stay classic until
   // checkpoint 3.
   const editorial = useEditorial();
+  // The first editorial visit slides the top row open and back once (the
+  // bible's hint for the swipe drawer); stamped per account.
+  const [swipeHint, setSwipeHint] = useState(false);
+  useEffect(() => {
+    if (!editorial || !user?.id) return;
+    try {
+      const k = swipeHintKey(user.id);
+      if (!window.localStorage.getItem(k)) { window.localStorage.setItem(k, "1"); setSwipeHint(true); }
+    } catch { /* storage off */ }
+  }, [editorial, user?.id]);
   // The account card from the room (Alborz 2026-10-10: the account control
   // sits in every page's top-right under the editorial skin).
   const [showAccount, setShowAccount] = useState(false);
@@ -718,6 +730,25 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return text || null;
   }
 
+  // The editorial row's second line (checkpoint 3): gapLine's words as one
+  // string — "2 behind Sam · 1 letter waiting for you", "☆ You and Adam are
+  // in sync!", "Only you so far · S2 E6".
+  function rowLineText(r: { pill: PillData; selfProg: { s: number; e: number } | null }): string | null {
+    const seasons = showsById[r.pill.showId]?.seasons;
+    const gs = groupShows.find((g) => g.showId === r.pill.showId);
+    const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
+    const others = roadOthers(members, selfUserId, seasons);
+    if (!others.length) return r.pill.right.kind === "progress" ? `Only you so far · S${r.pill.right.s} E${r.pill.right.e}` : null;
+    if (!r.selfProg && r.pill.right.kind === "none") return null;
+    const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
+    const nameOf = (id: string) => memberNameById[id];
+    const gap = summarizeGap(selfIdx, others);
+    const sync = syncLine(gap, others, nameOf);
+    if (sync) return `☆ ${sync}`;
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
+  }
+
   // ── Actions (same DB calls as desktop) ─────────────────────────────────────
   function onRowClick(pill: PillData, name: string) {
     // Perf (2026-09-01, desktop parity): a row that KNOWS its room navigates
@@ -1035,8 +1066,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     setGearOpen(true);
   }
 
+  const roomNote = editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, chatNew) : null;
+
   return (
-    <div style={page}>
+    <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
+      {editorial && <Masthead height={E.measure.phone.masthead} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1049,8 +1083,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    the way out, `Chat ? ⚙` as mono words at the top right, the
         //    group's name in Lora 46 at the title line with the members under
         //    it. The shelves under it are still classic until checkpoint 3. ──
-        <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
+        <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px` }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
+          <OpenRoomsDisc count={groupShelves.watching.length} style={{ right: E.space.gutter, top: 108 }} />
+          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -6, top: 208, width: 210 }} />}
           <TopRight right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             <ChatWord key="chat" hit={E.measure.phone.wordHit} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} onClick={() => navigate(`/m/group/${groupId}/chat`)} />,
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
@@ -1142,13 +1178,91 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           mode="group"
           groupId={groupId}
           viewerId={user.id}
+          editorial={editorial}
           others={members
             .filter((m) => m.userId !== selfUserId)
             .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
         />
       )}
 
-      {loading ? (
+      {editorial ? (
+        // ── The editorial group room (checkpoint 3, 2026-10-12; the E3Group
+        //    board): "You're watching:" on a rule with "Finished together · N →",
+        //    hairline rows (poster, name, the road line, the envelope or your
+        //    position) that swipe left over the accent drawer to their options,
+        //    "Shows pitched(N):" rows with Answer, the two acts, the browse rows
+        //    on a yellow band. Same data, same sheets as the classic room. ──
+        <div style={{ padding: `0 ${E.space.gutter}px` }}>
+          {loading ? (
+            <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 96 }}>loading<LoadingDots /></div>
+          ) : (
+            <>
+              {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
+                <>
+                  <SectionHead style={{ marginTop: 96 }} right={settledCount > 0 ? <UnderlineWord onClick={openFinishedDrawer} title="shows you've finished together">Finished together · {settledCount} →</UnderlineWord> : null}>You&rsquo;re watching:</SectionHead>
+                  {celebrating.map((c) => (
+                    <EditorialShowRow key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
+                  ))}
+                  {groupShelves.watching.map((r, i) => {
+                    const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined;
+                    const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
+                    return (
+                      <EditorialShowRow
+                        key={r.pill.showId}
+                        tvmazeId={showsById[r.pill.showId]?.tvmazeId}
+                        name={r.name}
+                        line={rowLineText(r)}
+                        end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} className="m-dot-in" /> : r.selfProg ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
+                        onOpen={() => onRowClick(r.pill, r.name)}
+                        onOptions={act}
+                        optionsLabel="Leave this show room"
+                        hint={i === 0 && !!act && swipeHint}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {groupShelves.notStarted.length > 0 && (
+                <>
+                  <SectionHead style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                  {groupShelves.notStarted.map((r) => {
+                    const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name });
+                    const st = myStanceFor(r.pill.showId);
+                    const passed = r.passed && (st === "out" || st === "seen");
+                    return (
+                      <EditorialShowRow
+                        key={r.pill.showId}
+                        poster={false}
+                        nameSize={16}
+                        name={r.name}
+                        line={proposalLine(r.pill.showId)}
+                        dashed={r.passed}
+                        end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
+                        onOpen={() => onRowClick(r.pill, r.name)}
+                        onOptions={act}
+                        optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                      />
+                    );
+                  })}
+                </>
+              )}
+              {empty && (
+                <div style={{ ...E.type.question30, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
+                  What shows do you want to watch with your {others.length === 1 ? "friend" : "friends"}?
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10, marginTop: 44 }}>
+                <button type="button" onClick={() => setSearchOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" }}>Pitch a show</button>
+                <button type="button" onClick={() => setInviteOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Invite</button>
+              </div>
+              <div style={{ marginTop: 60, marginLeft: -E.space.gutter, marginRight: -E.space.gutter, padding: `30px ${E.space.gutter}px 8px`, background: E.color.accent }}>
+                <SectionHead>Find something new to watch</SectionHead>
+                <div style={{ marginTop: 8 }}><MobileBrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} subLabels flush /></div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (loading ? (
         // Cold-open ghosts (polish pass 2026-09-14): the shelf header paints
         // immediately and two ghost rows hold the layout — same pattern as
         // the dashboard; static, no shimmer.
@@ -1239,13 +1353,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* Browse rows (mobile mirror 2026-08-17): the same poster shelves as
           desktop, as touch-swipe strips. Outside contentWrap so they can run
           off the right screen edge; wait for the shelves so the exclusion is
           right on first paint. Bottom clearance for the docked deck card. */}
-      {!loading && (
+      {!loading && !editorial && (
         <div style={{ paddingBottom: 96 }}>
           <MobileBrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} />
         </div>
@@ -1278,6 +1392,44 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         const answers = answerNamesFor(clicked.showId);
         const answerText = answerLines(answers);
         const interestedNames = answers.in;
+        if (editorial) {
+          // The stance card (checkpoint 3): the same questions, answers and
+          // acts on the bible's sheet from the title line down.
+          const withToggle = clicked.mode === "vote" || !!clicked.voteToggle;
+          const end = endOfShow(showsById[clicked.showId]);
+          const atEnd = withToggle && curVal.s > 0 && curVal.s === end.s && curVal.e === end.e;
+          const zero = curVal.s === 0 && curVal.e === 0;
+          const stepOpen = clicked.mode === "watchq" || !withToggle || optedIn || seenIt;
+          const id = clicked.showId;
+          const view: StanceView = {
+            name: clicked.name,
+            question: clicked.mode === "watchq" ? "Are you also watching?" : withToggle ? (seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`) : null,
+            answerLines: withToggle ? answerText : [],
+            answer: withToggle
+              ? (gs
+                ? { kind: "stance", value: myStance, onChange: (v) => { doStance(id, v); if (v !== "in") setClicked(null); } }
+                : { kind: "yesno", value: optedIn, onChange: (v) => doVote(id, v) })
+              : null,
+            progress: stepOpen && !atEnd ? {
+              title: clicked.mode === "watchq" ? null : seenIt && zero ? "How far did you get?" : zero ? "Have you started watching?" : "Have you watched more?",
+              note: seenIt && zero ? "Your progress is defaulted to the end of the show. Change it if you stopped earlier — only writing up to your episode will unseal for you." : null,
+              show: showsById[id], value: declaredProgress, onChange: setDeclaredProgress,
+            } : null,
+            actions: stepOpen ? {
+              readLine: showRead ? readText : null,
+              enterLabel: showRead ? "Read" : "Enter show room",
+              onEnter: () => { void declareAndGo(id, declaredProgress); },
+              joinNote: seenIt ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : (!gs?.roomId && optedCount <= 1 ? "Your friends can join in when they're ready." : null),
+              onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
+            } : null,
+            trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+          };
+          return (
+            <EditorialSheet onClose={() => setClicked(null)} top={E.measure.phone.titleTop}>
+              <StanceSurface view={view} inset={E.space.gutter} />
+            </EditorialSheet>
+          );
+        }
         return (
           <div style={{ ...sheet, background: C.yellow }}>
             {/* The × lives in a real top bar (polish pass 2026-09-14) —
@@ -1510,7 +1662,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              app's only long-press and nothing but one tip line taught it.
              Its "Open the room" row went with the hold: the row itself opens
              the room. ── */}
-      {sheetFor && (
+      {sheetFor && (editorial ? (
+        <OptionsSheet
+          title={sheetFor.name}
+          caption={`with ${groupName}`}
+          onClose={() => setSheetFor(null)}
+          rows={[
+            { label: "Sit this out (leave the room)", sub: "Your letters stay. Everyone else keeps going.", tone: "alert", onClick: () => { const sid = sheetFor.showId; setSheetFor(null); doStance(sid, "out"); } },
+            { label: "I\u2019ve seen it (leave the room)", sub: "Your letters stay. Everyone else keeps going.", tone: "alert", onClick: () => { const sid = sheetFor.showId; setSheetFor(null); doStance(sid, "seen"); } },
+            { label: "We\u2019re done with this one", sub: "Parks the show for the whole group. Anyone can bring it back later.", tone: "identity", onClick: () => doDnfRoom(sheetFor.roomId) },
+          ]}
+        />
+      ) : (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setSheetFor(null); }}>
           <div {...lpSheetSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...lpSheetSwipe.style }}>
             <div style={OVERLAY.grabber(C.midnight)} />
@@ -1532,12 +1695,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </button>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Cleared proposals (2026-09-29): the corner × on a proposed row you're not in —
              the rooms' sheet shell, one action: clear it from YOUR shelf
              (copy: Alborz's brief). ── */}
-      {clearSheet && (
+      {clearSheet && (editorial ? (
+        <OptionsSheet
+          title={clearSheet.name}
+          caption={`with ${groupName}`}
+          onClose={() => setClearSheet(null)}
+          rows={[{ label: "Clear from my shelf", sub: "Stays proposed for the others, and your answer stays. Search for it to bring it back.", tone: "alert", onClick: () => doClearShow(clearSheet.showId) }]}
+        />
+      ) : (
         <div style={sheetBackdrop} onClick={(e) => { if (e.target === e.currentTarget) setClearSheet(null); }}>
           <div {...clearSheetSwipe.handlers} style={{ ...sheetShell, background: C.cream, textAlign: "left", ...clearSheetSwipe.style }}>
             <div style={OVERLAY.grabber(C.midnight)} />
@@ -1549,7 +1719,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             </button>
           </div>
         </div>
-      )}
+      ))}
 
       {/* ── Finished-together drawer (2026-09-13) — same sheet shell:
              grabber, Lora title, no ×, swipe-down. ── */}

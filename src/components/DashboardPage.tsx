@@ -25,7 +25,7 @@ import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
-import { computeRoomLetters, roadOthers, summarizeGap, syncLine, lettersSentence, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, roadOthers, summarizeGap, syncLine, lettersSentence, gapPhrase, lettersSegment, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan, positionLabel } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -91,7 +91,7 @@ import PendingInvitesPanel, { isInviteStale, staleInviteLine, type OtherPendingI
 import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, endOfShow, indexPasses, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
@@ -116,7 +116,8 @@ import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, ChatWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
+import { Masthead, OpenRoomsDisc, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
@@ -533,6 +534,34 @@ export default function DashboardPage() {
       onMouseMove: (e: React.MouseEvent) => moveTip({ key: `w:${String(primary)}`, text: primary, sub, wrap: true, ...tipAnchor(e) }),
       onMouseLeave: () => setTip(null),
     };
+  }
+  // The editorial room rows' second lines (checkpoint 3, 2026-10-12): the
+  // phone's words — "2 behind Sam · 1 letter waiting for you", "☆ You and
+  // Adam are in sync!", "Only you so far · S2 E6"; a pitched row's "Priya is
+  // in", "Just you so far", "you're sitting this out".
+  function editorialRowLine(r: WatchRow): string | null {
+    const seasons = showsById[r.pill.showId]?.seasons;
+    const gs = groupShows.find((g) => g.showId === r.pill.showId);
+    const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
+    const others = roadOthers(members, selfUserId, seasons);
+    if (!others.length) return r.pill.right.kind === "progress" ? `Only you so far · S${r.pill.right.s} E${r.pill.right.e}` : null;
+    if (!r.selfProg && r.pill.right.kind === "none") return null;
+    const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
+    const nameOf = (id: string) => memberNameById[id];
+    const gap = summarizeGap(selfIdx, others);
+    const sync = syncLine(gap, others, nameOf);
+    if (sync) return `☆ ${sync}`;
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
+  }
+  function editorialProposalLine(showId: string): string | null {
+    const gsRow = groupShows.find((x) => x.showId === showId);
+    if (gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
+    const line = answerRowLine(answerNamesFor(showId));
+    const st = myStanceFor(showId);
+    const mine = st === "out" || st === "seen" ? st : null;
+    if (!line && !mine) return null;
+    return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   }
   // "Haven't started yet" show button: tooltip lists the other friends who are
   // interested; falls back to the standard progress/notif tip. (showName /
@@ -1953,6 +1982,7 @@ export default function DashboardPage() {
   // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
   // sentence from the dashboard's signals, named with the rows' group labels.
   // (A plain call, not a memo: this sits after the loading return.)
+  const roomNote = inGroup && editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, !!(activeGroupId && chatNewByGroup.get(activeGroupId))) : null;
   const dashNote = inGroup ? null : dashboardNote(railGroups, (gid) => {
     const r = railGroups.find((g) => g.group.id === gid);
     if (!r) return "a group";
@@ -1979,8 +2009,10 @@ export default function DashboardPage() {
 
   return (
     // Non-group dashboard is a flex column so its body can center vertically.
-    <div style={{ ...pageStyle, background: inGroup ? C.sky : editorial ? E.color.cream : C.green, ...(inGroup || editorial ? null : { display: "flex", flexDirection: "column" }) }}>
+    <div style={{ ...pageStyle, background: editorial ? E.color.cream : inGroup ? C.sky : C.green, ...(inGroup || editorial ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
+      {editorial && inGroup && <Masthead height={E.measure.desktop.masthead} />}
+      {editorial && <RowHoverStyle />}
 
       {editorial ? (
         // ── The editorial chrome (checkpoint 1, 2026-10-10): the folded corner
@@ -2025,6 +2057,8 @@ export default function DashboardPage() {
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
               <div style={{ position: "relative", paddingRight: 160 }}>
+                <OpenRoomsDisc desktop count={groupShelves.watching.length} style={{ left: W.groupsCol - W.disc, top: -4 }} />
+                {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: -224, top: 114, width: 320 }} />}
                 <EditorialTitle desktop>{groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}</EditorialTitle>
                 {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
                 <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: W.logoLift, cursor: "pointer" }}>
@@ -2131,7 +2165,94 @@ export default function DashboardPage() {
           absorbed into the group room's four placed tip stickies (TipsNote);
           the component stays in the tree, dormant. */}
 
-      {inGroup ? (
+      {inGroup && editorial ? (
+        // ── The editorial group room (checkpoint 3, 2026-10-12; the D3Group
+        //    board): "You're watching:" rows in a 560 column (the pen on hover
+        //    opens the options), "Shows pitched(N):" with Answer and the two
+        //    acts in the 288 rail, the browse rows on a yellow band across the
+        //    window. Same data, same cards as the classic room. ──
+        (() => {
+          const blockBtn: React.CSSProperties = { ...E.type.button16, width: "100%", height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" };
+          const frameBtn: React.CSSProperties = { ...E.type.button16, width: "100%", height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" };
+          const posLabel: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 };
+          const groupOthers = (railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).filter((m) => m.userId !== selfUserId).length;
+          return (
+            <>
+              <EditorialColumn style={{ paddingBottom: 60 }}>
+                {groupLoading ? (
+                  <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 64 }}>loading<LoadingDots /></div>
+                ) : (
+                  <div style={{ display: "flex", gap: W.railGap, alignItems: "flex-start", marginTop: 64 }}>
+                    <div style={{ width: W.groupsCol, flexShrink: 0 }}>
+                      {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
+                        <>
+                          <SectionHead right={settledCount > 0 ? <UnderlineWord onClick={openFinishedDrawer} title="shows you've finished together">Finished together · {settledCount} →</UnderlineWord> : null}>You&rsquo;re watching:</SectionHead>
+                          {celebrating.map((c) => (
+                            <ShowRow desktop key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
+                          ))}
+                          {groupShelves.watching.map((r) => {
+                            const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
+                            return (
+                              <ShowRow
+                                desktop
+                                key={r.pill.showId}
+                                tvmazeId={showsById[r.pill.showId]?.tvmazeId}
+                                name={r.name}
+                                line={editorialRowLine(r)}
+                                end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} /> : r.selfProg ? <span style={posLabel}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
+                                onOpen={() => onPillClick(r.pill, r.name)}
+                                onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
+                                optionsLabel="Leave this show room"
+                              />
+                            );
+                          })}
+                        </>
+                      )}
+                      {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
+                        <div style={{ ...E.type.question30, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
+                          What shows do you want to watch with your {groupOthers === 1 ? "friend" : "friends"}?
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ width: W.railCol, flexShrink: 0 }}>
+                      <SectionHead>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                      {groupShelves.notStarted.map((r) => {
+                        const st = myStanceFor(r.pill.showId);
+                        const passed = r.passed && (st === "out" || st === "seen");
+                        return (
+                          <ShowRow
+                            desktop
+                            key={r.pill.showId}
+                            poster={false}
+                            nameSize={16}
+                            name={r.name}
+                            line={editorialProposalLine(r.pill.showId)}
+                            dashed={r.passed}
+                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
+                            onOpen={() => onPillClick(r.pill, r.name)}
+                            onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
+                            optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                          />
+                        );
+                      })}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 28 }}>
+                        <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
+                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </EditorialColumn>
+              {!groupLoading && (
+                <div style={{ padding: "30px 24px 8px", background: E.color.accent }}>
+                  <div style={{ maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
+                  <div style={{ marginTop: 8, paddingBottom: 60 }}><BrowseRows excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} subLabels /></div>
+                </div>
+              )}
+            </>
+          );
+        })()
+      ) : inGroup ? (
         // ── Group context (sky) ───────────────────────────────────────────────
         // paddingTop 24 (= base 8 + 16) lowers the heading/shelves/show buttons
         // by 16px; the top banner + back/chat tabs are positioned separately.
@@ -2719,6 +2840,44 @@ export default function DashboardPage() {
         const showRead = !!gs?.roomId && visibleWriters.length >= 1;
         const readName = visibleWriters.length === 1 ? (memberNameById[visibleWriters[0].userId] ?? "someone") : null;
         const readText = visibleWriters.length > 1 ? "Read your friends' letters?" : `Read ${readName}'s letters?`;
+        if (editorial) {
+          // The stance card (checkpoint 3): the same questions, answers and
+          // acts on the bible's centred card over the veil.
+          const withToggle = clicked.mode === "vote" || !!clicked.voteToggle;
+          const end = endOfShow(showsById[clicked.showId]);
+          const atEnd = withToggle && curVal.s > 0 && curVal.s === end.s && curVal.e === end.e;
+          const zero = curVal.s === 0 && curVal.e === 0;
+          const stepOpen = clicked.mode === "watchq" || !withToggle || optedIn || seenIt;
+          const id = clicked.showId;
+          const view: StanceView = {
+            name: clicked.name,
+            question: clicked.mode === "watchq" ? "Are you also watching?" : withToggle ? (seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`) : null,
+            answerLines: withToggle ? answerText : [],
+            answer: withToggle
+              ? (gs
+                ? { kind: "stance", value: myStance, onChange: (v) => { doStance(id, v); if (v !== "in") setClicked(null); } }
+                : { kind: "yesno", value: optedIn, onChange: (v) => doVote(id, v) })
+              : null,
+            progress: stepOpen && !atEnd ? {
+              title: clicked.mode === "watchq" ? null : seenIt && zero ? "How far did you get?" : zero ? "Have you started watching?" : "Have you watched more?",
+              note: seenIt && zero ? "Your progress is defaulted to the end of the show. Change it if you stopped earlier — only writing up to your episode will unseal for you." : null,
+              show: showsById[id], value: declaredProgress, onChange: setDeclaredProgress,
+            } : null,
+            actions: stepOpen ? {
+              readLine: showRead ? readText : null,
+              enterLabel: showRead ? "Read" : "Enter show room",
+              onEnter: () => { void declareAndGo(id, declaredProgress); },
+              joinNote: seenIt ? "Entering the room flips your status to \u201cI\u2019m in\u201d" : (!gs?.roomId && optedCount <= 1 ? "Your friends can join in when they're ready." : null),
+              onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
+            } : null,
+            trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+          };
+          return (
+            <EditorialDialog onClose={() => setClicked(null)} label={clicked.name}>
+              <StanceSurface view={view} inset={32} />
+            </EditorialDialog>
+          );
+        }
         return (
           // Dedicated scrollable two-layer overlay (NOT the shared `overlay`):
           // centers [modal + 8px gap + trailer card] as one pair and lets the
@@ -3085,7 +3244,14 @@ export default function DashboardPage() {
       {/* Cleared proposals (2026-09-29): the proposal pill's "x" — clears it
           from YOUR shelf only (copy: Alborz's brief; the leave dialog's
           grammar — Subtitle + Body, no ×). */}
-      {clearConfirm && (
+      {clearConfirm && (editorial ? (
+        <OptionsDialog
+          title={clearConfirm.name}
+          caption={editorialGroup ? `with ${groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}` : undefined}
+          onClose={() => setClearConfirm(null)}
+          rows={[{ label: "Clear from my shelf", sub: "Stays proposed for everyone else, and your answer stays with it. Search for it any time and it comes back just as you left it.", tone: "alert", onClick: () => doClearShow(clearConfirm.showId) }]}
+        />
+      ) : (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setClearConfirm(null); }}>
           <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
             <div style={{ ...D.type.subtitle, marginBottom: 10 }}>Clear this from your shelf?</div>
@@ -3101,8 +3267,19 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      )}
-      {leaveConfirm && (
+      ))}
+      {leaveConfirm && (editorial ? (
+        <OptionsDialog
+          title={leaveConfirm.name}
+          caption={editorialGroup ? `with ${groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}` : undefined}
+          onClose={() => setLeaveConfirm(null)}
+          rows={[
+            { label: "Sit this out (leave the room)", sub: "Your letters stay. Everyone else keeps going. Your answer shows on your friends\u2019 shelves.", tone: "alert", onClick: () => doStance(leaveConfirm.showId, "out") },
+            { label: "I\u2019ve seen it (leave the room)", sub: "Your letters stay. Everyone else keeps going. Your answer shows on your friends\u2019 shelves.", tone: "alert", onClick: () => doStance(leaveConfirm.showId, "seen") },
+            { label: "We\u2019re done with this one", sub: "Parks the show for the whole group under \u201cDidn\u2019t finish:\u201d. Anyone can bring it back later.", tone: "identity", onClick: () => doDnfRoom(leaveConfirm.roomId) },
+          ]}
+        />
+      ) : (
         <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirm(null); }}>
           <div style={{ ...D.card.dialog, background: C.yellow, textAlign: "left", color: CANON.cream }}>
             {/* Two paths since 2026-09-13: leaving (just you) vs DNF (the
@@ -3136,7 +3313,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       {/* Hover pill (opt-in avatars + watch progress + clusters): anchored
           to the ELEMENT's top-left corner (tipAnchor — approved mockup
@@ -3200,6 +3377,7 @@ export default function DashboardPage() {
           mode="group"
           groupId={activeGroupId!}
           viewerId={user.id}
+          editorial={editorial}
           others={(railGroups.find((r) => r.group.id === activeGroupId)?.members ?? [])
             .filter((m) => m.userId !== user.id)
             .map((m) => ({ id: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName) }))}
