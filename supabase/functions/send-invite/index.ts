@@ -210,7 +210,7 @@ serve(async (req) => {
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    📺 <strong>${escapeHtml(sender)}</strong> has started a friend room on Sidebar to discuss <strong><em>${escapeHtml(showLabel)}</em></strong>. They want you to join!
+    <img src="${baseUrl}/email/tv.png" width="18" height="18" alt="" style="vertical-align:-3px;margin-right:6px"><strong>${escapeHtml(sender)}</strong> has started a friend room on Sidebar to discuss <strong><em>${escapeHtml(showLabel)}</em></strong>. They want you to join!
   </h1>
   <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Sidebar is a place where friends can have ongoing conversations about the TV shows they're watching, without worrying about spoilers. Everything gets filtered by your watch progress. Your friend room is called &ldquo;${escapeHtml(groupName)}.&rdquo;
@@ -219,8 +219,7 @@ serve(async (req) => {
     talk. together. whenever.
   </p>
   <a href="${escapeHtml(inviteUrl)}"
-     style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;
-            padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
+     style="display:inline-block;color:#1a3a4a;text-decoration:underline;text-underline-offset:3px;font-size:16px;font-weight:700">
     Accept invitation →
   </a>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">

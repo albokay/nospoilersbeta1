@@ -45,6 +45,13 @@
 //     show never email anyone.
 // Any one of the three types alone is enough to send a digest.
 //
+// 2026-10-13 (Alborz, round 6) — SEEN-GATING: every item is also checked
+//   against the recipient's own stamps (the room's last_seen_at, the group's
+//   chat_last_seen_at and pitches_last_seen_at — the same stamps the app's
+//   dots read). What they've already opened never emails; nothing left, no
+//   email. The digest's sender is letters@ (Promotions), the finished
+//   letter wears the ★, and the opt-out line's gear is the site's glyph.
+//
 // 2026-09-28 (Alborz) — LETTERS FROM SIDEBAR: before the scan, this run
 //   PLANTS the "what's next" and "returning season" alerts as letters from
 //   the Sidebar account into the rooms that qualify (see plantSidebarLetters),
@@ -62,7 +69,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const FROM_ADDRESS = "Sidebar <invites@sidebar.watch>";
+// Its own sender (Alborz, round 6 — Gmail sorted the digest into Promotions
+// beside the invite emails it shared a sender with).
+const FROM_ADDRESS = "Sidebar <letters@sidebar.watch>";
 const WINDOW_HOURS = 24;
 
 type Eff = { s: number; e: number };
@@ -80,6 +89,16 @@ function effectiveProgress(p: any): Eff {
 }
 function canView(season: number, episode: number, eff: Eff): boolean {
   return season < eff.s || (season === eff.s && episode <= eff.e);
+}
+
+// Seen-gating (Alborz, round 6): an item counts only while the app itself
+// still marks it new for the recipient — newer than their last visit to that
+// room (friend_group_members.last_seen_at), that chat (chat_last_seen_at) or
+// that pitched list (pitches_last_seen_at). What they've already opened
+// never emails; with nothing left, no email.
+function seenBefore(stamp: string | null | undefined, at: string | null | undefined): boolean {
+  if (!stamp || !at) return false;
+  return new Date(at).getTime() <= new Date(stamp).getTime();
 }
 
 function escapeHtml(s: string): string {
@@ -175,7 +194,9 @@ function buildDigestHtml(
   const sidebarBlock = sidebarLetters
     .map((l) => {
       const url = `${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`;
-      return `<p style="margin:0 0 ${hasFriendContent ? 22 : 10}px;font-size:17px;color:#1a2c3a;line-height:1.45"><a href="${url}" style="color:#1a2c3a;font-weight:700">${escapeHtml(l.title)}</a></p>`;
+      // The finished-together star (Alborz, round 6) opens "You all finished …".
+      const star = l.title.startsWith("You all finished ") ? `<span style="color:#dea838">&#9733;</span> ` : "";
+      return `<p style="margin:0 0 ${hasFriendContent ? 22 : 10}px;font-size:17px;color:#1a2c3a;line-height:1.45"><a href="${url}" style="color:#1a2c3a;font-weight:700">${star}${escapeHtml(l.title)}</a></p>`;
     })
     .join("");
   const sections = rooms
@@ -262,7 +283,7 @@ function buildDigestHtml(
   ${sections}${proposalSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    To stop getting emails about your friend rooms, open a room and click the &#9881;&#65039; next to its name, then choose &ldquo;unsubscribe.&rdquo;
+    To stop getting emails about your friend rooms, open a room and click the <img src="${baseUrl}/email/gear.png" width="14" height="14" alt="gear" style="vertical-align:-2px"> next to its name, then choose &ldquo;unsubscribe.&rdquo;
   </p>
 </div>
 </body>
@@ -613,7 +634,7 @@ serve(async (req) => {
     .select("group_id, show_id, user_id, created_at")
     .gte("created_at", since);
   const recentVotes = (voteRows ?? []) as any[];
-  let proposals: { groupId: string; showId: string; proposerId: string }[] = [];
+  let proposals: { groupId: string; showId: string; proposerId: string; createdAt: string }[] = [];
   if (recentVotes.length) {
     const vGroupIds = [...new Set(recentVotes.map((v) => v.group_id))];
     const vShowIds = [...new Set(recentVotes.map((v) => v.show_id))];
@@ -631,7 +652,7 @@ serve(async (req) => {
       const cur = earliestByPair.get(key);
       if (!cur || new Date(v.created_at).getTime() < new Date(cur.created_at).getTime()) earliestByPair.set(key, v);
     }
-    proposals = [...earliestByPair.values()].map((v) => ({ groupId: v.group_id, showId: v.show_id, proposerId: v.user_id }));
+    proposals = [...earliestByPair.values()].map((v) => ({ groupId: v.group_id, showId: v.show_id, proposerId: v.user_id, createdAt: v.created_at }));
   }
 
   // 1d. Responses (2026-09-22): friend-room replies in the window, plus the
@@ -751,7 +772,7 @@ serve(async (req) => {
   if (activeGroupIds.length) {
     const { data: members } = await admin
       .from("friend_group_members")
-      .select("group_id, user_id, digest_opt_out")
+      .select("group_id, user_id, digest_opt_out, last_seen_at")
       .in("group_id", activeGroupIds);
     for (const m of members ?? []) {
       roomMembers.push(m);
@@ -768,16 +789,19 @@ serve(async (req) => {
   ])];
   const pgNameById = new Map<string, string | null>();
   const pgMembersByGroup = new Map<string, string[]>();
+  // Seen-gating (round 6): each member's chat and pitched-list stamps.
+  const pgStampByKey = new Map<string, { chat: string | null; pitches: string | null }>();
   if (pgIds.length) {
     const { data: pgs } = await admin.from("people_groups").select("id, name").in("id", pgIds);
     for (const g of pgs ?? []) pgNameById.set(g.id, g.name ?? null);
     const { data: pgm } = await admin
       .from("people_group_members")
-      .select("group_id, user_id")
+      .select("group_id, user_id, chat_last_seen_at, pitches_last_seen_at")
       .in("group_id", pgIds);
     for (const m of pgm ?? []) {
       if (!pgMembersByGroup.has(m.group_id)) pgMembersByGroup.set(m.group_id, []);
       pgMembersByGroup.get(m.group_id)!.push(m.user_id);
+      pgStampByKey.set(`${m.group_id}|${m.user_id}`, { chat: m.chat_last_seen_at ?? null, pitches: m.pitches_last_seen_at ?? null });
     }
   }
 
@@ -833,6 +857,7 @@ serve(async (req) => {
       if (m.user_id === t.author_id) continue;       // not your own entries
       if (m.digest_opt_out) continue;                // opted out of this room
       if (onlyUserId && m.user_id !== onlyUserId) continue;
+      if (seenBefore(m.last_seen_at, link.shared_at)) continue; // opened the room since — seen
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       // A letter from Sidebar (S0 E0) reaches every member, row or no row.
       if (!prog && t.author_id !== SIDEBAR_USER_ID) continue; // hasn't started → sees nothing
@@ -865,6 +890,7 @@ serve(async (req) => {
       if (!parts?.has(m.user_id)) continue;          // only threads you're part of
       if (m.digest_opt_out) continue;                // opted out of this room
       if (onlyUserId && m.user_id !== onlyUserId) continue;
+      if (seenBefore(m.last_seen_at, rr.created_at)) continue; // opened the room since — seen
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       if (!prog) continue;
       // Readable only — a hidden reply is the in-app red dot, never mail.
@@ -902,6 +928,7 @@ serve(async (req) => {
       if (!mine) continue;                             // only your writing, or a letter you're part of
       if (m.digest_opt_out) continue;                  // opted out of this room
       if (onlyUserId && m.user_id !== onlyUserId) continue;
+      if (seenBefore(m.last_seen_at, h.created_at)) continue; // opened the room since — seen
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       if (!prog) continue;
       // Readable only — a sealed note is the in-app red dot, never mail.
@@ -930,6 +957,7 @@ serve(async (req) => {
     for (const uid of roster) {
       if (uid === c.author_id) continue;             // not your own messages
       if (onlyUserId && uid !== onlyUserId) continue;
+      if (seenBefore(pgStampByKey.get(`${c.group_id}|${uid}`)?.chat, c.created_at)) continue; // opened the chat since — seen
       if (!perUserChat.has(uid)) perUserChat.set(uid, new Map());
       const groups = perUserChat.get(uid)!;
       if (!groups.has(c.group_id)) groups.set(c.group_id, new Set());
@@ -954,13 +982,14 @@ serve(async (req) => {
   }
 
   // 6a-prop. Per-recipient proposal items.
-  const perUserProps = new Map<string, { groupId: string; showId: string; proposerId: string }[]>();
+  const perUserProps = new Map<string, { groupId: string; showId: string; proposerId: string; createdAt: string }[]>();
   for (const p of proposals) {
     if (seedAuthors.has(p.proposerId)) continue;
     const roster = pgMembersByGroup.get(p.groupId) ?? [];
     for (const uid of roster) {
       if (uid === p.proposerId) continue;            // not your own proposals
       if (onlyUserId && uid !== onlyUserId) continue;
+      if (seenBefore(pgStampByKey.get(`${p.groupId}|${uid}`)?.pitches, p.createdAt)) continue; // opened the pitched list since — seen
       if (!perUserProps.has(uid)) perUserProps.set(uid, []);
       perUserProps.get(uid)!.push(p);
     }

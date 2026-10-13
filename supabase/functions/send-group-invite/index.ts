@@ -215,9 +215,12 @@ serve(async (req) => {
     // Onboarding changeset §6: dynamic headline on the inviter's yes/no;
     // "Do you?" rides only the dynamic variants; body drops the old closing
     // sentence; tagline removed; CTA = "Join in →". Fine print unchanged.
+    // The TV as the site's line glyph (Alborz, round 6; email can't draw the
+    // site's icons, so a hosted render of the exact one).
+    const tv = `<img src="${baseUrl}/email/tv.png" width="18" height="18" alt="" style="vertical-align:-3px;margin-right:6px">`;
     const headlineHtml = ep4 === null
-      ? `📺 <strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.`
-      : `📺 <strong>${escapeHtml(senderName)}</strong> ${ep4 ? "thinks" : "doesn&rsquo;t think"} &ldquo;just wait till you see episode 4&rdquo; counts as a TV show spoiler.`;
+      ? `${tv}<strong>${escapeHtml(senderName)}</strong> wants to watch shows with you on Sidebar.`
+      : `${tv}<strong>${escapeHtml(senderName)}</strong> ${ep4 ? "thinks" : "doesn&rsquo;t think"} &ldquo;just wait till you see episode 4&rdquo; counts as a TV show spoiler.`;
     const headlineText = ep4 === null
       ? `${senderName} wants to watch shows with you on Sidebar.`
       : `${senderName} ${ep4 ? "thinks" : "doesn't think"} "just wait till you see episode 4" counts as a TV show spoiler.`;
@@ -231,8 +234,10 @@ serve(async (req) => {
     If you weren't expecting this, you can safely ignore it.
   </p>`;
     const finePrintText = `This link expires in a week and can only be used once.\nNew to Sidebar? You'll be able to create an account when you join.\nIf you weren't expecting this, you can safely ignore it.`;
+    // The act as a text link in ink (Alborz, round 6: the yellow pill read as
+    // marketing to Gmail; the editorial look's underline word).
     const ctaHtml = `
-  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
+  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;color:#1a3a4a;text-decoration:underline;text-underline-offset:3px;font-size:16px;font-weight:700">
     Join in →
   </a>`;
 

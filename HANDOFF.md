@@ -1,5 +1,12 @@
 # Sidebar — Technical State (2026-10-13)
 
+> **⭐ 2026-10-13 — ALBORZ'S NOTES, round 6 — C: the emails (send-digests, send-group-invite, send-invite — all three REDEPLOYED).**
+> - **Seen-gating (the digest):** every item is now also checked against the recipient's own stamps — the room's `friend_group_members.last_seen_at` for letters, responses and notes (opened the room since → seen), the group's `chat_last_seen_at` for chat, `pitches_last_seen_at` for a pitch (`seenBefore`). What they've already opened never emails; with nothing left, no email. Before, the digest was keyed on the 24-hour window alone (his catch: a digest arrived for things he'd read).
+> - **Its own sender:** the digest goes out as "Sidebar <letters@sidebar.watch>" (the invite emails keep invites@) — Gmail sorted it into Promotions beside the invite emails it shared a sender with. Testers should drag one digest to Primary once; Gmail learns per inbox.
+> - **The finished star:** "You all finished Paradise. What's next?" opens with a ★ in accent (the site's star can't travel in email; the character is the nearest).
+> - **The glyphs:** email can't draw the site's line icons, so `public/email/tv.png` and `gear.png` are 64px renders of the exact lucide paths (made with `qlmanage` from inline SVG; transparent). The invite emails' opening 📺 is the TV render; the digest's opt-out line's ⚙️ is the gear render. The 👋 in the "miss you in here" nudge preset stays (his in-app wording).
+> - **The invite emails' act** ("Join in →" / "Accept invitation →") is an underlined ink text link instead of the yellow pill (a marketing signal). The digest has no buttons, so nothing to restyle there.
+
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 6 — B: the poll and nudge boxes, the friend's shelf (both platforms).**
 > - **The field rule, late arrivals:** the poll's question and option fields (`PollComposer`) and the nudge's write-your-own field (`NudgePopover`) are full 1px ink boxes around the text as it was — the labels and placeholders unchanged (his call: copy as-is).
 > - **The friend's profile shelf:** the "What they're watching" caption is gone (the desktop drawer and the phone's profile page); the shelves' own heads say it, and the empty line ("Sam hasn't filled out their personal dashboard yet.") stays.
