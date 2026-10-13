@@ -116,8 +116,8 @@ import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
-import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatTab, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
+import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
@@ -2015,6 +2015,17 @@ export default function DashboardPage() {
     <div style={{ ...pageStyle, background: editorial ? E.color.cream : inGroup ? C.sky : C.green, ...(inGroup || editorial ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
       {editorial && inGroup && <Masthead height={E.measure.desktop.masthead} />}
+      {/* The chat corner on the masthead's bottom right (Alborz's notes, round 2). */}
+      {editorial && inGroup && editorialGroup && (
+        <ChatCorner
+          desktop
+          anchor="chat-tab"
+          isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
+          countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
+          onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
+          style={{ top: E.measure.desktop.masthead - E.measure.desktop.corner }}
+        />
+      )}
       {editorial && <RowHoverStyle />}
 
       {editorial ? (
@@ -2029,14 +2040,6 @@ export default function DashboardPage() {
           <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
             <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
               <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
-              <GearWord
-                key="gear"
-                hit={W.wordHit}
-                label="Group settings"
-                title={myGroupInvites.filter(isInviteStale).length > 0 ? staleInviteLine(myGroupInvites.filter(isInviteStale).length) : "Group settings"}
-                dot={myGroupInvites.filter(isInviteStale).length > 0}
-                onClick={(e) => { moveTip(null); if (activeGroupId) openGroupOptions(activeGroupId, e.currentTarget.getBoundingClientRect()); }}
-              />,
               <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
             ] : [
               <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
@@ -2052,17 +2055,17 @@ export default function DashboardPage() {
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
               <div style={{ position: "relative", paddingRight: 160, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
-                {/* The chat tab at the window's far right replaces the Open
-                    rooms disc and the Chat word (Alborz's notes, 2026-10-12). */}
-                <ChatTab
-                  desktop
-                  anchor="chat-tab"
-                  isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
-                  countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
-                  onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
-                />
                 {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: -224, top: 114, width: 320 }} />}
-                <EditorialTitle desktop>{groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}</EditorialTitle>
+                <EditorialTitle desktop>
+                  {groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}
+                  {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
+                  <TitleGear
+                    label="Group settings"
+                    title={myGroupInvites.filter(isInviteStale).length > 0 ? staleInviteLine(myGroupInvites.filter(isInviteStale).length) : "Group settings"}
+                    dot={myGroupInvites.filter(isInviteStale).length > 0}
+                    onClick={(e) => { moveTip(null); if (activeGroupId) openGroupOptions(activeGroupId, e.currentTarget.getBoundingClientRect()); }}
+                  />
+                </EditorialTitle>
                 {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
                 <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: W.logoLift, cursor: "pointer" }}>
                   <SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge />

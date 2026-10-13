@@ -9,6 +9,7 @@ import { E } from "../../styles/editorial";
 import { HERO_LINES, HERO_EMPHASIS, HOW_IT_WORKS_STEPS, CTA_JOIN_LABEL, CTA_DETAILS_LABEL, BETA_PILL_CLOSED, BETA_PILL_OPEN, BETA_LETTER_PARAGRAPHS, BETA_LETTER_PARAGRAPHS_MOBILE } from "../../lib/homepageCopy";
 import { SectionHead } from "./Chrome";
 import { Wordmark, Block, Frame, COLUMN } from "./Onboarding";
+import { CornerTab } from "./Chrome";
 import { PAPER_RULES, PAPER_LH } from "./Compose";
 import { EditorialSheet } from "./GroupRoom";
 import HomepageNarrative from "../HomepageNarrative";
@@ -95,8 +96,10 @@ export function BetaNote({ onOpen }: { onOpen: () => void }) {
 }
 
 /** The whole logged-out homepage. */
-export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, onDetails, betaOpen, onToggleBeta }: {
+export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, onDetails, betaOpen, onToggleBeta, onFeedback }: {
   desktop?: boolean; onSignIn: () => void; onJoin: () => void; onDetails: () => void; betaOpen: boolean; onToggleBeta: () => void;
+  /** Desktop (Alborz's notes, round 2): the red feedback corner at the top left, as on the dashboard. */
+  onFeedback?: () => void;
 }) {
   const [letterOpen, setLetterOpen] = useState(false);
   const col: React.CSSProperties = desktop ? { ...COLUMN, width: 912, maxWidth: "calc(100% - 48px)" } : {};
@@ -105,6 +108,7 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
   );
   return (
     <div style={{ background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, minHeight: desktop ? "100vh" : "100dvh" }}>
+      {desktop && onFeedback && <CornerTab desktop kind="feedback" label="Feedback" onClick={onFeedback} />}
       {/* The cream top: the wordmark, Sign in, the hero, the steps, the buttons */}
       <div style={{ position: "relative", padding: desktop ? "0 0 64px" : `0 ${E.space.gutter}px 40px`, overflow: "hidden" }}>
         <div style={{ position: "absolute", left: "50%", top: desktop ? 36 : "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={desktop ? 34 : 26} /></div>

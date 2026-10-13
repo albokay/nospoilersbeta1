@@ -38,6 +38,11 @@ export function CornerTab({ kind, onClick, desktop = false, label, title, zIndex
   const fill = kind === "back" ? E.color.identity : E.color.alert;
   const transform = desktop ? "translate(20 20) scale(1.25)" : kind === "back" ? "translate(16 16)" : "translate(15 15)";
   const aria = label ?? (kind === "back" ? "Back" : "Feedback");
+  // The phone's corner grows by the status-bar inset in BOTH directions
+  // (still a 45° corner) so it reaches the screen's top; the glyph keeps its
+  // place under the inset (Alborz's notes, round 2). The triangle is the
+  // button's own fill under a clip, so the inset can be a calc().
+  const span = desktop ? `${size}px` : `calc(${size}px + ${E.safe.top})`;
   return (
     <button
       type="button"
@@ -45,17 +50,30 @@ export function CornerTab({ kind, onClick, desktop = false, label, title, zIndex
       title={title ?? aria}
       onClick={onClick}
       style={{
-        position: desktop ? "fixed" : "absolute", left: 0, top: desktop ? 0 : E.safe.top, width: size, height: size,
-        padding: 0, border: 0, background: "transparent", cursor: "pointer", display: "block", zIndex,
+        position: desktop ? "fixed" : "absolute", left: 0, top: 0, width: span, height: span,
+        padding: 0, border: 0, background: fill, cursor: "pointer", display: "block", zIndex,
         clipPath: "polygon(0 0, 100% 0, 0 100%)", WebkitTapHighlightColor: "transparent",
       }}
     >
-      <svg aria-hidden="true" width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>
-        <polygon points={`0,0 ${size},0 0,${size}`} fill={fill} />
+      <svg aria-hidden="true" width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", left: 0, top: desktop ? 0 : E.safe.top, display: "block" }}>
         <g transform={transform} fill="none" stroke={E.color.cream} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
           {kind === "back" ? ARROW : FEEDBACK}
         </g>
       </svg>
+    </button>
+  );
+}
+
+/** The gear beside a desktop title (Alborz's notes, round 2): an ink gear
+ *  centred on the title's line, carrying the stale-invite dot. */
+export function TitleGear({ onClick, label, title, dot = false, size = 28 }: { onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; label: string; title?: string; dot?: boolean; size?: number }) {
+  return (
+    <button type="button" aria-label={label} title={title ?? label} onClick={onClick}
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 12, height: size + 12, marginLeft: 14, verticalAlign: "middle", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3" /><path d={GEAR_PATH} />
+      </svg>
+      {dot && <span aria-hidden="true" style={{ position: "absolute", top: 2, right: 2, width: 10, height: 10, borderRadius: "50%", background: E.color.identity }} />}
     </button>
   );
 }

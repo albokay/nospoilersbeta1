@@ -64,27 +64,32 @@ export function OpenRoomsDisc({ count, desktop = false, style }: { count: number
  *  page's right edge at the title's height — the chat icon, CHAT and the
  *  unread count or the new dot. It replaces the Open rooms disc; on desktop
  *  it sits at the window's far right. */
-export function ChatTab({ onClick, countLabel, isNew = false, desktop = false, anchor, style }: {
+/** The chat corner (Alborz's notes, round 2 — his mockups): a yellow
+ *  folded corner at the masthead's bottom right mirroring the back corner,
+ *  the chat glyph in cream, new messages as an identity dot on the glyph
+ *  carrying the unread count (both platforms). The host sets `top` so it
+ *  sits on the masthead's bottom edge. Replaces the cream chat tab. */
+export function ChatCorner({ onClick, countLabel, isNew = false, desktop = false, anchor, style }: {
   onClick: () => void; countLabel?: string | null; isNew?: boolean; desktop?: boolean; anchor?: string; style?: React.CSSProperties;
 }) {
+  const size = desktop ? E.measure.desktop.corner : E.measure.phone.corner;
+  const glyph = desktop ? 30 : 24;
+  const inset = desktop ? 22 : 16;
+  const signal = !!countLabel || isNew;
   return (
     <button
-      type="button" aria-label="Open chat" title="Open chat" onClick={onClick} data-tip-anchor={anchor}
+      type="button" aria-label={countLabel ? `Open chat · ${countLabel} new` : isNew ? "Open chat · new messages" : "Open chat"} title="Open chat" onClick={onClick} data-tip-anchor={anchor}
       style={{
-        position: desktop ? "fixed" : "absolute", right: desktop ? 0 : -E.space.gutter, top: desktop ? E.measure.desktop.titleTop + 12 : E.safe.plus(108),
-        height: desktop ? 44 : 40, padding: desktop ? "0 20px 0 18px" : "0 18px 0 14px", boxSizing: "border-box",
-        background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderRight: 0,
-        display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", zIndex: desktop ? 45 : 2,
-        ...E.type.label11, WebkitTapHighlightColor: "transparent", ...style,
+        position: "absolute", right: 0, width: size, height: size, padding: 0, border: 0, background: E.color.accent, cursor: "pointer", display: "block",
+        clipPath: "polygon(100% 0, 100% 100%, 0 100%)", WebkitTapHighlightColor: "transparent", zIndex: 2, ...style,
       }}
     >
-      <MessageCircle size={desktop ? 18 : 16} strokeWidth={1.4} aria-hidden="true" />
-      <span>Chat</span>
-      {countLabel ? (
-        <span style={{ minWidth: 16, height: 16, padding: "0 4px", borderRadius: E.radius.badge, background: E.color.alert, color: E.color.cream, fontSize: 10, letterSpacing: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>{countLabel}</span>
-      ) : isNew ? (
-        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, display: "inline-block" }} />
-      ) : null}
+      <span style={{ position: "absolute", right: inset, bottom: inset, width: glyph, height: glyph, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+        <MessageCircle size={glyph} strokeWidth={1.6} color={E.color.cream} aria-hidden="true" />
+        {signal && (
+          <span style={{ position: "absolute", left: -8, top: -8, minWidth: 18, height: 18, padding: countLabel ? "0 5px" : 0, borderRadius: 9, background: E.color.identity, color: E.color.cream, ...E.type.label9, letterSpacing: 0, lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: `2px solid ${E.color.accent}` }}>{countLabel}</span>
+        )}
+      </span>
     </button>
   );
 }
@@ -177,7 +182,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
           <span
             className="e-pen" role="button" aria-label={optionsLabel} title={optionsLabel}
             onClick={(e) => { e.stopPropagation(); onOptions(); }}
-            style={{ position: "absolute", right: 150, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", opacity: 0, zIndex: 1 }}
+            style={{ position: "absolute", right: 150, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}
           >
             <SquarePen size={16} strokeWidth={1.5} color={E.color.ink} aria-hidden="true" />
           </span>

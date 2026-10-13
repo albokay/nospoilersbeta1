@@ -1277,6 +1277,9 @@ function AppShell() {
         forcedOpen={feedbackForcedOpen}
         prefillMessage={feedbackPrefill}
         onForcedClose={() => setFeedbackForcedOpen(false)}
+        // The editorial desktop homepage opens the drawer from its red corner
+        // (Alborz's notes, round 2) — no mono tab there.
+        hideTrigger={editorial && isHomepage && !isMobile}
       />
       {showAuthModal && <AuthModal onClose={() => { setShowAuthModal(false); setAuthHint(null); setAuthInitialMode("signin"); }} hint={authHint ?? undefined} initialMode={authInitialMode} />}
       {showHowItWorks && (
@@ -1328,6 +1331,7 @@ function AppShell() {
                 onDetails={() => setShowHowItWorks(true)}
                 betaOpen={betaOpen}
                 onToggleBeta={() => setBetaOpen((o) => !o)}
+                onFeedback={() => setFeedbackForcedOpen(true)}
               />
             </div>
           )}

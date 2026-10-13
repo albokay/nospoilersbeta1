@@ -1,5 +1,12 @@
 # Sidebar — Technical State (2026-10-12)
 
+> **⭐ 2026-10-12 — ALBORZ'S NOTES, round 2 — B + C: the corners, the chat corner, the gears beside the names, the row's hover pen.**
+> - **The phone's blue and red corners (`CornerTab`):** they now reach the screen's top — the triangle grows by the status-bar inset in both directions (still 45°, his answer 3), drawn as the button's own fill under a clip so the inset can be a calc(); the arrow / feedback glyph keeps its place under the inset. Desktop unchanged.
+> - **The chat corner (`ChatCorner` in `editorial/GroupRoom.tsx`, his mockups):** a yellow folded corner at the masthead's bottom right mirroring the back corner (88 on the phone, 112 on desktop), the chat glyph in cream; new messages as an identity disc on the glyph's top-left corner carrying the unread count ("3", "9+" — both platforms, his answer 2), a plain disc when there's news without a count. It sits on the masthead's bottom edge (the host sets `top`; a sibling of `Masthead` at the page root, above the head). It carries the tour's `chat-tab` anchor. The cream chat tab (`ChatTab`) is gone; the phone title keeps its right clearance.
+> - **The desktop homepage:** the red feedback corner at the top left, as on the dashboard (`EditorialHomepage onFeedback` → the feedback drawer; the widget's mono tab hidden there).
+> - **The gear beside the names (desktop, his answer 4):** `TitleGear` in `editorial/Chrome.tsx` — a 28px ink gear centred on the title's line, 14px after the last word, carrying the stale-invite dot; the group room's "Group settings" and the show room's "Email updates for this room" moved there and left the top-right words (the phone keeps its gear in the words row).
+> - **The desktop row's hover pen (his answer 1):** the editorial show row already grew a pen on hover at 150px from the row's right edge — exactly where he drew it — but an inline `opacity: 0` beat the hover rule, so it never appeared. The inline opacity is gone; `RowHoverStyle` owns both states. The phone keeps the swipe.
+
 > **⭐ 2026-10-12 — ALBORZ'S NOTES, round 2 — A: seven fixes under the skin (both platforms unless noted).**
 > - **Feedback drawer (desktop):** the caption reads "Send Sidebar your thoughts" (the phone's sheet already says "Send Sidebar feedback").
 > - **Letters from Sidebar:** every closed letter from Sidebar in the feed now carries the sky stack shadow (`SidebarPaper` default; the feed no longer passes `stack={false}`); the room's welcome letter (`SidebarLetter`) carries an ALERT stack (`tone="alert"`).

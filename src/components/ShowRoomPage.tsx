@@ -53,7 +53,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead } from "./editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
@@ -1019,7 +1019,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
-                ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.desktop.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
                 <AccountWord key="account" hit={E.measure.desktop.wordHit} onClick={() => setShowAccount(true)} />,
               ]} />
             </EditorialColumn>
@@ -1027,7 +1026,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <div style={{ position: "relative" }}>
                 <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><RowPoster tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
                 <div style={{ width: E.measure.desktop.letters - 120 }}>
-                  <EditorialTitle desktop>{show?.name ?? "Show"}</EditorialTitle>
+                  <EditorialTitle desktop>
+                    {show?.name ?? "Show"}
+                    {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
+                    {!privateOnly && roomId && <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}
+                  </EditorialTitle>
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
                   ) : groupName ? (

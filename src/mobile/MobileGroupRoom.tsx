@@ -74,7 +74,7 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
-import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatTab, FinishedRow } from "../components/editorial/GroupRoom";
+import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -1073,6 +1073,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   return (
     <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
       {editorial && <Masthead height={E.safe.plus(E.measure.phone.masthead)} />}
+      {/* The chat corner on the masthead's bottom right (Alborz's notes, round 2). */}
+      {editorial && (
+        <ChatCorner
+          onClick={() => navigate(`/m/group/${groupId}/chat`)}
+          isNew={chatNew}
+          countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null}
+          style={{ top: E.safe.plus(E.measure.phone.masthead - E.measure.phone.corner) }}
+        />
+      )}
       {showAccount && (
         <AccountModal
           mobile
@@ -1087,9 +1096,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    it. The shelves under it are still classic until checkpoint 3. ──
         <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
-          {/* The chat tab replaces the Open rooms disc and the Chat word
-              (Alborz's notes, 2026-10-12); the title keeps clear of it. */}
-          <ChatTab onClick={() => navigate(`/m/group/${groupId}/chat`)} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} />
           {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
