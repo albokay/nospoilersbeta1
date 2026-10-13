@@ -78,12 +78,13 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
       <BottomSheet onClose={close} zIndex={990} title="Tips" maxHeight="60dvh">
         {tips.map((t, i) => (
           <div key={i} style={{ marginTop: i === 0 ? 0 : 16 }}>
+            {/* Every gap inside a tip is the between-tips 16 (Alborz's notes, round 5). */}
             {t.body.split("\n\n").map((p, j) => (
-              <p key={j} style={{ margin: j === 0 ? 0 : "6px 0 0", ...E.type.body15, color: E.color.ink, ...(p.trim().startsWith("(") ? { ...E.type.note13, fontStyle: "italic", color: E.color.inkSub } : {}) }}>
+              <p key={j} style={{ margin: j === 0 ? 0 : "16px 0 0", ...E.type.body15, color: E.color.ink, ...(p.trim().startsWith("(") ? { ...E.type.note13, fontStyle: "italic", color: E.color.inkSub } : {}) }}>
                 <TipText text={p.trim().startsWith("(") ? deparen(p) : p} />
               </p>
             ))}
-            {t.aside && <p style={{ margin: "6px 0 0", ...E.type.note13, fontStyle: "italic", color: E.color.inkSub }}><TipText text={deparen(t.aside)} /></p>}
+            {t.aside && <p style={{ margin: "16px 0 0", ...E.type.note13, fontStyle: "italic", color: E.color.inkSub }}><TipText text={deparen(t.aside)} /></p>}
           </div>
         ))}
       </BottomSheet>

@@ -44,9 +44,13 @@ export default function MobileSearchSheet({
     /** Cleared proposals (2026-09-29): proposals the viewer "x"-ed off their
      *  shelf — listed plainly, selecting brings the row back as it was. */
     restoreShowIds?: Set<string>;
+    /** Parked shows (round 5): "we're done with this one" rooms — listed as
+     *  "Restore to your room →", selecting unparks the room. */
+    dnfShowIds?: Set<string>;
     onProposeExisting: (show: Show) => void;
     onRejoin?: (show: Show) => void;
     onRestore?: (show: Show) => void;
+    onRestoreDnf?: (show: Show) => void;
   };
   /** Picker commit-button label override (default "add to my shows") — the
    *  onboarding flow reuses this sheet and advances with "next". */
@@ -148,7 +152,9 @@ export default function MobileSearchSheet({
                   style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
               </label>
               {results.map((s) => (
-                groupContext?.groupShowIds.has(s.id) ? (
+                groupContext?.dnfShowIds?.has(s.id) ? (
+                  <button key={s.id} type="button" style={row} onClick={() => groupContext.onRestoreDnf?.(s)}><span>{s.name}</span>{tag("Restore to your room →")}</button>
+                ) : groupContext?.groupShowIds.has(s.id) ? (
                   <div key={s.id} style={{ ...row, cursor: "default", opacity: 0.55 }}><span>{s.name}</span>{tag("Already in this group")}</div>
                 ) : groupContext?.rejoinShowIds?.has(s.id) ? (
                   <button key={s.id} type="button" style={row} onClick={() => groupContext.onRejoin?.(s)}><span>{s.name}</span>{tag("Rejoin →")}</button>

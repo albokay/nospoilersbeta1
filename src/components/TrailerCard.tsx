@@ -20,11 +20,14 @@ export default function TrailerCard({
   showId,
   tvmazeId,
   bleed = 0,
+  foot,
 }: {
   showId: string;
   tvmazeId: number | string | null | undefined;
   /** The editorial skin (round 3): the host's side inset the band bleeds past, so it runs edge to edge. */
   bleed?: number;
+  /** The host's bottom inset as a CSS length (round 5): the band runs through it to the host's bottom edge. */
+  foot?: string;
 }) {
   // undefined = resolving, null = miss, string = hit. Render only on a hit.
   const [key, setKey] = useState<string | null | undefined>(undefined);
@@ -50,7 +53,7 @@ export default function TrailerCard({
   // line in small mono. Same facade, same player.
   if (editorial) {
     return (
-      <div style={{ background: CANON.accent, color: E.color.ink, padding: `18px ${bleed || 20}px 14px`, boxSizing: "border-box", width: `calc(100% + ${bleed * 2}px)`, marginLeft: -bleed, marginRight: -bleed, textAlign: "left" }}>
+      <div style={{ background: CANON.accent, color: E.color.ink, padding: `18px ${bleed || 20}px ${foot ? `calc(14px + ${foot})` : "14px"}`, boxSizing: "border-box", width: `calc(100% + ${bleed * 2}px)`, marginLeft: -bleed, marginRight: -bleed, marginBottom: foot ? `calc(-1 * (${foot}))` : undefined, textAlign: "left" }}>
         <div style={{ ...E.type.label11, color: E.color.ink, marginBottom: 12 }}>Watch the trailer</div>
         <div style={{ ...frame, borderRadius: 0, background: E.color.draft }}>
           {playing ? (

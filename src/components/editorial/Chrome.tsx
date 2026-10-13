@@ -17,7 +17,7 @@
  *   EditorialColumn   the desktop page column (1040 centred, 64 inside; 1080
  *               for the show room's two columns).
  */
-import React from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { E } from "../../styles/editorial";
 
 const WORD_PAD = 6; // horizontal padding inside a word's hit box
@@ -199,6 +199,46 @@ export function UnderlineWord({ children, onClick, label, title, style }: { chil
 
 export function EditorialTitle({ children, desktop = false, style }: { children: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
   return <h1 style={{ ...(desktop ? E.type.title64 : E.type.title46), color: E.color.ink, margin: 0, ...style }}>{children}</h1>;
+}
+
+/** A title that fits (Alborz's notes, round 5): the name with its gear glued
+ *  to the last word so the gear never sits alone on a line; a name that
+ *  would run to three lines steps down one size (46 → 36 on the phone,
+ *  64 → 48 on desktop); past three lines at that size it's cut with an
+ *  ellipsis (the gear then follows the cut name). Measured before paint. */
+export function FittedTitle({ name, gear, desktop = false, style }: { name: string; gear?: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  // 0 = full size · 1 = stepped down · 2 = stepped down and cut at three lines.
+  const [fit, setFit] = useState<0 | 1 | 2>(0);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onResize = () => setTick((t) => t + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  useLayoutEffect(() => { setFit(0); }, [name, desktop, tick]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || fit === 2) return;
+    const lh = parseFloat(getComputedStyle(el).lineHeight) || 1;
+    const lines = Math.round(el.getBoundingClientRect().height / lh);
+    if (fit === 0 && lines >= 3) setFit(1);
+    else if (fit === 1 && lines > 3) setFit(2);
+  }, [fit, name, desktop, tick]);
+  const base = desktop ? E.type.title64 : E.type.title46;
+  const small: React.CSSProperties = desktop ? { fontSize: 48, lineHeight: 1.02 } : { fontSize: 36, lineHeight: 1.04 };
+  const words = name.trim().split(/\s+/);
+  const head = words.slice(0, -1).join(" ");
+  const last = words[words.length - 1] ?? "";
+  return (
+    <h1 ref={ref} style={{ ...base, ...(fit > 0 ? small : {}), color: E.color.ink, margin: 0, overflowWrap: "anywhere", ...style }}>
+      {fit === 2 ? (
+        <><span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], overflow: "hidden" }}>{name}</span>{gear}</>
+      ) : (
+        <>{head ? `${head} ` : ""}<span style={{ whiteSpace: "nowrap" }}>{last}{gear}</span></>
+      )}
+    </h1>
+  );
 }
 
 export function EditorialSub({ children, desktop = false, style }: { children: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {

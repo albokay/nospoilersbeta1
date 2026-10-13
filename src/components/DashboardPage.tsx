@@ -73,6 +73,7 @@ import {
   fetchFriendGroupMembers,
   fetchRoomDnfMap,
   setRoomDnf,
+  cancelPitch,
   chatHasNewActivity,
   chatUnreadLabel,
   markGroupChatSeen,
@@ -118,8 +119,8 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
-import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord, FittedTitle } from "./editorial/Chrome";
+import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
@@ -340,6 +341,8 @@ export default function DashboardPage() {
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   // Cleared proposals (2026-09-29): the proposal pill's corner "x" → confirm.
   const [clearConfirm, setClearConfirm] = useState<{ showId: string; name: string } | null>(null);
+  // Cancel pitch (Alborz's notes, round 5): your own pitch's one act.
+  const [cancelConfirm, setCancelConfirm] = useState<{ showId: string; name: string; othersIn: boolean; selfWrote: boolean } | null>(null);
   // Finished-together drawer (2026-09-13): per active-group room — DNF
   // marks (roomId → ms), current room members (roomId → userIds, for the
   // auto finished detection), open state, posters, and the revive modal.
@@ -856,6 +859,10 @@ export default function DashboardPage() {
   // A friend's new pitch (round 3): the pitched shows the viewer hasn't seen
   // (showId → pitcher), stamped seen once drawn. Classic: nothing.
   const freshPitches = useFreshPitches(editorial && inGroup ? activeGroupId : null, user?.id ?? null);
+  // The masthead grows with a long name (round 5): the title block's height.
+  const titleBlockRef = useRef<HTMLDivElement>(null);
+  const titleBlockH = useBlockHeight(titleBlockRef);
+  const mastH = E.measure.desktop.titleTop + Math.max(E.measure.desktop.masthead - E.measure.desktop.titleTop, titleBlockH ?? 0);
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     const ag = railGroups.find((r) => r.group.id === activeGroupId);
@@ -1135,12 +1142,17 @@ export default function DashboardPage() {
         // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
         // selecting it brings the pill back as you left it (no new yes).
         const restore = !!gs && !gs.roomId && gs.viewerDismissed;
+        // A parked show ("we're done with this one") is findable as
+        // "Restore to your room →" (Alborz's notes, round 5).
+        const dnf = !!gs && !!gs.roomId && !!roomDnf[gs.roomId];
         return {
           show: s,
           rejoin,
           restore,
+          dnf,
+          roomId: gs?.roomId ?? null,
           inPool: activeGroupId
-            ? !!gs && !rejoin && !restore
+            ? !!gs && !rejoin && !restore && !dnf
             : !!progress[s.id] && !outOfPool.has(s.id),
         };
       })
@@ -1573,6 +1585,19 @@ export default function DashboardPage() {
       const gs = groupShows.find((x) => x.showId === showId);
       if (gs?.roomId && gs.inRoom) await doLeaveRoom(gs.roomId, showId);
     }
+  }
+
+  // Cancel pitch (round 5): with nobody else in, the show leaves the group
+  // with no trace (the vote, the empty room, every answer); with friends in,
+  // it's your opt-out — they keep the pitch.
+  async function doCancelPitch(c: { showId: string; othersIn: boolean }) {
+    if (!activeGroupId || !user) return;
+    if (c.othersIn) { await doStance(c.showId, "out"); return; }
+    const gs = groupShows.find((x) => x.showId === c.showId);
+    setGroupShows((prev) => prev.filter((x) => x.showId !== c.showId));
+    setPasses((prev) => { const n = { ...prev }; delete n[c.showId]; return n; });
+    try { await cancelPitch(activeGroupId, c.showId, user.id, gs?.roomId ?? null, !!gs?.inRoom); } catch (e) { console.error("[dashboard] cancel pitch failed", e); }
+    await refreshGroup(activeGroupId);
   }
 
   async function goToRoom(showId: string) {
@@ -2023,7 +2048,8 @@ export default function DashboardPage() {
     // Non-group dashboard is a flex column so its body can center vertically.
     <div style={{ ...pageStyle, background: editorial ? E.color.cream : inGroup ? C.sky : C.green, ...(inGroup || editorial ? null : { display: "flex", flexDirection: "column" }) }}>
       <DashboardStyles />
-      {editorial && inGroup && <Masthead height={E.measure.desktop.masthead} />}
+      {/* The masthead follows the title block (round 5): a long name grows it. */}
+      {editorial && inGroup && <Masthead height={mastH} />}
       {/* The chat corner on the masthead's bottom right (Alborz's notes, round 2). */}
       {editorial && inGroup && editorialGroup && (
         <ChatCorner
@@ -2032,7 +2058,7 @@ export default function DashboardPage() {
           isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
           countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
           onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
-          style={{ top: E.measure.desktop.masthead - E.measure.desktop.corner }}
+          style={{ top: mastH - E.measure.desktop.corner }}
         />
       )}
       {editorial && <RowHoverStyle />}
@@ -2063,18 +2089,17 @@ export default function DashboardPage() {
           </EditorialColumn>
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
-              <div style={{ position: "relative", paddingRight: 160, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
+              <div ref={titleBlockRef} style={{ position: "relative", paddingRight: 160, paddingBottom: 40, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
                 {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: -224, top: 114, width: 320 }} />}
-                <EditorialTitle desktop>
-                  {groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}
-                  {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
+                {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
+                <FittedTitle desktop name={groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])} gear={(
                   <TitleGear
                     label="Group settings"
                     title={myGroupInvites.filter(isInviteStale).length > 0 ? staleInviteLine(myGroupInvites.filter(isInviteStale).length) : "Group settings"}
                     dot={myGroupInvites.filter(isInviteStale).length > 0}
                     onClick={(e) => { moveTip(null); if (activeGroupId) openGroupOptions(activeGroupId, e.currentTarget.getBoundingClientRect()); }}
                   />
-                </EditorialTitle>
+                )} />
                 {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
                 <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: W.logoLift, cursor: "pointer" }}>
                   <SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge />
@@ -2190,7 +2215,10 @@ export default function DashboardPage() {
           const blockBtn: React.CSSProperties = { ...E.type.button16, width: "100%", height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" };
           const frameBtn: React.CSSProperties = { ...E.type.button16, width: "100%", height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" };
           const posLabel: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 };
-          const groupOthers = (railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).filter((m) => m.userId !== selfUserId).length;
+          const groupOtherMembers = (railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).filter((m) => m.userId !== selfUserId);
+          const groupOthers = groupOtherMembers.length;
+          // The empty shelves' question names the one friend (Alborz's notes, round 5).
+          const soloFriend = groupOthers === 1 ? personDisplayName(contactNames, groupOtherMembers[0].userId, groupOtherMembers[0].username, groupOtherMembers[0].displayName) : null;
           return (
             <>
               <EditorialColumn style={{ paddingBottom: 60 }}>
@@ -2237,7 +2265,7 @@ export default function DashboardPage() {
                       )}
                       {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
                         <div style={{ ...E.type.question30, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
-                          What shows do you want to watch with your {groupOthers === 1 ? "friend" : "friends"}?
+                          What shows do you want to watch with {soloFriend ?? "your friends"}?
                         </div>
                       )}
                     </div>
@@ -2260,8 +2288,11 @@ export default function DashboardPage() {
                               : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                             onOpen={() => onPillClick(r.pill, r.name)}
-                            onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
-                            optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                            // Your own pitch (round 5): one act, "Cancel pitch".
+                            onOptions={freshPitches.pitcherOf.get(r.pill.showId) === user?.id
+                              ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelConfirm({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
+                              : r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
+                            optionsLabel={freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
                           />
                         );
                       })}
@@ -2572,8 +2603,10 @@ export default function DashboardPage() {
                     style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
                 </label>
                 <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                  {results.map(({ show: s, inPool, rejoin, restore }) => (
-                    inPool ? (
+                  {results.map(({ show: s, inPool, rejoin, restore, dnf, roomId }) => (
+                    dnf && roomId ? (
+                      <button key={s.id} type="button" style={rowS} onClick={() => { void doReviveRoom(roomId); closeSearch(); }}><span>{s.name}</span>{tag("Restore to your room →")}</button>
+                    ) : inPool ? (
                       <div key={s.id} style={{ ...rowS, cursor: "default", opacity: 0.55 }}><span>{s.name}</span>{tag(activeGroupId ? "Already in this group" : "Already on your shelf")}</div>
                     ) : rejoin ? (
                       <button key={s.id} type="button" style={rowS} onClick={() => rejoinRoom(s)}><span>{s.name}</span>{tag("Rejoin →")}</button>
@@ -3011,7 +3044,7 @@ export default function DashboardPage() {
           };
           return (
             <EditorialDialog onClose={() => setClicked(null)} label={clicked.name}>
-              <StanceSurface view={view} inset={32} />
+              <StanceSurface view={view} inset={32} foot="32px" />
             </EditorialDialog>
           );
         }
@@ -3457,6 +3490,21 @@ export default function DashboardPage() {
           </div>
         </div>
       ))}
+
+      {/* Cancel pitch (Alborz's notes, round 5): your own pitch's dialog. */}
+      {cancelConfirm && editorial && (
+        <OptionsDialog
+          title={cancelConfirm.name}
+          caption={editorialGroup ? `with ${groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])}` : undefined}
+          onClose={() => setCancelConfirm(null)}
+          rows={[{
+            label: "Cancel pitch",
+            sub: cancelConfirm.othersIn ? "The show stays pitched for the friends who are in; you\u2019ll read as sitting this out." : cancelConfirm.selfWrote ? "The show leaves this group for everyone, your letters in its room with it." : "The show leaves this group for everyone \u2014 no trace.",
+            tone: "alert",
+            onClick: () => { const c = cancelConfirm; setCancelConfirm(null); void doCancelPitch(c); },
+          }]}
+        />
+      )}
 
       {/* Cleared proposals (2026-09-29): the proposal pill's "x" — clears it
           from YOUR shelf only (copy: Alborz's brief; the leave dialog's

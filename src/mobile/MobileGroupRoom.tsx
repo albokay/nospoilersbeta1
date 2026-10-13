@@ -36,6 +36,7 @@ import {
   fetchFriendGroupMembers,
   fetchRoomDnfMap,
   setRoomDnf,
+  cancelPitch,
   leaveShowRoom,
   setShowVote,
   ensureProgressRow,
@@ -72,10 +73,10 @@ import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/group
 import { useEditorial } from "../lib/skin";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
-import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow } from "../components/editorial/GroupRoom";
+import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow, useBlockHeight } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
@@ -166,6 +167,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Cleared proposals (2026-09-29): the corner × on a proposed row you're
   // not in → its sheet (the long-press until 2026-10-08).
   const [clearSheet, setClearSheet] = useState<{ showId: string; name: string } | null>(null);
+  // Cancel pitch (Alborz's notes, round 5): your own pitch's one act.
+  const [cancelSheet, setCancelSheet] = useState<{ showId: string; name: string; othersIn: boolean; selfWrote: boolean } | null>(null);
+  // The masthead grows with a long name (round 5): the title block's height.
+  const titleBlockRef = useRef<HTMLDivElement>(null);
+  const titleBlockH = useBlockHeight(titleBlockRef);
+  // Measured in px (the block's min height already carries the phone's top
+  // inset); the tokens' calc until the first measure lands.
+  const mastH: number | string = titleBlockH ?? E.safe.plus(E.measure.phone.masthead);
   const [chatNew, setChatNew] = useState(false);
   // Unread count for the chat tab's badge (Alborz 2026-09-19); undefined
   // until the 09-19 RPC is applied → plain dot, as before.
@@ -847,6 +856,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       if (gs?.roomId && gs.inRoom) await doLeaveRoom(gs.roomId, showId);
     }
   }
+  // Cancel pitch (round 5): with nobody else in, the show leaves the group
+  // with no trace (the vote, the empty room, every answer); with friends in,
+  // it's your opt-out — they keep the pitch.
+  async function doCancelPitch(c: { showId: string; othersIn: boolean }) {
+    if (!user) return;
+    if (c.othersIn) { await doStance(c.showId, "out"); return; }
+    const gs = groupShows.find((x) => x.showId === c.showId);
+    setGroupShows((prev) => prev.filter((x) => x.showId !== c.showId));
+    setPasses((prev) => { const n = { ...prev }; delete n[c.showId]; return n; });
+    try { await cancelPitch(groupId, c.showId, user.id, gs?.roomId ?? null, !!gs?.inRoom); } catch (e) { console.error("[m-group] cancel pitch failed", e); }
+    await refreshGroup();
+  }
   const myStanceFor = (showId: string): Stance | null => {
     const gs = groupShows.find((s) => s.showId === showId);
     if (gs?.inRoom) return "in";
@@ -1059,6 +1080,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     ...groupInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
   ];
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
+  // The empty shelves' question names the one friend (Alborz's notes, round 5).
+  const soloFriend = others.length === 1 ? personDisplayName(contactNames, others[0].userId, others[0].username, others[0].displayName) : null;
   const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
 
   // The group's settings sheet — the gear beside the classic title, the gear
@@ -1078,14 +1101,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
 
   return (
     <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)", overflowX: "clip" as const } : {}) }}>
-      {editorial && <Masthead height={E.safe.plus(E.measure.phone.masthead)} />}
+      {/* The masthead follows the title block (round 5): a long name grows it. */}
+      {editorial && <Masthead height={mastH} />}
       {/* The chat corner on the masthead's bottom right (Alborz's notes, round 2). */}
       {editorial && (
         <ChatCorner
           onClick={() => navigate(`/m/group/${groupId}/chat`)}
           isNew={chatNew}
           countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null}
-          style={{ top: E.safe.plus(E.measure.phone.masthead - E.measure.phone.corner) }}
+          style={{ top: titleBlockH != null ? titleBlockH - E.measure.phone.corner : E.safe.plus(E.measure.phone.masthead - E.measure.phone.corner) }}
         />
       )}
       {showAccount && (
@@ -1100,7 +1124,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    the way out, `Chat ? ⚙` as mono words at the top right, the
         //    group's name in Lora 46 at the title line with the members under
         //    it. The shelves under it are still classic until checkpoint 3. ──
-        <div style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
+        <div ref={titleBlockRef} style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px 40px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
           {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
@@ -1108,7 +1132,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
           <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
-            <EditorialTitle>{groupName}<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} /></EditorialTitle>
+            <FittedTitle name={groupName} gear={<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />} />
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>
         </div>
@@ -1252,7 +1276,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 <>
                   <SectionHead style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                   {groupShelves.notStarted.map((r) => {
-                    const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name });
+                    // Your own pitch (round 5): one act, "Cancel pitch".
+                    const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id;
+                    const act = mine
+                      ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelSheet({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
+                      : r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name });
                     const st = myStanceFor(r.pill.showId);
                     const passed = r.passed && (st === "out" || st === "seen");
                     return (
@@ -1269,7 +1297,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                           : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                         onOpen={() => onRowClick(r.pill, r.name)}
                         onOptions={act}
-                        optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                        optionsLabel={mine ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
                       />
                     );
                   })}
@@ -1277,7 +1305,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               )}
               {empty && (
                 <div style={{ ...E.type.question30, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
-                  What shows do you want to watch with your {others.length === 1 ? "friend" : "friends"}?
+                  What shows do you want to watch with {soloFriend ?? "your friends"}?
                 </div>
               )}
               <div style={{ display: "flex", gap: 10, marginTop: 44 }}>
@@ -1455,7 +1483,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           };
           return (
             <EditorialSheet onClose={() => setClicked(null)} top={E.measure.phone.titleTop}>
-              <StanceSurface view={view} inset={E.space.gutter} />
+              <StanceSurface view={view} inset={E.space.gutter} foot="calc(env(safe-area-inset-bottom, 0px) + 32px)" />
             </EditorialSheet>
           );
         }
@@ -1697,9 +1725,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
             // selecting it brings the row back as you left it (no new yes).
             restoreShowIds: new Set(groupShows.filter((gs) => !gs.roomId && gs.viewerDismissed).map((gs) => gs.showId)),
+            // A parked show ("we're done with this one") is findable as
+            // "Restore to your room →" (Alborz's notes, round 5).
+            dnfShowIds: new Set(groupShows.filter((gs) => !!gs.roomId && !!roomDnf[gs.roomId]).map((gs) => gs.showId)),
             onProposeExisting: proposeExisting,
             onRejoin: rejoinRoom,
             onRestore: restoreShow,
+            onRestoreDnf: (s) => { const gs = groupShows.find((x) => x.showId === s.id); if (gs?.roomId) void doReviveRoom(gs.roomId); setSearchOpen(false); },
           }}
           onClose={() => setSearchOpen(false)}
           onAdd={addShow}
@@ -1748,6 +1780,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           </div>
         </div>
       ))}
+
+      {/* ── Cancel pitch (Alborz's notes, round 5): your own pitch's sheet. ── */}
+      {cancelSheet && (
+        <OptionsSheet
+          title={cancelSheet.name}
+          caption={`with ${groupName}`}
+          onClose={() => setCancelSheet(null)}
+          rows={[{
+            label: "Cancel pitch",
+            sub: cancelSheet.othersIn ? "The show stays pitched for the friends who are in; you\u2019ll read as sitting this out." : cancelSheet.selfWrote ? "The show leaves this group for everyone, your letters in its room with it." : "The show leaves this group for everyone \u2014 no trace.",
+            tone: "alert",
+            onClick: () => { const c = cancelSheet; setCancelSheet(null); void doCancelPitch(c); },
+          }]}
+        />
+      )}
 
       {/* ── Cleared proposals (2026-09-29): the corner × on a proposed row you're not in —
              the rooms' sheet shell, one action: clear it from YOUR shelf

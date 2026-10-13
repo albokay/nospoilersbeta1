@@ -23,7 +23,7 @@
  *                   and the desktop's centred card on the veil.
  *   OptionsSheet / OptionsDialog       the Sheet with its rows (and Cancel).
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SquarePen, MessageCircle } from "lucide-react";
 import { CelebrationStar } from "../CelebrationBadge";
@@ -51,6 +51,23 @@ export function groupRoomNote(rooms: { roomId: string | null; name: string }[], 
 
 export function Masthead({ height }: { height: number | string }) {
   return <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height, background: E.color.friend, zIndex: 0 }} />;
+}
+
+/** The masthead grows with a long name (Alborz's notes, round 5): the title
+ *  block's live height, so the sky always runs under the "With …" line. */
+export function useBlockHeight(ref: React.RefObject<HTMLElement | null>): number | null {
+  const [h, setH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const read = () => setH(el.getBoundingClientRect().height);
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return h;
 }
 
 export function OpenRoomsDisc({ count, desktop = false, style }: { count: number; desktop?: boolean; style?: React.CSSProperties }) {
@@ -210,6 +227,9 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   const gutter = E.space.gutter;
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!onOptions) return;
+    // The screen's edge zones belong to the browser's back / forward swipe
+    // (Alborz's notes, round 5): a drag starting there never moves the row.
+    if (e.clientX < 28 || e.clientX > window.innerWidth - 28) return;
     start.current = { x: e.clientX, y: e.clientY, axis: null };
   };
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -350,7 +370,9 @@ export type StanceView = {
   trailer: { showId: string; tvmazeId?: string | null } | null;
 };
 
-export function StanceSurface({ view, inset }: { view: StanceView; inset: number }) {
+/** `foot` (round 5): the host's bottom inset as a CSS length — the trailer's
+ *  yellow runs through it to the sheet's or dialog's bottom edge. */
+export function StanceSurface({ view, inset, foot }: { view: StanceView; inset: number; foot?: string }) {
   return (
     <div style={{ textAlign: "center", color: E.color.ink }}>
       <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 26 }}>{view.name}</div>
@@ -386,7 +408,7 @@ export function StanceSurface({ view, inset }: { view: StanceView; inset: number
       )}
       {view.trailer && (
         <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}>
-          <TrailerCard showId={view.trailer.showId} tvmazeId={view.trailer.tvmazeId} bleed={inset} />
+          <TrailerCard showId={view.trailer.showId} tvmazeId={view.trailer.tvmazeId} bleed={inset} foot={foot} />
         </div>
       )}
     </div>

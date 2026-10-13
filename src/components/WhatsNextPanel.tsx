@@ -449,8 +449,8 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
             trailer: { showId: card.id, tvmazeId: String(card.tvmazeId) },
           };
           return mobile
-            ? <EditorialSheet onClose={() => setCard(null)}><StanceSurface view={view} inset={E.space.gutter} /></EditorialSheet>
-            : <EditorialDialog onClose={() => setCard(null)} width={480} label={card.name}><StanceSurface view={view} inset={32} /></EditorialDialog>;
+            ? <EditorialSheet onClose={() => setCard(null)}><StanceSurface view={view} inset={E.space.gutter} foot="calc(env(safe-area-inset-bottom, 0px) + 32px)" /></EditorialSheet>
+            : <EditorialDialog onClose={() => setCard(null)} width={480} label={card.name}><StanceSurface view={view} inset={32} foot="32px" /></EditorialDialog>;
         })()}
       </div>
     );

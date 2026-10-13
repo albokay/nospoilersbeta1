@@ -70,8 +70,10 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   },
   // Chat is LAST (QA rounds 3–4) — it doubles as the send-off. The caveat
   // sits mid-body ("("-paragraphs render italic); no trailing aside.
+  // 2026-10-13 (Alborz, round 5): opens on "Use the …" and drops the
+  // "Sidebar is for you and your friends." send-off, both platforms.
   {
-    body: "You can use this 💬 button for non-show-specific conversations.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nYou can also use it to discuss what you want to watch next. Sidebar is for you and your friends.",
+    body: "Use the 💬 button for non-show-specific conversations.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nYou can also use it to discuss what you want to watch next.",
     tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", anchor: "chat-tab",
   },
 ];
@@ -86,15 +88,11 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
       { body: "While you wait for friends to join, you can still go inside to add more shows or start writing." },
     ];
   }
-  // Mobile's sheet doesn't POINT at the chat button the way the placed
-  // desktop sticky does, so "this 💬 button" reads as "the 💬 button"
-  // there (QA round 8).
+  // (The chat tip reads "the 💬 button" on both platforms since 2026-10-13;
+  // the mobile-only rewording it used to need is gone.)
   const tips: Tip[] = GROUP_ROOM_TIPS
     .filter((t) => !(idiom === "mobile" && t.mobileOmit))
-    .map(({ body, aside }) => ({
-      body: idiom === "mobile" ? body.replace("use this 💬 button", "use the 💬 button") : body,
-      aside,
-    }));
+    .map(({ body, aside }) => ({ body, aside }));
   // 2026-09-13 → 2026-10-08: a mobile-only "Press and hold a show button for
   // more options." tip sat here while the long-press was the phone's
   // show-button gesture. The hold is retired (the row's corner × opens the

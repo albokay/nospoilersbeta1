@@ -2633,6 +2633,26 @@ export async function setGroupShowPass(groupId: string, showId: string, userId: 
   if (error) throw error;
 }
 
+/** Cancel pitch (Alborz's notes, round 5): the pitcher takes a pitch back
+ *  that nobody else has joined. `cancel_pitch` (migration 20261013) deletes
+ *  the caller's vote, soft-deletes the (group × show) room when the caller
+ *  is its only member, and clears every answer and dismissal on the show in
+ *  the group — no trace. Until the migration is in, the fallback does what
+ *  the client can: the vote goes, the room is left, the show is cleared
+ *  from the caller's shelf (friends may still see the empty room). */
+export async function cancelPitch(groupId: string, showId: string, userId: string, roomId: string | null, inRoom: boolean): Promise<void> {
+  const { data, error } = await supabase.rpc("cancel_pitch", { p_group_id: groupId, p_show_id: showId });
+  if (!error) {
+    if (!data || data.ok === false) throw new Error(data?.error || "cancel_pitch failed");
+    return;
+  }
+  const missing = error.code === "PGRST202" || error.code === "42883" || /could not find the function|does not exist/i.test(error.message ?? "");
+  if (!missing) throw error;
+  await setShowVote(groupId, showId, false);
+  if (roomId && inRoom) { try { await leaveShowRoom(roomId); } catch { /* the vote is gone either way */ } }
+  await dismissGroupShow(groupId, showId, userId);
+}
+
 /** Toggle the caller's per-group opt-in ("want to watch") for a show. */
 export async function setShowVote(groupId: string, showId: string, voted: boolean): Promise<void> {
   const { data, error } = await supabase.rpc("set_show_vote", {
