@@ -8,6 +8,9 @@ import SidebarAvatar from "./SidebarAvatar";
 import CanonRadio from "./CanonRadio";
 import type { PingType } from "../types";
 import { CANON } from "../styles/canon";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { INK_SMALL } from "./editorial/MapNotes";
 
 // Canon palette
 const CREAM       = CANON.cream;
@@ -108,6 +111,22 @@ export default function NudgePopover({
 }: Props) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  // The editorial skin (Alborz's notes, item 7): the popover as a framed
+  // cream paper with the stack shadow — the name in Lora, the position in
+  // mono, the nudges as hairline rows with a square mark, the field on a
+  // rule, Send as a small ink block, Cancel and the profile link as
+  // underlined mono words. Same send, same profile route.
+  const editorial = useEditorial();
+  const shell: React.CSSProperties = editorial
+    ? { background: E.color.cream, borderRadius: 0, border: `1px solid ${E.color.ink}`, padding: "16px 18px 14px", boxShadow: E.shadow.cardStack, zIndex: 70, color: E.color.ink, fontFamily: E.font.interface }
+    : { background: CREAM, borderRadius: 24, padding: "16px 18px 14px", boxShadow: "0 8px 24px rgba(0,0,0,0.18)", zIndex: 70 };
+  const mark = (on: boolean) => editorial
+    ? <span aria-hidden style={{ width: 12, height: 12, border: `1px solid ${E.color.ink}`, background: on ? E.color.ink : "transparent", flexShrink: 0, boxSizing: "border-box" }} />
+    : <CanonRadio checked={on} color={CANON_BLUE} />;
+  const rowStyle: React.CSSProperties = editorial
+    ? { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: `1px solid ${E.color.hairline}`, fontSize: 13, fontWeight: 500, color: E.color.ink, cursor: "pointer" }
+    : { display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 12, background: CANON_LIGHT, border: "none", fontSize: 12, color: CANON.cream, cursor: "pointer" };
+  const underline: React.CSSProperties = { ...E.type.label11, color: E.color.ink, background: "transparent", border: 0, padding: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" };
 
   const presets = vocabFor(direction);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
@@ -250,11 +269,7 @@ export default function NudgePopover({
         style={{
           ...positionStyle,
           height: sentBoxHeight ?? "auto",
-          background: CREAM,
-          borderRadius: 24,
-          padding: "16px 18px 14px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-          zIndex: 70,
+          ...shell,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -282,11 +297,7 @@ export default function NudgePopover({
       role="dialog"
       style={{
         ...positionStyle,
-        background: CREAM,
-        borderRadius: 24,
-        padding: "16px 18px 14px",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-        zIndex: 70,
+        ...shell,
       }}
     >
       {/* Header */}
@@ -312,7 +323,7 @@ export default function NudgePopover({
           >
             <SidebarAvatar userId={recipientId} username={recipientUsername} size={24} />{recipientDisplayName ?? recipientUsername}
           </div>
-          <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
+          <div style={editorial ? { ...E.type.label10, color: E.color.inkMuted, marginTop: 3 } : { fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
             {relativePositionLabel(direction, count)}
           </div>
         </div>
@@ -324,7 +335,7 @@ export default function NudgePopover({
             border: "none",
             padding: 6,
             margin: -6,
-            color: TEXT_MUTED,
+            color: editorial ? E.color.ink : TEXT_MUTED,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -336,30 +347,19 @@ export default function NudgePopover({
       </div>
 
       {/* Body */}
-      <div style={{ fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
+      <div style={editorial ? { ...E.type.label10, color: E.color.inkMuted, marginBottom: 2 } : { fontSize: 11, color: TEXT_MUTED, marginBottom: 6 }}>
         Send a nudge:
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: editorial ? 0 : 6, marginBottom: editorial ? 14 : 10 }}>
         {presets.map((preset) => {
           const selected = selectedPreset === preset;
           return (
             <label
               key={preset}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "7px 10px",
-                borderRadius: 12,
-                background: CANON_LIGHT,
-                border: "none",
-                fontSize: 12,
-                color: CANON.cream,
-                cursor: "pointer",
-              }}
+              style={rowStyle}
             >
-              <CanonRadio checked={selected} color={CANON_BLUE} />
+              {mark(selected)}
               <input
                 type="radio"
                 name={`nudge-preset-${recipientId}`}
@@ -374,7 +374,7 @@ export default function NudgePopover({
 
         {/* Write your own */}
         <div
-          style={{
+          style={editorial ? { padding: "9px 0", borderBottom: `1px solid ${E.color.hairline}` } : {
             padding: "7px 10px",
             borderRadius: 12,
             border: "none",
@@ -382,7 +382,7 @@ export default function NudgePopover({
           }}
         >
           <label
-            style={{
+            style={editorial ? { display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: E.color.ink, marginBottom: customSelected ? 6 : 0, cursor: "pointer" } : {
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -392,10 +392,7 @@ export default function NudgePopover({
               cursor: "pointer",
             }}
           >
-            <CanonRadio
-              checked={customSelected}
-              color={CANON_BLUE}
-            />
+            {mark(customSelected)}
             <input
               type="radio"
               name={`nudge-preset-${recipientId}`}
@@ -413,7 +410,7 @@ export default function NudgePopover({
               onChange={handleCustomChange}
               maxLength={MESSAGE_MAX_LENGTH}
               placeholder={`${MESSAGE_MAX_LENGTH} char max`}
-              style={{
+              style={editorial ? { width: "100%", fontSize: 14, padding: "4px 0 6px", border: 0, borderBottom: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", boxSizing: "border-box", color: E.color.ink, outline: "none", fontFamily: E.font.interface } : {
                 width: "100%",
                 fontSize: 11,
                 padding: "5px 10px",
@@ -443,7 +440,7 @@ export default function NudgePopover({
             <button
               onClick={handleSend}
               disabled={!canSubmit}
-              style={{
+              style={editorial ? { ...INK_SMALL, gap: 6, opacity: canSubmit ? 1 : 0.5, cursor: canSubmit ? "pointer" : "not-allowed" } : {
                 background: canSubmit ? CANON_GREEN : "rgba(122,189,142,0.45)",
                 color: CANON.cream,
                 border: canSubmit ? `2px solid ${CANON_GREEN}` : "none",
@@ -459,11 +456,13 @@ export default function NudgePopover({
                 minWidth: canSubmit ? undefined : 90,
               }}
             >
-              {!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={13} /></>}
+              {editorial
+                ? (submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={12} /></>)
+                : (!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : <>Send <ArrowRight size={13} /></>)}
             </button>
             <button
               onClick={onClose}
-              style={{
+              style={editorial ? { ...underline, marginLeft: 8 } : {
                 background: "transparent",
                 color: TEXT_MUTED,
                 border: `2px solid ${TEXT_MUTED}`,
@@ -480,7 +479,7 @@ export default function NudgePopover({
 
       {/* Profile link */}
       <div
-        style={{
+        style={editorial ? { borderTop: `1px solid ${E.color.hairline}`, marginTop: 14, paddingTop: 10 } : {
           borderTop: `2px solid rgba(26,58,74,0.12)`,
           marginTop: 12,
           paddingTop: 8,
@@ -489,7 +488,7 @@ export default function NudgePopover({
         <a
           href={`/pool/${encodeURIComponent(recipientUsername)}`}
           onClick={handleViewProfile}
-          style={{
+          style={editorial ? { ...underline, display: "inline-flex", alignItems: "center", gap: 4 } : {
             fontSize: 11,
             color: CANON_BLUE,
             textDecoration: "none",

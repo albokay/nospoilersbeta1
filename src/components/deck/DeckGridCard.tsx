@@ -33,6 +33,7 @@ import { pairHeaderLine, computeFindings, type DeckMember } from "../../lib/deck
 import { CANON } from "../../styles/canon";
 import { D } from "../dashboardChrome";
 import { DrawerTab } from "../editorial/Dashboard";
+import { E } from "../../styles/editorial";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -213,6 +214,24 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
     }
   }
 
+  // The editorial skin (Alborz's notes, item 7): the open card as the bible's
+  // dialog — square, the stack shadow, the title in Lora ink, names and
+  // captions in mono, the rows on hairlines instead of stripes, a covered
+  // answer as a draft cell with an ink "?", the edit swatches square with a
+  // dashed ink frame, Save as a small ink block. Same cells, same saves.
+  const captionStyle: React.CSSProperties = editorial
+    ? { ...E.type.label10, color: E.color.inkMuted }
+    : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 };
+  const footStyle: React.CSSProperties = editorial
+    ? { ...E.type.note13, color: E.color.inkSub }
+    : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 };
+  const nameStyle: React.CSSProperties = editorial
+    ? { ...E.type.label10, color: E.color.ink, maxWidth: MEMBER_W - 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+    : colName;
+  const bubbleStyle: React.CSSProperties = editorial
+    ? { ...coveredBubble, borderRadius: 0, border: `1px solid ${E.color.ink}`, boxShadow: "none", fontFamily: E.font.interface }
+    : coveredBubble;
+
   // ── The grid header (open card only — docked shows just the title).
   // Row 1: title + "(me)" + friend names on the title's baseline. Row 2:
   // the n=2 summary line with the pen (→ confirm check, SAME spot, same
@@ -224,14 +243,14 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
     <div style={{ display: "flex", alignItems: "baseline", background: CANON.cream }}>
       {/* Pass 3: title 32 → Title 28; header padding-top 16 → 20. */}
       <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, padding: "20px 8px 4px 24px", position: "sticky", left: 0, background: CANON.cream, zIndex: 3, boxSizing: "border-box" }}>
-        <span style={{ ...D.type.title, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+        <span style={{ ...(editorial ? { ...E.type.letterTitle22, fontSize: 26, color: E.color.ink } : { ...D.type.title, color: CANON.identity }), whiteSpace: "nowrap" }}>{title}</span>
       </div>
       <div style={{ width: MEMBER_W, minWidth: MEMBER_W, position: "sticky", left: STATEMENT_W, background: CANON.cream, zIndex: 3, textAlign: "center", boxSizing: "border-box", ...(columns.length === 0 ? { flexGrow: 1 } : {}) }}>
-        {isWe && <span style={colName}>(me)</span>}
+        {isWe && <span style={nameStyle}>(me)</span>}
       </div>
       {columns.map((m, ci) => (
         <div key={m.id} style={{ width: MEMBER_W, minWidth: MEMBER_W, textAlign: "center", boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}>
-          <span style={colName}>{m.label}</span>
+          <span style={nameStyle}>{m.label}</span>
         </div>
       ))}
     </div>
@@ -247,17 +266,17 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
             n=2 pair line keeps this row when present — the caption yields.
             While editing, the caption names the mode instead. */}
         {ui === "edit" ? (
-          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+          <span style={captionStyle}>
             Editing your answers · tap a cell to change it
           </span>
         ) : pairLine ? (
-          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>
+          <span style={editorial ? { ...E.type.quote14, fontSize: 15, color: E.color.ink } : { fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.personal }}>
             {pairDash > -1
               ? <>{pairLine.slice(0, pairDash + 1)}<br />{pairLine.slice(pairDash + 2)}</>
               : pairLine}
           </span>
         ) : (
-          <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+          <span style={captionStyle}>
             Latest answers · edit yours with the pencil
           </span>
         )}
@@ -268,7 +287,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
              slot (was a 14px alert check glyph — alert meant "save" only
              here). LoadingDots inside while saving. */
           <button title="save your answers" onClick={confirmEdits} disabled={saving}
-            style={{ ...D.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            style={editorial ? { ...E.type.label11, height: 34, padding: "0 14px", background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" } : { ...D.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             {saving ? <LoadingDots /> : "Save"}
           </button>
         ) : (
@@ -277,7 +296,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           <button
             aria-label="Edit your answers"
             onClick={() => { setEdits({}); setUi("edit"); }}
-            style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            style={{ border: "none", background: "transparent", cursor: "pointer", color: editorial ? E.color.ink : CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <Pencil size={20} strokeWidth={2} />
           </button>
         )}
@@ -328,10 +347,10 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
   // ── OPEN / EDIT — centered card over the dimmed page ──────────────────────
   const openOverlay = (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(26,58,74,0.25)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}
+      style={{ position: "fixed", inset: 0, zIndex: 900, background: editorial ? E.color.veil : "rgba(26,58,74,0.25)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}
       onClick={(e) => { if (e.target === e.currentTarget && ui === "open") setUi("docked"); }}
     >
-      <div style={{ width: cardW, maxWidth: "92vw", maxHeight: "82vh", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto", animation: "deckGridIn .24s ease" }}>
+      <div style={{ width: cardW, maxWidth: "92vw", maxHeight: "82vh", background: CANON.cream, borderRadius: editorial ? 0 : 24, boxShadow: editorial ? E.shadow.cardStack : "0 12px 36px rgba(0,0,0,0.25)", overflow: "auto", animation: "deckGridIn .24s ease" }}>
         {/* Frozen top: the header block (no divider line — the grid sits
             flush beneath it; Alborz QA 2026-07-18). */}
         <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream }}>
@@ -347,8 +366,8 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
           const phase = bounce?.cardId === card.id ? bounce.phase : null;
           const editing = ui === "edit";
           return (
-            <div key={card.id} style={{ display: "flex", minHeight: ROW_MIN_H, alignItems: "stretch" }}>
-              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 15, lineHeight: 1.4, color: CANON.dark }}>
+            <div key={card.id} style={{ display: "flex", minHeight: ROW_MIN_H, alignItems: "stretch", borderBottom: editorial ? `1px solid ${E.color.hairline}` : undefined }}>
+              <div style={{ width: STATEMENT_W, minWidth: STATEMENT_W, position: "sticky", left: 0, zIndex: 2, background: editorial ? E.color.cream : i % 2 === 0 ? CANON.friend : CANON.cream, padding: "10px 16px 10px 24px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 15, lineHeight: 1.4, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
@@ -357,7 +376,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
                   width: MEMBER_W, minWidth: MEMBER_W, boxSizing: "border-box",
                   position: "sticky", left: STATEMENT_W, zIndex: 2,
                   background: CANON.cream, display: "flex", alignItems: "stretch",
-                  borderLeft: mine === undefined && !editing ? `1px solid ${withA(CANON.business, 0.18)}` : "none",
+                  borderLeft: mine === undefined && !editing ? `1px solid ${editorial ? E.color.hairline : withA(CANON.business, 0.18)}` : "none",
                   cursor: editing ? "pointer" : "default",
                   ...(columns.length === 0 ? { flexGrow: 1 } : {}),
                 }}
@@ -369,9 +388,9 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
                     full color cell with its cream thumb. */}
                 {editing ? (
                   <div style={{
-                    width: 36, height: 36, borderRadius: 6, margin: "auto", boxSizing: "border-box",
+                    width: 36, height: 36, borderRadius: editorial ? 0 : 6, margin: "auto", boxSizing: "border-box",
                     background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                    border: mine === undefined ? `2px dashed ${withA(CANON.business, 0.8)}` : "none",
+                    border: mine === undefined ? (editorial ? `1px dashed ${E.color.ink}` : `2px dashed ${withA(CANON.business, 0.8)}`) : "none",
                     transform: phase === "up" ? "scale(0.94)" : "scale(1)",
                     transition: phase === "up" ? "none" : "transform .18s ease",
                   }} />
@@ -389,15 +408,15 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
                 return (
                   <div
                     key={m.id}
-                    style={{ ...cell(v), display: "flex", alignItems: "center", justifyContent: "center", opacity: editing ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}
+                    style={{ ...cell(v, editorial), display: "flex", alignItems: "center", justifyContent: "center", opacity: editing ? 0.45 : 1, ...(ci === columns.length - 1 ? { flexGrow: 1 } : {}) }}
                     onMouseEnter={v === null && !editing ? () => setCoveredHover(card.id) : undefined}
                     onMouseLeave={v === null && !editing ? () => setCoveredHover((prev) => (prev === card.id ? null : prev)) : undefined}
                   >
                     {v === null && (
-                      <span aria-hidden style={{ position: "relative", fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 18, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>
+                      <span aria-hidden style={{ position: "relative", fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 18, lineHeight: 1, color: editorial ? E.color.ink : CANON.friend, userSelect: "none" }}>
                         ?
                         {coveredHover === card.id && !editing && ci === firstCoveredCol(card.id) && (
-                          <span style={coveredBubble}>
+                          <span style={bubbleStyle}>
                             Your {coveredCount(card.id) > 1 ? "friends have" : "friend has"} answered<br />this one. What do you think?
                           </span>
                         )}
@@ -413,7 +432,7 @@ export default function DeckGridCard({ mode, groupId, others = [], viewerId, doc
         {/* Pass 3: the edit footer — "Changes are kept when you press
             Save." (caption 13 at 0.7, statement column). */}
         {ui === "edit" && (
-          <div style={{ position: "sticky", left: 0, width: STATEMENT_W, boxSizing: "border-box", padding: "12px 24px 14px", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+          <div style={{ position: "sticky", left: 0, width: STATEMENT_W, boxSizing: "border-box", padding: "12px 24px 14px", ...footStyle }}>
             Changes are kept when you press Save.
           </div>
         )}
@@ -494,13 +513,14 @@ const colName: React.CSSProperties = {
   maxWidth: MEMBER_W - 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
 };
 
-function cell(v: boolean | null | undefined): React.CSSProperties {
+function cell(v: boolean | null | undefined, ed = false): React.CSSProperties {
   return {
     width: MEMBER_W, minWidth: MEMBER_W, boxSizing: "border-box",
     // null = covered (answer-to-reveal): flat greyblue, the map's
-    // hidden-writing fill. undefined = plain empty (unanswered).
-    background: v === undefined ? CANON.cream : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
-    borderLeft: v === undefined ? `1px solid ${withA(CANON.business, 0.18)}` : "none",
+    // hidden-writing fill (the draft fill under the editorial skin).
+    // undefined = plain empty (unanswered).
+    background: v === undefined ? CANON.cream : v === null ? (ed ? E.color.draft : CANON.business) : v ? CANON.personal : CANON.alert,
+    borderLeft: v === undefined ? `1px solid ${ed ? E.color.hairline : withA(CANON.business, 0.18)}` : "none",
   };
 }
 

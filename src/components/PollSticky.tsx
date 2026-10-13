@@ -16,6 +16,8 @@ import CanonRadio from "./CanonRadio";
 import type { PollDurationCode } from "../types";
 import { CANON } from "../styles/canon";
 import { EDGE_TAB_TOP } from "./dashboardChrome";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
 
 // ── Visual constants ─────────────────────────────────────────────────────
 const STICKY_BG       = CANON.accent;           // canon yellow
@@ -72,6 +74,15 @@ function closesInLabel(targetMs: number): string {
 }
 
 export default function PollSticky({ groupId, currentUserId, refreshKey = 0, displayNames }: Props) {
+  // The editorial skin (Alborz's notes, item 7): the sticky as the bible's
+  // paper note — cream, a 1px ink frame with the accent bar at the left, no
+  // shadow, the tilt kept; "you asked:" in mono, the question in Lora, the
+  // choices as hairline rows with a square mark, the write-in on a rule,
+  // Submit as an ink block, the foot in mono. Same votes, same dismissals.
+  const ed = useEditorial();
+  const mark = (on: boolean, locked = false) => ed
+    ? <span aria-hidden style={{ width: 12, height: 12, border: `1px solid ${E.color.ink}`, background: on ? E.color.ink : "transparent", flexShrink: 0, boxSizing: "border-box", opacity: locked && !on ? 0.4 : 1 }} />
+    : <CanonRadio checked={on} color={CANON.cream} bgColor={STICKY_BG} />;
   // The name chain, identity-arc order: contact name → first name → "a
   // friend". The raw handle is NEVER rendered (it's an auto-generated slug).
   const askerLabel = (username: string | null, displayName: string | null, fallback: string) =>
@@ -248,7 +259,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
     }
 
     return (
-      <div style={stickyShellStyle()}>
+      <div style={stickyShellStyle(ed)}>
         {isAsker && hasVoted && (
           <button
             onClick={handleAskerDismiss}
@@ -262,7 +273,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
               padding: 6,
               // Full-opacity cream + 16px (Alborz 2026-08-21; was 70%-cream
               // at 0.6 opacity and 13px — too faint on the yellow).
-              color: TEXT_COLOR,
+              color: ed ? E.color.ink : TEXT_COLOR,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -272,12 +283,12 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
             <X size={16} strokeWidth={2.5} />
           </button>
         )}
-        <div style={askerLineStyle()}>
+        <div style={askerLineStyle(ed)}>
           {isAsker ? "you asked:" : `${askerLabel(askerUsername, askerDisplayName, "a friend")} asks:`}
         </div>
-        <div style={questionStyle()}>{poll.question}</div>
+        <div style={questionStyle(ed)}>{poll.question}</div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: ed ? 0 : 5, marginBottom: ed ? 14 : 10 }}>
           {options.map((opt) => {
             const isMine     = myResponse?.optionId === opt.id;
             const isSelected = !hasVoted && selectedOptionId === opt.id;
@@ -285,9 +296,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
             return (
               <label
                 key={opt.id}
-                style={optionRowStyle(highlighted, hasVoted)}
+                style={optionRowStyle(highlighted, hasVoted, ed)}
               >
-                <CanonRadio checked={highlighted} color={CANON.cream} bgColor={STICKY_BG} />
+                {mark(highlighted, hasVoted)}
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
@@ -305,13 +316,9 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
           })}
 
           {poll.allowWriteIn && !hasVoted && (
-            <div style={{ padding: "8px 11px", borderRadius: 12, background: CANON.cream }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: CANON_NAVY, marginBottom: customSelected ? 6 : 0, cursor: "pointer" }}>
-                <CanonRadio
-                  checked={customSelected}
-                  color={CANON.cream}
-                  bgColor={STICKY_BG}
-                />
+            <div style={ed ? { padding: "8px 0", borderBottom: `1px solid ${E.color.hairline}` } : { padding: "8px 11px", borderRadius: 12, background: CANON.cream }}>
+              <label style={{ display: "flex", alignItems: "center", gap: ed ? 10 : 8, fontSize: ed ? 13 : 12, fontWeight: ed ? 500 : undefined, color: CANON_NAVY, marginBottom: customSelected ? 6 : 0, cursor: "pointer" }}>
+                {mark(customSelected)}
                 <input
                   type="radio"
                   name={`poll-${poll.id}`}
@@ -332,7 +339,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
                   maxLength={80}
                   placeholder="80 char · spoiler-free"
                   autoFocus
-                  style={{
+                  style={ed ? { width: "100%", fontSize: 13, padding: "4px 0 6px", border: 0, borderBottom: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", boxSizing: "border-box", color: E.color.ink, outline: "none", fontFamily: E.font.interface } : {
                     width: "100%",
                     fontSize: 11,
                     padding: "5px 9px",
@@ -350,7 +357,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
           )}
 
           {hasVoted && myResponse?.writeInText && (
-            <div style={writeInLockedStyle()}>{myResponse.writeInText}</div>
+            <div style={writeInLockedStyle(ed)}>{myResponse.writeInText}</div>
           )}
         </div>
 
@@ -358,15 +365,15 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            style={submitButtonStyle(canSubmit)}
+            style={submitButtonStyle(canSubmit, ed)}
           >
-            {!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : "Submit"}
+            {ed ? (submitting ? <>Sending<LoadingDots /></> : "Submit") : (!canSubmit ? null : submitting ? <>Sending<LoadingDots /></> : "Submit")}
           </button>
         )}
 
         {error && <div style={{ fontSize: 11, color: CANON.alert, marginBottom: 6 }}>{error}</div>}
 
-        <div style={footerStyle()}>
+        <div style={footerStyle(ed)}>
           <span>{count ? `${count.responseCount} of ${count.eligibleCount} weighed in` : ""}</span>
           <span style={{ opacity: 0.75 }}>closes in {closesInLabel(closesAt)}</span>
         </div>
@@ -402,7 +409,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
     }
 
     return (
-      <div style={stickyShellStyle()}>
+      <div style={stickyShellStyle(ed)}>
         <button
           onClick={handleDismiss}
           aria-label="Dismiss"
@@ -415,7 +422,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
             padding: 6,
             // Full-opacity cream + 16px (Alborz 2026-08-21) — matches the
             // answered-state X above.
-            color: TEXT_COLOR,
+            color: ed ? E.color.ink : TEXT_COLOR,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -425,10 +432,10 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
           <X size={16} strokeWidth={2.5} />
         </button>
 
-        <div style={askerLineStyle()}>
+        <div style={askerLineStyle(ed)}>
           {isAsker ? "you asked:" : `${askerLabel(askerUsername, askerDisplayName, "a friend")} asked:`}
         </div>
-        <div style={{ ...questionStyle(), marginBottom: 14 }}>{poll.question}</div>
+        <div style={{ ...questionStyle(ed), marginBottom: 14 }}>{poll.question}</div>
 
         {/* Friend-centered results (Alborz 2026-08-01, approved mockup
             docs/poll-results-preview.html): the bar graph is gone — with
@@ -443,7 +450,8 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
               <div
                 style={{
                   fontSize: 13,
-                  color: TEXT_COLOR,
+                  color: ed ? E.color.ink : TEXT_COLOR,
+                  fontWeight: ed ? 500 : undefined,
                   opacity: voters.length === 0 ? 0.7 : 1,
                   marginBottom: 4,
                 }}
@@ -451,13 +459,13 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
                 {opt.optionText}
               </div>
               {voters.length === 0 ? (
-                <div style={{ fontStyle: "italic", fontSize: 11, color: FADED_TEXT, opacity: 0.55, margin: "0 2px 12px" }}>no votes</div>
+                <div style={ed ? { ...E.type.label10, color: E.color.inkMuted, margin: "0 0 12px" } : { fontStyle: "italic", fontSize: 11, color: FADED_TEXT, opacity: 0.55, margin: "0 2px 12px" }}>no votes</div>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 14, margin: "2px 2px 12px" }}>
                   {voters.map((u, i) => (
                     <span key={i} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <ThumbsUp size={16} strokeWidth={2} color={CANON.cream} />
-                      <span style={{ fontSize: 10, fontWeight: 700, color: CANON.cream }}>{u}</span>
+                      <ThumbsUp size={16} strokeWidth={2} color={ed ? E.color.ink : CANON.cream} />
+                      <span style={ed ? { ...E.type.label9, color: E.color.ink } : { fontSize: 10, fontWeight: 700, color: CANON.cream }}>{u}</span>
                     </span>
                   ))}
                 </div>
@@ -468,11 +476,11 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
 
         {writeIns.length > 0 && (
           <div style={{ marginTop: 6, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, color: FADED_TEXT, marginBottom: 4 }}>Write-ins:</div>
+            <div style={ed ? { ...E.type.label10, color: E.color.inkMuted, marginBottom: 6 } : { fontSize: 11, color: FADED_TEXT, marginBottom: 4 }}>Write-ins:</div>
             {writeIns.map((w, i) => (
-              <div key={i} style={{ fontSize: 12, color: TEXT_COLOR, marginBottom: 4 }}>
+              <div key={i} style={{ fontSize: ed ? 13 : 12, color: ed ? E.color.ink : TEXT_COLOR, marginBottom: 4, fontFamily: ed ? E.font.display : undefined }}>
                 <span style={{ fontStyle: "italic" }}>"{w.text}"</span>
-                <span style={{ fontStyle: "italic", color: FADED_TEXT, marginLeft: 6 }}>
+                <span style={{ fontStyle: "italic", color: ed ? E.color.inkMuted : FADED_TEXT, marginLeft: 6 }}>
                   &mdash; {w.name}
                 </span>
               </div>
@@ -480,7 +488,7 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
           </div>
         )}
 
-        <div style={{ ...footerStyle(), justifyContent: "flex-start" }}>
+        <div style={{ ...footerStyle(ed), justifyContent: "flex-start" }}>
           <span>closed · {responses.length} of {closed.eligibleCount} weighed in</span>
         </div>
       </div>
@@ -490,7 +498,27 @@ export default function PollSticky({ groupId, currentUserId, refreshKey = 0, dis
 
 // ── style helpers ────────────────────────────────────────────────────────
 
-function stickyShellStyle(): React.CSSProperties {
+function stickyShellStyle(ed = false): React.CSSProperties {
+  if (ed) return {
+    position: "fixed",
+    left: 32,
+    top: EDGE_TAB_TOP + 88 + 16,
+    zIndex: 50,
+    width: STICKY_WIDTH,
+    transform: `rotate(${TILT_DEG}deg)`,
+    transformOrigin: "center",
+    background: E.color.cream,
+    color: E.color.ink,
+    border: `1px solid ${E.color.ink}`,
+    borderLeft: `${E.border.noteBar}px solid ${E.color.accent}`,
+    padding: "14px 16px",
+    borderRadius: 0,
+    boxShadow: "none",
+    fontFamily: E.font.interface,
+    fontSize: 13,
+    lineHeight: 1.4,
+    boxSizing: "border-box",
+  };
   return {
     position: "fixed",
     left: 32,
@@ -513,11 +541,13 @@ function stickyShellStyle(): React.CSSProperties {
   };
 }
 
-function askerLineStyle(): React.CSSProperties {
+function askerLineStyle(ed = false): React.CSSProperties {
+  if (ed) return { ...E.type.label10, color: E.color.inkMuted, marginBottom: 6 };
   return { fontStyle: "italic", fontSize: 11, color: FADED_TEXT, opacity: 0.85, marginBottom: 4 };
 }
 
-function questionStyle(): React.CSSProperties {
+function questionStyle(ed = false): React.CSSProperties {
+  if (ed) return { fontFamily: E.font.display, fontWeight: 700, fontSize: 15, lineHeight: 1.35, color: E.color.ink, marginBottom: 12 };
   return {
     fontFamily: "var(--font-serif), Georgia, serif",
     fontSize: 14,
@@ -527,7 +557,8 @@ function questionStyle(): React.CSSProperties {
   };
 }
 
-function optionRowStyle(_highlighted: boolean, locked: boolean): React.CSSProperties {
+function optionRowStyle(_highlighted: boolean, locked: boolean, ed = false): React.CSSProperties {
+  if (ed) return { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${E.color.hairline}`, fontSize: 13, color: E.color.ink, fontWeight: 500, cursor: locked ? "default" : "pointer" };
   return {
     display: "flex",
     alignItems: "center",
@@ -543,7 +574,8 @@ function optionRowStyle(_highlighted: boolean, locked: boolean): React.CSSProper
   };
 }
 
-function writeInLockedStyle(): React.CSSProperties {
+function writeInLockedStyle(ed = false): React.CSSProperties {
+  if (ed) return { padding: "8px 0", borderBottom: `1px solid ${E.color.hairline}`, fontFamily: E.font.display, fontSize: 13, fontStyle: "italic", color: E.color.ink };
   return {
     padding: "8px 11px",
     borderRadius: 12,
@@ -556,7 +588,8 @@ function writeInLockedStyle(): React.CSSProperties {
   };
 }
 
-function submitButtonStyle(enabled: boolean): React.CSSProperties {
+function submitButtonStyle(enabled: boolean, ed = false): React.CSSProperties {
+  if (ed) return { ...E.type.label11, height: 36, width: "100%", background: enabled ? E.color.ink : "transparent", color: enabled ? E.color.cream : E.color.inkMuted, border: enabled ? 0 : `1px solid ${E.color.hairline}`, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: enabled ? "pointer" : "not-allowed", marginBottom: 10, boxSizing: "border-box" };
   return {
     background: enabled ? SUBMIT_BG : "rgba(122,189,142,0.45)",
     color: CANON.cream,
@@ -572,7 +605,8 @@ function submitButtonStyle(enabled: boolean): React.CSSProperties {
   };
 }
 
-function footerStyle(): React.CSSProperties {
+function footerStyle(ed = false): React.CSSProperties {
+  if (ed) return { borderTop: `1px solid ${E.color.hairline}`, paddingTop: 8, ...E.type.label10, color: E.color.inkMuted, display: "flex", justifyContent: "space-between", gap: 8 };
   return {
     borderTop: `1px dotted ${DIVIDER_COLOR}`,
     paddingTop: 6,

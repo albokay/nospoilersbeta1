@@ -43,6 +43,8 @@ import { useAuth } from "../../lib/auth";
 import SidebarLogo from "../SidebarLogo";
 import { CANON } from "../../styles/canon";
 import { DrawerTab } from "../editorial/Dashboard";
+import { E } from "../../styles/editorial";
+import { INK_SMALL, FRAME_SMALL } from "../editorial/MapNotes";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const WINDOW = 8;   // §7.6.1 "latest N" window
@@ -164,6 +166,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
         padding: "10px 14px", fontFamily: '"Inter", sans-serif', fontWeight: 500,
         fontSize: 12.5, lineHeight: 1.5, whiteSpace: "nowrap", textAlign: "left",
         boxShadow: "0 6px 18px rgba(0,0,0,0.3)",
+        // The editorial skin (Alborz's notes, item 7): the framed paper note.
+        ...(editorial ? { borderRadius: 0, border: `1px solid ${E.color.ink}`, boxShadow: "none", color: E.color.ink } : {}),
       }}>
         Your {tapTip.plural ? "friends have" : "friend has"} answered<br />this one. What do you think?
       </div>
@@ -272,15 +276,17 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   if (ui === "sheet") {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
-        <div style={{ position: "absolute", inset: 0, background: "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
+        <div style={{ position: "absolute", inset: 0, background: editorial ? E.color.veil : "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
         {/* Pass 3: the M sheet grammar — grabber + swipe-down + tap-out, no
             ×. The scrollRef gate keeps the drag off the scrolling rows (the
             2026-08-01 conflict that retired the old handle). */}
         <div
           {...sheetSwipe.handlers}
-          style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: 96, background: CANON.cream, borderRadius: "24px 24px 0 0", boxShadow: "0 -8px 28px rgba(0,0,0,0.28)", display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}
+          // The editorial sheet (Alborz's notes, item 7): square, an ink top edge,
+          // no shadow, under the status bar; the grabber, names and captions in ink.
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: editorial ? E.safe.plus(96) : 96, background: CANON.cream, borderRadius: editorial ? 0 : "24px 24px 0 0", boxShadow: editorial ? "none" : "0 -8px 28px rgba(0,0,0,0.28)", borderTop: editorial ? `1px solid ${E.color.ink}` : undefined, display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}
         >
-          <div style={{ flexShrink: 0, paddingTop: 10 }}><div style={{ ...OVERLAY.grabber(CANON.dark), margin: "0 auto" }} /></div>
+          <div style={{ flexShrink: 0, paddingTop: 10 }}><div style={editorial ? { width: 36, height: 4, background: E.color.ink, margin: "0 auto" } : { ...OVERLAY.grabber(CANON.dark), margin: "0 auto" }} /></div>
           {/* Header + the vertical names SHARE this band (names bottom-
               aligned at the right) so they don't push the questions down
               with their own row (Alborz QA 2026-07-18). Name slot widths
@@ -291,13 +297,13 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
               at a 44 hit with a 20 glyph. */}
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "6px 0 8px 20px" }}>
             <div>
-              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
+              <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: editorial ? E.color.ink : CANON.identity, whiteSpace: "nowrap" }}>{title}</div>
               {/* Pass 3 caption (verbatim): what the sheet is + where to act. */}
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7, marginTop: 3, paddingRight: 8 }}>
+              <div style={editorial ? { ...E.type.label10, color: E.color.inkMuted, marginTop: 5, paddingRight: 8 } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7, marginTop: 3, paddingRight: 8 }}>
                 Latest answers · edit yours with the pencil
               </div>
               {pairLine && (
-                <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
+                <div style={editorial ? { ...E.type.quote14, color: E.color.ink, marginTop: 6 } : { fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 13, color: CANON.personal, marginTop: 6 }}>{pairLine}</div>
               )}
             </div>
             <div style={{ display: "flex", flexShrink: 0 }}>
@@ -305,12 +311,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                 <span key={m.id} style={{ width: SHEET_CW, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2 }}>
                   {m.id === viewerId && (
                     <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                      style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: editorial ? E.color.ink : CANON.identity, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                       <Pencil size={20} />
                     </button>
                   )}
                   {mode === "group" && (
-                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", ...(editorial ? E.type.label10 : { fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12 }), color: CANON.dark, maxHeight: 64, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {m.label}
                     </span>
                   )}
@@ -325,10 +331,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                 are retired. Covered stays the greyblue "?" cell (tap for the
                 tip); unanswered continues the row stripe. */}
             {windowRows.map((card, i) => {
-              const stripe = i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent";
+              const stripe = editorial ? "transparent" : i % 2 === 0 ? "rgba(173,200,215,0.45)" : "transparent";
               const cols = mode === "personal" ? [{ id: viewerId }] : [{ id: viewerId }, ...columns];
               return (
-                <div key={card.id} style={{ display: "flex", alignItems: "stretch", minHeight: 48, fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark }}>
+                <div key={card.id} style={{ display: "flex", alignItems: "stretch", minHeight: 48, fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark, borderBottom: editorial ? `1px solid ${E.color.hairline}` : undefined }}>
                   <span style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", padding: "11px 12px 11px 20px", background: stripe }}>{card.statement}</span>
                   {cols.map((m) => {
                     const v = mode === "personal" ? myAnswers[card.id] : valueFor(m.id, card.id);
@@ -338,12 +344,12 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                         onClick={v === null ? (e) => { e.stopPropagation(); showTapTip(card.id, e); } : undefined}
                         style={{
                           width: SHEET_CW, minWidth: SHEET_CW, display: "flex", alignItems: "center", justifyContent: "center",
-                          background: v === undefined ? stripe : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
+                          background: v === undefined ? stripe : v === null ? (editorial ? E.color.draft : CANON.business) : v ? CANON.personal : CANON.alert,
                           cursor: v === null ? "pointer" : "default",
                         }}
                       >
                         {v === null
-                          ? <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, color: CANON.friend, userSelect: "none" }}>?</span>
+                          ? <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, color: editorial ? E.color.ink : CANON.friend, userSelect: "none" }}>?</span>
                           : v !== undefined && <Th v={v} size={16} color={CANON.cream} />}
                       </span>
                     );
@@ -360,7 +366,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                 {(hasUnanswered || (mode === "group" ? anyAnswered.length > WINDOW : !firstSet)) && (
                   <button
                     onClick={() => setUi("grid")}
-                    style={{ ...M.pill.S, background: "transparent", color: CANON.identity, border: `2px solid ${CANON.identity}`, display: "inline-flex", alignItems: "center", gap: 6 }}
+                    style={editorial ? { ...FRAME_SMALL, gap: 6 } : { ...M.pill.S, background: "transparent", color: CANON.identity, border: `2px solid ${CANON.identity}`, display: "inline-flex", alignItems: "center", gap: 6 }}
                   >
                     All answers <ArrowRight size={14} strokeWidth={2.5} />
                   </button>
@@ -368,7 +374,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                 {cardFindings && (
                   <button
                     onClick={() => setUi("findings")}
-                    style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", gap: 6 }}
+                    style={editorial ? { ...INK_SMALL, gap: 6 } : { ...M.pill.S, background: CANON.identity, color: CANON.cream, display: "inline-flex", alignItems: "center", gap: 6 }}
                   >
                     Findings <ArrowRight size={14} strokeWidth={2.5} />
                   </button>
@@ -388,22 +394,22 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   if (ui === "findings" && cardFindings) {
     const quoteEnd = (t: string) => (t.startsWith("“") || t.startsWith('"')) ? t.indexOf(t[0] === '"' ? '"' : "”", 1) : -1;
     return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: CANON.friend }}>
+      <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: editorial ? E.color.cream : CANON.friend }}>
         {/* Pass 3: it returns to the answers sheet, so it's a BACK, not a
             close — standard top-bar position, 44 hit; the caption opposite
             names the share gesture (a screenshot IS the share). */}
         <button onClick={() => setUi("sheet")} aria-label="back to answers"
-          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+          style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: editorial ? E.color.ink : CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
           <ArrowLeft size={20} />
         </button>
-        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.7 }}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.7 }) }}>
           Screenshot to share
         </div>
-        <div style={{ position: "absolute", left: 20, right: 20, top: "calc(env(safe-area-inset-top, 0px) + 72px)", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 32px rgba(0,0,0,0.3)", padding: "24px 24px 14px" }}>
+        <div style={{ position: "absolute", left: 20, right: 20, top: "calc(env(safe-area-inset-top, 0px) + 72px)", background: CANON.cream, borderRadius: 24, boxShadow: "0 12px 32px rgba(0,0,0,0.3)", padding: "24px 24px 14px", ...(editorial ? { borderRadius: 0, boxShadow: E.shadow.cardStack, border: `1px solid ${E.color.ink}` } : {}) }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <div style={{ ...M.type.title, color: CANON.identity, whiteSpace: "nowrap" }}>How We Watch TV</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.5, color: CANON.dark, margin: "4px 0 16px" }}>
+              <div style={{ ...(editorial ? { ...E.type.letterTitle22, fontSize: 24 } : M.type.title), color: editorial ? E.color.ink : CANON.identity, whiteSpace: "nowrap" }}>How We Watch TV</div>
+              <div style={editorial ? { ...E.type.label10, color: E.color.inkMuted, margin: "6px 0 16px" } : { fontFamily: "Inter, sans-serif", fontSize: 13, lineHeight: 1.5, color: CANON.dark, margin: "4px 0 16px" }}>
                 {profile?.display_name ?? "Me"}, with {joinNames(others.map((o) => o.label))}
               </div>
             </div>
@@ -413,7 +419,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
           </div>
           {/* Pass 3: headline 600/19 → 700/22 (one Lora weight site-wide);
               stays plain Identity — no name coloring in the headline. */}
-          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: CANON.identity, marginBottom: 16 }}>{cardFindings.headline}</div>
+          <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: editorial ? E.color.ink : CANON.identity, marginBottom: 16 }}>{cardFindings.headline}</div>
           {cardFindings.lines.map((l, i) => {
             // Emphasis: the ally/opposite name bolds in ALERT (pass 3 — was
             // Identity); a leading quoted statement renders italic.
@@ -431,7 +437,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
           })}
           {/* Pass 3: 11/600 Business → Caption 13 at 0.7 dark (Business as
               text on cream ≈ 2.3:1). */}
-          <div style={{ borderTop: "1px solid rgba(141,170,186,0.4)", marginTop: 14, paddingTop: 10, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 400, color: CANON.dark, opacity: 0.7, display: "flex", justifyContent: "space-between" }}>
+          <div style={editorial ? { borderTop: `1px solid ${E.color.hairline}`, marginTop: 14, paddingTop: 10, ...E.type.label10, color: E.color.inkMuted, display: "flex", justifyContent: "space-between" } : { borderTop: "1px solid rgba(141,170,186,0.4)", marginTop: 14, paddingTop: 10, fontFamily: "Inter, sans-serif", fontSize: 13, fontWeight: 400, color: CANON.dark, opacity: 0.7, display: "flex", justifyContent: "space-between" }}>
             <span>{answeredMine.length} questions answered</span>
             <span>beta.sidebar.watch</span>
           </div>
@@ -450,22 +456,22 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   const availW = (typeof window !== "undefined" ? window.innerWidth : 390) - 20;
   const stW = Math.max(ST_W, availW - ME_W - FR_W * columns.length);
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: mode === "personal" ? CANON.personal : CANON.friend, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: editorial ? E.color.cream : mode === "personal" ? CANON.personal : CANON.friend, display: "flex", flexDirection: "column" }}>
       {/* Pass 3: the standard top bar — 44px × at 12/12 with a 20 glyph.
           In the grid it closes to the sheet; while editing it CANCELS the
           edit (unsaved flips discarded); the caption names the mode. */}
       <button
         onClick={() => { if (ui === "edit") { setEdits({}); setUi("grid"); } else setUi("sheet"); }}
         aria-label={ui === "edit" ? "cancel editing" : "close"}
-        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: editorial ? E.color.ink : CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
         <X size={20} />
       </button>
       {ui === "edit" && (
-        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85 }}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85 }) }}>
           Editing your answers
         </div>
       )}
-      <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.18)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: editorial ? 0 : 20, boxShadow: editorial ? "none" : "0 8px 24px rgba(0,0,0,0.18)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top (pass 3): Row A = Title 22 + the S Identity "Save"
             pill while editing (the 13.5 title squeezed beside a check glyph
             is retired); Row B = the column-header band — the pencil sits
@@ -473,11 +479,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
         <div style={{ position: "sticky", top: 0, zIndex: 4, background: CANON.cream }}>
           <div style={{ display: "flex", alignItems: "center", minWidth: stW + ME_W + FR_W * columns.length }}>
             <div style={{ position: "sticky", left: 0, background: CANON.cream, zIndex: 3, padding: "14px 8px 2px 14px", boxSizing: "border-box", flex: "0 0 auto" }}>
-              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
+              <span style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, color: editorial ? E.color.ink : CANON.identity, whiteSpace: "nowrap" }}>{title}</span>
             </div>
             {ui === "edit" && (
               <button onClick={confirmEdits} disabled={saving}
-                style={{ ...M.pill.S, background: CANON.identity, color: CANON.cream, position: "sticky", right: 12, marginLeft: "auto", marginTop: 12, flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                style={{ ...(editorial ? INK_SMALL : { ...M.pill.S, background: CANON.identity, color: CANON.cream }), position: "sticky", right: 12, marginLeft: "auto", marginTop: 12, flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                 {saving ? <LoadingDots /> : "Save"}
               </button>
             )}
@@ -487,15 +493,15 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
             <div style={{ width: ME_W, minWidth: ME_W, position: "sticky", left: stW, background: CANON.cream, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 2, paddingBottom: 4, boxSizing: "border-box" }}>
               {ui !== "edit" && (
                 <button title="Edit answers?" onClick={() => { setEdits({}); setUi("edit"); }}
-                  style={{ border: "none", background: "transparent", cursor: "pointer", color: CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  style={{ border: "none", background: "transparent", cursor: "pointer", color: editorial ? E.color.ink : CANON.identity, width: 44, height: 44, padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                   <Pencil size={20} />
                 </button>
               )}
-              {isWe && <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark }}>(me)</span>}
+              {isWe && <span style={{ ...(editorial ? E.type.label10 : { fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12 }), color: CANON.dark }}>(me)</span>}
             </div>
             {columns.map((m) => (
               <div key={m.id} style={{ width: FR_W, minWidth: FR_W, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 6, boxSizing: "border-box", opacity: ui === "edit" ? 0.45 : 1 }}>
-                <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12, color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
+                <span style={{ ...(editorial ? E.type.label10 : { fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 12 }), color: CANON.dark, maxWidth: FR_W - 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</span>
               </div>
             ))}
           </div>
@@ -507,8 +513,8 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
         {anyAnswered.map((card, i) => {
           const mine = valueFor(viewerId, card.id);
           return (
-            <div key={card.id} style={{ display: "flex", minHeight: 48, alignItems: "stretch", minWidth: stW + ME_W + FR_W * columns.length }}>
-              <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, zIndex: 2, background: i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark }}>
+            <div key={card.id} style={{ display: "flex", minHeight: 48, alignItems: "stretch", minWidth: stW + ME_W + FR_W * columns.length, borderBottom: editorial ? `1px solid ${E.color.hairline}` : undefined }}>
+              <div style={{ width: stW, minWidth: stW, position: "sticky", left: 0, zIndex: 2, background: editorial ? E.color.cream : i % 2 === 0 ? CANON.friend : CANON.cream, padding: "6px 8px 6px 14px", boxSizing: "border-box", display: "flex", alignItems: "center", fontFamily: "Inter, sans-serif", fontSize: 14, lineHeight: 1.4, color: CANON.dark }}>
                 {card.statement}
               </div>
               <div
@@ -517,7 +523,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                   width: ME_W, minWidth: ME_W, boxSizing: "border-box",
                   position: "sticky", left: stW, zIndex: 2,
                   background: CANON.cream, display: "flex", alignItems: "stretch",
-                  borderLeft: mine === undefined && ui !== "edit" ? "1px solid rgba(141,170,186,0.18)" : "none",
+                  borderLeft: mine === undefined && ui !== "edit" ? `1px solid ${editorial ? E.color.hairline : "rgba(141,170,186,0.18)"}` : "none",
                   cursor: ui === "edit" ? "pointer" : "default",
                 }}
               >
@@ -527,9 +533,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                     (0.94 → rest). Non-edit keeps the full color cell. */}
                 {ui === "edit" ? (
                   <div style={{
-                    width: 36, height: 36, borderRadius: 6, margin: "auto", boxSizing: "border-box",
+                    width: 36, height: 36, borderRadius: editorial ? 0 : 6, margin: "auto", boxSizing: "border-box",
                     background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                    border: mine === undefined ? "2px dashed rgba(141,170,186,0.8)" : "none",
+                    border: mine === undefined ? (editorial ? `1px dashed ${E.color.ink}` : "2px dashed rgba(141,170,186,0.8)") : "none",
                     transform: bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(1)",
                     transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
                   }} />
@@ -547,11 +553,11 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                 return (
                   <div
                     key={m.id}
-                    style={{ ...mCell(v, FR_W), opacity: ui === "edit" ? 0.45 : 1 }}
+                    style={{ ...mCell(v, FR_W, editorial), opacity: ui === "edit" ? 0.45 : 1 }}
                     onClick={v === null && ui !== "edit" ? (e) => showTapTip(card.id, e) : undefined}
                   >
                     {v === null
-                      ? <span aria-hidden style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, lineHeight: 1, color: CANON.friend, userSelect: "none" }}>?</span>
+                      ? <span aria-hidden style={{ fontFamily: "Inter, sans-serif", fontWeight: 800, fontSize: 15, lineHeight: 1, color: editorial ? E.color.ink : CANON.friend, userSelect: "none" }}>?</span>
                       : v !== undefined && <Th v={v} size={16} color={CANON.cream} />}
                   </div>
                 );
@@ -562,7 +568,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
         {/* Pass 3: the edit footer explains the two rules (verbatim,
             per the board). Sticky-left so a horizontal scroll keeps it. */}
         {ui === "edit" && (
-          <div style={{ position: "sticky", left: 0, width: availW - 20, boxSizing: "border-box", padding: "14px 16px 10px", textAlign: "center", fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }}>
+          <div style={{ position: "sticky", left: 0, width: availW - 20, boxSizing: "border-box", padding: "14px 16px 10px", textAlign: "center", ...(editorial ? { ...E.type.note13, color: E.color.inkSub } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: CANON.dark, opacity: 0.7 }) }}>
             Tap your column to flip an answer. Friends&rsquo; answers dim while you edit.
           </div>
         )}
@@ -580,14 +586,15 @@ function Th({ v, size, color }: { v: boolean; size: number; color?: string }) {
     : <ThumbsDown size={size} color={c} strokeWidth={2.2} style={{ flexShrink: 0 }} />;
 }
 
-function mCell(v: boolean | null | undefined, w: number): React.CSSProperties {
+function mCell(v: boolean | null | undefined, w: number, ed = false): React.CSSProperties {
   return {
     width: w, minWidth: w, boxSizing: "border-box",
     display: "flex", alignItems: "center", justifyContent: "center",
     // null = covered (answer-to-reveal): flat greyblue, the map's
-    // hidden-writing fill. undefined = plain empty (unanswered).
-    background: v === undefined ? CANON.cream : v === null ? CANON.business : v ? CANON.personal : CANON.alert,
-    borderLeft: v === undefined ? "1px solid rgba(141,170,186,0.18)" : "none",
+    // hidden-writing fill (the draft fill under the editorial skin).
+    // undefined = plain empty (unanswered).
+    background: v === undefined ? CANON.cream : v === null ? (ed ? E.color.draft : CANON.business) : v ? CANON.personal : CANON.alert,
+    borderLeft: v === undefined ? `1px solid ${ed ? E.color.hairline : "rgba(141,170,186,0.18)"}` : "none",
   };
 }
 

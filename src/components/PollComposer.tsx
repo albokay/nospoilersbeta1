@@ -8,6 +8,11 @@ import { openPoll, sendPollEmail, type PollDuration } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "../mobile/m";
 import { D } from "./dashboardChrome";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { EditorialDialog } from "./editorial/GroupRoom";
+import { BottomSheet } from "./editorial/Overlays";
+import { INK_SMALL, FRAME_SMALL } from "./editorial/MapNotes";
 
 // Canon palette. Pass 3 (2026-09-16): the off-palette grey #5f5e5a retired —
 // quiet text is dark ink at 0.7 / 0.45 (the last non-canon colors on the
@@ -59,6 +64,12 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
   const [existingType, setExistingType] = useState<"poll" | "ask" | null>(null);
   const sheetSwipe = useSheetSwipeDown(onClose, { enabled: !submitting, open: mobile });
+  // The editorial skin (Alborz's notes, item 7): the bible's dialog (desktop)
+  // or sheet (phone) — the fields on ink rules with mono labels, the options
+  // numbered in mono, "Add option" underlined, the write-in as a square mark,
+  // the durations as three frames (the pick fills ink), Open poll as the ink
+  // block, Cancel as a frame; the replace note as an alert paper. Same open.
+  const editorial = useEditorial();
 
   function setOption(i: number, val: string) {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)));
@@ -130,15 +141,20 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
 
   // ── Pass 3 shared styles: on-cream fields (sky inset ring), Label 14/700
   //    field heads without colons, sky-outline duration chips + Cancel. ──
-  const fieldLabel: React.CSSProperties = {
-    display: "block", fontFamily: INTER, fontSize: 14, fontWeight: 700, color: CANON_NAVY, marginBottom: 8,
-  };
-  const fieldBase: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box", border: "none", borderRadius: 9999,
-    background: CREAM, boxShadow: `inset 0 0 0 2px ${CANON_LIGHT}`,
-    fontFamily: INTER, color: CANON_NAVY, outline: "none",
-  };
+  const fieldLabel: React.CSSProperties = editorial
+    ? { display: "block", ...E.type.label11, color: E.color.ink, marginBottom: 8 }
+    : { display: "block", fontFamily: INTER, fontSize: 14, fontWeight: 700, color: CANON_NAVY, marginBottom: 8 };
+  const fieldBase: React.CSSProperties = editorial
+    ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", fontFamily: E.font.interface, color: E.color.ink, outline: "none" }
+    : {
+      width: "100%", boxSizing: "border-box", border: "none", borderRadius: 9999,
+      background: CREAM, boxShadow: `inset 0 0 0 2px ${CANON_LIGHT}`,
+      fontFamily: INTER, color: CANON_NAVY, outline: "none",
+    };
   const mPill = mobile ? M.pill.M : D.pill.M;
+  const cancelStyle: React.CSSProperties = editorial
+    ? { ...FRAME_SMALL, height: 44, padding: "0 18px" }
+    : { ...mPill, background: "transparent", border: `2px solid ${CANON_LIGHT}`, color: CANON_LIGHT, cursor: "pointer" };
 
   const content = (
     <>
@@ -149,7 +165,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
       <div style={{ fontFamily: LORA, fontWeight: 700, fontSize: mobile ? 22 : 28, lineHeight: 1.25, color: CANON_NAVY, marginBottom: 4 }}>
         Open a poll
       </div>
-      <div style={{ fontFamily: INTER, fontSize: 13, lineHeight: 1.45, color: INK_70, marginBottom: 20 }}>
+      <div style={editorial ? { ...E.type.note13, color: E.color.inkSub, marginTop: 4, marginBottom: 22 } : { fontFamily: INTER, fontSize: 13, lineHeight: 1.45, color: INK_70, marginBottom: 20 }}>
         Take the temperature of the room.
         {progressSeason != null && progressEpisode != null && (
           <> They&rsquo;ll see you&rsquo;re at <b>S{progressSeason} E{progressEpisode}</b>.</>
@@ -158,7 +174,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
 
       {showReplaceConfirm && (
         <div
-          style={{
+          style={editorial ? { background: E.color.cream, border: `1px solid ${E.color.alert}`, borderLeft: `5px solid ${E.color.alert}`, padding: "12px 14px", marginBottom: 16, ...E.type.note13, color: E.color.ink } : {
             background: "rgba(222,168,56,0.15)",
             border: `2px solid ${CANON_YELLOW}`,
             borderRadius: 12,
@@ -175,14 +191,14 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
             <button
               onClick={handleConfirmReplace}
               disabled={submitting}
-              style={{ ...mPill, background: CANON_YELLOW, color: CREAM, cursor: submitting ? "default" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              style={editorial ? { ...INK_SMALL, height: 44, padding: "0 18px", background: E.color.alert, cursor: submitting ? "default" : "pointer", justifyContent: "center" } : { ...mPill, background: CANON_YELLOW, color: CREAM, cursor: submitting ? "default" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             >
               {submitting ? <>Opening<LoadingDots /></> : "Replace it"}
             </button>
             <button
               onClick={() => setShowReplaceConfirm(false)}
               disabled={submitting}
-              style={{ ...mPill, background: "transparent", border: `2px solid ${CANON_LIGHT}`, color: CANON_LIGHT, cursor: "pointer" }}
+              style={cancelStyle}
             >
               Cancel
             </button>
@@ -200,7 +216,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={QUESTION_MAX}
           placeholder="Favorite episode so far?"
-          style={{ ...fieldBase, minHeight: 48, padding: "12px 20px", fontSize: 16 }}
+          style={{ ...fieldBase, ...(editorial ? { minHeight: 40, padding: "8px 0" } : { minHeight: 48, padding: "12px 20px" }), fontSize: 16 }}
         />
       </div>
 
@@ -209,7 +225,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
         <label style={fieldLabel}>Answer options &middot; 2 to 5</label>
         {options.map((o, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontFamily: INTER, fontSize: 13, color: INK_70, width: 16, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
+            <span style={editorial ? { ...E.type.label10, color: E.color.inkMuted, width: 16, textAlign: "center", flexShrink: 0 } : { fontFamily: INTER, fontSize: 13, color: INK_70, width: 16, textAlign: "center", flexShrink: 0 }}>{i + 1}</span>
             <input
               className="poll-composer-input"
               type="text"
@@ -217,7 +233,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
               onChange={(e) => setOption(i, e.target.value)}
               maxLength={OPTION_MAX}
               placeholder={`Option ${i + 1}`}
-              style={{ ...fieldBase, flex: 1, width: "auto", minHeight: 44, padding: "10px 16px", fontSize: 15 }}
+              style={{ ...fieldBase, flex: 1, width: "auto", ...(editorial ? { minHeight: 36, padding: "6px 0" } : { minHeight: 44, padding: "10px 16px" }), fontSize: 15 }}
             />
             {options.length > MIN_OPTIONS && (
               <button
@@ -233,7 +249,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
         {options.length < MAX_OPTIONS && (
           <button
             onClick={addOption}
-            style={{ ...(mobile ? M.pill.S : D.pill.S), background: "transparent", border: "none", color: CANON_BLUE, display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 12 }}
+            style={editorial ? { ...E.type.label11, background: "transparent", border: 0, padding: 0, color: E.color.ink, textDecoration: "underline", textUnderlineOffset: 2, display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, cursor: "pointer" } : { ...(mobile ? M.pill.S : D.pill.S), background: "transparent", border: "none", color: CANON_BLUE, display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 12 }}
           >
             <Plus size={14} /> Add option
           </button>
@@ -249,13 +265,17 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
           wrapper is gone, pass 3); radio stays CanonRadio at 20. */}
       <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer" }}>
         <span style={{ width: 16, display: "flex", justifyContent: "center", flexShrink: 0 }}>
-          <CanonRadio
-            checked={allowWriteIn}
-            bgColor={CANON_LIGHT}
-            color={CREAM}
-            size={20}
-            dotSize={10}
-          />
+          {editorial ? (
+            <span aria-hidden style={{ width: 14, height: 14, border: `1px solid ${E.color.ink}`, background: allowWriteIn ? E.color.ink : "transparent", boxSizing: "border-box" }} />
+          ) : (
+            <CanonRadio
+              checked={allowWriteIn}
+              bgColor={CANON_LIGHT}
+              color={CREAM}
+              size={20}
+              dotSize={10}
+            />
+          )}
         </span>
         <input
           type="checkbox"
@@ -279,7 +299,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
               <button
                 key={d.value}
                 onClick={() => setDuration(d.value)}
-                style={{
+                style={editorial ? { flex: 1, minHeight: 40, borderRadius: 0, border: `1px solid ${E.color.ink}`, background: selected ? E.color.ink : "transparent", ...E.type.label11, color: selected ? E.color.cream : E.color.ink, cursor: "pointer" } : {
                   flex: 1,
                   minHeight: 40,
                   borderRadius: 9999,
@@ -310,7 +330,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          style={{
+          style={editorial ? { ...E.type.button16, height: 44, padding: "0 22px", background: E.color.ink, color: E.color.cream, border: 0, opacity: canSubmit ? 1 : 0.6, cursor: canSubmit ? "pointer" : "not-allowed", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 } : {
             ...mPill,
             background: CANON_GREEN,
             color: CREAM,
@@ -326,7 +346,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
         </button>
         <button
           onClick={onClose}
-          style={{ ...mPill, background: "transparent", border: `2px solid ${CANON_LIGHT}`, color: CANON_LIGHT, cursor: "pointer" }}
+          style={cancelStyle}
         >
           Cancel
         </button>
@@ -336,6 +356,11 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
 
   // ── Shells: /m = the cream bottom sheet (grabber + swipe-down + tap-out,
   //    no ×); desktop = the 560 cream Form card on the standard dim. ──
+  if (editorial) {
+    return mobile
+      ? <BottomSheet onClose={() => { if (!submitting) onClose(); }} zIndex={1200} label="Open a poll">{content}</BottomSheet>
+      : <EditorialDialog onClose={onClose} width={560} label="Open a poll" align="left">{content}</EditorialDialog>;
+  }
   if (mobile) {
     return (
       <div style={{ ...OVERLAY.dim, zIndex: 1200 }} onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose(); }}>
