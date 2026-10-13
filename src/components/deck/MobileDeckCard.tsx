@@ -81,6 +81,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   // Pass 3: the answers sheet joins the M sheet grammar — grabber +
   // swipe-down (scrollRef gates the drag so the rows still scroll).
   const sheetScrollRef = useRef<HTMLDivElement>(null);
+  // The grid's scroller (round 3): after a save iOS left the sticky own-column
+  // cells painted at the swatch's height until the next scroll; a 1px nudge
+  // asks for the repaint.
+  const gridScrollRef = useRef<HTMLDivElement>(null);
   const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetScrollRef, open: ui !== "docked" });
   function showTapTip(cardId: string, e: React.MouseEvent) {
     if (tapTipTimer.current) window.clearTimeout(tapTipTimer.current);
@@ -226,6 +230,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
       });
       setEdits({});
       setUi("grid");
+      requestAnimationFrame(() => { const el = gridScrollRef.current; if (el) { el.scrollTop += 1; el.scrollTop -= 1; } });
       // Newly-answered cards unmask friends' answers server-side — re-read
       // so the "?"s flip without a page nav.
       if (mode === "group" && groupId) {
@@ -471,7 +476,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
           Editing your answers
         </div>
       )}
-      <div style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: editorial ? 0 : 20, boxShadow: editorial ? "none" : "0 8px 24px rgba(0,0,0,0.18)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div ref={gridScrollRef} style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: editorial ? 0 : 20, boxShadow: editorial ? "none" : "0 8px 24px rgba(0,0,0,0.18)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top (pass 3): Row A = Title 22 + the S Identity "Save"
             pill while editing (the 13.5 title squeezed beside a check glyph
             is retired); Row B = the column-header band — the pencil sits
@@ -531,22 +536,20 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
                     the cell — filled for an answer, dashed (Business 0.8)
                     when unanswered; the click bounce animates the swatch
                     (0.94 → rest). Non-edit keeps the full color cell. */}
-                {ui === "edit" ? (
-                  <div style={{
-                    width: 36, height: 36, borderRadius: editorial ? 0 : 6, margin: "auto", boxSizing: "border-box",
-                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                    border: mine === undefined ? (editorial ? `1px dashed ${E.color.ink}` : "2px dashed rgba(141,170,186,0.8)") : "none",
-                    transform: bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(1)",
-                    transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
-                  }} />
-                ) : (
-                  <div style={{
-                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
-                  }}>
-                    {mine != null && <Th v={mine} size={16} color={CANON.cream} />}
-                  </div>
-                )}
+                {/* One element in both modes (round 3) so the save restyles
+                    it in place; it stretches to the row explicitly. */}
+                <div style={ui === "edit" ? {
+                  width: 36, height: 36, borderRadius: editorial ? 0 : 6, margin: "auto", boxSizing: "border-box",
+                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                  border: mine === undefined ? (editorial ? `1px dashed ${E.color.ink}` : "2px dashed rgba(141,170,186,0.8)") : "none",
+                  transform: bounce?.cardId === card.id && bounce.phase === "up" ? "scale(0.94)" : "scale(1)",
+                  transition: bounce?.cardId === card.id && bounce.phase === "up" ? "none" : "transform .18s ease",
+                } : {
+                  flex: 1, alignSelf: "stretch", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center",
+                  background: mine === undefined ? "transparent" : mine ? CANON.personal : CANON.alert,
+                }}>
+                  {ui !== "edit" && mine != null && <Th v={mine} size={16} color={CANON.cream} />}
+                </div>
               </div>
               {columns.map((m) => {
                 const v = valueFor(m.id, card.id);

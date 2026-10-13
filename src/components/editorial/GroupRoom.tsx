@@ -30,6 +30,7 @@ import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
 import { fetchTvmazePoster } from "../../lib/tvmaze";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
+import useKeyboardInset from "../../lib/useKeyboardInset";
 import TrailerCard from "../TrailerCard";
 import { joinNames } from "../../lib/groupNames";
 
@@ -375,7 +376,7 @@ export function StanceSurface({ view, inset }: { view: StanceView; inset: number
       )}
       {view.trailer && (
         <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}>
-          <TrailerCard showId={view.trailer.showId} tvmazeId={view.trailer.tvmazeId} />
+          <TrailerCard showId={view.trailer.showId} tvmazeId={view.trailer.tvmazeId} bleed={inset} />
         </div>
       )}
     </div>
@@ -388,6 +389,7 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
   // The sheet starts below the phone's status bar (Alborz's notes, 2026-10-12).
   const scrollRef = useRef<HTMLDivElement>(null);
   const swipe = useSheetSwipeDown(onClose, { open: true, scrollRef });
+  const kb = useKeyboardInset(); // round 3: room for the keyboard under the fields
   // Rendered at the page root (Alborz's notes, round 2) — see BottomSheet.
   return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
@@ -395,7 +397,7 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
       <div
         ref={scrollRef}
         {...swipe.handlers}
-        style={{ position: "absolute", left: 0, right: 0, top: E.safe.plus(top), bottom: 0, background: E.color.cream, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
+        style={{ position: "absolute", left: 0, right: 0, top: E.safe.plus(top), bottom: 0, background: E.color.cream, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + ${32 + kb}px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
       >
         <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto" }} />
         {children}

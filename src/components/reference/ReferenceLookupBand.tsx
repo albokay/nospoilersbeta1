@@ -779,7 +779,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
                 <Frame onClick={justLogIt} disabled={wantBusy || logBusy} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
               </>
             )}
-            <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} /></div>
+            <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} bleed={mobile ? E.space.gutter : 32} /></div>
           </div>
         </EdShell>
       )}
@@ -907,7 +907,8 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
 
     const browse = (
       <div style={mobile
-        ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, padding: `30px ${gutter}px 8px`, background: E.color.accent }
+        // The phone's band runs to the page's bottom edge, behind the deck's docked tab (round 3): it eats the page's foot padding and paints it.
+        ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, marginBottom: "calc(-1 * (env(safe-area-inset-bottom, 0px) + 104px))", padding: `30px ${gutter}px calc(8px + env(safe-area-inset-bottom, 0px) + 104px)`, background: E.color.accent }
         : { marginTop: 64, padding: "30px 24px 8px", background: E.color.accent, boxSizing: "border-box" }}>
         <div style={mobile ? undefined : { maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
         {/* The rows as the shelves' tiles (Alborz's notes, 2026-10-12): 104×148,

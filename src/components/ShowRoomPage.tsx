@@ -1344,7 +1344,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   />
                 )}
                 {editorial ? (
-                  <div style={{ ...E.type.label11, letterSpacing: "0.06em", textTransform: "none", fontSize: 12, color: E.color.inkMuted, marginTop: 18 }}>Drafts are yours alone until you send them.</div>
+                  // The live site's words (round 3): above the list when it's empty, below it once there's writing.
+                  <div style={{ marginTop: privateFeedEntries.length ? 32 : 18, border: `1px dashed ${E.color.inkFaint}`, padding: "18px 20px 16px" }}>
+                    <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
+                    <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But this drafts space is just for you &mdash; no one will ever see what you write here.</p>
+                    <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+                  </div>
                 ) : (
                 <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>

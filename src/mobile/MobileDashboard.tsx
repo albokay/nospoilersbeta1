@@ -371,7 +371,7 @@ export default function MobileDashboard() {
       <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink } : {}) }}>
         {editorial ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop) }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" />
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
           </div>
         ) : (
         <div style={topBar}>
@@ -402,7 +402,7 @@ export default function MobileDashboard() {
             </>
           )}
           <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop), cursor: "pointer" }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" />
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
           </div>
         </div>
       ) : (

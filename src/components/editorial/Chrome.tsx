@@ -50,7 +50,8 @@ export function CornerTab({ kind, onClick, desktop = false, label, title, zIndex
       title={title ?? aria}
       onClick={onClick}
       style={{
-        position: desktop ? "fixed" : "absolute", left: 0, top: 0, width: span, height: span,
+        // Fixed on the phone too (round 3): the corner stays put as the page scrolls.
+        position: "fixed", left: 0, top: 0, width: span, height: span,
         padding: 0, border: 0, background: fill, cursor: "pointer", display: "block", zIndex,
         clipPath: "polygon(0 0, 100% 0, 0 100%)", WebkitTapHighlightColor: "transparent",
       }}
@@ -66,10 +67,12 @@ export function CornerTab({ kind, onClick, desktop = false, label, title, zIndex
 
 /** The gear beside a desktop title (Alborz's notes, round 2): an ink gear
  *  centred on the title's line, carrying the stale-invite dot. */
-export function TitleGear({ onClick, label, title, dot = false, size = 28 }: { onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; label: string; title?: string; dot?: boolean; size?: number }) {
+export function TitleGear({ onClick, label, title, dot = false, size = 18 }: { onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; label: string; title?: string; dot?: boolean; size?: number }) {
+  // Round 3: smaller and higher — it reads as a superscript on the title
+  // (18px on desktop, 16 on the phone), its hit box hugging the glyph.
   return (
     <button type="button" aria-label={label} title={title ?? label} onClick={onClick}
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 12, height: size + 12, marginLeft: 14, verticalAlign: "middle", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 8, height: size + 8, marginLeft: 10, verticalAlign: "top", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3" /><path d={GEAR_PATH} />
       </svg>

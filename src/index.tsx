@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
+import SkinBody from "./components/SkinBody";
 import App from "./App";
 import BetaGate from "./components/BetaGate";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -30,6 +31,7 @@ window.__reactRoot.render(
     <BetaGate>
       <BrowserRouter>
         <AuthProvider>
+          <SkinBody />
           <ComposeModalProvider>
             <App />
           </ComposeModalProvider>

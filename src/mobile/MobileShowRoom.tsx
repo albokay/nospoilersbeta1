@@ -18,7 +18,7 @@ import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, GearWord, AccountWord, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import { RowPoster } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
@@ -1067,12 +1067,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
             <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
               ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
-              ...(!privateOnly && roomId ? [<GearWord key="gear" hit={E.measure.phone.wordHit} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />] : []),
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />
             <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
               <div style={{ minWidth: 0 }}>
-              <EditorialTitle>{show?.name ?? "Show"}</EditorialTitle>
+              <EditorialTitle>{show?.name ?? "Show"}{!privateOnly && roomId && <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}</EditorialTitle>
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
               ) : groupName ? (
@@ -1359,7 +1358,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               />
             )}
             {editorial ? (
-              <div style={{ ...E.type.label11, letterSpacing: "0.06em", textTransform: "none", fontSize: 12, color: E.color.inkMuted, marginTop: 18 }}>Drafts are yours alone until you send them.</div>
+              // The live site's words (round 3): above the list when it's empty, below it once there's writing.
+              <div style={{ marginTop: privateFeedEntries.length ? 32 : 18, border: `1px dashed ${E.color.inkFaint}`, padding: "18px 18px 16px" }}>
+                <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
+                <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But this drafts space is just for you &mdash; no one will ever see what you write here.</p>
+                <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+              </div>
             ) : (
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
@@ -1376,7 +1380,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           bottom edge, so nothing scrolls behind or beside it (Alborz's
           notes, 2026-10-12). */}
       {editorial && tab !== "reference" && (
-        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `12px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 12px)` }}>
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `calc(12px + env(safe-area-inset-bottom, 0px) / 2) ${E.space.gutter}px calc(12px + env(safe-area-inset-bottom, 0px) / 2)` }}>
           <WriteBlock
             label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
             onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}

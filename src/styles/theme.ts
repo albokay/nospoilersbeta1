@@ -232,6 +232,10 @@ body{
 body.homepage{
   background: var(--dos-bg);
 }
+/* The editorial skin (round 3): the body is cream whatever the context class says. */
+body.skin-editorial, body.skin-editorial.homepage, body.skin-editorial.has-header, body.skin-editorial.group-context, body.skin-editorial.public-context{
+  background: var(--canon-cream,#fef8ea) !important;
+}
 body.has-header{
   background: linear-gradient(to top, var(--frame-top-private,#c8e4b0) 0px, var(--dos-bg) 250px) fixed, var(--dos-bg);
   background-attachment: fixed;

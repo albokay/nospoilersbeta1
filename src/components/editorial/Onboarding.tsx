@@ -131,14 +131,30 @@ export function Field({ label, value, onChange, placeholder, type = "text", inpu
   );
 }
 
+/** A field with its mono label inside, on one rule — the Show field's shape
+ *  (Alborz's notes, round 3, his option A for the friends' rows). */
+export function InlineField({ label, value, onChange, placeholder, type = "text", inputMode, autoCapitalize, autoCorrect, maxLength, autoFocus = false, style }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; autoCapitalize?: string; autoCorrect?: string; maxLength?: number; autoFocus?: boolean; style?: React.CSSProperties;
+}) {
+  return (
+    <label style={{ display: "flex", alignItems: "baseline", gap: 10, paddingBottom: 8, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
+      {label}
+      <input
+        className="e-field" type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode={inputMode} autoCapitalize={autoCapitalize} autoCorrect={autoCorrect} autoComplete="off" maxLength={maxLength} autoFocus={autoFocus} aria-label={label}
+        style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }}
+      />
+    </label>
+  );
+}
+
 /** The friends' rows: a name and an email on one rule, "Add another friend" under them. */
 export function FriendRows({ rows, onChange, onAdd, max = 7, desktop = false }: { rows: { name: string; email: string }[]; onChange: (i: number, field: "name" | "email", v: string) => void; onAdd: () => void; max?: number; desktop?: boolean }) {
   return (
     <div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: "flex", gap: desktop ? 24 : 16, marginTop: i === 0 ? 0 : 22 }}>
-          <Field label="Their name" value={r.name} onChange={(v) => onChange(i, "name", v)} placeholder="their name" maxLength={40} autoComplete="off" style={{ flex: 1, minWidth: 0 }} />
-          <Field label="Email" value={r.email} onChange={(v) => onChange(i, "email", v)} placeholder="email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" autoComplete="off" style={{ flex: 1.4, minWidth: 0 }} />
+          <InlineField label="Name:" value={r.name} onChange={(v) => onChange(i, "name", v)} placeholder="Sam" maxLength={40} style={{ flex: 1, minWidth: 0 }} />
+          <InlineField label="Email:" value={r.email} onChange={(v) => onChange(i, "email", v)} placeholder="sam@example.com" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" style={{ flex: 1.4, minWidth: 0 }} />
         </div>
       ))}
       {rows.length < max && (

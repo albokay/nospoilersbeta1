@@ -71,7 +71,7 @@ import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, GearWord, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow } from "../components/editorial/GroupRoom";
@@ -1099,11 +1099,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
-            <GearWord key="gear" hit={E.measure.phone.wordHit} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />,
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
           <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
-            <EditorialTitle>{groupName}</EditorialTitle>
+            <EditorialTitle>{groupName}<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} /></EditorialTitle>
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>
         </div>
