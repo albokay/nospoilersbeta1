@@ -276,7 +276,6 @@ export default function MobileInviteSheet({
             <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.15, letterSpacing: "-0.01em" }}>
               {targetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
             </div>
-            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Their name is how they&rsquo;ll show up for you.</div>
           </div>
           <div style={{ marginTop: 40 }}>
             <FriendRows rows={rows} onChange={(i, f, v) => setRows((prev) => prev.map((r, j) => (j === i ? { ...r, [f]: v } : r)))} onAdd={() => setRows((prev) => [...prev, { name: "", email: "" }])} />

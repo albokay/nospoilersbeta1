@@ -9,6 +9,7 @@
  * The hosts keep their state and calls; these only draw.
  */
 import React, { useRef } from "react";
+import { createPortal } from "react-dom";
 import { ArrowUp } from "lucide-react";
 import { E } from "../../styles/editorial";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
@@ -60,7 +61,10 @@ export function BottomSheet({ onClose, title, caption, head, children, foot, max
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const swipe = useSheetSwipeDown(onClose, { open: true, scrollRef });
-  return (
+  // Rendered at the page root (Alborz's notes, round 2): a sheet opened from
+  // inside the top-right words (the tips) was trapped under their stacking
+  // context and rose behind the deck's docked tab.
+  return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: E.color.veil, animation: "mDimIn 180ms ease-out" }} />
       <div role="dialog" aria-label={label ?? (typeof title === "string" ? title : undefined)} {...swipe.handlers} style={{ position: "relative", background: E.color.cream, color: E.color.ink, maxHeight, display: "flex", flexDirection: "column", padding: "10px 0 0", boxSizing: "border-box", animation: "mSheetRise 180ms ease-out", fontFamily: E.font.interface, overscrollBehavior: "none", ...swipe.style }}>
@@ -78,7 +82,8 @@ export function BottomSheet({ onClose, title, caption, head, children, foot, max
         <div ref={scrollRef} style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", minHeight: 0, padding: pad ? `14px ${G}px calc(env(safe-area-inset-bottom, 0px) + 24px)` : `0 0 calc(env(safe-area-inset-bottom, 0px) + ${foot ? 0 : 24}px)` }}>{children}</div>
         {foot}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

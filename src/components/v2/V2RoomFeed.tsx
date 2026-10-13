@@ -1036,7 +1036,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           if (sbClosed) {
             return (
               <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, marginTop: 16 }} onClick={(e) => toggleExpand(entry.threadId, e)}>
-                <SidebarPaper stack={false} style={{ cursor: "pointer" }}>
+                <SidebarPaper style={{ cursor: "pointer" }}>
                   <span style={{ position: "absolute", right: 14, top: 12 }}><Stamp spec={stampSpec} label={stampLabel} scale={0.66} ink={E.color.friend} lineWidth={1.4} /></span>
                   <div style={{ ...FROM_LINE, paddingRight: 80 }}>From: {SIDEBAR_DISPLAY_NAME} · {timeAgo(entry.updatedAt)}</div>
                   <div style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 10, paddingRight: 80 }}>{entry.title}</div>

@@ -402,7 +402,7 @@ export default function MobileDashboard() {
             </>
           )}
           <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop), cursor: "pointer" }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" />
+            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" />
           </div>
         </div>
       ) : (
@@ -458,7 +458,7 @@ export default function MobileDashboard() {
         <>
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
-            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -6, top: 78, width: 200 }} />}
+            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 78, width: 234 }} />}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>

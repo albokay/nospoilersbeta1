@@ -512,7 +512,9 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
         // A room that already reached the end this week gets the finished
         // wording; the rest hear "almost done".
         const everyoneDone = effs.every((x) => x && atOrPast(x.eff, S, last));
-        const tail = "\n\nBelow are the shows already proposed in this group, and a few from your own lists. Say yes to what you'd watch, or write back with a pitch.";
+        // Responses are off in the rooms, so the letter no longer asks for a
+        // write-back (Alborz's notes, round 2).
+        const tail = "\n\nBelow are the shows already proposed in this group, and a few from your own lists. Say yes to what you'd watch.";
         const ok = await plantOne(admin, room.id, room.show_id, "whats_next", S, everyoneDone ? {
           title: `You all finished ${show.name}. What's next?`,
           preview: "Everyone in this room has reached the end.",

@@ -44,7 +44,7 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
   if (editorial) {
     const pr = m ? 90 : 120;
     return (
-      <SidebarPaper style={{ marginTop: 22, marginBottom: 16 }}>
+      <SidebarPaper tone="alert" style={{ marginTop: 22, marginBottom: 16 }}>
         <span style={{ position: "absolute", right: 14, top: 12 }}>
           <Stamp spec={{ family: 2, ornament: 5, cancel: 0, tilt: 3 }} label={"Season\nEpisode"} ink={CANON.friend} lineWidth={1.4} scale={m ? 0.72 : 0.9} />
         </span>

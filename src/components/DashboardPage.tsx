@@ -2045,7 +2045,7 @@ export default function DashboardPage() {
             ]} />
             {!inGroup && (
               <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", left: "50%", top: W.logoTop, marginLeft: -70, cursor: "pointer" }}>
-                <SidebarLogo scale={0.5} blocksOpacity={1} bg="green" betaBadge />
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
               </div>
             )}
           </EditorialColumn>
@@ -2760,7 +2760,6 @@ export default function DashboardPage() {
                   <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", paddingRight: 8 }}>
                     {inviteTargetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
                   </div>
-                  <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Their name is how they&rsquo;ll show up for you.</div>
                   <div style={{ marginTop: 28 }}>
                     <FriendRows desktop rows={inviteRows} onChange={(i, f, v) => setInviteRows((prev) => prev.map((r, j) => (j === i ? { ...r, [f]: v } : r)))} onAdd={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])} />
                   </div>

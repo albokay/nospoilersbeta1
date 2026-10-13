@@ -1165,7 +1165,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
       <div style={editorial ? { padding: `0 ${E.space.gutter}px 140px`, position: "relative" } : { padding: "16px 16px 120px" }}>
         {editorial && roomNote && user && (
-          <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ position: "relative", marginLeft: "auto", marginRight: -6, marginTop: -22, width: 210, transform: "rotate(-2.5deg)" }} />
+          <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ position: "relative", marginLeft: "auto", marginRight: -40, marginTop: -22, width: 244, transform: "rotate(-2.5deg)" }} />
         )}
         {/* The letter from Sidebar (2026-09-26) sits ABOVE the control card on
             /m — the old progress pointer's slot (Alborz: mobile only; desktop

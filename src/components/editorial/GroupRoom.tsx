@@ -24,6 +24,7 @@
  *   OptionsSheet / OptionsDialog       the Sheet with its rows (and Cancel).
  */
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { SquarePen, MessageCircle } from "lucide-react";
 import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
@@ -382,7 +383,8 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
   // The sheet starts below the phone's status bar (Alborz's notes, 2026-10-12).
   const scrollRef = useRef<HTMLDivElement>(null);
   const swipe = useSheetSwipeDown(onClose, { open: true, scrollRef });
-  return (
+  // Rendered at the page root (Alborz's notes, round 2) — see BottomSheet.
+  return createPortal(
     <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: E.color.veil, animation: "mDimIn 180ms ease-out" }} />
       <div
@@ -393,7 +395,8 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
         <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto" }} />
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

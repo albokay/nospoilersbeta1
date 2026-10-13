@@ -156,7 +156,7 @@ export default function SidebarLogo({
   duration = 750,
   stagger = 40,
   blocksOpacity = 1,
-  wordmarkTint,
+  wordmarkTint: wordmarkTintProp,
   wordmarkTintOverBlocks,
   arrangements,
   bg = "green",
@@ -166,6 +166,9 @@ export default function SidebarLogo({
   const [layout, setLayout] = useState<Layout | null>(null);
   const [settled, setSettled] = useState(false);
 
+  // On cream (the editorial dashboard and show room — Alborz's notes, round
+  // 2) the wordmark is the one ink colour; everywhere else the cream art.
+  const wordmarkTint = wordmarkTintProp ?? (bg === "cream" ? CANON.dark : undefined);
   // Track the current context bg so the matching block can be rendered 10%
   // darker (otherwise it disappears against the page background). Reads
   // document.body.classList and updates via MutationObserver, since the

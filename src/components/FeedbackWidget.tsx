@@ -108,7 +108,7 @@ export default function FeedbackWidget({
         )}
         {open && (isMobile
           ? <BottomSheet onClose={handleClose} zIndex={10001} title="Send Sidebar feedback">{form}</BottomSheet>
-          : <Drawer onClose={handleClose} side="left" width={380} zIndex={10001} title="Feedback" caption="Send me your thoughts">{form}</Drawer>)}
+          : <Drawer onClose={handleClose} side="left" width={380} zIndex={10001} title="Feedback" caption="Send Sidebar your thoughts">{form}</Drawer>)}
       </>
     );
   }

@@ -252,7 +252,7 @@ export function PaperNote({ text, at, uid, desktop = false, style }: { text: str
       style={{ position: "absolute", zIndex: 3, transform: "rotate(-3deg)", overflow: "hidden", background: revealed ? E.color.accent : "transparent", touchAction: "pan-y", ...style }}
     >
       {revealed && <span aria-hidden="true" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: E.color.cream, fontSize: 22, lineHeight: 1 }}>×</span>}
-      <div className="e-note" style={{ position: "relative", boxSizing: "border-box", padding: desktop ? "12px 100px 13px 16px" : "12px 26px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
+      <div className="e-note" style={{ position: "relative", boxSizing: "border-box", padding: desktop ? "12px 100px 13px 16px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
         {text}
         {desktop && (
           <button type="button" className="e-nx" aria-label="Dismiss" title="Dismiss" onClick={dismiss} style={{ position: "absolute", right: 46, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, lineHeight: 1, color: E.color.ink, background: "transparent", border: 0, padding: 0, cursor: "pointer" }}>×</button>

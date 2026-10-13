@@ -1090,7 +1090,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           {/* The chat tab replaces the Open rooms disc and the Chat word
               (Alborz's notes, 2026-10-12); the title keeps clear of it. */}
           <ChatTab onClick={() => navigate(`/m/group/${groupId}/chat`)} isNew={chatNew} countLabel={(chatUnread ?? 0) > 0 ? chatUnreadLabel(chatUnread!) : null} />
-          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -6, top: E.safe.plus(208), width: 210 }} />}
+          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <GearWord key="gear" hit={E.measure.phone.wordHit} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />,

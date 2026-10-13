@@ -235,9 +235,9 @@ export function SealedEntry({ from, until, line, stamp }: { from: string; until:
 }
 
 /** The letter from Sidebar's paper. `stack` = the pinned letter's sky offset. */
-export function SidebarPaper({ children, stack = true, style }: { children: React.ReactNode; stack?: boolean; style?: React.CSSProperties }) {
+export function SidebarPaper({ children, stack = true, tone = "sky", style }: { children: React.ReactNode; stack?: boolean; /** The stack's colour: sky for a letter from Sidebar, alert for the room's welcome letter (Alborz's notes, round 2). */ tone?: "sky" | "alert"; style?: React.CSSProperties }) {
   return (
-    <div role="note" aria-label="A letter from Sidebar" style={{ position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxShadow: stack ? E.shadow.sidebarLetter : "none", padding: "16px 18px 14px", color: E.color.ink, boxSizing: "border-box", ...style }}>
+    <div role="note" aria-label="A letter from Sidebar" style={{ position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxShadow: stack ? (tone === "alert" ? `3px 3px 0 ${E.color.alert}` : E.shadow.sidebarLetter) : "none", padding: "16px 18px 14px", color: E.color.ink, boxSizing: "border-box", ...style }}>
       {children}
     </div>
   );
