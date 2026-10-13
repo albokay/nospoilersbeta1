@@ -410,7 +410,8 @@ export default function NudgePopover({
               onChange={handleCustomChange}
               maxLength={MESSAGE_MAX_LENGTH}
               placeholder={`${MESSAGE_MAX_LENGTH} char max`}
-              style={editorial ? { width: "100%", fontSize: 14, padding: "4px 0 6px", border: 0, borderBottom: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", boxSizing: "border-box", color: E.color.ink, outline: "none", fontFamily: E.font.interface } : {
+              // Round 6: the field rule — a full 1px ink box around the text as it was.
+              style={editorial ? { width: "100%", fontSize: 14, height: 36, padding: "0 10px", marginTop: 2, border: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", boxSizing: "border-box", color: E.color.ink, outline: "none", fontFamily: E.font.interface } : {
                 width: "100%",
                 fontSize: 11,
                 padding: "5px 10px",

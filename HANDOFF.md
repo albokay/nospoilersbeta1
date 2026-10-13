@@ -1,5 +1,9 @@
 # Sidebar — Technical State (2026-10-13)
 
+> **⭐ 2026-10-13 — ALBORZ'S NOTES, round 6 — B: the poll and nudge boxes, the friend's shelf (both platforms).**
+> - **The field rule, late arrivals:** the poll's question and option fields (`PollComposer`) and the nudge's write-your-own field (`NudgePopover`) are full 1px ink boxes around the text as it was — the labels and placeholders unchanged (his call: copy as-is).
+> - **The friend's profile shelf:** the "What they're watching" caption is gone (the desktop drawer and the phone's profile page); the shelves' own heads say it, and the empty line ("Sam hasn't filled out their personal dashboard yet.") stays.
+
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 6 — A: letters, the map, the homepage (both platforms).**
 > - **Highlights:** the seam between two different notes is 2px, split evenly — 1px off the outgoing stretch's end, 1px off the incoming stretch's start (`seamBefore` / `seamAfter` in `HighlightableBody`); the editorial box reaches 1px above and below each line (was 2), opening the gap between a stretch's lines to about 2px.
 > - **The hover line:** "One note from Alborz." ("visible" dropped); the sealed line unchanged.

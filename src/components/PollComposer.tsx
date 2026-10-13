@@ -144,8 +144,9 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
   const fieldLabel: React.CSSProperties = editorial
     ? { display: "block", ...E.type.label11, color: E.color.ink, marginBottom: 8 }
     : { display: "block", fontFamily: INTER, fontSize: 14, fontWeight: 700, color: CANON_NAVY, marginBottom: 8 };
+  // Round 6: every field a full 1px ink box (the field rule), the labels as they were.
   const fieldBase: React.CSSProperties = editorial
-    ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", fontFamily: E.font.interface, color: E.color.ink, outline: "none" }
+    ? { width: "100%", boxSizing: "border-box", border: `1px solid ${E.color.ink}`, borderRadius: 0, background: "transparent", fontFamily: E.font.interface, color: E.color.ink, outline: "none" }
     : {
       width: "100%", boxSizing: "border-box", border: "none", borderRadius: 9999,
       background: CREAM, boxShadow: `inset 0 0 0 2px ${CANON_LIGHT}`,
@@ -216,7 +217,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
           onChange={(e) => setQuestion(e.target.value)}
           maxLength={QUESTION_MAX}
           placeholder="Favorite episode so far?"
-          style={{ ...fieldBase, ...(editorial ? { minHeight: 40, padding: "8px 0" } : { minHeight: 48, padding: "12px 20px" }), fontSize: 16 }}
+          style={{ ...fieldBase, ...(editorial ? { minHeight: 44, padding: "0 12px" } : { minHeight: 48, padding: "12px 20px" }), fontSize: 16 }}
         />
       </div>
 
@@ -233,7 +234,7 @@ export default function PollComposer({ groupId, onClose, onOpened, mobile = fals
               onChange={(e) => setOption(i, e.target.value)}
               maxLength={OPTION_MAX}
               placeholder={`Option ${i + 1}`}
-              style={{ ...fieldBase, flex: 1, width: "auto", ...(editorial ? { minHeight: 36, padding: "6px 0" } : { minHeight: 44, padding: "10px 16px" }), fontSize: 15 }}
+              style={{ ...fieldBase, flex: 1, width: "auto", ...(editorial ? { minHeight: 40, padding: "0 12px" } : { minHeight: 44, padding: "10px 16px" }), fontSize: 15 }}
             />
             {options.length > MIN_OPTIONS && (
               <button

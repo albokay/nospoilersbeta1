@@ -73,7 +73,7 @@ export default function FriendProfileDrawer() {
   if (editorial) {
     const found = ready && !notFound && !!ownerId;
     return (
-      <Drawer onClose={() => setUsername(null)} zIndex={80} label="Friend" title={found ? ownerName : "Friend"} caption={found ? "What they're watching" : undefined}>
+      <Drawer onClose={() => setUsername(null)} zIndex={80} label="Friend" title={found ? ownerName : "Friend"}>
         {!ready ? (
           <div style={{ ...E.type.label11, color: E.color.inkMuted }} aria-busy="true">loading<LoadingDots /></div>
         ) : !found ? (

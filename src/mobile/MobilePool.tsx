@@ -80,7 +80,6 @@ export default function MobilePool({ username, overlay = false, onBack }: { user
           ) : (
             <>
               <EditorialTitle>{ownerName}</EditorialTitle>
-              <EditorialSub>What they&rsquo;re watching</EditorialSub>
               <div style={{ marginTop: 40 }}><FriendProfile ownerId={ownerId as string} ownerName={ownerName} mobile /></div>
               {!user && <Block onClick={() => navigate("/m")} style={{ marginTop: 40 }}>Sign in</Block>}
             </>
