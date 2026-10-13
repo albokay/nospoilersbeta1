@@ -3471,6 +3471,42 @@ export async function markGroupChatSeen(groupId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** A friend's new pitch (Alborz's notes, round 3; 20261012_group_pitches_seen.sql):
+ *  per group, the newest show someone ELSE pitched (the earliest vote on a
+ *  show is the pitch) against the caller's pitches_last_seen_at stamp. */
+export type GroupPitchActivity = {
+  groupId: string;
+  pitchesLastSeenAt: number | null;
+  latestPitchAt: number | null;
+  latestPitchShowId: string | null;
+  latestPitchShowName: string | null;
+  latestPitchUserId: string | null;
+  newCount: number;
+};
+export async function fetchGroupPitchActivity(userId: string): Promise<GroupPitchActivity[]> {
+  const { data, error } = await supabase.rpc("get_group_pitch_activity", { p_user_id: userId });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    groupId: r.group_id,
+    pitchesLastSeenAt: r.pitches_last_seen_at ? new Date(r.pitches_last_seen_at).getTime() : null,
+    latestPitchAt: r.latest_pitch_at ? new Date(r.latest_pitch_at).getTime() : null,
+    latestPitchShowId: r.latest_pitch_show_id ?? null,
+    latestPitchShowName: r.latest_pitch_show_name ?? null,
+    latestPitchUserId: r.latest_pitch_user_id ?? null,
+    newCount: r.new_count == null ? 0 : Number(r.new_count),
+  }));
+}
+/** Whether a group has a pitch the caller hasn't seen. */
+export function pitchHasNewActivity(a: { pitchesLastSeenAt: number | null; latestPitchAt: number | null }): boolean {
+  if (a.latestPitchAt == null) return false;
+  return a.pitchesLastSeenAt == null || a.latestPitchAt > a.pitchesLastSeenAt;
+}
+/** Stamp the caller's pitches_last_seen_at to NOW() for a people-group. */
+export async function markGroupPitchesSeen(groupId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_group_pitches_seen", { p_group_id: groupId });
+  if (error) throw error;
+}
+
 /**
  * "Has new visible activity since the user last saw the room?"
  * - NULL lastSeenAt + non-NULL activity → true (never visited; new content exists)

@@ -1,5 +1,11 @@
 # Sidebar — Technical State (2026-10-12)
 
+> **⭐ 2026-10-12 — ALBORZ'S NOTES, round 3 — B: a friend's NEW PITCH is signalled on the dashboard and in the group room (both platforms). NEEDS `supabase/migrations/20261012_group_pitches_seen.sql` in prod (handed to Alborz; the UI is tolerant until then — no marks, no errors).**
+> - **The stamp:** `people_group_members.pitches_last_seen_at` + `mark_group_pitches_seen(group_id)` + `get_group_pitch_activity(user)` (per group: the stamp, the newest pitch by someone ELSE — a show's earliest vote is its pitch; a later yes is an answer — with the show's name and the pitcher's id, and the count newer than the stamp). SECURITY DEFINER like the chat pair. `db.ts`: `GroupPitchActivity`, `fetchGroupPitchActivity`, `pitchHasNewActivity`, `markGroupPitchesSeen`.
+> - **The dashboard:** both dashboards load the activity beside the room and chat signals (tolerant: `[]` before the migration). The group row's line reads "Sam pitched The Sopranos" with an identity dot (after new letters, before a sealed one; `computeLines` / `pitchSentence` in `editorial/Dashboard.tsx`); the paper note says "Sam pitched The Sopranos to Couch Club." (several groups: "New pitches in A and B.").
+> - **The group room:** `useFreshPitches(groupId, userId)` (`src/lib/useFreshPitches.ts`) reads the group's votes and the stamp, marks each pitched show the viewer hasn't seen (an identity dot before the name on the pitched row — `ShowRow fresh`), feeds the room's paper note ("Sam pitched The Sopranos."), then stamps the room seen — this visit keeps its marks, the dashboard's signal clears for next time. The viewer's own pitches never count.
+> - Classic accounts: nothing changes (the hook gets `null` and the classic tiles don't read the activity).
+
 > **⭐ 2026-10-12 — ALBORZ'S NOTES, round 3 — A (phone unless noted) + the friends' fields.**
 > - **The gear:** on the phone it moved beside the group name and the show name (it never had, round 2 only did desktop); on both platforms `TitleGear` is smaller (18 desktop / 16 phone) and sits high on the title like a superscript (`verticalAlign: top`, a hit box hugging the glyph).
 > - **The write block's foot:** the same air above and below — each half of the old total (`12px + inset/2` top and bottom).

@@ -27,19 +27,29 @@ import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
 import {
-  fetchShows, fetchShowRoomsForGroups, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity,
-  type RoomVisibility, type GroupChatActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup,
+  fetchShows, fetchShowRoomsForGroups, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
+  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import type { PeopleGroup, PeopleGroupMember } from "../../types";
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
 
-type GroupLine = { line: string; envelope: "open" | "sealed" | null };
+type GroupLine = { line: string; envelope: "open" | "sealed" | null; /** A friend's new pitch (round 3): the identity dot. */ dot?: boolean };
+
+/** "Sam pitched The Sopranos" — the newest pitch by someone else in a group,
+ *  when the viewer hasn't seen it (Alborz's notes, round 3). */
+export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefined, contactNames: Record<string, string>): { text: string; at: number } | null {
+  if (!a || !pitchHasNewActivity(a)) return null;
+  const m = g.members.find((x) => x.userId === a.latestPitchUserId);
+  const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
+  return { text: `${who} pitched ${a.latestPitchShowName ?? "a show"}`, at: a.latestPitchAt ?? 0 };
+}
 
 function computeLines(
   groups: DashboardGroup[], roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
+  pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -70,14 +80,17 @@ function computeLines(
       for (const r of rooms) if (r.groupId === gid && (!latest || r.createdAt > latest.at)) latest = { at: r.createdAt, roomId: r.roomId };
     }
     const chat = chatNew.has(gid);
-    const envelope: GroupLine["envelope"] = newest || chat ? "open" : sealed ? "sealed" : null;
+    // A friend's new pitch (round 3): after new letters, before a sealed one.
+    const pitch = pitchSentence(g, pitches.find((a) => a.groupId === gid), contactNames);
+    const envelope: GroupLine["envelope"] = newest || chat ? "open" : (!pitch && sealed) ? "sealed" : null;
     const withShow = (lead: string, roomId: string) => { const n = showOf(roomId); return n ? `${lead} · ${n}` : lead; };
     const line = newest ? withShow("New letters", newest.roomId)
+      : pitch ? pitch.text
       : sealed ? withShow("A sealed letter", sealed.roomId)
       : chat ? "New in chat"
       : latest ? (showOf(latest.roomId) ?? "No shows yet")
       : "No shows yet";
-    out[gid] = { line, envelope };
+    out[gid] = { line, envelope, dot: !newest && !!pitch };
   }
   return out;
 }
@@ -87,6 +100,7 @@ function computeLines(
 export function dashboardNote(
   groups: DashboardGroup[], nameOf: (groupId: string) => string,
   roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
+  pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
 ): { text: string; at: number } | null {
   const known = new Set(groups.map((g) => g.group.id));
   const readable = new Map<string, number>(), sealed = new Map<string, number>(), chat = new Map<string, number>();
@@ -100,6 +114,9 @@ export function dashboardNote(
   const names = (rows: [string, number][]) => joinNames(rows.map(([g]) => nameOf(g)));
   const r = sorted(readable);
   if (r.length) return { text: r.length === 1 ? `A letter is waiting for you in ${nameOf(r[0][0])}.` : `Letters are waiting in ${names(r)}.`, at: r[0][1] };
+  // A friend's new pitch (round 3): the newest one, named; several groups → their names.
+  const p = groups.map((g) => ({ g, s: pitchSentence(g, pitches.find((a) => a.groupId === g.group.id), contactNames) })).filter((x) => x.s).sort((a, b) => b.s!.at - a.s!.at);
+  if (p.length) return { text: p.length === 1 ? `${p[0].s!.text} to ${nameOf(p[0].g.group.id)}.` : `New pitches in ${joinNames(p.map((x) => nameOf(x.g.group.id)))}.`, at: p[0].s!.at };
   const s = sorted(sealed);
   if (s.length) return { text: s.length === 1 ? `A sealed letter is waiting for you in ${nameOf(s[0][0])}.` : `Sealed letters are waiting in ${names(s)}.`, at: s[0][1] };
   const c = sorted(chat);
@@ -137,7 +154,7 @@ function GhostRow() {
   );
 }
 
-export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, loading = false, onEnter, onInvite, onNewGroup, hideNewGroup = false }: {
+export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onInvite, onNewGroup, hideNewGroup = false }: {
   groups: DashboardGroup[];
   pendingInvites: PendingGroupInvite[];
   contactNames: Record<string, string>;
@@ -145,6 +162,8 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   selfUserId: string;
   roomVis: RoomVisibility[];
   chatActivity: GroupChatActivity[];
+  /** A friend's new pitch per group (round 3). */
+  pitchActivity?: GroupPitchActivity[];
   loading?: boolean;
   onEnter: (groupId: string) => void;
   onInvite: (inv: PendingGroupInvite) => void;
@@ -165,7 +184,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById), [groups, roomVis, chatActivity, rooms, showsById]);
+  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames]);
 
   return (
     <div>
@@ -187,7 +206,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
               <span style={nameStyle}>{name}</span>
               <span style={lineStyle}>{l?.line ?? ""}</span>
             </span>
-            {l?.envelope && <LetterDisc kind={l.envelope} className="m-dot-in" />}
+            {l?.envelope ? <LetterDisc kind={l.envelope} className="m-dot-in" /> : l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
           </button>
         );
       })}

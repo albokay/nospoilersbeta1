@@ -36,11 +36,13 @@ import { joinNames } from "../../lib/groupNames";
 
 /** The room's paper note: a readable letter first, then a sealed one, then
  *  chat; null when nothing waits. The rooms are the shelves' rows. */
-export function groupRoomNote(rooms: { roomId: string | null; name: string }[], dots: Map<string, "blue" | "red">, chatNew: boolean): { text: string; at: number } | null {
+export function groupRoomNote(rooms: { roomId: string | null; name: string }[], dots: Map<string, "blue" | "red">, chatNew: boolean, pitch: string | null = null): { text: string; at: number } | null {
   const seen = new Set<string>();
   const named = (kind: "blue" | "red") => rooms.filter((r) => r.roomId && dots.get(r.roomId) === kind && !seen.has(r.name) && seen.add(r.name)).map((r) => r.name);
   const blue = named("blue");
   if (blue.length) return { text: blue.length === 1 ? `A letter is waiting for you in ${blue[0]}.` : `Letters are waiting in ${joinNames(blue)}.`, at: 0 };
+  // A friend's new pitch (round 3): after waiting letters, before a sealed one.
+  if (pitch) return { text: pitch, at: 0 };
   const red = named("red");
   if (red.length) return { text: red.length === 1 ? `A sealed letter is waiting in ${red[0]}.` : `Sealed letters are waiting in ${joinNames(red)}.`, at: 0 };
   if (chatNew) return { text: "Something new in the chat.", at: 0 };
@@ -137,7 +139,7 @@ const SWIPE_COMMIT = 60; // past this, letting go opens the options
 /** The hint key: the first visit slides the top row open and back once. */
 export function swipeHintKey(uid: string) { return `ns_swipe_hint_${uid}`; }
 
-export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false }: {
+export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false }: {
   tvmazeId?: string | null;
   /** false = a pitched row (no poster). */
   poster?: boolean;
@@ -154,6 +156,8 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   padding?: string;
   /** Slide open and back once (the first visit's hint). */
   hint?: boolean;
+  /** A friend's new pitch (round 3): the identity dot before the name. */
+  fresh?: boolean;
   /** A proposal you passed on: the name in ink-muted. */
   dashed?: boolean;
 }) {
@@ -165,7 +169,10 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
 
   const text = (
     <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: poster ? 5 : 4 }}>
-      <span style={{ ...(nameSize === 17 ? E.type.row17 : E.type.row16), color: dashed ? E.color.inkMuted : E.color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+      <span style={{ ...(nameSize === 17 ? E.type.row17 : E.type.row16), color: dashed ? E.color.inkMuted : E.color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {fresh && <span aria-label="New pitch" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
+        {name}
+      </span>
       {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>}
     </span>
   );

@@ -69,6 +69,7 @@ import {
   roomHasNewActivity,
   roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
+  fetchGroupPitchActivity, type GroupPitchActivity,
   fetchFriendGroupMembers,
   fetchRoomDnfMap,
   setRoomDnf,
@@ -115,6 +116,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { subscribeRoomDots } from "../lib/liveRoomDots";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
+import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
@@ -439,6 +441,7 @@ export default function DashboardPage() {
   // New-activity dots: per-room visibility (own excluded) + per-group chat state.
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
+  const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
 
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
   // `sub` adds a second line beneath a divider — used to hang the new-activity
@@ -681,8 +684,9 @@ export default function DashboardPage() {
       Promise.all([
         fetchRoomActivityVisibility(user.id, true),
         fetchGroupChatActivity(user.id),
+        fetchGroupPitchActivity(user.id).catch(() => [] as GroupPitchActivity[]), // round 3: tolerant before the migration
       ])
-        .then(([rv, ca]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); } })
+        .then(([rv, ca, pa]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); setPitchActivity(pa); } })
         .catch((e) => console.warn("[dashboard] activity dots not loaded", e));
     })();
     return () => { cancelled = true; };
@@ -849,6 +853,9 @@ export default function DashboardPage() {
   // userId → display name for the active group (naming arc 2026-07-07: the
   // name the VIEWER gave each member, else their handle) — drives the opted-in
   // tooltips, the "Read what … has written?" prompt, and avatar letters.
+  // A friend's new pitch (round 3): the pitched shows the viewer hasn't seen
+  // (showId → pitcher), stamped seen once drawn. Classic: nothing.
+  const freshPitches = useFreshPitches(editorial && inGroup ? activeGroupId : null, user?.id ?? null);
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     const ag = railGroups.find((r) => r.group.id === activeGroupId);
@@ -1985,13 +1992,15 @@ export default function DashboardPage() {
   // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
   // sentence from the dashboard's signals, named with the rows' group labels.
   // (A plain call, not a memo: this sits after the loading return.)
-  const roomNote = inGroup && editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, !!(activeGroupId && chatNewByGroup.get(activeGroupId))) : null;
+  const freshFirst = [...freshPitches.entries()][0];
+  const freshPitchText = freshFirst ? (() => { const n = [...groupShelves.watching, ...groupShelves.notStarted].find((r) => r.pill.showId === freshFirst[0])?.name; return n ? `${memberNameById[freshFirst[1]] ?? "A friend"} pitched ${n}.` : null; })() : null;
+  const roomNote = inGroup && editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, !!(activeGroupId && chatNewByGroup.get(activeGroupId)), freshPitchText) : null;
   const dashNote = inGroup ? null : dashboardNote(railGroups, (gid) => {
     const r = railGroups.find((g) => g.group.id === gid);
     if (!r) return "a group";
     const others = r.members.filter((m) => m.userId !== selfUserId);
     return groupDisplayName(r.group, others, contactNames, r.pendingInvites.map((p) => p.name || "a friend"), groupNumberById[gid]);
-  }, roomVis, chatActivity);
+  }, roomVis, chatActivity, pitchActivity, contactNames);
 
   const clustersEl = (
     <GroupClusters
@@ -2246,6 +2255,7 @@ export default function DashboardPage() {
                             name={r.name}
                             line={editorialProposalLine(r.pill.showId)}
                             dashed={r.passed}
+                            fresh={freshPitches.has(r.pill.showId)}
                             end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                             onOpen={() => onPillClick(r.pill, r.name)}
                             onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
@@ -2434,7 +2444,7 @@ export default function DashboardPage() {
             const groupsEl = (
               <EditorialGroups
                 groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
-                roomVis={roomVis} chatActivity={chatActivity} loading={!railLoaded}
+                roomVis={roomVis} chatActivity={chatActivity} pitchActivity={pitchActivity} loading={!railLoaded}
                 onEnter={(id) => navigate(`/dashboard?g=${id}`)}
                 onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                 onNewGroup={() => openInvite()}

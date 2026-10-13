@@ -70,6 +70,7 @@ import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
+import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
@@ -408,6 +409,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // userId → display name (naming arc 2026-07-07, desktop parity): the name
   // the VIEWER gave each member, else their handle — drives the interested
   // lines, the "Read what … has written?" prompt, and avatar letters.
+  // A friend's new pitch (round 3): the pitched shows the viewer hasn't seen
+  // (showId → pitcher), stamped seen once drawn. Classic: nothing.
+  const freshPitches = useFreshPitches(editorial ? groupId : null, user?.id ?? null);
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     for (const mem of members) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username, mem.displayName);
@@ -1068,7 +1072,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     setGearOpen(true);
   }
 
-  const roomNote = editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, chatNew) : null;
+  const freshFirst = [...freshPitches.entries()][0];
+  const freshPitchText = freshFirst ? (() => { const n = [...groupShelves.watching, ...groupShelves.notStarted].find((r) => r.pill.showId === freshFirst[0])?.name; return n ? `${memberNameById[freshFirst[1]] ?? "A friend"} pitched ${n}.` : null; })() : null;
+  const roomNote = editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, chatNew, freshPitchText) : null;
 
   return (
     <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
@@ -1257,6 +1263,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         name={r.name}
                         line={proposalLine(r.pill.showId)}
                         dashed={r.passed}
+                        fresh={freshPitches.has(r.pill.showId)}
                         end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                         onOpen={() => onRowClick(r.pill, r.name)}
                         onOptions={act}

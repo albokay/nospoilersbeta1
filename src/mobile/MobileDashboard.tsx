@@ -38,6 +38,7 @@ import {
   roomHasNewActivity,
   roomHasNewInvisibleActivity,
   fetchGroupChatActivity,
+  fetchGroupPitchActivity, type GroupPitchActivity,
   chatHasNewActivity,
   type PendingGroupInvite,
   type RoomVisibility,
@@ -109,6 +110,7 @@ export default function MobileDashboard() {
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
+  const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   // CP3 social onboarding (3-screen show→friend→seed-entry flow). Fires ONCE
@@ -248,8 +250,9 @@ export default function MobileDashboard() {
       Promise.all([
         fetchRoomActivityVisibility(user.id, true),
         fetchGroupChatActivity(user.id),
+        fetchGroupPitchActivity(user.id).catch(() => [] as GroupPitchActivity[]), // round 3: tolerant before the migration
       ])
-        .then(([rv, ca]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); } })
+        .then(([rv, ca, pa]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); setPitchActivity(pa); } })
         .catch((e) => console.warn("[m-dashboard] activity dots not loaded", e));
     })();
     return () => { cancelled = true; };
@@ -320,7 +323,7 @@ export default function MobileDashboard() {
     if (!r) return "a group";
     const others = r.members.filter((m) => m.userId !== selfUserId);
     return groupDisplayName(r.group, others, contactNames, r.pendingInvites.map((p) => p.name || "a friend"), groupNumberById[gid]);
-  }, roomVis, chatActivity), [railGroups, selfUserId, contactNames, groupNumberById, roomVis, chatActivity]);
+  }, roomVis, chatActivity, pitchActivity, contactNames), [railGroups, selfUserId, contactNames, groupNumberById, roomVis, chatActivity, pitchActivity]);
 
   async function refreshRailAndInvites() {
     if (!user) return;
@@ -473,7 +476,7 @@ export default function MobileDashboard() {
               <div style={{ marginTop: 70 }}>
                 <EditorialGroups
                   groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
-                  roomVis={roomVis} chatActivity={chatActivity}
+                  roomVis={roomVis} chatActivity={chatActivity} pitchActivity={pitchActivity}
                   onEnter={(id) => navigate(`/m/group/${id}`)}
                   onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                   onNewGroup={() => setInviteOpen(true)}
