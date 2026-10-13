@@ -309,3 +309,9 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }
+/** The auth context without the provider guard — null outside it. The skin
+ *  hook reads this so a leaf piece that renders anywhere (the hover tooltip)
+ *  can ask which look it is under without a crash. */
+export function useAuthOptional() {
+  return useContext(Ctx);
+}

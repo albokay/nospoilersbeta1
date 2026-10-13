@@ -1,6 +1,8 @@
 import React, { useState, useRef } from "react";
 import { CANON } from "../styles/canon";
 import { createPortal } from "react-dom";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
 
 type Direction = "above" | "below" | "right" | "left";
 type Align = "center" | "left" | "right";
@@ -44,6 +46,9 @@ export default function Tooltip({
   const [show, setShow] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const wrapperRef = useRef<HTMLSpanElement>(null);
+  // The editorial skin (Alborz's notes, item 7): the bubble as the framed
+  // paper note — square, a 1px ink frame, no shadow; the lean stays.
+  const editorial = useEditorial();
 
   const handleMouseEnter = () => {
     if (wrapperRef.current) setRect(wrapperRef.current.getBoundingClientRect());
@@ -140,6 +145,7 @@ export default function Tooltip({
             width: width === "auto" ? "max-content" : width,
             zIndex: 9999,
             pointerEvents: "none",
+            ...(editorial ? { borderRadius: 0, border: `1px solid ${E.color.ink}`, boxShadow: "none", color: E.color.ink, fontFamily: E.font.interface } : {}),
             ...tooltipStyle,
           }}>
             {text}

@@ -20,7 +20,7 @@
  * the same.
  */
 import { createContext, useContext } from "react";
-import { useAuth } from "./auth";
+import { useAuthOptional } from "./auth";
 
 export type Skin = "classic" | "editorial";
 
@@ -55,7 +55,7 @@ export function visitSkin(): Skin | null {
 
 /** The look this account (or this visit) sees. */
 export function useSkin(): Skin {
-  const { profile } = useAuth();
+  const profile = useAuthOptional()?.profile;
   if (profile?.skin === "editorial") return "editorial";
   if (VISIT_SKIN === "editorial") return "editorial";
   return "classic";

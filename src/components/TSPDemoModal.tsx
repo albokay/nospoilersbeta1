@@ -17,6 +17,9 @@ import {
   tspDemoFeedEntries, tspDemoReplies, tspDemoSeedMembers,
 } from "../lib/tspDemoFixture";
 import { CANON } from "../styles/canon";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { INK_BLOCK_M } from "./editorial/MapNotes";
 
 const CREAM_BG = CANON.cream;
 const INK_SOFT = "#5a4d3a";
@@ -33,6 +36,11 @@ export default function TSPDemoModal({ onClose, reentry }: {
   reentry?: boolean;
 }) {
   const { user, profile } = useAuth();
+  // The editorial skin (Alborz's notes, item 7): the tour's card as the
+  // bible's dialog — square with the stack shadow, the eyebrow in mono, the
+  // title in Lora ink, the exit as the ink block. The sample room inside
+  // stays the live room's classic rendering (it is a demo fixture).
+  const editorial = useEditorial();
   const feedRef = useRef<V2RoomFeedHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -123,29 +131,29 @@ export default function TSPDemoModal({ onClose, reentry }: {
     // Clicking the dim outside the tour card exits, same as the button
     // (Alborz 2026-08-14).
     <div role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.2)",
+      position: "fixed", inset: 0, background: editorial ? E.color.veil : "rgba(0,0,0,0.2)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>
       {/* Card: fixed header + footer, only the feed/map scroll between them so
           the map and the exit control stay put (sticky), spec tweak. */}
       <div style={{
         position: "relative", width: "85vw", height: "90vh", background: CREAM_BG,
-        borderRadius: 24, boxShadow: "0 12px 36px rgba(0,0,0,0.25)", overflow: "hidden",
+        borderRadius: editorial ? 0 : 24, boxShadow: editorial ? E.shadow.cardStack : "0 12px 36px rgba(0,0,0,0.25)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "hidden",
         display: "flex", flexDirection: "column",
       }}>
         {/* Header chrome — centered eyebrow + Lora title (no dropdown here, §2). */}
         <div style={{ flex: "0 0 auto", padding: "28px 36px 16px", textAlign: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: INK_SOFT }}>
+          <div style={editorial ? { ...E.type.label11, color: E.color.inkMuted } : { fontSize: 13, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: INK_SOFT }}>
             a quick tour of a show room
           </div>
-          <h1 style={{ fontFamily: LORA, fontWeight: 700, fontSize: 38, color: C.midnight, margin: "6px 0 0" }}>
+          <h1 style={editorial ? { ...E.type.hero36, color: E.color.ink, margin: "8px 0 0" } : { fontFamily: LORA, fontWeight: 700, fontSize: 38, color: C.midnight, margin: "6px 0 0" }}>
             The Sidebar Protocol
           </h1>
         </div>
 
         {/* Room surface — sky panel, fills the middle. Dropdown pinned at its
             top (real in-room position, §2/§5); only the feed/map scroll. */}
-        <div style={{ flex: "1 1 auto", minHeight: 0, margin: "0 64px", background: C.sky, borderRadius: 16, padding: "16px 20px 0", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "1 1 auto", minHeight: 0, margin: "0 64px", background: C.sky, borderRadius: editorial ? 0 : 16, padding: "16px 20px 0", display: "flex", flexDirection: "column" }}>
           <div style={{ flex: "0 0 auto", display: "flex", justifyContent: "center", marginBottom: 16 }}>
             <OneSelectProgress
               show={TSP_DEMO_SHOW}
@@ -197,7 +205,7 @@ export default function TSPDemoModal({ onClose, reentry }: {
         <div style={{ flex: "0 0 auto", padding: "14px 28px", display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={onClose}
-            style={{
+            style={editorial ? INK_BLOCK_M : {
               background: C.green,
               color: CANON.cream,
               border: `2px solid ${C.green}`,

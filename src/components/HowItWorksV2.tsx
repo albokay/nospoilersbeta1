@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import SidebarLogo from "./SidebarLogo";
 import { CANON } from "../styles/canon";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -146,11 +148,36 @@ export function pillLabel(type: PillType) {
   }
 }
 
-export function basePillStyle(type: PillType, align: PillAlign, slotIndex: number): React.CSSProperties {
+export function basePillStyle(type: PillType, align: PillAlign, slotIndex: number, ed = false): React.CSSProperties {
   const isInvisible = type === "invisible";
   const isYourPost = type === "your-post";
   const color = isInvisible ? RED : GREEN;
   const offset = align === "right" ? INDENT : -INDENT;
+
+  // The editorial skin (Alborz's notes, item 7): the diagram's pills as the
+  // site's blocks — your letter an ink block, a letter or response an
+  // ink-framed slot, a sealed one the dashed friend frame with alert words;
+  // the labels in mono. Same slots, same motion.
+  if (ed) return {
+    position: "absolute",
+    top: slotIndex * SLOT_H,
+    left: `calc(50% - ${PILL_W / 2}px + ${offset}px)`,
+    width: PILL_W,
+    height: PILL_H,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 0,
+    ...E.type.label10,
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+    borderWidth: 1,
+    ...(isYourPost
+      ? { background: E.color.ink, color: E.color.cream, borderStyle: "solid" as const, borderColor: E.color.ink }
+      : isInvisible
+        ? { background: "transparent", color: E.color.alert, borderStyle: "dashed" as const, borderColor: E.color.friend, borderWidth: 2 }
+        : { background: "transparent", color: E.color.ink, borderStyle: "solid" as const, borderColor: E.color.ink }),
+  };
 
   return {
     position: "absolute",
@@ -176,7 +203,7 @@ export function basePillStyle(type: PillType, align: PillAlign, slotIndex: numbe
 
 // ── Panel graphic ─────────────────────────────────────────────────────────
 
-function PanelGraphic({ panelIndex }: { panelIndex: number }) {
+function PanelGraphic({ panelIndex, ed = false }: { panelIndex: number; ed?: boolean }) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -195,8 +222,9 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
 
   const box: React.CSSProperties = {
     flex: 1,
-    borderRadius: 16,
-    background: BOX_BG,
+    borderRadius: ed ? 0 : 16,
+    background: ed ? E.color.cream : BOX_BG,
+    border: ed ? `1px solid ${E.color.ink}` : undefined,
     padding: "20px 16px",
     position: "relative",
     overflow: "hidden",
@@ -221,7 +249,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
               <div
                 key={i}
                 style={{
-                  ...basePillStyle(slot.type, slot.align, i),
+                  ...basePillStyle(slot.type, slot.align, i, ed),
                   opacity: 0,
                   animation: `hiw-rise ${VISIBLE_DURATION}s ease ${delay}s forwards`,
                 }}
@@ -246,7 +274,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
             // YOUR POST — always visible, no animation
             if (slot.type === "your-post") {
               return (
-                <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i), opacity: 1 }}>
+                <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i, ed), opacity: 1 }}>
                   {pillLabel(slot.type)}
                 </div>
               );
@@ -260,7 +288,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
                 <div
                   key={i}
                   style={{
-                    ...basePillStyle(slot.type, slot.align, i),
+                    ...basePillStyle(slot.type, slot.align, i, ed),
                     opacity: 1,
                     transform: `translateY(${slideY}px)`,
                     transition: `transform ${SLIDE_DURATION}s ease`,
@@ -276,7 +304,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
               <div
                 key={i}
                 style={{
-                  ...basePillStyle(slot.type, slot.align, i),
+                  ...basePillStyle(slot.type, slot.align, i, ed),
                   ...(phase < 2
                     ? { opacity: 0 }
                     : { opacity: 0, animation: `hiw-flicker-red ${INVISIBLE_DURATION}s ease forwards` }),
@@ -316,7 +344,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
                 {/* Outgoing red pill */}
                 <div
                   style={{
-                    ...basePillStyle("invisible", prevAlign, i),
+                    ...basePillStyle("invisible", prevAlign, i, ed),
                     left: `calc(50% - ${PILL_W / 2}px + ${prevOffset}px)`,
                     opacity: phase === 0 ? 0.74 : 0,
                     transition: `opacity ${MORPH_DURATION}s ease`,
@@ -328,7 +356,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
                 {/* Incoming green pill */}
                 <div
                   style={{
-                    ...basePillStyle(slot.type, slot.align, i),
+                    ...basePillStyle(slot.type, slot.align, i, ed),
                     left: `calc(50% - ${PILL_W / 2}px + ${newOffset}px)`,
                     opacity: phase === 0 ? 0 : 1,
                     transition: `opacity ${MORPH_DURATION}s ease`,
@@ -343,7 +371,7 @@ function PanelGraphic({ panelIndex }: { panelIndex: number }) {
           // Non-morphing pill — just show at final state
           const opacity = slot.type === "invisible" ? 0.74 : 1;
           return (
-            <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i), opacity }}>
+            <div key={i} style={{ ...basePillStyle(slot.type, slot.align, i, ed), opacity }}>
               {pillLabel(slot.type)}
             </div>
           );
@@ -362,6 +390,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
   injectKeyframes();
 
   const [step, setStep] = useState(0);
+  // The editorial skin (Alborz's notes, item 7): the walkthrough on cream in
+  // ink — the title in Lora, the captions in Lora, the diagram in an ink
+  // frame, the arrows and dots square, "got it" a small ink block, Join
+  // Sidebar the ink block, the logo on cream. Same steps, same motion.
+  const editorial = useEditorial();
   // Incremented on every click of the panel-5 logo to force SidebarLogo to
   // remount and replay its block-scatter animation. The component runs its
   // animation once in a mount-effect, so remounting via `key` is the
@@ -380,9 +413,9 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
     <div
       style={{
         minHeight: onClose ? undefined : "100vh",
-        background: PAGE_BG,
+        background: editorial ? E.color.cream : PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        color: CANON.cream,
+        color: editorial ? E.color.ink : CANON.cream,
         padding: "24px 16px 40px",
         display: "flex",
         flexDirection: "column",
@@ -391,7 +424,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
     >
       {/* Close button */}
       <div style={{ width: "100%", maxWidth: 860, marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button className="close-x" onClick={handleClose}>
+        <button className={editorial ? undefined : "close-x"} onClick={handleClose} aria-label="Close" style={editorial ? { width: 28, height: 28, padding: 0, background: "transparent", border: `1px solid ${E.color.ink}`, borderRadius: 0, color: E.color.ink, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" } : undefined}>
           <X size={14} />
         </button>
       </div>
@@ -420,11 +453,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLogoResetKey(k => k + 1); } }}
               style={{ cursor: "pointer", display: "inline-block" }}
             >
-              <SidebarLogo key={logoResetKey} scale={0.9} />
+              <SidebarLogo key={logoResetKey} scale={0.9} {...(editorial ? { bg: "cream" as const } : {})} />
             </div>
             <button
               onClick={handleSignup}
-              style={{
+              style={editorial ? { ...E.type.button16, height: 56, padding: "0 48px", background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" } : {
                 background: CANON.cream,
                 color: PAGE_BG,
                 border: "none",
@@ -453,7 +486,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             >
               {panelTitles[step] && (
                 <div
-                  style={{
+                  style={editorial ? { ...E.type.question30, fontSize: 28, color: E.color.ink, marginBottom: 28, whiteSpace: "pre-line" } : {
                     fontSize: 24,
                     fontWeight: 900,
                     lineHeight: 1.2,
@@ -466,7 +499,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 </div>
               )}
               <div
-                style={{
+                style={editorial ? { ...E.type.letterBody16, color: E.color.ink, whiteSpace: "pre-line" } : {
                   fontSize: 15,
                   fontWeight: 700,
                   lineHeight: 1.6,
@@ -480,7 +513,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
 
             {/* Right — pill graphic */}
             <div style={{ flex: 1, display: "flex" }}>
-              <PanelGraphic panelIndex={step} />
+              <PanelGraphic panelIndex={step} ed={editorial} />
             </div>
           </div>
         )}
@@ -496,12 +529,12 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
             style={{
               width: 36, height: 36,
               background: "transparent",
-              border: "2px solid var(--canon-cream,#fef8ea)",
-              borderRadius: "50%",
+              border: editorial ? `1px solid ${E.color.ink}` : "2px solid var(--canon-cream,#fef8ea)",
+              borderRadius: editorial ? 0 : "50%",
               padding: 0,
               cursor: step === 0 ? "default" : "pointer",
               opacity: step === 0 ? 0.3 : 1,
-              color: CANON.cream,
+              color: editorial ? E.color.ink : CANON.cream,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -519,8 +552,8 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               style={{
                 width: 10,
                 height: 10,
-                borderRadius: "50%",
-                background: i === step ? CANON.cream : "rgba(253,248,236,0.35)",
+                borderRadius: editorial ? 0 : "50%",
+                background: editorial ? (i === step ? E.color.ink : E.color.hairline) : i === step ? CANON.cream : "rgba(253,248,236,0.35)",
                 cursor: "pointer",
               }}
             />
@@ -532,7 +565,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
           {isJoinStep ? null : isLastPanel ? (
             <button
               onClick={() => setStep(s => s + 1)}
-              style={{
+              style={editorial ? { position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", ...E.type.label11, background: E.color.ink, color: E.color.cream, border: 0, borderRadius: 0, height: 36, padding: "0 16px", display: "inline-flex", alignItems: "center", cursor: "pointer", whiteSpace: "nowrap" } : {
                 position: "absolute",
                 left: 0,
                 top: "50%",
@@ -556,11 +589,11 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
               style={{
                 width: 36, height: 36,
                 background: "transparent",
-                border: "2px solid var(--canon-cream,#fef8ea)",
-                borderRadius: "50%",
+                border: editorial ? `1px solid ${E.color.ink}` : "2px solid var(--canon-cream,#fef8ea)",
+                borderRadius: editorial ? 0 : "50%",
                 padding: 0,
                 cursor: "pointer",
-                color: CANON.cream,
+                color: editorial ? E.color.ink : CANON.cream,
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -572,7 +605,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         </div>
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
+      <div style={editorial ? { ...E.type.label10, color: E.color.inkMuted, marginTop: 12 } : { marginTop: 10, fontSize: 12, opacity: 0.45, fontWeight: 600 }}>
         {step + 1} / {TOTAL_STEPS}
       </div>
     </div>
