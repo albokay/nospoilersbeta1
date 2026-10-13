@@ -13,7 +13,7 @@ import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord } from "../editorial/Chrome";
-import { CastRow, EpisodeRow, SelectWord } from "../editorial/ShowRoom";
+import { CastRow, SelectWord } from "../editorial/ShowRoom";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
@@ -185,6 +185,11 @@ export default function ShowReference({
     }
     return out;
   }, [ref, vIdx]);
+  // The plot by season (Alborz's notes, round 5): with more than one season
+  // watched, each season folds; the season you're in starts open and opening
+  // one closes the other.
+  const [openPlotSeason, setOpenPlotSeason] = useState<number | null>(null);
+  useEffect(() => { setOpenPlotSeason(prog.s); }, [prog.s]);
   const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : prog;
   const selEpData = useMemo(
     () => ref?.seasons.find((se) => se.n === selCastEp.s)?.episodes.find((ep) => ep.e === selCastEp.e),
@@ -255,22 +260,34 @@ export default function ShowReference({
 
   if (editorial) {
     const seasonsVisible = [...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => a.n - b.n);
-    const current = ref.seasons.find((x) => x.n === prog.s);
     const castList = castExpanded ? (episodeCast ?? visiblePeople) : foldedCast;
     const roleOf = (p: (typeof visiblePeople)[number]) => {
       const since = idx(p.firstS, p.firstE) > idx(1, 1) ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`) : null;
       return [p.character, since].filter(Boolean).join(" · ") || null;
     };
     const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary));
+    const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary) })).filter((season) => season.eps.length > 0);
+    const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null }) => (
+      <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
+        <div style={{ ...E.type.label10, color: E.color.inkMuted }}>S{ep.s} E{ep.e} · {ep.title}</div>
+        <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
+      </div>
+    );
     return (
       <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
-        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>Everything below stops at S{prog.s} E{prog.e}. Nothing past it.</div>
-        {user && (canonOn || roomLinks.length > 0) && (
-          <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
-            {canonOn && <UnderlineWord onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })} title="See your canon on the dashboard">In your canon →</UnderlineWord>}
+        {/* The room link above the stop line, the group's name in quotes
+            (Alborz's notes, round 5). */}
+        {user && roomLinks.length > 0 && (
+          <div style={{ marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
             {roomLinks.map((r) => (
-              <UnderlineWord key={r.roomId} onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)} title={`Open your show room with ${r.label}`}>Open your room with {r.label} →</UnderlineWord>
+              <UnderlineWord key={r.roomId} onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)} title={`Open your show room with ${r.label}`}>Open your room with &ldquo;{r.label}&rdquo; →</UnderlineWord>
             ))}
+          </div>
+        )}
+        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>Everything below stops at S{prog.s} E{prog.e}. Nothing past it.</div>
+        {user && canonOn && (
+          <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
+            <UnderlineWord onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })} title="See your canon on the dashboard">In your canon →</UnderlineWord>
           </div>
         )}
         {visiblePeople.length > 0 && (
@@ -301,35 +318,28 @@ export default function ShowReference({
             )}
           </>
         )}
+        {/* The plot so far — by season once more than one is watched (round
+            5): a mono row per season with its count and a chevron; the
+            season you're in starts open; opening one closes the other. The
+            episode list that followed is gone (his call: it only ever showed
+            the season you're in, and the plot and the picker already say
+            what's been seen); the canon's essentials star went with it. */}
         {plotEpisodes.length > 0 && (
           <>
             <SectionHead style={{ marginTop: 28 }}>Plot so far</SectionHead>
-            {plotEpisodes.map((ep) => (
-              <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
-                <div style={{ ...E.type.label10, color: E.color.inkMuted }}>S{ep.s} E{ep.e} · {ep.title}</div>
-                <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
-              </div>
-            ))}
-          </>
-        )}
-        {current && (
-          <>
-            <SectionHead style={{ marginTop: 28 }} right={<span style={{ color: E.color.inkMuted }}>Season {current.n}</span>}>Episodes</SectionHead>
-            {current.episodes.map((ep) => {
-              const i = idx(ep.s, ep.e);
-              const state: "watched" | "here" | "ahead" = i < vIdx ? "watched" : i === vIdx ? "here" : "ahead";
+            {plotSeasons.length <= 1 ? plotEpisodes.map(plotEntry) : plotSeasons.map((season) => {
+              const open = openPlotSeason === season.n;
               return (
-                <EpisodeRow key={ep.e} n={ep.e} title={state === "ahead" ? "" : ep.title} state={state}>
-                  {user && canonOn && state !== "ahead" && (
-                    <button
-                      type="button"
-                      onClick={() => toggleEssential(ep.s, ep.e)}
-                      aria-pressed={essentials.has(i)}
-                      title={essentials.has(i) ? "Un-star this essential" : "Star as an essential episode"}
-                      style={{ background: "transparent", border: 0, padding: "0 4px", cursor: "pointer", color: E.color.accent, fontSize: 15, lineHeight: 1 }}
-                    >{essentials.has(i) ? "★" : "☆"}</button>
-                  )}
-                </EpisodeRow>
+                <div key={season.n}>
+                  <button type="button" onClick={() => setOpenPlotSeason(open ? null : season.n)} aria-expanded={open} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink, ...E.type.label11, textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
+                    <span>Season {season.n}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
+                      {season.eps.length} {season.eps.length === 1 ? "episode" : "episodes"}
+                      <span aria-hidden="true" style={{ fontSize: 9 }}>{open ? "▲" : "▼"}</span>
+                    </span>
+                  </button>
+                  {open && <div style={{ paddingBottom: 10 }}>{season.eps.map(plotEntry)}</div>}
+                </div>
               );
             })}
           </>

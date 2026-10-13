@@ -85,6 +85,9 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   // cells painted at the swatch's height until the next scroll; a 1px nudge
   // asks for the repaint.
   const gridScrollRef = useRef<HTMLDivElement>(null);
+  // Round 5: the nudge wasn't enough (cream gaps stayed between the own
+  // cells until a scroll) — the grid REMOUNTS after a save, scroll kept.
+  const [gridKey, setGridKey] = useState(0);
   const sheetSwipe = useSheetSwipeDown(() => setUi("docked"), { scrollRef: sheetScrollRef, open: ui !== "docked" });
   function showTapTip(cardId: string, e: React.MouseEvent) {
     if (tapTipTimer.current) window.clearTimeout(tapTipTimer.current);
@@ -230,7 +233,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
       });
       setEdits({});
       setUi("grid");
-      requestAnimationFrame(() => { const el = gridScrollRef.current; if (el) { el.scrollTop += 1; el.scrollTop -= 1; } });
+      const el = gridScrollRef.current;
+      const keep = el ? { top: el.scrollTop, left: el.scrollLeft } : null;
+      setGridKey((k) => k + 1);
+      requestAnimationFrame(() => { const n = gridScrollRef.current; if (n && keep) { n.scrollTop = keep.top; n.scrollLeft = keep.left; } });
       // Newly-answered cards unmask friends' answers server-side — re-read
       // so the "?"s flip without a page nav.
       if (mode === "group" && groupId) {
@@ -468,15 +474,16 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
       <button
         onClick={() => { if (ui === "edit") { setEdits({}); setUi("grid"); } else setUi("sheet"); }}
         aria-label={ui === "edit" ? "cancel editing" : "close"}
-        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: editorial ? E.color.ink : CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+        // The × at the top RIGHT (Alborz's notes, round 5); the editing caption takes the left.
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 12, zIndex: 2, width: 44, height: 44, border: "none", background: "transparent", color: editorial ? E.color.ink : CANON.cream, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
         <X size={20} />
       </button>
       {ui === "edit" && (
-        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85 }) }}>
+        <div style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)", left: 20, height: 44, zIndex: 2, display: "flex", alignItems: "center", ...(editorial ? { ...E.type.label10, color: E.color.inkMuted } : { fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.cream, opacity: 0.85 }) }}>
           Editing your answers
         </div>
       )}
-      <div ref={gridScrollRef} style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: editorial ? 0 : 20, boxShadow: editorial ? "none" : "0 8px 24px rgba(0,0,0,0.18)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div key={gridKey} ref={gridScrollRef} style={{ position: "absolute", left: 10, right: 10, top: "calc(env(safe-area-inset-top, 0px) + 64px)", bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)", background: CANON.cream, borderRadius: editorial ? 0 : 20, boxShadow: editorial ? "none" : "0 8px 24px rgba(0,0,0,0.18)", border: editorial ? `1px solid ${E.color.ink}` : undefined, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
         {/* Frozen top (pass 3): Row A = Title 22 + the S Identity "Save"
             pill while editing (the 13.5 title squeezed beside a check glyph
             is retired); Row B = the column-header band — the pencil sits
