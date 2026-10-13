@@ -8,10 +8,18 @@ import { fetchGroupShowVotes, fetchGroupPitchActivity, markGroupPitchesSeen } fr
  *  seen once the marks are drawn — so the dashboard's signal clears for next
  *  time while this visit keeps its marks. Empty when the migration is
  *  missing, when `groupId` is null (the classic skin) or on any failure. */
-export default function useFreshPitches(groupId: string | null | undefined, userId: string | null | undefined): Map<string, string> {
-  const [fresh, setFresh] = useState<Map<string, string>>(() => new Map());
+export type FreshPitches = {
+  /** showId → the pitcher, for the pitches the viewer hasn't seen. */
+  fresh: Map<string, string>;
+  /** showId → the pitcher (the earliest vote), for every pitched show. */
+  pitcherOf: Map<string, string>;
+};
+const EMPTY: FreshPitches = { fresh: new Map(), pitcherOf: new Map() };
+
+export default function useFreshPitches(groupId: string | null | undefined, userId: string | null | undefined): FreshPitches {
+  const [fresh, setFresh] = useState<FreshPitches>(EMPTY);
   useEffect(() => {
-    if (!groupId || !userId) { setFresh(new Map()); return; }
+    if (!groupId || !userId) { setFresh(EMPTY); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -24,11 +32,15 @@ export default function useFreshPitches(groupId: string | null | undefined, user
           if (!cur || v.createdAt < cur.at) earliest.set(v.showId, { userId: v.userId, at: v.createdAt });
         }
         const next = new Map<string, string>();
-        for (const [showId, e] of earliest) if (e.userId !== userId && (seen == null || e.at > seen)) next.set(showId, e.userId);
-        setFresh(next);
+        const pitcherOf = new Map<string, string>();
+        for (const [showId, e] of earliest) {
+          pitcherOf.set(showId, e.userId);
+          if (e.userId !== userId && (seen == null || e.at > seen)) next.set(showId, e.userId);
+        }
+        setFresh({ fresh: next, pitcherOf });
         markGroupPitchesSeen(groupId).catch(() => { /* the stamp waits for the migration */ });
       } catch {
-        if (!cancelled) setFresh(new Map());
+        if (!cancelled) setFresh(EMPTY);
       }
     })();
     return () => { cancelled = true; };

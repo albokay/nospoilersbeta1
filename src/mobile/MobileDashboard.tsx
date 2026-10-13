@@ -388,7 +388,7 @@ export default function MobileDashboard() {
   if (!user) return <Navigate to="/m" replace />;
 
   return (
-    <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
+    <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)", overflowX: "clip" as const } : {}) }}>
       {editorial ? (
         // ── The editorial chrome (checkpoint 1, 2026-10-10): the feedback
         //    corner at the top-left, `? [account]` as mono words at the top

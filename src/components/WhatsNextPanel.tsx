@@ -12,6 +12,12 @@ import { personDisplayName } from "../lib/groupNames";
 import { CANON } from "../styles/canon";
 import YesNoToggle from "./YesNoToggle";
 import InviteShowCard from "./InviteShowCard";
+import { useEditorialScope } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { SectionHead, UnderlineWord } from "./editorial/Chrome";
+import { AnswerRow, StanceSurface, EditorialSheet, EditorialDialog, RowPoster, type StanceView } from "./editorial/GroupRoom";
+import { INK_SMALL } from "./editorial/MapNotes";
+import { FORM_CSS } from "./editorial/Onboarding";
 
 /**
  * WhatsNextPanel (letters from Sidebar, Alborz 2026-09-28): the opt-in moment
@@ -43,6 +49,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
    *  the search field above the browse strip and focuses it. */
   searchOpen?: boolean;
 }) {
+  const editorialScope = useEditorialScope();
   const [dash, setDash] = useState<GroupDashboardShow[] | null>(null);
   const [shows, setShows] = useState<Show[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -139,7 +146,9 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     .sort((a, b) => (b.voters.length - a.voters.length) || a.show.name.localeCompare(b.show.name)), [dash, showById]);
   // The rows: a cleared proposal drops out of the letter for you (Alborz
   // 2026-09-29); finding it again or answering it brings it back.
-  const proposals = useMemo(() => proposalsAll.filter((p) => !p.g.viewerDismissed), [proposalsAll]);
+  // A show you've already passed on — sitting out or seen it — leaves the
+  // list too (Alborz's notes, round 4).
+  const proposals = useMemo(() => proposalsAll.filter((p) => !p.g.viewerDismissed && !(passes[p.show.id]?.[userId] && !p.voters.includes(userId))), [proposalsAll, passes, userId]);
   const listRows = useMemo(() => Object.entries(lists)
     .filter(([showId]) => showById[showId])
     .map(([showId, owners]) => ({ show: showById[showId], owners }))
@@ -305,6 +314,148 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
     </div>
   );
 
+  // The editorial panel (Alborz's notes, round 4): mono heads on rules, the
+  // group's pitches as hairline rows with the editorial answer row and
+  // "Start the room" as a small ink block, your own list with "Pitch →",
+  // the search as the framed Show field, the posters as square tiles, and
+  // the trailer card as the opt-in surface in the sheet / dialog. Same acts.
+  if (editorialScope) {
+    const rowBase: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: `1px solid ${E.color.hairline}` };
+    const noteStyle: React.CSSProperties = { ...E.type.note13, color: E.color.inkSub, marginTop: 12 };
+    const tag: React.CSSProperties = { ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 };
+    const openCard = (show: Show) => setCard({ id: show.id, name: show.name, tvmazeId: Number(show.tvmazeId), catalogId: show.id });
+    return (
+      <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 16, borderTop: `1px solid ${E.color.hairline}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 24, textAlign: "left", color: E.color.ink }}>
+        <style>{FORM_CSS}</style>
+        {failed && <div style={noteStyle}>Couldn't load the group's shows just now.</div>}
+
+        <div>
+          <SectionHead>Already pitched in this group</SectionHead>
+          {dash === null && !failed && <div style={noteStyle}>loading…</div>}
+          {dash !== null && proposals.length === 0 && <div style={noteStyle}>Nothing pitched yet — say yes to something below.</div>}
+          {proposals.map(({ show, voters }) => {
+            const mine = selfIn(voters);
+            const isBusy = busy.has(show.id) || busy.has(`start-${show.id}`);
+            return (
+              <div key={show.id} style={{ ...rowBase, alignItems: "flex-start", padding: "14px 0", opacity: isBusy ? 0.6 : 1 }}>
+                <RowPoster tvmazeId={show.tvmazeId} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...E.type.row16, color: E.color.ink, display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 0 }}>{show.name}</span>
+                    {trailerOk[show.id] && show.tvmazeId && <UnderlineWord onClick={(e) => { e.stopPropagation(); openCard(show); }}>Trailer</UnderlineWord>}
+                  </div>
+                  <div style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, marginTop: 5 }}>{captionLines(show.id, voters).join(" · ")}</div>
+                  <AnswerRow options={[{ value: "in", label: "I'm in" }, { value: "out", label: "Sit this out" }, { value: "seen", label: "I've seen it" }]} value={myStance(show.id, voters)} onChange={(v) => { if (!isBusy) stance(show.id, v); }} />
+                  {mine && <button type="button" style={{ ...INK_SMALL, marginTop: 12 }} disabled={isBusy} onClick={() => start(show.id)}>Start the room</button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {listRows.length > 0 && (
+          <div>
+            <SectionHead>From your own list</SectionHead>
+            {listRows.map(({ show }) => (
+              <div key={show.id} style={{ ...rowBase, opacity: busy.has(show.id) ? 0.6 : 1 }}>
+                <span style={{ ...E.type.row16, color: E.color.ink, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{show.name}</span>
+                <UnderlineWord onClick={() => { if (!busy.has(show.id)) vote(show.id, true); }}>Pitch →</UnderlineWord>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div ref={searchRef}>
+          <SectionHead>Find something new</SectionHead>
+          {searchOpen && (
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, height: 44, padding: "0 12px", boxSizing: "border-box", border: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink }}>
+                Show:
+                <input
+                  ref={inputRef}
+                  className="e-field"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="find your show"
+                  aria-label="Search for a show"
+                  style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }}
+                />
+              </label>
+              {(catalogMatches.length > 0 || tvMatches.length > 0) && (
+                <div>
+                  {catalogMatches.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        // A cleared pitch comes back on the search hit (2026-09-29) — as you left it, no new yes.
+                        const cleared = proposalsAll.some((p) => p.show.id === s.id && p.g.viewerDismissed);
+                        restore(s.id);
+                        if (s.tvmazeId) openCard(s); else if (!cleared) vote(s.id, true);
+                      }}
+                      style={{ ...rowBase, width: "100%", justifyContent: "space-between", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink }}
+                    >
+                      <span style={{ ...E.type.row16, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                      <span style={tag}>{s.tvmazeId ? "Trailer →" : "Pitch →"}</span>
+                    </button>
+                  ))}
+                  {tvMatches.map((tv) => (
+                    <button
+                      key={tv.id}
+                      type="button"
+                      onClick={() => setCard({ id: `tv-${tv.id}`, name: tv.name, tvmazeId: tv.id, catalogId: null })}
+                      style={{ ...rowBase, width: "100%", justifyContent: "space-between", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink }}
+                    >
+                      <span style={{ ...E.type.row16, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
+                      <span style={tag}>{networkLabel(tv) ?? "Trailer →"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", padding: "14px 0 6px", WebkitOverflowScrolling: "touch" }}>
+            {strip.map((b) => (
+              <button
+                key={b.tvmazeId}
+                type="button"
+                aria-label={`Open the trailer for ${b.name}`}
+                onClick={() => { const cat = catalogFor(b); setCard({ id: cat ? cat.id : `tv-${b.tvmazeId}`, name: b.name, tvmazeId: b.tvmazeId, catalogId: cat ? cat.id : null }); }}
+                style={{ flex: "0 0 auto", width: 64, height: 90, overflow: "hidden", border: `1px solid ${E.color.hairline}`, padding: 0, background: E.color.draft, cursor: "pointer" }}
+              >
+                {b.imageUrl
+                  ? <img src={b.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", ...E.type.label9, color: E.color.ink, padding: 4, boxSizing: "border-box", textAlign: "center" }}>{b.name}</span>}
+              </button>
+            ))}
+            {strip.length === 0 && <div style={noteStyle}>Nothing to browse right now.</div>}
+          </div>
+        </div>
+
+        {card && (() => {
+          // A show already pitched here takes the three answers; a browse or
+          // search pick isn't pitched yet, so yes = pitch. A pass closes the card.
+          const prop = card.catalogId ? proposalsAll.find((p) => p.show.id === card.catalogId) : undefined;
+          const view: StanceView = {
+            name: card.name,
+            question: "Do you want to watch this?",
+            answerLines: [],
+            answer: prop
+              ? { kind: "stance", value: myStance(prop.show.id, prop.voters), onChange: (v) => { stance(prop.show.id, v); if (v !== "in") setCard(null); } }
+              : { kind: "yesno", value: cardVoted, onChange: (v) => { if (card.catalogId) { vote(card.catalogId, v); return; } if (v) proposeNew({ tvmazeId: card.tvmazeId, name: card.name, imageUrl: null, channel: null }); } },
+            progress: null,
+            actions: null,
+            trailer: { showId: card.id, tvmazeId: String(card.tvmazeId) },
+          };
+          return mobile
+            ? <EditorialSheet onClose={() => setCard(null)}><StanceSurface view={view} inset={E.space.gutter} /></EditorialSheet>
+            : <EditorialDialog onClose={() => setCard(null)} width={480} label={card.name}><StanceSurface view={view} inset={32} /></EditorialDialog>;
+        })()}
+      </div>
+    );
+  }
+
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 14, borderTop: "2px solid rgba(254,248,234,0.6)", paddingTop: mobile ? 14 : 18, display: "flex", flexDirection: "column", gap: mobile ? 18 : 22 }}>
       {failed && <div style={captionStyle}>Couldn't load the group's shows just now.</div>}
@@ -344,7 +495,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
           {listRows.map(({ show }) => (
             <div key={show.id} style={{ display: "flex", alignItems: "center", gap: 12, opacity: busy.has(show.id) ? 0.6 : 1 }}>
               <div style={{ flexGrow: 1, minWidth: 0, fontFamily: INTER, fontSize: 14, color: "rgba(26,58,74,0.75)" }}>{show.name}</div>
-              <button type="button" style={ghostPill} disabled={busy.has(show.id)} onClick={() => vote(show.id, true)}>propose</button>
+              <button type="button" style={ghostPill} disabled={busy.has(show.id)} onClick={() => vote(show.id, true)}>pitch</button>
             </div>
           ))}
         </div>
@@ -378,7 +529,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: "1px solid rgba(26,58,74,0.15)", padding: "9px 4px", cursor: "pointer", fontFamily: INTER, color: dark }}
                   >
                     <span style={{ fontSize: 15, fontWeight: 600 }}>{s.name}</span>
-                    <span style={{ fontSize: 13, color: "rgba(26,58,74,0.7)", flexShrink: 0 }}>{s.tvmazeId ? "trailer" : "propose"}</span>
+                    <span style={{ fontSize: 13, color: "rgba(26,58,74,0.7)", flexShrink: 0 }}>{s.tvmazeId ? "trailer" : "pitch"}</span>
                   </button>
                 ))}
                 {tvMatches.map((tv) => (

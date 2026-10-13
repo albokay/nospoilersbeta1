@@ -1020,7 +1020,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   })() : null;
 
   return (
-    <div ref={pageRef} style={{ ...page, background: bodyBg }}>
+    <div ref={pageRef} style={{ ...page, background: bodyBg, ...(editorial ? { overflowX: "clip" as const } : {}) }}>
       {showAccount && (
         <AccountModal
           mobile

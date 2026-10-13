@@ -1992,7 +1992,7 @@ export default function DashboardPage() {
   // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
   // sentence from the dashboard's signals, named with the rows' group labels.
   // (A plain call, not a memo: this sits after the loading return.)
-  const freshFirst = [...freshPitches.entries()][0];
+  const freshFirst = [...freshPitches.fresh.entries()][0];
   const freshPitchText = freshFirst ? (() => { const n = [...groupShelves.watching, ...groupShelves.notStarted].find((r) => r.pill.showId === freshFirst[0])?.name; return n ? `${memberNameById[freshFirst[1]] ?? "A friend"} pitched ${n}.` : null; })() : null;
   const roomNote = inGroup && editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, !!(activeGroupId && chatNewByGroup.get(activeGroupId)), freshPitchText) : null;
   const dashNote = inGroup ? null : dashboardNote(railGroups, (gid) => {
@@ -2255,8 +2255,10 @@ export default function DashboardPage() {
                             name={r.name}
                             line={editorialProposalLine(r.pill.showId)}
                             dashed={r.passed}
-                            fresh={freshPitches.has(r.pill.showId)}
-                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
+                            fresh={freshPitches.fresh.has(r.pill.showId)}
+                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
+                              : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
+                              : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                             onOpen={() => onPillClick(r.pill, r.name)}
                             onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
                             optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}

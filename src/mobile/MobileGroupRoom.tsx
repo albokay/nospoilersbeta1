@@ -1072,12 +1072,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     setGearOpen(true);
   }
 
-  const freshFirst = [...freshPitches.entries()][0];
+  const freshFirst = [...freshPitches.fresh.entries()][0];
   const freshPitchText = freshFirst ? (() => { const n = [...groupShelves.watching, ...groupShelves.notStarted].find((r) => r.pill.showId === freshFirst[0])?.name; return n ? `${memberNameById[freshFirst[1]] ?? "A friend"} pitched ${n}.` : null; })() : null;
   const roomNote = editorial ? groupRoomNote([...groupShelves.watching, ...groupShelves.notStarted].map((r) => ({ roomId: r.pill.roomId, name: r.name })), roomDotByRoomId, chatNew, freshPitchText) : null;
 
   return (
-    <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)" } : {}) }}>
+    <div style={{ ...page, ...(editorial ? { position: "relative", background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)", overflowX: "clip" as const } : {}) }}>
       {editorial && <Masthead height={E.safe.plus(E.measure.phone.masthead)} />}
       {/* The chat corner on the masthead's bottom right (Alborz's notes, round 2). */}
       {editorial && (
@@ -1263,8 +1263,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         name={r.name}
                         line={proposalLine(r.pill.showId)}
                         dashed={r.passed}
-                        fresh={freshPitches.has(r.pill.showId)}
-                        end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span> : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
+                        fresh={freshPitches.fresh.has(r.pill.showId)}
+                        end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span>
+                          : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
+                          : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                         onOpen={() => onRowClick(r.pill, r.name)}
                         onOptions={act}
                         optionsLabel={r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}

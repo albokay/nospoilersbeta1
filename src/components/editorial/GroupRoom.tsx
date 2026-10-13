@@ -186,16 +186,19 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
     return (
       <button type="button" className="e-row" onClick={onOpen} style={rowStyle}>
         {poster && <RowPoster tvmazeId={tvmazeId} />}
+        {text}
+        {/* The hover pen sits in the row between the words and the end slot
+            (Alborz's notes, round 4) — it no longer floats at a fixed offset
+            that landed on the name in the narrow pitched rail. */}
         {onOptions && (
           <span
             className="e-pen" role="button" aria-label={optionsLabel} title={optionsLabel}
             onClick={(e) => { e.stopPropagation(); onOptions(); }}
-            style={{ position: "absolute", right: 150, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}
+            style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
           >
             <SquarePen size={16} strokeWidth={1.5} color={E.color.ink} aria-hidden="true" />
           </span>
         )}
-        {text}
         {end}
       </button>
     );

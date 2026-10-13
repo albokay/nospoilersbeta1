@@ -43,16 +43,16 @@ export const FEED_VARS: React.CSSProperties = {
   color: E.color.ink,
 };
 
-export function FolderTabs({ tabs, active, onChange, width }: { tabs: RoomTabKey[]; active: RoomTabKey; onChange: (t: RoomTabKey) => void; width?: number }) {
+export function FolderTabs({ tabs, active, onChange, width, openLeft = false }: { tabs: RoomTabKey[]; active: RoomTabKey; onChange: (t: RoomTabKey) => void; width?: number; /** Desktop (Alborz's notes, round 4): the first tab has no left outline — only its top and right. */ openLeft?: boolean }) {
   return (
     <div role="tablist" aria-label="Room sections" style={{ display: "flex", alignItems: "flex-end", gap: E.space.tabGap, width }}>
-      {tabs.map((t) => {
+      {tabs.map((t, i) => {
         const on = t === active;
         return (
           <button
             key={t} type="button" role="tab" aria-selected={on} onClick={() => onChange(t)}
             style={{
-              height: on ? 42 : 36, padding: "0 14px", boxSizing: "border-box", border: `1px solid ${E.color.ink}`, borderBottom: 0,
+              height: on ? 42 : 36, padding: "0 14px", boxSizing: "border-box", border: `1px solid ${E.color.ink}`, borderBottom: 0, ...(openLeft && i === 0 ? { borderLeft: 0 } : {}),
               background: on ? TAB_COLOUR[t] : E.color.cream, display: "inline-flex", alignItems: "center",
               ...E.type.label11, color: on ? E.color.ink : "rgba(26,58,74,0.7)", cursor: "pointer", WebkitTapHighlightColor: "transparent",
               ...(on ? { marginBottom: -1, position: "relative", zIndex: 2 } : {}),

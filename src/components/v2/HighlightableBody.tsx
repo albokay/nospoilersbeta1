@@ -136,6 +136,7 @@ function HighlightableSegment({
   activeIds,
   openable,
   settled,
+  unseen,
   linkify = false,
   color = DEFAULT_HIGHLIGHT_COLOR,
   sealedTone,
@@ -156,6 +157,10 @@ function HighlightableSegment({
    *  notes in it, and every readable note already opened — drawn in the
    *  sealed style so the sealed note is what you notice. */
   settled: Set<string>;
+  /** Ids of readable notes by someone else you haven't opened (round 4,
+   *  the editorial skin): the stretch fills identity blue with cream words
+   *  until you open them. */
+  unseen?: Set<string>;
   linkify?: boolean;
   color?: string;
   sealedTone: "sky" | "cream";
@@ -189,13 +194,23 @@ function HighlightableSegment({
           ? { background: "rgba(254,248,236,0.45)", borderBottom: "2px dashed rgba(254,248,236,0.9)" }
           : { background: SEALED_COLOR };
         const restStyle: React.CSSProperties = readable ? { background: color } : sealedStyle;
+        // The editorial skin (Alborz's notes, round 4): a stretch with a note
+        // you haven't opened fills identity with cream words; the hovered or
+        // open stretch keeps its colour at a lighter transparency (no cream
+        // flip); once opened it's the yellow again. Classic keeps the flip.
+        const fresh = !!unseen && p.covering.some((h) => unseen.has(h.id));
+        const paint: React.CSSProperties = editorialScope
+          ? (active
+            ? (fresh ? { background: "rgba(53,94,184,0.72)", color: CANON.cream } : readable ? { background: "rgba(222,168,56,0.55)" } : { background: "rgba(173,200,215,0.6)" })
+            : (fresh ? { background: CANON.identity, color: CANON.cream } : restStyle))
+          : (active ? { background: CANON.cream } : restStyle);
         return (
           <span
             key={`h-${p.a}`}
             onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
             onMouseLeave={onLeave}
             onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
-            style={{ ...(active ? { background: CANON.cream } : restStyle), padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease" }}
+            style={{ ...paint, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease, color 120ms ease" }}
           >
             {renderText(slice)}
           </span>
@@ -313,6 +328,7 @@ export default function HighlightableBody({
   // pages start its load with the room; this is the fallback elsewhere.
   const seenNoteIds = useSeenNoteIds();
   useEffect(() => { if (currentUserId) loadSeenNoteIds(currentUserId); }, [currentUserId]);
+  const editorialScopeBody = useEditorialScope();
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
   // Grace period so the cursor can travel from the stretch into the popup.
@@ -364,6 +380,10 @@ export default function HighlightableBody({
   // new readable note, or a sealed one unsealing as you catch up, isn't in
   // the stamp, so the yellow comes back until that's opened too. Per
   // account (the server table), his call.
+  // The notes you haven't opened, by someone else (round 4, editorial): the
+  // identity fill until the stretch is opened.
+  const unseenNotes = new Set<string>();
+  if (editorialScopeBody) for (const h of highlights) if (h.kind === "note" && !h.sealed && h.authorId !== currentUserId && !seenNoteIds.has(h.id)) unseenNotes.add(h.id);
   const settled = new Set<string>();
   for (const cl of clusters.list) {
     const inCl = highlights.filter((h) => cl.ids.has(h.id));
@@ -440,6 +460,7 @@ export default function HighlightableBody({
             activeIds={activeIds}
             openable={openable}
             settled={settled}
+            unseen={unseenNotes}
             linkify={linkify}
             color={color}
             sealedTone={sealedTone}
