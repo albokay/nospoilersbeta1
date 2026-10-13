@@ -34,7 +34,7 @@ import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, 
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord, EditorialColumn } from "../editorial/Chrome";
 import { EditorialDialog, EditorialSheet, NumbersPicker } from "../editorial/GroupRoom";
-import { Block, Frame, FORM_CSS } from "../editorial/Onboarding";
+import { Block, Frame, FORM_CSS, FIELD_BOX } from "../editorial/Onboarding";
 import { NOTE_FIELD } from "../editorial/MapNotes";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
@@ -696,7 +696,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
       {searchOpen && (
         <EdShell onClose={() => setSearchOpen(false)} label={searchMode === "canon" ? "Add to your canon" : "Find a show"}>
           <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{searchMode === "canon" ? "Add to your canon" : "Find a show"}</div>
-          <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 22 }}>
+          <label style={{ ...FIELD_BOX, marginTop: 22 }}>
             Show:
             <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
               style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
@@ -897,7 +897,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         <div style={{ ...E.type.body15, color: E.color.ink, marginTop: 14, maxWidth: mobile ? 300 : undefined }}>
           Cast and plot. Everything filtered to how far you&rsquo;ve watched, so nothing spoils.
         </div>
-        <label style={{ ...E.type.label11, color: E.color.ink, marginTop: 22, display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}` }}>
+        <label style={{ ...FIELD_BOX, marginTop: 22 }}>
           Show:
           {/* The field is the search's door: focusing it opens the search card with the typing field. */}
           <input type="text" aria-label="Show" value="" readOnly onFocus={openLookup} onClick={openLookup} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, cursor: "text" }} />

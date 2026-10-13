@@ -1,5 +1,11 @@
 # Sidebar — Technical State (2026-10-12)
 
+> **⭐ 2026-10-12 — ALBORZ'S NOTES, round 4 — B: the field idiom (his option A, no fill), both platforms.**
+> - **A head is a rule, a field is a box.** `Field` (`editorial/Onboarding.tsx`, with `FIELD_BOX` / `FIELD_INPUT`) is now a 1px ink frame, 44 tall, NO fill (on the yellow look-up band the band shows through), with its short mono label inside ("Name:", "Email:", "Show:", "Password:" — the component adds the colon). Section heads keep their mono-on-a-rule, so the two never read alike. `InlineField` is the same box with autofill off; `ShowField`, the three find-a-show rows (dashboard dialog, phone sheet, look-up card), the look-up band's own "Show:" door and the chat composer's field all take the box.
+> - **The repeated words:** the heads stay ("Group name", "Your name"); the labels inside shrink to "Name:"; placeholders that echoed the label are gone or examples ("name@example.com", "Sam"; the password's is empty; a friend's name field is labelled by their name with no placeholder).
+> - **Save beside a single field (his answer 2):** the account's name and the group's name have a 44-tall ink "Save" block beside the box on both platforms; "Save names" under the friends' fields stays the wide block.
+> - **The desktop group settings** were still the classic yellow card under the skin — now the bible's dialog with the phone sheet's sections (Group name + Save, your names for your friends, the pending invites, Leave this group).
+
 > **⭐ 2026-10-12 — ALBORZ'S NOTES, round 4 — A (both platforms unless noted).**
 > - **The desktop Friend room tab:** `FolderTabs openLeft` — the first tab has no left outline (only its top and right); the phone's tabs unchanged.
 > - **Highlights (the editorial scope):** a stretch carrying a readable note by someone else that you haven't opened fills IDENTITY with cream words; the hovered / open stretch keeps its own colour at a lighter transparency (identity 0.72, yellow 0.55, sealed sky 0.6) instead of flipping to cream; once its notes are opened (the per-stretch stamp) it's the yellow again; sealed stretches unchanged; your own notes never count. Classic keeps the cream flip. (`HighlightableBody`: `unseenNotes` from the seen stamp, passed as `unseen` to the segments.)

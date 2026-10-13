@@ -121,7 +121,7 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
-import { FORM_CSS, FriendRows, ShowField, PickBand, Block, EditorialStrips } from "./editorial/Onboarding";
+import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
 import { Drawer, Confirm, FinishedTiles, FinishedHead, ChatMessages, ChatComposer, type ChatRow } from "./editorial/Overlays";
 import DeckWave from "./deck/DeckWave";
@@ -2566,7 +2566,7 @@ export default function DashboardPage() {
             return (
               <>
                 <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>Find a show</div>
-                <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 22 }}>
+                <label style={{ ...FIELD_BOX, marginTop: 22 }}>
                   Show:
                   <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
                     style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
@@ -3169,7 +3169,44 @@ export default function DashboardPage() {
       )}
 
       {/* CP5b: group options (gear) — rename + leave, anchored near the gear */}
-      {optionsFor && (
+      {/* The editorial group settings (round 4 — the desktop card was still
+          the classic yellow one): the bible's dialog with the phone sheet's
+          sections — Group name as the boxed field with Save beside, your
+          names for your friends, the pending invites, Leave this group. */}
+      {optionsFor && editorial && (() => {
+        const gid = optionsFor;
+        const grp = railGroups.find((r) => r.group.id === gid);
+        const others = (grp?.members ?? []).filter((m) => m.userId !== selfUserId);
+        const othersPending: OtherPendingInvite[] = (grp?.pendingInvites ?? [])
+          .filter((p) => p.inviterId != null && p.inviterId !== selfUserId)
+          .map((p) => ({ name: p.name, createdAt: p.createdAt, inviteId: p.inviteId }));
+        return (
+          <EditorialDialog onClose={() => setOptionsFor(null)} width={480} label="Group settings" align="left">
+            <style>{FORM_CSS}</style>
+            <div style={E.type.letterTitle22}>Group settings</div>
+            <SectionHead style={{ marginTop: 24 }}>Group name</SectionHead>
+            <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+              <Field label="Name" value={renameValue} onChange={setRenameValue} placeholder="" style={{ flex: 1, minWidth: 0 }} />
+              <Block onClick={() => doRename(gid)} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>Save</Block>
+            </div>
+            {(others.length > 0 || myGroupInvites.length > 0 || othersPending.length > 0) && (
+              <>
+                <SectionHead style={{ marginTop: 28 }}>Your names for your friends</SectionHead>
+                {others.length > 0 && <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Names default to your friends&rsquo; log-in info. Enter your own names for them, like your phone&rsquo;s contacts.</div>}
+                {others.map((m) => (
+                  <Field key={m.userId} label={m.displayName ?? m.username} value={contactEdits[m.userId] ?? ""} onChange={(v) => setContactEdits((prev) => ({ ...prev, [m.userId]: v }))} placeholder="" maxLength={40} style={{ marginTop: 14 }} />
+                ))}
+                <div style={{ marginTop: 14 }}><PendingInvitesPanel invites={myGroupInvites} others={othersPending} onRefresh={reloadMyGroupInvites} /></div>
+                {others.length > 0 && <Block onClick={() => saveContactNames(gid)} disabled={contactsSaving} style={{ marginTop: 14, height: 44, ...E.type.label11 }}>{contactsSaving ? "saving…" : "Save names"}</Block>}
+              </>
+            )}
+            <SectionHead style={{ marginTop: 28, color: E.color.alert, borderBottomColor: E.color.alert }}>Leave this group</SectionHead>
+            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>You can join again if someone sends you another invite.</div>
+            <Frame onClick={() => doLeave(gid)} style={{ marginTop: 14, height: 44, ...E.type.label11, color: E.color.alert, borderColor: E.color.alert }}>Leave group</Frame>
+          </EditorialDialog>
+        );
+      })()}
+      {optionsFor && !editorial && (
         // One centered yellow Form card (polish pass 2026-09-15) — replaces
         // the two 360px cards anchored off the gear's rect. zIndex above the
         // tip stickies (60) so it opens ON TOP of an open note (QA round 4).

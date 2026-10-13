@@ -117,15 +117,23 @@ export function ProgressBand({ show, value, onChange, desktop = false, inset = E
 }
 
 /** A form field: a mono label, then an underline in ink the text sits on. */
+/** The field (Alborz's notes, round 4, his option A): a box — a 1px ink
+ *  frame, 44 tall, no fill (on the yellow band the band shows through) —
+ *  with its short mono label inside ("Name:", "Show:"). A section head is a
+ *  rule; a field is a box, so the two never read alike. */
+export const FIELD_BOX: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, height: 44, padding: "0 12px", boxSizing: "border-box", border: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink };
+export const FIELD_INPUT: React.CSSProperties = { flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 };
+
 export function Field({ label, value, onChange, placeholder, type = "text", inputMode, autoComplete, autoCapitalize, autoCorrect, readOnly = false, autoFocus = false, maxLength, style, inputStyle }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; autoComplete?: string; autoCapitalize?: string; autoCorrect?: string; readOnly?: boolean; autoFocus?: boolean; maxLength?: number; style?: React.CSSProperties; inputStyle?: React.CSSProperties;
 }) {
+  const tag = label.replace(/:\s*$/, "") + ":";
   return (
-    <label style={{ display: "block", ...style }}>
-      <span style={{ display: "block", ...E.type.label9, color: E.color.inkMuted, marginBottom: 6 }}>{label}</span>
+    <label style={{ ...FIELD_BOX, ...style }}>
+      <span style={{ flexShrink: 0 }}>{tag}</span>
       <input
         className="e-field" type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode={inputMode} autoComplete={autoComplete} autoCapitalize={autoCapitalize} autoCorrect={autoCorrect} readOnly={readOnly} autoFocus={autoFocus} maxLength={maxLength} aria-label={label}
-        style={{ width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, padding: "0 0 8px", margin: 0, ...inputStyle }}
+        style={{ ...FIELD_INPUT, ...inputStyle }}
       />
     </label>
   );
@@ -133,18 +141,9 @@ export function Field({ label, value, onChange, placeholder, type = "text", inpu
 
 /** A field with its mono label inside, on one rule — the Show field's shape
  *  (Alborz's notes, round 3, his option A for the friends' rows). */
-export function InlineField({ label, value, onChange, placeholder, type = "text", inputMode, autoCapitalize, autoCorrect, maxLength, autoFocus = false, style }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; autoCapitalize?: string; autoCorrect?: string; maxLength?: number; autoFocus?: boolean; style?: React.CSSProperties;
-}) {
-  return (
-    <label style={{ display: "flex", alignItems: "baseline", gap: 10, paddingBottom: 8, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
-      {label}
-      <input
-        className="e-field" type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode={inputMode} autoCapitalize={autoCapitalize} autoCorrect={autoCorrect} autoComplete="off" maxLength={maxLength} autoFocus={autoFocus} aria-label={label}
-        style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }}
-      />
-    </label>
-  );
+export function InlineField(props: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; autoCapitalize?: string; autoCorrect?: string; maxLength?: number; autoFocus?: boolean; style?: React.CSSProperties }) {
+  // The same box as Field (round 4), with the browser's autofill off.
+  return <Field {...props} autoComplete="off" />;
 }
 
 /** The friends' rows: a name and an email on one rule, "Add another friend" under them. */
@@ -204,13 +203,12 @@ export function ShowField({ shows, onPickShow, onPickTv, busy = false, excludeSl
   const row: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "12px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15 };
   return (
     <div style={style}>
-      <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink }}>
-        {label}
-        <input className="e-field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} aria-label="Find a show" autoComplete="off"
-          style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />
+      <label style={FIELD_BOX}>
+        <span style={{ flexShrink: 0 }}>{label}</span>
+        <input className="e-field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} aria-label="Find a show" autoComplete="off" style={FIELD_INPUT} />
       </label>
       {(catalog.length > 0 || tvToAdd.length > 0) && (
-        <div style={{ maxHeight: 320, overflowY: "auto" }}>
+        <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 4 }}>
           {catalog.map((s) => (
             <button key={s.id} type="button" style={row} onClick={() => { onPickShow(s); reset(); }}>
               <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>

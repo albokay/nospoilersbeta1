@@ -171,7 +171,7 @@ export default function MobileAuth() {
         <>
           <p style={note}>Enter the email you signed up with. We&rsquo;ll send you a link to set a new password.</p>
           <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
-            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="email" autoFocus autoComplete="email" autoCapitalize="none" autoCorrect="off" />
+            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="name@example.com" autoFocus autoComplete="email" autoCapitalize="none" autoCorrect="off" />
             {error && <div style={err}>{error}</div>}
             <Block type="submit" disabled={loading} style={{ marginTop: 32 }}>{loading ? <LoadingDots /> : "Send recovery email"}</Block>
           </form>
@@ -184,12 +184,12 @@ export default function MobileAuth() {
           <form onSubmit={handleSubmit}>
             {mode === "signup" && (
               <>
-                <Field label="Your first name" value={firstName} onChange={setFirstName} placeholder="your first name" autoFocus autoComplete="given-name" autoCorrect="off" maxLength={40} />
+                <Field label="First name" value={firstName} onChange={setFirstName} placeholder="Sam" autoFocus autoComplete="given-name" autoCorrect="off" maxLength={40} />
                 <div style={{ fontFamily: E.font.interface, fontSize: 12, lineHeight: 1.5, color: "rgba(26,58,74,0.65)", marginTop: 8 }}>This is how you&rsquo;ll show up for your friends. Think of it like saving a name in their contact list.</div>
               </>
             )}
-            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="email" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" autoCapitalize="none" autoCorrect="off" style={{ marginTop: mode === "signup" ? 22 : 0 }} />
-            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 22 }} />
+            <Field label="Email" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="name@example.com" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" autoCapitalize="none" autoCorrect="off" style={{ marginTop: mode === "signup" ? 22 : 0 }} />
+            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 22 }} />
             {error && <div style={err}>{error}</div>}
             <Block type="submit" disabled={loading} style={{ marginTop: 32 }}>{loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}</Block>
           </form>

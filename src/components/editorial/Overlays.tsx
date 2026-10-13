@@ -189,11 +189,11 @@ export function ChatMessages({ rows, empty, bodyRef, style }: { rows: ChatRow[];
 /** The composer on a cream foot: the field on a rule, the send as an ink square. */
 export function ChatComposer({ value, onChange, onSend, placeholder = "Message the group", safeBottom = false }: { value: string; onChange: (v: string) => void; onSend: () => void; placeholder?: string; safeBottom?: boolean }) {
   return (
-    <div style={{ display: "flex", gap: 12, alignItems: "flex-end", padding: `12px ${G}px ${safeBottom ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : "16px"}`, borderTop: `1px solid ${E.color.hairline}`, background: E.color.cream, flexShrink: 0 }}>
+    <div style={{ display: "flex", gap: 12, alignItems: "center", padding: `12px ${G}px ${safeBottom ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : "16px"}`, borderTop: `1px solid ${E.color.hairline}`, background: E.color.cream, flexShrink: 0 }}>
       <style>{FORM_CSS}</style>
       <input
         className="e-field" value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onSend(); }} placeholder={placeholder} aria-label={placeholder}
-        style={{ flex: 1, minWidth: 0, border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, padding: "10px 0 8px", margin: 0 }}
+        style={{ flex: 1, minWidth: 0, height: 44, boxSizing: "border-box", border: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, padding: "0 12px", margin: 0 }}
       />
       <button type="button" onClick={onSend} aria-label="Send" title="Send" style={{ width: 44, height: 44, flexShrink: 0, background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         <ArrowUp size={20} strokeWidth={1.8} />

@@ -1606,14 +1606,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <BottomSheet onClose={() => setGearOpen(false)} title="Group settings" caption={groupName}>
           <style>{FORM_CSS}</style>
           <SectionHead>Group name</SectionHead>
-          <Field label="Group name" value={renameValue} onChange={setRenameValue} placeholder="group name" style={{ marginTop: 14 }} />
-          <Block onClick={doRename} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>Save name</Block>
+          <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+            <Field label="Name" value={renameValue} onChange={setRenameValue} placeholder="" style={{ flex: 1, minWidth: 0 }} />
+            <Block onClick={doRename} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>Save</Block>
+          </div>
           {(others.length > 0 || myInvites.length > 0 || othersPending.length > 0) && (
             <>
               <SectionHead style={{ marginTop: 28 }}>Your names for your friends</SectionHead>
               {others.length > 0 && <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 10 }}>Names default to your friends&rsquo; log-in info. Enter your own names for them, like your phone&rsquo;s contacts.</div>}
               {others.map((m) => (
-                <Field key={m.userId} label={m.displayName ?? m.username} value={contactEdits[m.userId] ?? ""} onChange={(v) => setContactEdits((prev) => ({ ...prev, [m.userId]: v }))} placeholder={m.displayName ?? m.username} maxLength={40} style={{ marginTop: 14 }} />
+                <Field key={m.userId} label={m.displayName ?? m.username} value={contactEdits[m.userId] ?? ""} onChange={(v) => setContactEdits((prev) => ({ ...prev, [m.userId]: v }))} placeholder="" maxLength={40} style={{ marginTop: 14 }} />
               ))}
               <div style={{ marginTop: 14 }}><PendingInvitesPanel invites={myInvites} others={othersPending} onRefresh={reloadMyInvites} /></div>
               {others.length > 0 && <Block onClick={saveContactNames} disabled={contactsSaving} style={{ marginTop: 14, height: 48, ...E.type.label11 }}>{contactsSaving ? "saving…" : "Save names"}</Block>}

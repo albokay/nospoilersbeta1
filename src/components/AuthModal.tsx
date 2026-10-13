@@ -140,7 +140,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
         <>
           <p style={note}>Enter the email you signed up with. We&rsquo;ll send you a link to set a new password.</p>
           <form onSubmit={handleSubmit} style={{ marginTop: 28 }}>
-            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="email" autoFocus autoComplete="email" />
+            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="name@example.com" autoFocus autoComplete="email" />
             {error && <div style={err}>{error}</div>}
             <Block type="submit" disabled={loading} style={{ marginTop: 36 }}>{loading ? <LoadingDots /> : "Send recovery email"}</Block>
           </form>
@@ -153,12 +153,12 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
           <form onSubmit={handleSubmit}>
             {mode === "signup" && (
               <>
-                <Field label="Your first name" value={firstName} onChange={setFirstName} placeholder="your first name" autoFocus autoComplete="given-name" maxLength={40} />
+                <Field label="First name" value={firstName} onChange={setFirstName} placeholder="Sam" autoFocus autoComplete="given-name" maxLength={40} />
                 <div style={{ fontFamily: E.font.interface, fontSize: 12, lineHeight: 1.5, color: "rgba(26,58,74,0.65)", marginTop: 8 }}>This is how you&rsquo;ll show up for your friends. Think of it like saving a name in their contact list.</div>
               </>
             )}
-            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="email" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" style={{ marginTop: mode === "signup" ? 24 : 0 }} />
-            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="Password" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 24 }} />
+            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="name@example.com" readOnly={lockEmail} autoFocus={mode === "signin" && !lockEmail} autoComplete="email" style={{ marginTop: mode === "signup" ? 24 : 0 }} />
+            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="" autoComplete={mode === "signin" ? "current-password" : "new-password"} style={{ marginTop: 24 }} />
             {error && <div style={err}>{error}</div>}
             <Block type="submit" disabled={loading} style={{ marginTop: 36 }}>{loading ? <LoadingDots /> : mode === "signin" ? "Sign in" : "Create account"}</Block>
           </form>

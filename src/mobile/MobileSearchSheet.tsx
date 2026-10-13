@@ -10,7 +10,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, EditorialTitle } from "../components/editorial/Chrome";
 import { NumbersPicker } from "../components/editorial/GroupRoom";
-import { Block, FORM_CSS } from "../components/editorial/Onboarding";
+import { Block, FORM_CSS, FIELD_BOX } from "../components/editorial/Onboarding";
 
 /**
  * Full-screen show search (mobile idiom of the desktop group room's cream
@@ -142,7 +142,7 @@ export default function MobileSearchSheet({
           {!pickShow ? (
             <>
               <EditorialTitle>Find a show</EditorialTitle>
-              <label style={{ display: "flex", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, marginTop: 36 }}>
+              <label style={{ ...FIELD_BOX, marginTop: 36 }}>
                 Show:
                 <input className="e-field" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="find your show" aria-label="Find a show" autoComplete="off"
                   style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }} />

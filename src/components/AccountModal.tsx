@@ -132,8 +132,8 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
         {user?.email && <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 6 }}>{user.email}</div>}
         <SectionHead style={{ marginTop: 28 }}>Your name</SectionHead>
         <div style={note}>How you show up for your friends, unless they&rsquo;ve saved their own name for you.</div>
-        <div style={{ display: "flex", gap: 14, alignItems: "flex-end", marginTop: 14 }}>
-          <Field label="Your name" value={nameDraft} onChange={(v) => { setNameDraft(v); setNameError(null); }} placeholder="your first name" maxLength={40} autoComplete="given-name" readOnly={nameSaving} style={{ flex: 1, minWidth: 0 }} />
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 14 }}>
+          <Field label="Name" value={nameDraft} onChange={(v) => { setNameDraft(v); setNameError(null); }} placeholder="" maxLength={40} autoComplete="given-name" readOnly={nameSaving} style={{ flex: 1, minWidth: 0 }} />
           <Block onClick={saveName} disabled={nameSaving || !nameDirty} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>{nameSaving ? <LoadingDots /> : nameSaved ? "Saved" : "Save"}</Block>
         </div>
         {nameError && <div style={err}>{nameError}</div>}
