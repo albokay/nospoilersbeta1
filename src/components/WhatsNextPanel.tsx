@@ -381,6 +381,10 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
                   aria-label="Search for a show"
                   style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, fontWeight: 400, color: E.color.ink, textTransform: "none", letterSpacing: 0, padding: 0, margin: 0 }}
                 />
+                {/* The × at the field's end clears the search (Alborz's notes, round 5). */}
+                {query && (
+                  <button type="button" aria-label="Clear the search" onClick={(e) => { e.preventDefault(); setQuery(""); inputRef.current?.focus(); }} style={{ background: "transparent", border: 0, padding: 0, margin: "0 -6px 0 0", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: E.color.ink, fontSize: 20, lineHeight: 1, flexShrink: 0 }}>×</button>
+                )}
               </label>
               {(catalogMatches.length > 0 || tvMatches.length > 0) && (
                 <div>

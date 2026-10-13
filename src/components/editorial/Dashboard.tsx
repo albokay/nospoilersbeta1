@@ -23,9 +23,11 @@
  *   DrawerTab        the docked "How I watch TV" tab at the foot.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { GripVertical, SquarePen } from "lucide-react";
 import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
+import { useRowSwipe } from "./GroupRoom";
 import {
   fetchShows, fetchShowRoomsForGroups, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
   type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup,
@@ -84,11 +86,16 @@ function computeLines(
     const pitch = pitchSentence(g, pitches.find((a) => a.groupId === gid), contactNames);
     const envelope: GroupLine["envelope"] = newest || chat ? "open" : (!pitch && sealed) ? "sealed" : null;
     const withShow = (lead: string, roomId: string) => { const n = showOf(roomId); return n ? `${lead} · ${n}` : lead; };
+    // The quiet line (Alborz's notes, round 5): the room with the latest
+    // letters (the newest room before anyone writes), led by "Latest:" once
+    // the group has more than one room.
+    const roomCount = rooms.filter((r) => r.groupId === gid).length;
+    const quiet = latest ? showOf(latest.roomId) : null;
     const line = newest ? withShow("New letters", newest.roomId)
       : pitch ? pitch.text
       : sealed ? withShow("A sealed letter", sealed.roomId)
       : chat ? "New in chat"
-      : latest ? (showOf(latest.roomId) ?? "No shows yet")
+      : quiet ? (roomCount > 1 ? `Latest: ${quiet}` : quiet)
       : "No shows yet";
     out[gid] = { line, envelope, dot: !newest && !!pitch };
   }
@@ -142,6 +149,66 @@ function Avatar({ initial, first, pending = false }: { initial: string; first: b
   );
 }
 
+type GripHandlers = { onPointerDown: (e: React.PointerEvent<HTMLElement>) => void; onPointerMove: (e: React.PointerEvent<HTMLElement>) => void; onPointerUp: () => void; onPointerCancel: () => void; active: boolean };
+
+/** One group's row (Alborz's notes, round 5): on the phone it swipes left
+ *  over a friend-blue pane to the group's settings (a cream pen); on desktop
+ *  a pen appears on hover. The grip at the row's end drags it up or down
+ *  the list (the faintest ink over cream). */
+function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }: {
+  desktop: boolean;
+  /** The dragged row's offset while it's carried. */
+  lift: number | null;
+  rowRef: (el: HTMLDivElement | null) => void;
+  onEnter: () => void;
+  onOptions?: (rect?: DOMRect) => void;
+  grip: GripHandlers | null;
+  children: React.ReactNode;
+}) {
+  const swipe = useRowSwipe(!desktop && onOptions ? () => onOptions() : undefined);
+  const gutter = E.space.gutter;
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
+  const gripEl = grip && (
+    <span
+      data-grip="1" role="button" aria-label="Drag to reorder" title="Drag to reorder"
+      onPointerDown={grip.onPointerDown} onPointerMove={grip.onPointerMove} onPointerUp={grip.onPointerUp} onPointerCancel={grip.onPointerCancel}
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 44, marginRight: -6, flexShrink: 0, color: E.color.inkFaint, cursor: grip.active ? "grabbing" : "grab", touchAction: "none" }}
+    >
+      <GripVertical size={18} strokeWidth={1.6} aria-hidden="true" />
+    </span>
+  );
+  const carried: React.CSSProperties = lift != null ? { transform: `translateY(${lift}px)`, zIndex: 3, boxShadow: "0 6px 18px rgba(26,58,74,0.18)" } : {};
+  if (desktop) {
+    return (
+      <div ref={rowRef} className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, position: "relative", background: E.color.cream, ...carried }}>
+        {children}
+        {onOptions && (
+          <span className="e-pen" role="button" aria-label="Group settings" title="Group settings" onClick={(e) => { e.stopPropagation(); onOptions(e.currentTarget.getBoundingClientRect()); }} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
+            <SquarePen size={16} strokeWidth={1.5} color={E.color.ink} aria-hidden="true" />
+          </span>
+        )}
+        {gripEl}
+      </div>
+    );
+  }
+  return (
+    <div ref={rowRef} style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, ...carried }} {...swipe.handlers}>
+      {onOptions && (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.friend, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
+          <span role="button" aria-label="Group settings" onClick={() => onOptions()} style={{ display: "inline-flex", width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+            <SquarePen size={22} strokeWidth={1.8} color={E.color.cream} aria-hidden="true" />
+          </span>
+        </div>
+      )}
+      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, borderBottom: 0, padding: `18px ${gutter}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
+        {children}
+        {gripEl}
+      </div>
+    </div>
+  );
+}
+
 function GhostRow() {
   return (
     <div aria-hidden="true" style={{ ...rowBase, cursor: "default" }}>
@@ -154,7 +221,7 @@ function GhostRow() {
   );
 }
 
-export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onInvite, onNewGroup, hideNewGroup = false }: {
+export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onInvite, onNewGroup, hideNewGroup = false, desktop = false, onOptions, onReorder }: {
   groups: DashboardGroup[];
   pendingInvites: PendingGroupInvite[];
   contactNames: Record<string, string>;
@@ -169,6 +236,12 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   onInvite: (inv: PendingGroupInvite) => void;
   onNewGroup: () => void;
   hideNewGroup?: boolean;
+  /** Desktop: a pen on hover instead of the swipe; the grip drags with the mouse. */
+  desktop?: boolean;
+  /** The group's settings (round 5): the phone row's swipe, the desktop row's hover pen (with the pen's rect). */
+  onOptions?: (groupId: string, rect?: DOMRect) => void;
+  /** Your own order (round 5): every group's id in the dragged order, to save. */
+  onReorder?: (groupIds: string[]) => void;
 }) {
   const [showsById, setShowsById] = useState<Record<string, Show>>({});
   const [rooms, setRooms] = useState<ShowRoomOfGroup[]>([]);
@@ -186,16 +259,77 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   }, [idsKey]);
   const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames]);
 
+  // Your own order (round 5): the groups you've dragged first, in that
+  // order, then the rest newest-joined first. A drag this session is the
+  // truth until the saved order comes back with the next load.
+  const defaultIds = useMemo(() => {
+    const joined = (g: DashboardGroup) => g.members.find((m) => m.userId === selfUserId)?.joinedAt ?? g.group.createdAt;
+    const manual = groups.filter((g) => g.group.sortOrder != null).sort((a, b) => (a.group.sortOrder as number) - (b.group.sortOrder as number));
+    const rest = groups.filter((g) => g.group.sortOrder == null).sort((a, b) => joined(b) - joined(a));
+    return [...manual, ...rest].map((g) => g.group.id);
+  }, [groups, selfUserId]);
+  const [draggedIds, setDraggedIds] = useState<string[] | null>(null);
+  const orderedIds = useMemo(
+    () => (draggedIds ? [...draggedIds.filter((id) => defaultIds.includes(id)), ...defaultIds.filter((id) => !draggedIds.includes(id))] : defaultIds),
+    [draggedIds, defaultIds],
+  );
+  const ordered = useMemo(() => orderedIds.map((id) => groups.find((g) => g.group.id === id)).filter((g): g is DashboardGroup => !!g), [orderedIds, groups]);
+
+  // The drag from the grip: the row follows the pointer; past a neighbour's
+  // midpoint the two swap and the anchor carries along, so the carried row
+  // keeps its place under the finger.
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const dragRef = useRef<{ id: string; startY: number; order: string[] } | null>(null);
+  const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
+  const onGripDown = (id: string) => (e: React.PointerEvent<HTMLElement>) => {
+    if (!onReorder) return;
+    e.preventDefault(); e.stopPropagation();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
+    dragRef.current = { id, startY: e.clientY, order: orderedIds };
+    setDrag({ id, dy: 0 });
+  };
+  const onGripMove = (e: React.PointerEvent<HTMLElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    let dy = e.clientY - d.startY;
+    const i = d.order.indexOf(d.id);
+    const heightOf = (id: string) => rowRefs.current[id]?.getBoundingClientRect().height ?? 0;
+    if (dy > 0 && i < d.order.length - 1) {
+      const h = heightOf(d.order[i + 1]);
+      if (h && dy > h / 2) { const next = [...d.order]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; d.order = next; d.startY += h; dy -= h; setDraggedIds(next); }
+    } else if (dy < 0 && i > 0) {
+      const h = heightOf(d.order[i - 1]);
+      if (h && -dy > h / 2) { const next = [...d.order]; [next[i], next[i - 1]] = [next[i - 1], next[i]]; d.order = next; d.startY -= h; dy += h; setDraggedIds(next); }
+    }
+    setDrag({ id: d.id, dy });
+  };
+  const onGripUp = () => {
+    const d = dragRef.current;
+    if (!d) return;
+    dragRef.current = null;
+    setDrag(null);
+    onReorder?.(d.order);
+  };
+
   return (
     <div>
       <SectionHead right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new friend group →</UnderlineWord> : null}>Groups</SectionHead>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
-      {groups.map(({ group, members, pendingInvites: gp }) => {
+      {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);
         const name = groupDisplayName(group, others, contactNames, gp.map((p) => p.name || "a friend"), groupNumberById[group.id]);
         const l = lines[group.id];
+        const id = group.id;
         return (
-          <button key={group.id} type="button" onClick={() => onEnter(group.id)} style={rowBase}>
+          <GroupRow
+            key={id}
+            desktop={desktop}
+            lift={drag?.id === id ? drag.dy : null}
+            rowRef={(el) => { rowRefs.current[id] = el; }}
+            onEnter={() => onEnter(id)}
+            onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
+            grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
+          >
             {(others.length > 0 || gp.length > 0) && (
               <span style={{ display: "inline-flex", flexShrink: 0 }}>
                 {others.map((m, i) => <Avatar key={m.userId} initial={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?"} first={i === 0} />)}
@@ -207,7 +341,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
               <span style={lineStyle}>{l?.line ?? ""}</span>
             </span>
             {l?.envelope ? <LetterDisc kind={l.envelope} className="m-dot-in" /> : l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
-          </button>
+          </GroupRow>
         );
       })}
       {pendingInvites.map((inv) => {

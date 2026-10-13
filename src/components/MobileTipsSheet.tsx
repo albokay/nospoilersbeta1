@@ -53,7 +53,7 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, user?.id]);
-  const tips = tipsFor(page, "mobile");
+  const tips = tipsFor(page, "mobile", editorial);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function close() {

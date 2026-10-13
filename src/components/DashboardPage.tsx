@@ -74,6 +74,7 @@ import {
   fetchRoomDnfMap,
   setRoomDnf,
   cancelPitch,
+  setGroupOrder,
   chatHasNewActivity,
   chatUnreadLabel,
   markGroupChatSeen,
@@ -408,20 +409,23 @@ export default function DashboardPage() {
   // Pending-invites changeset CP2: the viewer's OWN pending invites for the
   // active group — drives the gear panel + the 3-day stale dot/tooltip.
   const [myGroupInvites, setMyGroupInvites] = useState<MyPendingInvite[]>([]);
+  const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
+  // The invites follow the group whose settings are open (round 5: the
+  // dashboard row's pen opens them with no active group), else the room's.
+  const invitesGroupId = optionsFor ?? activeGroupId;
   function reloadMyGroupInvites() {
-    if (user && activeGroupId) fetchMyPendingInvitesForGroup(user.id, activeGroupId).then(setMyGroupInvites).catch(() => {});
+    if (user && invitesGroupId) fetchMyPendingInvitesForGroup(user.id, invitesGroupId).then(setMyGroupInvites).catch(() => {});
   }
   useEffect(() => {
-    if (!user || !activeGroupId) { setMyGroupInvites([]); return; }
+    if (!user || !invitesGroupId) { setMyGroupInvites([]); return; }
     let cancelled = false;
-    fetchMyPendingInvitesForGroup(user.id, activeGroupId).then((rows) => { if (!cancelled) setMyGroupInvites(rows); });
+    fetchMyPendingInvitesForGroup(user.id, invitesGroupId).then((rows) => { if (!cancelled) setMyGroupInvites(rows); });
     return () => { cancelled = true; };
     // railGroups in deps: a just-sent invite (add-friends modal refreshes the
     // rail) shows up in the gear panel without re-entering the room.
-  }, [user, activeGroupId, railGroups]);
+  }, [user, invitesGroupId, railGroups]);
   const [invitePrompt, setInvitePrompt] = useState<PendingGroupInvite | null>(null);
   const [acceptError, setAcceptError] = useState<string | null>(null);
-  const [optionsFor, setOptionsFor] = useState<string | null>(null); // group id whose gear options are open
   const [optionsAnchor, setOptionsAnchor] = useState<{ x: number; y: number } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   // CP-C rename-contacts (naming arc 2026-07-07): the gear's per-member "your
@@ -2482,6 +2486,9 @@ export default function DashboardPage() {
                 onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                 onNewGroup={() => openInvite()}
                 hideNewGroup={socialOnbActive}
+                desktop
+                onOptions={(id, rect) => { if (rect) openGroupOptions(id, rect); }}
+                onReorder={(ids) => { void setGroupOrder(ids); }}
               />
             );
             return socialOnbActive

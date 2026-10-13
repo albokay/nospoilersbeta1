@@ -156,6 +156,44 @@ const SWIPE_COMMIT = 60; // past this, letting go opens the options
 /** The hint key: the first visit slides the top row open and back once. */
 export function swipeHintKey(uid: string) { return `ns_swipe_hint_${uid}`; }
 
+/** The phone row's swipe (round 5 — lifted out of ShowRow so the dashboard's
+ *  group rows swipe the same way): horizontal drags move the row (vertical
+ *  ones scroll the page); past SWIPE_COMMIT a release opens the options.
+ *  Drags from the screen's edge zones (the browser's back / forward
+ *  gesture) and from a `data-grip` handle never move the row. */
+export function useRowSwipe(onOptions?: () => void): { dx: number; dragging: boolean; handlers: React.DOMAttributes<HTMLDivElement> } {
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
+  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!onOptions) return;
+    if (e.clientX < 28 || e.clientX > window.innerWidth - 28) return;
+    if ((e.target as HTMLElement | null)?.closest?.("[data-grip]")) return;
+    start.current = { x: e.clientX, y: e.clientY, axis: null };
+  };
+  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const st = start.current;
+    if (!st) return;
+    const mx = e.clientX - st.x, my = e.clientY - st.y;
+    if (st.axis === null) {
+      if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+      st.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+      if (st.axis === "x") { setDragging(true); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ } }
+    }
+    if (st.axis === "x") setDx(Math.max(-SWIPE_OPEN - 24, Math.min(0, mx)));
+  };
+  const onUp = () => {
+    const st = start.current;
+    start.current = null;
+    if (!st || st.axis !== "x") return;
+    const commit = dx < -SWIPE_COMMIT;
+    setDragging(false);
+    setDx(0);
+    if (commit) onOptions?.();
+  };
+  return { dx, dragging, handlers: { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onUp } };
+}
+
 export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false }: {
   tvmazeId?: string | null;
   /** false = a pitched row (no poster). */
@@ -178,9 +216,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   /** A proposal you passed on: the name in ink-muted. */
   dashed?: boolean;
 }) {
-  const [dx, setDx] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const start = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
+  const { dx, dragging, handlers: swipeHandlers } = useRowSwipe(onOptions);
   const [hinting, setHinting] = useState(hint);
   useEffect(() => { if (hint) { const t = window.setTimeout(() => setHinting(false), 1400); return () => window.clearTimeout(t); } }, [hint]);
 
@@ -225,38 +261,11 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   // it (vertical ones scroll the page); past SWIPE_COMMIT a release opens the
   // options; the revealed pen opens them too; a plain tap opens the room.
   const gutter = E.space.gutter;
-  const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!onOptions) return;
-    // The screen's edge zones belong to the browser's back / forward swipe
-    // (Alborz's notes, round 5): a drag starting there never moves the row.
-    if (e.clientX < 28 || e.clientX > window.innerWidth - 28) return;
-    start.current = { x: e.clientX, y: e.clientY, axis: null };
-  };
-  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const st = start.current;
-    if (!st) return;
-    const mx = e.clientX - st.x, my = e.clientY - st.y;
-    if (st.axis === null) {
-      if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
-      st.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-      if (st.axis === "x") { setDragging(true); try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ } }
-    }
-    if (st.axis === "x") setDx(Math.max(-SWIPE_OPEN - 24, Math.min(0, mx)));
-  };
-  const onUp = () => {
-    const st = start.current;
-    start.current = null;
-    if (!st || st.axis !== "x") return;
-    const commit = dx < -SWIPE_COMMIT;
-    setDragging(false);
-    setDx(0);
-    if (commit) onOptions?.();
-  };
   const shift = hinting ? -SWIPE_OPEN : dx;
   return (
     <div
       style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y" }}
-      onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
+      {...swipeHandlers}
     >
       {onOptions && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.accent, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
@@ -429,7 +438,9 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
       <div
         ref={scrollRef}
         {...swipe.handlers}
-        style={{ position: "absolute", left: 0, right: 0, top: E.safe.plus(top), bottom: 0, background: E.color.cream, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + ${32 + kb}px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
+        // Ink on the panel (round 5): rendered at the page root, the sheet
+        // inherited the dashboard body's cream text — its titles vanished.
+        style={{ position: "absolute", left: 0, right: 0, top: E.safe.plus(top), bottom: 0, background: E.color.cream, color: E.color.ink, padding: `10px ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + ${32 + kb}px)`, boxSizing: "border-box", overflowY: "auto", WebkitOverflowScrolling: "touch", animation: "mSheetRise 180ms ease-out", ...swipe.style }}
       >
         <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto" }} />
         {children}

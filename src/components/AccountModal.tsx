@@ -130,6 +130,13 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
       <>
         <div style={E.type.letterTitle22}>Account</div>
         {user?.email && <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 6 }}>{user.email}</div>}
+        {/* Sign out first (Alborz's notes, round 5). */}
+        {onSignOut && (
+          <>
+            <SectionHead style={{ marginTop: 28 }}>Signed in</SectionHead>
+            <Frame onClick={() => { void onSignOut(); }} style={{ marginTop: 14, height: 48, ...E.type.label11 }}><LogOut size={14} /> Sign out</Frame>
+          </>
+        )}
         <SectionHead style={{ marginTop: 28 }}>Your name</SectionHead>
         <div style={note}>How you show up for your friends, unless they&rsquo;ve saved their own name for you.</div>
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 14 }}>
@@ -147,12 +154,6 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
         <SectionHead style={{ marginTop: 28, color: E.color.alert, borderBottomColor: E.color.alert }}>Delete account</SectionHead>
         <div style={note}>Permanently deletes your account, personal info and private notes. Posts in shared rooms stay, shown as &ldquo;(deleted user)&rdquo;. This can&rsquo;t be undone.</div>
         <Frame onClick={() => setPhase("confirm")} style={{ marginTop: 14, height: 48, ...E.type.label11, color: E.color.alert, borderColor: E.color.alert }}>Delete my account…</Frame>
-        {onSignOut && (
-          <>
-            <SectionHead style={{ marginTop: 28 }}>Signed in</SectionHead>
-            <Frame onClick={() => { void onSignOut(); }} style={{ marginTop: 14, height: 48, ...E.type.label11 }}><LogOut size={14} /> Sign out</Frame>
-          </>
-        )}
       </>
     );
     const confirm = (

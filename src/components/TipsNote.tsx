@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import StickyNote from "./StickyNote";
 import TipText from "./TipText";
 import { tipsFor, GROUP_ROOM_TIPS, type Tip, type TipsPage } from "../lib/tipsContent";
+import { useEditorial } from "../lib/skin";
 
 function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
   return (
@@ -55,6 +56,7 @@ export default function TipsNote({ page, onDismiss }: {
   page: TipsPage;
   onDismiss: () => void;
 }) {
+  const editorial = useEditorial();
   // Stepper index (group room). The component unmounts when the "?" closes,
   // so a re-open always starts back at the welcome tip.
   const [idx, setIdx] = useState(0);
@@ -130,7 +132,7 @@ export default function TipsNote({ page, onDismiss }: {
     );
     return pinned ? note : <div style={scrollFrame}>{note}</div>;
   }
-  const tips = tipsFor(page, "desktop");
+  const tips = tipsFor(page, "desktop", editorial);
   return (
     <div style={scrollFrame}>
     <StickyNote

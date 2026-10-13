@@ -2515,17 +2515,27 @@ export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGr
   // (no column) fall back to the plain select so nothing breaks.
   let memberRows: any[] | null = null;
   {
+    // Your own order (round 5) rides on the membership row — column-tolerant
+    // like migration_dormant, one select narrower at each fallback.
     const res = await supabase
       .from("people_group_members")
-      .select("group_id, migration_dormant")
+      .select("group_id, migration_dormant, sort_order")
       .eq("user_id", userId);
     if (res.error) {
-      const fb = await supabase
+      const res2 = await supabase
         .from("people_group_members")
-        .select("group_id")
+        .select("group_id, migration_dormant")
         .eq("user_id", userId);
-      if (fb.error) throw fb.error;
-      memberRows = fb.data;
+      if (res2.error) {
+        const fb = await supabase
+          .from("people_group_members")
+          .select("group_id")
+          .eq("user_id", userId);
+        if (fb.error) throw fb.error;
+        memberRows = fb.data;
+      } else {
+        memberRows = res2.data;
+      }
     } else {
       memberRows = res.data;
     }
@@ -2534,6 +2544,8 @@ export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGr
     .filter((r: any) => !r.migration_dormant)
     .map((r: any) => r.group_id);
   if (!groupIds.length) return [];
+  const orderById: Record<string, number> = {};
+  for (const r of memberRows ?? []) if (typeof r.sort_order === "number") orderById[r.group_id] = r.sort_order;
 
   const { data, error } = await supabase
     .from("people_groups")
@@ -2542,7 +2554,17 @@ export async function fetchPeopleGroupsForUser(userId: string): Promise<PeopleGr
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(rowToPeopleGroup);
+  return (data ?? []).map((row: any) => ({ ...rowToPeopleGroup(row), sortOrder: orderById[row.id] ?? null }));
+}
+
+/** Your own order of your groups (Alborz's notes, round 5): the dragged
+ *  order, saved on the caller's membership rows by `set_group_order`
+ *  (migration 20261013). Tolerant: before the migration the order lives for
+ *  the session only. Returns whether it was saved. */
+export async function setGroupOrder(groupIds: string[]): Promise<boolean> {
+  const { data, error } = await supabase.rpc("set_group_order", { p_group_ids: groupIds });
+  if (error) { console.warn("[db] set_group_order unavailable", error.message); return false; }
+  return !!data && data.ok !== false;
 }
 
 /** Members of a people-group with usernames (drives the auto-name + rail).

@@ -21,6 +21,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, AccountWord, wordStyle, EditorialTitle } from "../components/editorial/Chrome";
 import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
+import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
 import MobileGhostRow from "./MobileGhostRow";
 import ReferenceLookupBand from "../components/reference/ReferenceLookupBand";
@@ -29,6 +30,12 @@ import {
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
   fetchGroupPendingInvites,
+  fetchMyPendingInvitesForGroup,
+  renamePeopleGroup,
+  leavePeopleGroup,
+  setContactName,
+  setGroupOrder,
+  type MyPendingInvite,
   fetchMyPendingGroupInvites,
   acceptPeopleGroupInvite,
   declinePeopleGroupInvite,
@@ -112,6 +119,24 @@ export default function MobileDashboard() {
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
   const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // The group's settings on the dashboard (Alborz's notes, round 5): the
+  // row's swipe opens the same sheet the group room's gear does — rename,
+  // your names for your friends, the pending invites, leave.
+  const [settingsFor, setSettingsFor] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [contactEdits, setContactEdits] = useState<Record<string, string>>({});
+  const [contactsSaving, setContactsSaving] = useState(false);
+  const [settingsInvites, setSettingsInvites] = useState<{ mine: MyPendingInvite[]; group: GroupPendingInvite[] }>({ mine: [], group: [] });
+  const settingsGroup = settingsFor ? railGroups.find((r) => r.group.id === settingsFor) ?? null : null;
+  const settingsOthers = (settingsGroup?.members ?? []).filter((m) => m.userId !== selfUserId);
+  const reloadSettingsInvites = useCallback(() => {
+    if (!user || !settingsFor) return;
+    const gid = settingsFor;
+    fetchMyPendingInvitesForGroup(user.id, gid).then((mine) => setSettingsInvites((s) => ({ ...s, mine }))).catch(() => {});
+    fetchGroupPendingInvites(gid).then((group) => setSettingsInvites((s) => ({ ...s, group }))).catch(() => {});
+  }, [user, settingsFor]);
+  useEffect(() => { setSettingsInvites({ mine: [], group: [] }); reloadSettingsInvites(); }, [reloadSettingsInvites]);
 
   // CP3 social onboarding (3-screen show→friend→seed-entry flow). Fires ONCE
   // for brand-new self-signup accounts (no TSP demo on mobile per Alborz):
@@ -201,6 +226,43 @@ export default function MobileDashboard() {
       return [];
     }
   }, []);
+
+  function openSettings(gid: string) {
+    const grp = railGroups.find((r) => r.group.id === gid);
+    setRenameValue(grp?.group.name ?? "");
+    const edits: Record<string, string> = {};
+    for (const m of (grp?.members ?? []).filter((m) => m.userId !== selfUserId)) edits[m.userId] = contactNames[m.userId] ?? "";
+    setContactEdits(edits);
+    setSettingsFor(gid);
+  }
+  async function doRenameGroup() {
+    const gid = settingsFor;
+    if (!gid) return;
+    try { await renamePeopleGroup(gid, renameValue); } catch (e) { console.error("[m-dashboard] rename failed", e); }
+    setSettingsFor(null);
+    if (user) { try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ } }
+  }
+  async function saveSettingsNames() {
+    if (!user || contactsSaving) return;
+    setContactsSaving(true);
+    try {
+      for (const m of settingsOthers) {
+        const next = (contactEdits[m.userId] ?? "").trim();
+        const cur = contactNames[m.userId] ?? "";
+        if (next !== cur) await setContactName(user.id, m.userId, next);
+      }
+      setContactNames(await fetchContactNames(user.id));
+      setSettingsFor(null);
+    } catch (e) { console.error("[m-dashboard] contact rename failed", e); }
+    finally { setContactsSaving(false); }
+  }
+  async function doLeaveGroup() {
+    const gid = settingsFor;
+    setSettingsFor(null);
+    if (!gid) return;
+    try { await leavePeopleGroup(gid); } catch (e) { console.error("[m-dashboard] leave failed", e); }
+    if (user) { try { setRailGroups(await loadRail(user.id)); } catch { /* tolerant */ } }
+  }
 
   // One-time-per-mount snapshot hydration guard.
   const hydratedRef = React.useRef(false);
@@ -481,6 +543,8 @@ export default function MobileDashboard() {
                   onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                   onNewGroup={() => setInviteOpen(true)}
                   hideNewGroup={showSocialOnb}
+                  onOptions={(id) => openSettings(id)}
+                  onReorder={(ids) => { void setGroupOrder(ids); }}
                 />
                 {!showSocialOnb && <MobileAddToHomeScreen editorial />}
               </div>
@@ -660,6 +724,19 @@ export default function MobileDashboard() {
 
       {/* ── Invite compose (full-screen; creates a new group). Closing after
              a create lands INSIDE the new group (desktop parity). ── */}
+      {/* The group's settings sheet from a row's swipe (round 5). */}
+      {settingsFor && editorial && settingsGroup && (
+        <GroupSettingsSheet
+          groupName={groupDisplayName(settingsGroup.group, settingsOthers, contactNames, settingsGroup.pendingInvites.map((p) => p.name || "a friend"), groupNumberById[settingsGroup.group.id])}
+          renameValue={renameValue} onRenameChange={setRenameValue} onRename={doRenameGroup}
+          others={settingsOthers}
+          contactEdits={contactEdits} onContactEdit={(id, v) => setContactEdits((prev) => ({ ...prev, [id]: v }))} onSaveNames={saveSettingsNames} contactsSaving={contactsSaving}
+          myInvites={settingsInvites.mine}
+          othersPending={settingsInvites.group.filter((p) => p.inviterId != null && p.inviterId !== selfUserId).map((p) => ({ name: p.name, createdAt: p.createdAt, inviteId: p.inviteId }))}
+          onRefreshInvites={reloadSettingsInvites}
+          onLeave={doLeaveGroup} onClose={() => setSettingsFor(null)}
+        />
+      )}
       {inviteOpen && (
         <MobileInviteSheet
           onClose={() => setInviteOpen(false)}

@@ -51,6 +51,9 @@ export type PeopleGroup = {
   /** Stable per-creator group number; unnamed groups display as "Group <seq>".
    *  null when the seq migration hasn't been applied yet (tolerant fallback). */
   seq: number | null;
+  /** Your own order on the dashboard (round 5): the membership row's
+   *  sort_order, null until you first drag (or before the migration). */
+  sortOrder?: number | null;
 };
 
 export type PeopleGroupMember = {

@@ -54,6 +54,16 @@ const cardCenterColumn: React.CSSProperties = {
   padding: "24px 16px", boxSizing: "border-box",
 };
 
+/** The editorial card's shell: the phone's sheet, the desktop's dialog.
+ *  At module level (round 5): declared inside the render it was a NEW
+ *  component type every render, so every keystroke in the search field
+ *  remounted the whole card — the field flickered and lost its place. */
+function EdShell({ mobile, children, onClose, label }: { mobile: boolean; children: React.ReactNode; onClose: () => void; label: string }) {
+  return mobile
+    ? <EditorialSheet onClose={onClose}>{children}</EditorialSheet>
+    : <EditorialDialog onClose={onClose} width={480} label={label} align="left">{children}</EditorialDialog>;
+}
+
 export default function ReferenceLookupBand({ mobile = false, editorial = false, groupsColumn }: {
   mobile?: boolean;
   /** The editorial skin (checkpoint 2, 2026-10-12; the E3Dash / D3Dash
@@ -684,9 +694,6 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
   // The editorial modals (Alborz's notes, item 7): the search, the canon
   // card, the essentials card and the look-it-up card as the bible's dialog
   // (desktop) or sheet (phone). Same acts as the classic modals above.
-  const EdShell = ({ children, onClose, label }: { children: React.ReactNode; onClose: () => void; label: string }) => mobile
-    ? <EditorialSheet onClose={onClose}>{children}</EditorialSheet>
-    : <EditorialDialog onClose={onClose} width={480} label={label} align="left">{children}</EditorialDialog>;
   const edRow: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "12px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, WebkitTapHighlightColor: "transparent" };
   const edTag = (t: string) => <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{t}</span>;
   const edNote: React.CSSProperties = { ...E.type.note13, color: E.color.inkSub, marginTop: 6 };
@@ -694,7 +701,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     <>
       <style>{FORM_CSS}</style>
       {searchOpen && (
-        <EdShell onClose={() => setSearchOpen(false)} label={searchMode === "canon" ? "Add to your canon" : "Find a show"}>
+        <EdShell mobile={mobile} onClose={() => setSearchOpen(false)} label={searchMode === "canon" ? "Add to your canon" : "Find a show"}>
           <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{searchMode === "canon" ? "Add to your canon" : "Find a show"}</div>
           <label style={{ ...FIELD_BOX, marginTop: 22 }}>
             Show:
@@ -716,7 +723,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         </EdShell>
       )}
       {canonCard && (
-        <EdShell onClose={() => { if (!canonBusy) setCanonCard(null); }} label={canonCard.name}>
+        <EdShell mobile={mobile} onClose={() => { if (!canonBusy) setCanonCard(null); }} label={canonCard.name}>
           <div style={{ ...E.type.question30, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", paddingRight: 28 }}>{canonCard.name}</div>
           <div style={{ ...E.type.label11, marginTop: 18 }}>Why is this in your canon?</div>
           {canonCard.adding && <div style={edNote}>Adding a show to your canon sets your progress to its latest episode.</div>}
@@ -731,7 +738,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         const eps = [...(entry?.essentialEps ?? [])].sort((a, b) => a - b);
         const shareName = (profile?.display_name || profile?.username || "My").trim();
         return (
-          <EdShell onClose={() => setShareShow(null)} label={`${shareName}'s essentials`}>
+          <EdShell mobile={mobile} onClose={() => setShareShow(null)} label={`${shareName}'s essentials`}>
             <div style={{ ...E.type.label10, color: E.color.inkMuted }}>{shareName}&rsquo;s TV canon</div>
             <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", marginTop: 6, paddingRight: 28 }}>{shareShow.name}</div>
             {entry?.canonTake && <div style={{ ...E.type.quote14, fontSize: 15, marginTop: 12 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
@@ -752,9 +759,13 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         );
       })()}
       {(cardShow || cardPending) && (
-        <EdShell onClose={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }} label={cardTitle}>
+        <EdShell mobile={mobile} onClose={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }} label={cardTitle}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: mobile ? 26 : 6, padding: "0 20px" }}>{cardTitle}</div>
+            {/* The poster over the title (Alborz's notes, round 5), when the shelves know it. */}
+            {cardShow && posters[cardShow.id] && (
+              <img src={posters[cardShow.id] as string} alt="" draggable={false} style={{ width: 72, height: 104, objectFit: "cover", display: "block", margin: `${mobile ? 22 : 4}px auto 0` }} />
+            )}
+            <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: cardShow && posters[cardShow.id] ? 16 : (mobile ? 26 : 6), padding: "0 20px" }}>{cardTitle}</div>
             <div style={{ ...E.type.label11, marginTop: 22 }}>How far in are you?</div>
             <div style={edNote}>Set your episode. Nothing you see will ever go past it.</div>
             {cardShow
@@ -771,7 +782,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
                 {progress[cardShow.id]?.wantedAt ? (
                   <div style={{ ...E.type.note13, marginTop: 24, display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
                     <span>On your want-to-watch list</span>
-                    <UnderlineWord onClick={() => unwantShow(cardShow.id)}>Remove</UnderlineWord>
+                    <UnderlineWord onClick={() => unwantShow(cardShow.id)}>Remove show</UnderlineWord>
                   </div>
                 ) : (
                   <Block onClick={wantIt} disabled={wantBusy || logBusy} style={{ marginTop: 24 }}>{wantBusy ? <>one moment<LoadingDots /></> : "Want to watch"}</Block>
@@ -892,7 +903,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         ? { marginTop: 60, marginLeft: -gutter, marginRight: -gutter, padding: `30px ${gutter}px 32px`, background: E.color.accent }
         : { width: 288, flexShrink: 0, padding: "26px 24px 28px", background: E.color.accent, boxSizing: "border-box", marginTop: 2 }}>
         <div style={{ ...E.type.label11, color: E.color.ink, display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <span>Need to look something up?</span><span style={{ opacity: 0.7 }}>Spoiler-safe</span>
+          <span style={{ color: E.color.cream }}>Need to look something up?</span><span style={{ opacity: 0.7 }}>Spoiler-safe</span>
         </div>
         <div style={{ ...E.type.body15, color: E.color.ink, marginTop: 14, maxWidth: mobile ? 300 : undefined }}>
           Cast and plot. Everything filtered to how far you&rsquo;ve watched, so nothing spoils.

@@ -78,8 +78,18 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   },
 ];
 
-export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile"): Tip[] {
+export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile", editorial = false): Tip[] {
   if (page === "dashboard") {
+    // The editorial dashboard (Alborz's wording, 2026-10-13, round 5): the
+    // rows carry initials, a dashed circle is a friend who hasn't joined,
+    // and the nudge lives behind the row's swipe (phone) / pen (desktop).
+    if (editorial) {
+      return [
+        { body: "This is your dashboard, where your watch groups live." },
+        { body: `Each group lists your friends by their initials. A dashed circle is a friend who hasn't joined yet. Sidebar has emailed their invite, and you can nudge them ${idiom === "mobile" ? "by swiping on the row" : "from the pen at the end of the row"}.` },
+        { body: "While you wait for friends to join, you can still go inside to add more shows or start writing." },
+      ];
+    }
     // Alborz's 2026-08-01 rewrite (replaces the QA round 3 copy; same on
     // both platforms).
     return [
