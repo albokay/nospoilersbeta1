@@ -1120,7 +1120,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* Over the "N finished together" row under the sky, centred on it
           (his call, 2026-10-13: the least important row, still reachable
           beside the note); it follows the masthead's live height. */}
-      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: titleBlockH != null ? titleBlockH - 16 : E.safe.plus(E.measure.phone.masthead - 16), width: 244 }} />}
+      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile
