@@ -2094,8 +2094,8 @@ export default function DashboardPage() {
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
               <div ref={titleBlockRef} style={{ position: "relative", paddingRight: 160, paddingBottom: 40, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
-                {/* In line with the pitched rail (Alborz 2026-10-13): the rail's width at the content's right edge, no longer hanging past it. */}
-                {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: 0, top: 114, width: E.measure.desktop.railCol }} />}
+                {/* Over the pitched rail but a touch off it (Alborz 2026-10-13): the rail's width, shifted 32px left — halfway to the finished row's arrow — so it reads as slightly misaligned on purpose, and higher, so the sky/cream edge doesn't split it evenly. */}
+                {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: 32, top: 84, width: E.measure.desktop.railCol }} />}
                 {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
                 <FittedTitle desktop name={groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id])} gear={(
                   <TitleGear
