@@ -5,6 +5,7 @@ import { Confirm, BottomSheet } from "../editorial/Overlays";
 import { EditorialDialog } from "../editorial/GroupRoom";
 import { Block } from "../editorial/Onboarding";
 import { UNDERLINE_WORD, INK_BLOCK_M, INK_SMALL, REPLY_TA_CSS } from "../editorial/MapNotes";
+import { PAPER_TEXTAREA, PAPER_LH, COMPOSE_CSS } from "../editorial/Compose";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -17,7 +18,7 @@ import type { PublicRoomResponseGate } from "./V2RoomFeed";
 import Tooltip from "../Tooltip";
 import HighlightPicker from "../HighlightPicker";
 import HighlightableBody, { selectionToBodyOffsets } from "./HighlightableBody";
-import { HighlightCreateSheet } from "./HighlightSheets";
+import { HighlightCreateSheet, HighlightPickDrawer } from "./HighlightSheets";
 import { togglePick, type Range } from "../../lib/sentences";
 import { useAuth } from "../../lib/auth";
 import {
@@ -360,6 +361,20 @@ export default function V2InlineThread({
     }
   };
 
+  // The editorial edit paper (Alborz's notes, round 5): the compose's ruled
+  // paper, as tall as the letter read (whole 28px lines), growing with the
+  // writing.
+  const editTaRef = useRef<HTMLTextAreaElement>(null);
+  const editMinLines = Math.max(6, Math.ceil(editStartHeight / PAPER_LH));
+  useEffect(() => {
+    if (!editing || !editorialScope) return;
+    const ta = editTaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    const lines = Math.max(editMinLines, Math.ceil(ta.scrollHeight / PAPER_LH));
+    ta.style.height = `${lines * PAPER_LH}px`;
+  }, [editing, editBody, editorialScope, editMinLines]);
+
   // The phone's pick mode.
   const startPick = () => {
     if (!groupId) return;
@@ -394,7 +409,8 @@ export default function V2InlineThread({
   const pickNext = () => {
     if (!pickRange) return;
     setMobileCreate({ start: pickRange.a, end: pickRange.b, text: thread.body.slice(pickRange.a, pickRange.b) });
-    setTimeout(scrollPickIntoView, 0);
+    // The editorial drawer (round 5) stays where you are: no scroll.
+    if (!editorialScope) setTimeout(scrollPickIntoView, 0);
   };
 
   const handleDeleteHighlight = (id: string) => {
@@ -712,7 +728,7 @@ export default function V2InlineThread({
         </div>
       ) : editing ? (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-          {editorialScope && <style>{REPLY_TA_CSS}</style>}
+          {editorialScope && <style>{REPLY_TA_CSS}{COMPOSE_CSS}</style>}
           <input
             className={editorialScope ? undefined : "badge"}
             value={editTitle}
@@ -721,11 +737,12 @@ export default function V2InlineThread({
             style={editorialScope ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", ...E.type.letterTitle22, color: E.color.ink, padding: "0 0 8px" } : { width: "100%", height: 40, fontWeight: 700, border: "none" }}
           />
           <textarea
-            className={editorialScope ? "e-reply-ta" : "card"}
+            ref={editTaRef}
+            className={editorialScope ? "e-compose-paper" : "card"}
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             placeholder="Body"
-            style={editorialScope ? { width: "100%", boxSizing: "border-box", height: editStartHeight, resize: "vertical", border: `1px solid ${E.color.ink}`, borderRadius: 0, padding: "10px 12px", ...E.type.letterBody15, lineHeight: 1.6, outline: "none", marginTop: 8 } : { width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
+            style={editorialScope ? { ...PAPER_TEXTAREA(!mobileIdiom, editMinLines), marginTop: 8 } : { width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
           />
           {editError && (
             <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
@@ -829,6 +846,20 @@ export default function V2InlineThread({
           lives in the title row (owned by V2RoomFeed). Hidden on
           tombstones and while editing. */}
       {!isTombstone && !editing && pickMode && (
+        editorialScope ? (
+          // The drawer (Alborz's notes, round 5): the card became a drawer
+          // fixed at the foot of the screen, opening from wherever you are;
+          // the page scrolls behind it. In flow, only room for the letter's
+          // end to scroll clear of it. After Next the writing drawer takes
+          // its place (HighlightCreateSheet below).
+          <>
+            <div aria-hidden="true" style={{ height: 240 }} />
+            {!mobileCreate && createPortal(
+              <HighlightPickDrawer hasPick={!!pickRange} onNext={pickNext} onClose={endPick} />,
+              document.body,
+            )}
+          </>
+        ) : (
         // Pick mode (the phone): a cream card in the action row's place
         // that says what a note is and how to pick (his 10-07 note: the
         // one-line hint was too cryptic and too easy to miss).
@@ -850,6 +881,7 @@ export default function V2InlineThread({
             )}
           </div>
         </div>
+        )
       )}
       {!isTombstone && !editing && !pickMode && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: editorialScope ? 18 : 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
@@ -1171,9 +1203,13 @@ export default function V2InlineThread({
           sentences — the stretch, then Yup. or a note. */}
       {mobileCreate && createPortal(
         <HighlightCreateSheet
+          // The pick stays live under the editorial drawer (round 5): the
+          // note lands on the sentences lit when Save is tapped.
+          canSave={editorialScope ? !!pickRange : true}
           onClose={() => { setMobileCreate(null); endPick(); }}
           onConfirm={async (payload) => {
-            await createHighlightFromRange(mobileCreate, payload);
+            const live = editorialScope && pickRange ? { start: pickRange.a, end: pickRange.b, text: thread.body.slice(pickRange.a, pickRange.b) } : mobileCreate;
+            await createHighlightFromRange(live, payload);
             setMobileCreate(null);
             endPick();
           }}

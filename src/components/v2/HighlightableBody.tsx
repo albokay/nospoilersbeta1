@@ -175,9 +175,14 @@ function HighlightableSegment({
   if (!pieces) return <span data-body-start={bodyStart}>{renderText(text)}</span>;
   return (
     <span data-body-start={bodyStart}>
-      {pieces.map((p) => {
+      {pieces.map((p, i) => {
         const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
         if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
+        // Two notes side by side (Alborz's notes, round 5): a 1px cream seam
+        // where one stretch ends and a different one begins, so they read
+        // as two.
+        const prev = i > 0 ? pieces[i - 1] : null;
+        const seam = editorialScope && !!prev && prev.covering.length > 0 && !sameCovering(prev.covering, p.covering);
         // Yellow = something readable here you haven't opened; a settled
         // stretch (readable notes opened, sealed ones waiting) draws sealed.
         const readable = p.covering.some((h) => !h.sealed) && !p.covering.some((h) => settled.has(h.id));
@@ -210,7 +215,7 @@ function HighlightableSegment({
             onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
             onMouseLeave={onLeave}
             onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
-            style={{ ...paint, padding: "2px 0", borderRadius: 3, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease, color 120ms ease" }}
+            style={{ ...paint, padding: "2px 0", borderRadius: editorialScope ? 0 : 3, boxShadow: seam ? `inset 1px 0 0 0 ${CANON.cream}` : undefined, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease, color 120ms ease" }}
           >
             {renderText(slice)}
           </span>
@@ -225,6 +230,13 @@ function HighlightableSegment({
  *  highlights aren't drawn while picking — a note on an existing stretch is
  *  added from its sheet instead. */
 const PICK_FILL = "rgba(222,168,56,0.45)";
+/** The same notes (by id) on both sides — a boundary between different sets is a seam. */
+function sameCovering(a: { id: string }[], b: { id: string }[]): boolean {
+  if (a.length !== b.length) return false;
+  const ids = new Set(a.map((h) => h.id));
+  return b.every((h) => ids.has(h.id));
+}
+
 function PickSegment({ text, bodyStart, range, all, onToggle }: {
   text: string;
   bodyStart: number;
@@ -232,6 +244,7 @@ function PickSegment({ text, bodyStart, range, all, onToggle }: {
   all: Range[];
   onToggle: (s: Range, all: Range[]) => void;
 }) {
+  const editorialScope = useEditorialScope();
   const sentences = splitSentences(text, bodyStart);
   const nodes: React.ReactNode[] = [];
   let cursor = bodyStart;
@@ -247,7 +260,7 @@ function PickSegment({ text, bodyStart, range, all, onToggle }: {
         data-picked={picked ? "1" : undefined}
         onClick={(e) => { e.stopPropagation(); onToggle(sn, all); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(sn, all); } }}
-        style={{ background: picked ? PICK_FILL : "transparent", padding: "2px 0", borderRadius: 3, cursor: "pointer", boxShadow: picked ? `0 0 0 1px ${CANON.accent}` : "none", transition: "background 120ms ease" }}
+        style={{ background: picked ? PICK_FILL : "transparent", padding: "2px 0", borderRadius: editorialScope ? 0 : 3, cursor: "pointer", boxShadow: picked ? `0 0 0 1px ${CANON.accent}` : "none", transition: "background 120ms ease" }}
       >
         {text.slice(sn.a - bodyStart, sn.b - bodyStart)}
       </span>,

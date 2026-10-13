@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Lock, ThumbsUp } from "lucide-react";
+import { Lock, ThumbsUp, X } from "lucide-react";
 import type { Highlight } from "../../lib/db";
 import { timeAgo } from "../../lib/utils";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
+import useKeyboardInset from "../../lib/useKeyboardInset";
 import { CANON } from "../../styles/canon";
 import SidebarAvatar from "../SidebarAvatar";
 import { describeStretch, nameOf } from "./HighlightNotePaper";
@@ -181,9 +182,50 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
   );
 }
 
-export function HighlightCreateSheet({ onClose, onConfirm }: {
+/** The editorial drawer (Alborz's notes, round 5): a cream panel fixed at
+ *  the foot of the screen that rises with the keyboard; the page keeps
+ *  scrolling and answering taps behind it. With `dim`, a veil over the page
+ *  that lets every touch through. Swipe down, or the panel's own act,
+ *  closes it — never a tap outside. */
+function NoteDrawer({ label, dim = false, onClose, enabled = true, children }: { label: string; dim?: boolean; onClose: () => void; enabled?: boolean; children: React.ReactNode }) {
+  const kb = useKeyboardInset();
+  const swipe = useSheetSwipeDown(onClose, { enabled });
+  return (
+    <>
+      {dim && <div aria-hidden="true" style={{ position: "fixed", inset: 0, background: "rgba(26,58,74,0.35)", zIndex: 1200, pointerEvents: "none", animation: "mDimIn 180ms ease-out" }} />}
+      <div role="dialog" aria-label={label} {...swipe.handlers} style={{ position: "fixed", left: 0, right: 0, bottom: kb, zIndex: 1201, background: E.color.cream, color: E.color.ink, borderTop: `1px solid ${E.color.ink}`, boxShadow: "0 -6px 20px rgba(26,58,74,0.14)", padding: "10px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)", boxSizing: "border-box", fontFamily: INTER, animation: "mSheetRise 180ms ease-out", ...swipe.style }}>
+        <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto 14px" }} />
+        {children}
+      </div>
+    </>
+  );
+}
+
+/** The first step on the phone (round 5): what a note is and how to pick,
+ *  Next once sentences are lit, × to leave. No veil — the letter above is
+ *  the thing to read and tap. */
+export function HighlightPickDrawer({ hasPick, onNext, onClose }: { hasPick: boolean; onNext: () => void; onClose: () => void }) {
+  return (
+    <NoteDrawer label="Add a note" onClose={onClose}>
+      <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 8, right: 8, width: 40, height: 40, border: "none", background: "transparent", color: E.color.ink, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+        <X size={18} />
+      </button>
+      <div style={{ ...E.type.letterTitle22, paddingRight: 36 }}>Add a note</div>
+      <div style={{ ...E.type.note13, lineHeight: 1.5, color: "rgba(26,58,74,0.8)", marginTop: 8 }}>
+        {hasPick
+          ? "Tap more sentences to add them, or tap the first or last one to let it go. Then tap Next to write your note."
+          : "A note is a thought you leave on part of a letter. Tap the sentences above that you want to write about — they'll light up. Then tap Next."}
+      </div>
+      <button type="button" onClick={onNext} disabled={!hasPick} style={{ ...E.type.button16, width: "100%", height: 48, marginTop: 14, background: E.color.ink, color: E.color.cream, border: 0, cursor: hasPick ? "pointer" : "default", opacity: hasPick ? 1 : 0.5 }}>Next</button>
+    </NoteDrawer>
+  );
+}
+
+export function HighlightCreateSheet({ onClose, onConfirm, canSave = true }: {
   onClose: () => void;
   onConfirm: (payload: { kind: "yup" } | { kind: "note"; note: string }) => Promise<void>;
+  /** The editorial drawer keeps the pick live (round 5): Save waits for lit sentences. */
+  canSave?: boolean;
 }) {
   const editorialScope = useEditorialScope();
   const [draft, setDraft] = useState("");
@@ -193,7 +235,8 @@ export function HighlightCreateSheet({ onClose, onConfirm }: {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Focus after the page has scrolled the picked sentences into view
   // (V2InlineThread does that on open), so the keyboard doesn't fight it.
-  useEffect(() => { const t = setTimeout(() => textareaRef.current?.focus(), 380); return () => clearTimeout(t); }, []);
+  // The editorial drawer doesn't scroll the page, so it focuses at once.
+  useEffect(() => { const t = setTimeout(() => textareaRef.current?.focus(), editorialScope ? 60 : 380); return () => clearTimeout(t); }, [editorialScope]);
 
   async function go(payload: { kind: "yup" } | { kind: "note"; note: string }) {
     if (saving) return;
@@ -203,19 +246,30 @@ export function HighlightCreateSheet({ onClose, onConfirm }: {
     finally { setSaving(false); }
   }
 
+  const body = (
+    <>
+      <div style={editorialScope ? E.type.letterTitle22 : title}>Add a note</div>
+      <div style={editorialScope ? { ...E.type.note13, color: "rgba(26,58,74,0.8)", margin: "8px 0 14px" } : aboutStyle}>
+        {canSave ? "Your note will sit on the sentences you picked — spoiler-gated just like everything else." : "Tap the sentences above that you want to write about — they'll light up."}
+      </div>
+      <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Write a note…" style={editorialScope ? NOTE_FIELD : field} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => go({ kind: "note", note: draft.trim() })} disabled={!draft.trim() || saving || !canSave} style={editorialScope ? { ...INK_SMALL, height: 48, padding: "0 20px", opacity: !draft.trim() || saving || !canSave ? 0.6 : 1 } : { ...creamPill, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save note"}</button>
+        <button type="button" onClick={onClose} disabled={saving} style={editorialScope ? { ...FRAME_SMALL, height: 48, padding: "0 20px" } : outlinePill}>Cancel</button>
+        <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.8, ...(editorialScope ? E.type.label10 : {}) }}>{draft.length}/{NOTE_MAX}</span>
+      </div>
+      {error && <div style={{ marginTop: 8, fontSize: 13, fontStyle: "italic" }}>{error}</div>}
+    </>
+  );
+
+  // The editorial skin: the drawer, veiled, the page live behind it.
+  if (editorialScope) {
+    return <NoteDrawer label="Add a note" dim onClose={onClose} enabled={!saving}>{body}</NoteDrawer>;
+  }
   return (
     <div style={backdrop} onClick={onClose}>
-      <div role="dialog" aria-label="Add a note" style={{ ...sheet, ...(editorialScope ? { background: E.color.cream, color: E.color.ink, borderTopLeftRadius: 0, borderTopRightRadius: 0, padding: "10px 20px 0" } : {}), paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
-        {editorialScope && <div aria-hidden="true" style={{ width: 36, height: 4, background: E.color.ink, margin: "0 auto 14px" }} />}
-        <div style={editorialScope ? E.type.letterTitle22 : title}>Add a note</div>
-        <div style={editorialScope ? { ...E.type.note13, color: "rgba(26,58,74,0.8)", margin: "8px 0 14px" } : aboutStyle}>Your note will sit on the sentences you picked — spoiler-gated just like everything else.</div>
-        <textarea ref={textareaRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, NOTE_MAX))} maxLength={NOTE_MAX} rows={4} placeholder="Write a note…" style={editorialScope ? NOTE_FIELD : field} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => go({ kind: "note", note: draft.trim() })} disabled={!draft.trim() || saving} style={editorialScope ? { ...INK_SMALL, height: 48, padding: "0 20px", opacity: !draft.trim() || saving ? 0.6 : 1 } : { ...creamPill, opacity: !draft.trim() || saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save note"}</button>
-          <button type="button" onClick={onClose} disabled={saving} style={editorialScope ? { ...FRAME_SMALL, height: 48, padding: "0 20px" } : outlinePill}>Cancel</button>
-          <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.8, ...(editorialScope ? E.type.label10 : {}) }}>{draft.length}/{NOTE_MAX}</span>
-        </div>
-        {error && <div style={{ marginTop: 8, fontSize: 13, fontStyle: "italic" }}>{error}</div>}
+      <div role="dialog" aria-label="Add a note" style={{ ...sheet, paddingBottom: bottomPad, ...swipe.style }} {...swipe.handlers} onClick={(e) => e.stopPropagation()}>
+        {body}
       </div>
     </div>
   );

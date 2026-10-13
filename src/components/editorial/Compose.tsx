@@ -37,11 +37,14 @@ export function MinimizeRing({ onClick, style }: { onClick: () => void; style?: 
   );
 }
 
-/** "Want a prompt?" — a `personal` block with the sparkle. */
-export function PromptButton({ onClick, label = "Want a prompt?", background }: { onClick: () => void; label?: React.ReactNode; background?: string }) {
+/** "Want a prompt?" — cream with a dotted `personal` frame and `personal`
+ *  words (Alborz's notes, round 5: the filled block competed with the
+ *  foot's two acts). The same look on every letter, so a host's
+ *  `background` no longer applies. */
+export function PromptButton({ onClick, label = "Want a prompt?" }: { onClick: () => void; label?: React.ReactNode; background?: string }) {
   return (
-    <button type="button" onClick={onClick} style={{ ...E.type.label11, height: 40, padding: "0 14px", background: background ?? E.color.personal, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-      <Sparkles size={13} color={E.color.cream} aria-hidden="true" />{label}
+    <button type="button" onClick={onClick} style={{ ...E.type.label11, height: 40, padding: "0 14px", boxSizing: "border-box", background: E.color.cream, color: E.color.personal, border: `1px dotted ${E.color.personal}`, display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <Sparkles size={13} color={E.color.personal} aria-hidden="true" />{label}
     </button>
   );
 }

@@ -1,4 +1,13 @@
-# Sidebar — Technical State (2026-10-12)
+# Sidebar — Technical State (2026-10-13)
+
+> **⭐ 2026-10-13 — ALBORZ'S NOTES, round 5 — A: letters and notes (the editorial skin; both platforms unless noted).**
+> - **The note drawer (phone):** "Add a note" no longer plants a card at the letter's foot. `HighlightPickDrawer` (`v2/HighlightSheets.tsx`, on the shared `NoteDrawer` shell) is a cream drawer FIXED at the foot of the screen, opening from wherever you are; the page scrolls and answers taps behind it (no veil); in flow only a 240px spacer so the letter's end can scroll clear. Next swaps in the writing drawer (`HighlightCreateSheet` under the editorial scope) in place: a veil that lets every touch through (`pointerEvents: none`), the page still scrollable, no scroll-to-the-pick, the keyboard inset (`useKeyboardInset`) lifting the drawer. The pick stays LIVE while writing — taps still add or drop sentences, Save takes whatever is lit at that moment (`canSave` waits for a pick). Cancel, × or a swipe down leaves; a tap outside never does. Classic keeps its inline card and dimmed sheet.
+> - **Editing your own letter:** the edit field is the compose's ruled paper (`PAPER_TEXTAREA` + `COMPOSE_CSS`'s `.e-compose-paper`), Lora on the 28px rules, as tall as the letter read in whole lines, growing with the writing.
+> - **"Want a prompt?"** (`PromptButton`): cream with a dotted `personal` frame and `personal` words and sparkle — no longer a filled block competing with the foot's two acts. A host's `background` no longer applies.
+> - **"Continue writing":** the desktop block and the phone's write block turn `alert` with cream words while a minimized letter waits.
+> - **Highlights:** hard corners under the editorial scope (the painted stretches and the pick), and a 1px cream seam where one note's stretch ends and a different one begins (`sameCovering` in `HighlightableBody`).
+> - **A deleted letter's space:** both rooms nudge their scroller by 1px after the delete (iOS kept the empty space until the next scroll).
+> - **The map-tap frame:** `EntryShell` draws the identity outline as its own layer standing 12px clear of the words on both sides (it hugged the text), fading in and out; the letter never shifts.
 
 > **⭐ 2026-10-12 — ALBORZ'S NOTES, round 4 — B: the field idiom (his option A, no fill), both platforms.**
 > - **A head is a rule, a field is a box.** `Field` (`editorial/Onboarding.tsx`, with `FIELD_BOX` / `FIELD_INPUT`) is now a 1px ink frame, 44 tall, NO fill (on the yellow look-up band the band shows through), with its short mono label inside ("Name:", "Email:", "Show:", "Password:" — the component adds the colon). Section heads keep their mono-on-a-rule, so the two never read alike. `InlineField` is the same box with autofill off; `ShowField`, the three find-a-show rows (dashboard dialog, phone sheet, look-up card), the look-up band's own "Show:" door and the chat composer's field all take the box.

@@ -208,8 +208,12 @@ export function EntryShell({ stamp, stampReserve, head, children, onClick, dim =
   return (
     <div
       onClick={onClick}
-      style={{ position: "relative", padding: "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", boxShadow: highlighted ? `inset 0 0 0 2px ${E.color.identity}` : undefined, transition: "box-shadow 300ms ease", ...style }}
+      style={{ position: "relative", padding: "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", ...style }}
     >
+      {/* The map-tap frame (Alborz's notes, round 5): the identity outline
+          stands 12px clear of the words on both sides, drawn as its own
+          layer so the letter never shifts. */}
+      <span aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: -12, right: -12, border: `2px solid ${E.color.identity}`, pointerEvents: "none", opacity: highlighted ? 1 : 0, transition: "opacity 300ms ease", zIndex: 1 }} />
       {stamp && <span style={{ position: "absolute", top: 10, right: 0, display: "inline-block" }}>{stamp}</span>}
       <div style={{ minHeight: E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
       {children}

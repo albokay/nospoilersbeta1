@@ -949,6 +949,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (entry.replyCount === 0) return prev.filter((e) => e.threadId !== threadId);
       return prev.map((e) => (e.threadId === threadId ? { ...e, isDeleted: true, thread: { ...e.thread, isDeleted: true } } : e));
     });
+    // iOS left the letter's space standing until the next scroll (Alborz's
+    // notes, round 5): a 1px nudge of the page's scroller repaints at once.
+    requestAnimationFrame(() => { const el = pageRef.current; if (el) { el.scrollTop += 1; el.scrollTop -= 1; } });
   }, []);
 
   // The reference exists once the dial reaches S1E1 (and the show can be
@@ -1384,7 +1387,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <WriteBlock
             label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
             onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
-            style={{ width: "100%" }}
+            // Alert while a letter waits to be sent (Alborz's notes, round 5).
+            style={{ width: "100%", ...(composeMinimized ? { background: E.color.alert } : {}) }}
           />
         </div>
       )}

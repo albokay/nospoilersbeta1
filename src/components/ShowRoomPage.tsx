@@ -902,6 +902,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (entry.replyCount === 0) return prev.filter((e) => e.threadId !== threadId);
       return prev.map((e) => (e.threadId === threadId ? { ...e, isDeleted: true, thread: { ...e.thread, isDeleted: true } } : e));
     });
+    // The phone's repaint nudge, mirrored (round 5).
+    requestAnimationFrame(() => { window.scrollBy(0, 1); window.scrollBy(0, -1); });
   }, []);
 
   // Username byline click → the friend-profile DRAWER (2026-09-08 pt 4 —
@@ -1620,9 +1622,10 @@ const emptyCopy: React.CSSProperties = { color: C.cream, opacity: 0.85, fontSize
 const editorialComposeShell: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: E.color.cream, overflowY: "auto",
 };
+// Alert (Alborz's notes, round 5): a letter waiting to be sent pulls the eye.
 const editorialContinueBlock: React.CSSProperties = {
   position: "fixed", bottom: 24, right: 32, zIndex: 1001, height: 48, padding: "0 20px",
-  background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer",
+  background: E.color.alert, color: E.color.cream, border: 0, cursor: "pointer",
   display: "inline-flex", alignItems: "center", gap: 8, ...E.type.label11,
 };
 const continueChip: React.CSSProperties = {
