@@ -523,7 +523,7 @@ export default function MobileDashboard() {
         <>
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
-            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 78, width: 234 }} />}
+            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>

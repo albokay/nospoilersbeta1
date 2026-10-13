@@ -1113,6 +1113,11 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           style={{ top: titleBlockH != null ? titleBlockH - E.measure.phone.corner : E.safe.plus(E.measure.phone.masthead - E.measure.phone.corner) }}
         />
       )}
+      {/* The note lives at the page root, after the chat corner, so it rides
+          over it (round 5 catch: inside the title block it was trapped
+          under the corner). Same spot as before — the block starts at the
+          page's top. */}
+      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1127,7 +1132,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    it. The shelves under it are still classic until checkpoint 3. ──
         <div ref={titleBlockRef} style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px 40px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
-          {roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,

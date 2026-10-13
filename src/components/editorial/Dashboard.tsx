@@ -201,9 +201,11 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
           </span>
         </div>
       )}
-      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, borderBottom: 0, padding: `18px ${gutter}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
+      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `18px ${gutter}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
         {children}
         {gripEl}
+        {/* The edge strip that says the row swipes (the show rows' hint), in friend blue here. */}
+        {onOptions && <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 6, bottom: 6, width: 4, background: E.color.friend }} />}
       </div>
     </div>
   );

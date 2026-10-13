@@ -72,7 +72,9 @@ export function TitleGear({ onClick, label, title, dot = false, size = 18 }: { o
   // (18px on desktop, 16 on the phone), its hit box hugging the glyph.
   return (
     <button type="button" aria-label={label} title={title ?? label} onClick={onClick}
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 8, height: size + 8, marginLeft: 10, verticalAlign: "top", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>
+      // Round 5 catch: closer to the last word (a 6px gap with the hit box's
+      // own 4) — it reads as a footnote mark on the title.
+      style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: size + 8, height: size + 8, marginLeft: 2, verticalAlign: "top", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3" /><path d={GEAR_PATH} />
       </svg>
