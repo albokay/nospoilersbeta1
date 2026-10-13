@@ -178,11 +178,16 @@ function HighlightableSegment({
       {pieces.map((p, i) => {
         const slice = text.slice(p.a - bodyStart, p.b - bodyStart);
         if (p.covering.length === 0) return <React.Fragment key={`t-${p.a}`}>{renderText(slice)}</React.Fragment>;
-        // Two notes side by side (Alborz's notes, round 5): a 1px cream seam
-        // where one stretch ends and a different one begins, so they read
-        // as two.
+        // Two notes side by side (Alborz's notes, rounds 5–6): a 2px cream
+        // seam where one stretch ends and a different one begins, split
+        // evenly — 1px off the outgoing stretch's end, 1px off the incoming
+        // stretch's start — so they read as two.
         const prev = i > 0 ? pieces[i - 1] : null;
-        const seam = editorialScope && !!prev && prev.covering.length > 0 && !sameCovering(prev.covering, p.covering);
+        const next = i < pieces.length - 1 ? pieces[i + 1] : null;
+        const differs = (q: typeof p | null) => !!q && q.covering.length > 0 && !sameCovering(q.covering, p.covering);
+        const seamBefore = editorialScope && differs(prev);
+        const seamAfter = editorialScope && differs(next);
+        const seamShadow = [seamBefore ? `inset 1px 0 0 0 ${CANON.cream}` : null, seamAfter ? `inset -1px 0 0 0 ${CANON.cream}` : null].filter(Boolean).join(", ") || undefined;
         // Yellow = something readable here you haven't opened; a settled
         // stretch (readable notes opened, sealed ones waiting) draws sealed.
         const readable = p.covering.some((h) => !h.sealed) && !p.covering.some((h) => settled.has(h.id));
@@ -215,7 +220,9 @@ function HighlightableSegment({
             onMouseEnter={(e) => onEnter({ a: p.a, b: p.b, el: e.currentTarget })}
             onMouseLeave={onLeave}
             onClick={(e) => onPick({ a: p.a, b: p.b, el: e.currentTarget }, hasReadableNote)}
-            style={{ ...paint, padding: "2px 0", borderRadius: editorialScope ? 0 : 3, boxShadow: seam ? `inset 1px 0 0 0 ${CANON.cream}` : undefined, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease, color 120ms ease" }}
+            // The editorial box reaches 1px above and below the line (was 2),
+            // which opens the gap between a stretch's lines to about 2px.
+            style={{ ...paint, padding: editorialScope ? "1px 0" : "2px 0", borderRadius: editorialScope ? 0 : 3, boxShadow: seamShadow, cursor: hasReadableNote ? "pointer" : "default", transition: "background 120ms ease, color 120ms ease" }}
           >
             {renderText(slice)}
           </span>

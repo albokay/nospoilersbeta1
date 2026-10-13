@@ -736,14 +736,29 @@ export default function V2InlineThread({
             placeholder="Title"
             style={editorialScope ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", ...E.type.letterTitle22, color: E.color.ink, padding: "0 0 8px" } : { width: "100%", height: 40, fontWeight: 700, border: "none" }}
           />
+          {editorialScope ? (
+            // The ruled paper inside the 1px ink box (round 6: the box says
+            // "a different state"); the inset keeps the rules under the lines.
+            <div style={{ border: `1px solid ${E.color.ink}`, padding: "10px 12px", marginTop: 8 }}>
+              <textarea
+                ref={editTaRef}
+                className="e-compose-paper"
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                placeholder="Body"
+                style={PAPER_TEXTAREA(!mobileIdiom, editMinLines)}
+              />
+            </div>
+          ) : (
           <textarea
             ref={editTaRef}
-            className={editorialScope ? "e-compose-paper" : "card"}
+            className="card"
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             placeholder="Body"
-            style={editorialScope ? { ...PAPER_TEXTAREA(!mobileIdiom, editMinLines), marginTop: 8 } : { width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
+            style={{ width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
           />
+          )}
           {editError && (
             <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
           )}

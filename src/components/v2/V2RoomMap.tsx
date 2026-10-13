@@ -10,7 +10,6 @@ import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
 import { E } from "../../styles/editorial";
-import { RoadRule } from "../editorial/ShowRoom";
 import NudgePopover, { type NudgeDirection } from "../NudgePopover";
 import PollComposer from "../PollComposer";
 
@@ -229,8 +228,9 @@ export type V2RoomMapProps = {
    *  same map in ink on cream — the YOU column `identity`, friends `friend`,
    *  spines in the column's colour, a sealed cell `alert` with its ?, the
    *  never-opened letter doubled in `identity`, friends dimmed while you
-   *  rate, "You are here" as a mono rule after your row; the phone's header
-   *  as the word "you" with the pen and sky discs with initials. */
+   *  rate (the "You are here" rule after your row went 2026-10-13 — the map
+   *  already says where everyone is); the phone's header as the word "you"
+   *  with the pen and sky discs with initials. */
   editorial?: boolean;
   /** Mobile only: a friend's header cluster (avatar + name) opens their
    *  profile — the retired roster's job, moved here. */
@@ -306,7 +306,7 @@ function isAbove(
 }
 
 export default function V2RoomMap({
-  members,
+  members: membersProp,
   displayNames,
   seasons,
   viewerProgress,
@@ -326,6 +326,12 @@ export default function V2RoomMap({
   onEditModeChange,
   editorial = false,
 }: V2RoomMapProps) {
+  // Your own column is always the left-most (Alborz's notes, round 6), both
+  // looks: the viewer first, then the rest in the order they came.
+  const members = useMemo(() => {
+    const i = viewerUserId ? membersProp.findIndex((m) => m.userId === viewerUserId) : -1;
+    return i > 0 ? [membersProp[i], ...membersProp.filter((_, j) => j !== i)] : membersProp;
+  }, [membersProp, viewerUserId]);
   // Predicate for the user-filter dim treatment. When a filter is
   // active, columns belonging to other members render at opacity 0.35
   // with pointer-events: none — no tooltips, no clicks, no dot hover.
@@ -1941,9 +1947,6 @@ export default function V2RoomMap({
                   </div>
                 );
               })}
-              {editorial && selfColIdx >= 0 && rowIdx === memberMaps[selfColIdx].lastReachedIdx && (
-                <div style={{ gridColumn: "1 / -1" }}><RoadRule text={`You are here · S${row.season} E${row.episode}`} /></div>
-              )}
             </React.Fragment>
           );
         })}

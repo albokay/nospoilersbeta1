@@ -388,7 +388,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
       {/* 4 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
         <Copy editorial={ed}>
-          {headerHeight === 0 ? (
+          {(headerHeight === 0 || ed) ? (
             <>Another friend<br />is two episodes<br />behind you.</>
           ) : (
             <>Another friend is two<br />episodes behind you.</>

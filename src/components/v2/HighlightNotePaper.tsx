@@ -126,12 +126,12 @@ function Chips({ readable, sealed }: { readable: Highlight[]; sealed: Highlight[
 export function describeStretch(readable: Highlight[], sealed: Highlight[], displayNames: Names): { notes: string | null; yups: string | null; sealed: string | null } {
   const notes = readable.filter((h) => h.kind === "note");
   const yups = readable.filter((h) => h.kind === "yup");
-  // His copy (10-07): "One visible note from Alborz." / "One sealed note
-  // waiting for you." — no episode numbers on the rollover.
+  // His copy (10-07, "visible" dropped 10-13): "One note from Alborz." /
+  // "One sealed note waiting for you." — no episode numbers on the rollover.
   let notesLine: string | null = null;
   if (notes.length) {
     const names = Array.from(new Set(notes.map((h) => nameOf(h, displayNames))));
-    notesLine = `${countWord(notes.length)} visible note${notes.length === 1 ? "" : "s"} from ${joinNames(names)}.`;
+    notesLine = `${countWord(notes.length)} note${notes.length === 1 ? "" : "s"} from ${joinNames(names)}.`;
   }
   const yupsLine = yups.length ? joinNames(Array.from(new Set(yups.map((h) => nameOf(h, displayNames))))) : null;
   const sealedNotes = sealed.filter((h) => h.kind === "note");

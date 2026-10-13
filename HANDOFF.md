@@ -1,5 +1,12 @@
 # Sidebar — Technical State (2026-10-13)
 
+> **⭐ 2026-10-13 — ALBORZ'S NOTES, round 6 — A: letters, the map, the homepage (both platforms).**
+> - **Highlights:** the seam between two different notes is 2px, split evenly — 1px off the outgoing stretch's end, 1px off the incoming stretch's start (`seamBefore` / `seamAfter` in `HighlightableBody`); the editorial box reaches 1px above and below each line (was 2), opening the gap between a stretch's lines to about 2px.
+> - **The hover line:** "One note from Alborz." ("visible" dropped); the sealed line unchanged.
+> - **The season map (`V2RoomMap`, both looks):** your own column is always the left-most (the viewer first, then the rest in the order they came — `members` is reordered at the top); the editorial "You are here · S1 E4" rule after your row is gone (the map already says where everyone is). The feed's "You and Sam are here" rule between letters stays.
+> - **Editing your own letter:** the ruled paper sits inside a 1px ink box again (an inset of 10/12; the rules stay under the lines).
+> - **The editorial homepage order (his catch from `?skin=editorial`):** the scroll on green is the page's FIRST section again, with the wordmark and Sign in in cream over its top (the narrative gets a 100/110 header offset so the first bubble clears them; its three-line "Another friend…" break holds under the skin); then the cream page — the hero ("Watching TV with friends…"), the two acts, the beta tester letter (desktop: the band; phone: the paper note opener), and only then "How it works".
+
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 5 — four catches (phone).**
 > - **The dashboard rows' edge strip:** the 4px strip at the row's right edge that says it swipes (the show rows' hint) — ACCENT like theirs (his second call; the pane behind stays friend blue) (`GroupRow`, `editorial/Dashboard.tsx`).
 > - **The dashboard's paper note** sits 30px higher (`top: 48`), clear of "Invite new friend group →"; it may brush the title's last word, which he accepted.

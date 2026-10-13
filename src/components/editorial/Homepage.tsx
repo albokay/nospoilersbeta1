@@ -103,19 +103,24 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
 }) {
   const [letterOpen, setLetterOpen] = useState(false);
   const col: React.CSSProperties = desktop ? { ...COLUMN, width: 912, maxWidth: "calc(100% - 48px)" } : {};
+  // The wordmark and Sign in ride over the scroll's top in cream (round 6:
+  // the scroll is the page's first section again, as on the classic page).
   const signIn = (
-    <button type="button" onClick={onSignIn} style={{ position: "absolute", top: desktop ? 34 : "calc(env(safe-area-inset-top, 0px) + 18px)", right: desktop ? E.measure.desktop.inside + 120 : 20, height: 36, padding: "0 14px", border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, ...E.type.label11, display: "inline-flex", alignItems: "center", cursor: "pointer", zIndex: 3 }}>Sign in</button>
+    <button type="button" onClick={onSignIn} style={{ position: "absolute", top: desktop ? 34 : "calc(env(safe-area-inset-top, 0px) + 18px)", right: desktop ? E.measure.desktop.inside + 120 : 20, height: 36, padding: "0 14px", border: `1px solid ${E.color.cream}`, background: "transparent", color: E.color.cream, ...E.type.label11, display: "inline-flex", alignItems: "center", cursor: "pointer", zIndex: 3 }}>Sign in</button>
   );
   return (
     <div style={{ background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, minHeight: desktop ? "100vh" : "100dvh" }}>
       {desktop && onFeedback && <CornerTab desktop kind="feedback" label="Feedback" onClick={onFeedback} />}
-      {/* The cream top: the wordmark, Sign in, the hero, the steps, the buttons */}
-      <div style={{ position: "relative", padding: desktop ? "0 0 64px" : `0 ${E.space.gutter}px 40px`, overflow: "hidden" }}>
-        <div style={{ position: "absolute", left: "50%", top: desktop ? 36 : "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={desktop ? 34 : 26} /></div>
+      {/* The scroll on green FIRST (Alborz, round 6), the wordmark and Sign in over its top */}
+      <div style={{ position: "relative", background: E.color.personal, color: E.color.cream, overflow: "hidden" }}>
+        <div style={{ position: "absolute", left: "50%", top: desktop ? 36 : "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={desktop ? 34 : 26} color={E.color.cream} /></div>
         {signIn}
-        <div style={{ ...col, paddingTop: desktop ? 150 : "calc(env(safe-area-inset-top, 0px) + 133px)" }}>
+        <HomepageNarrative headerHeight={desktop ? 100 : 110} editorial />
+      </div>
+      {/* The cream page: the hero, the acts, the beta letter, then How it works */}
+      <div style={{ position: "relative", padding: desktop ? "0 0 64px" : `0 ${E.space.gutter}px 40px` }}>
+        <div style={{ ...col, paddingTop: desktop ? 110 : 72 }}>
           <Hero desktop={desktop} />
-          <StepRows style={{ marginTop: desktop ? 72 : 68, ...(desktop ? { width: E.measure.desktop.letters, maxWidth: "100%" } : {}) }} />
         </div>
         {desktop ? (
           <div style={{ ...col, marginTop: 64, display: "flex", gap: 16, justifyContent: "center" }}>
@@ -131,12 +136,11 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
             <div style={{ marginTop: 26 }}><BetaNote onOpen={() => setLetterOpen(true)} /></div>
           </>
         )}
+        {desktop && <div style={{ marginTop: 64 }}><BetaBand open={betaOpen} onToggle={onToggleBeta} /></div>}
+        <div style={col}>
+          <StepRows style={{ marginTop: desktop ? 64 : 56, ...(desktop ? { width: E.measure.desktop.letters, maxWidth: "100%" } : {}) }} />
+        </div>
       </div>
-      {/* The scroll on green */}
-      <div style={{ background: E.color.personal, color: E.color.cream, overflow: "hidden" }}>
-        <HomepageNarrative headerHeight={0} editorial />
-      </div>
-      {desktop && <BetaBand open={betaOpen} onToggle={onToggleBeta} />}
       {letterOpen && (
         <EditorialSheet onClose={() => setLetterOpen(false)}>
           <div style={{ ...E.type.label10, color: E.color.inkMuted }}>A letter for beta testers</div>
