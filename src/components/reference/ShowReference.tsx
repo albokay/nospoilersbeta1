@@ -6,7 +6,7 @@
 // by Alborz 2026-09-05. Never rendered below S1E1 (the tab is hidden until
 // the dial reaches it — "no 0-state reference page").
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
@@ -179,6 +179,32 @@ export default function ShowReference({
   const vIdx = idx(prog.s, prog.e);
   const seasonCounts = (catalogShow as { seasons?: number[] } | null)?.seasons;
   const finished = !!seasonCounts?.length && (prog.s > seasonCounts.length || (prog.s === seasonCounts.length && prog.e >= (seasonCounts[seasonCounts.length - 1] ?? 1)));
+  // Arriving via the dashboard's "Pick its essential episodes →" (Alborz,
+  // round 5 follow-up): the page lands with the top of "Plot so far" about
+  // a third of the way down the screen. The room scrolls inside a fixed
+  // container on the phone, so the nearest scroller is found first.
+  const plotHeadRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!nudgeEssentials || !editorial || !ref) return;
+    const t = window.setTimeout(() => {
+      const el = plotHeadRef.current;
+      if (!el) return;
+      let scroller: HTMLElement | null = el.parentElement;
+      while (scroller && scroller !== document.body) {
+        const oy = getComputedStyle(scroller).overflowY;
+        if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+        scroller = scroller.parentElement;
+      }
+      const top = el.getBoundingClientRect().top;
+      if (scroller && scroller !== document.body) {
+        const r = scroller.getBoundingClientRect();
+        scroller.scrollBy({ top: top - (r.top + r.height / 3), behavior: "smooth" });
+      } else {
+        window.scrollBy({ top: top - window.innerHeight / 3, behavior: "smooth" });
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [nudgeEssentials, editorial, ref]);
 
   const visiblePeople = useMemo(
     () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= vIdx),
@@ -362,7 +388,17 @@ export default function ShowReference({
             entries (finished canon shows). */}
         {plotEpisodes.length > 0 && (
           <>
-            <SectionHead style={{ marginTop: 28 }}>Plot so far</SectionHead>
+            {/* The head's right slot explains the star (his pick, round 5
+                follow-up): a small star and "star the ones that mattered",
+                all in accent, while the stars are available. */}
+            <div ref={plotHeadRef}>
+              <SectionHead style={{ marginTop: 28 }} right={starAllowed ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
+                  Star the ones that mattered
+                </span>
+              ) : null}>Plot so far</SectionHead>
+            </div>
             {plotSeasons.length <= 1 ? plotEpisodes.map(plotEntry) : plotSeasons.map((season) => {
               const open = openPlotSeason === season.n;
               return (
