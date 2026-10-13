@@ -1,9 +1,9 @@
 # Sidebar — Technical State (2026-10-13)
 
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 5 — four catches (phone).**
-> - **The dashboard rows' edge strip:** the 4px strip at the row's right edge that says it swipes (the show rows' hint) — in FRIEND blue on the group rows (`GroupRow`, `editorial/Dashboard.tsx`).
+> - **The dashboard rows' edge strip:** the 4px strip at the row's right edge that says it swipes (the show rows' hint) — ACCENT like theirs (his second call; the pane behind stays friend blue) (`GroupRow`, `editorial/Dashboard.tsx`).
 > - **The dashboard's paper note** sits 30px higher (`top: 48`), clear of "Invite new friend group →"; it may brush the title's last word, which he accepted.
-> - **The group room's paper note** rides OVER the chat corner: it's rendered at the page root after the corner (inside the title block's stacking context it was trapped under the corner's z-index). Same coordinates — the block starts at the page's top.
+> - **The group room's paper note** rides OVER the chat corner: it's rendered at the page root after the corner (inside the title block's stacking context it was trapped under the corner's z-index). It sits up at the title's second line (`top: safe + 150`, was 208) like the dashboard's note — over the heading rather than over the finished row under the sky (his call).
 > - **The gear** sits 2px (plus its hit box's 4) after the title's last word (was 10) — a footnote mark on the title (`TitleGear`, both platforms).
 
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 5 — D: the show guide and the deck (both platforms unless noted).**

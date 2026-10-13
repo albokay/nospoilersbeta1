@@ -1117,7 +1117,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           over it (round 5 catch: inside the title block it was trapped
           under the corner). Same spot as before — the block starts at the
           page's top. */}
-      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(208), width: 244 }} />}
+      {/* Up at the title's second line, like the dashboard's note (his call:
+          better over the heading than over what sits under the sky). */}
+      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: E.safe.plus(150), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile

@@ -204,8 +204,8 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
       <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `18px ${gutter}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
         {children}
         {gripEl}
-        {/* The edge strip that says the row swipes (the show rows' hint), in friend blue here. */}
-        {onOptions && <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 6, bottom: 6, width: 4, background: E.color.friend }} />}
+        {/* The edge strip that says the row swipes (the show rows' hint) — accent, like theirs (his call); the pane behind stays friend blue. */}
+        {onOptions && <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 6, bottom: 6, width: 4, background: E.color.accent }} />}
       </div>
     </div>
   );
