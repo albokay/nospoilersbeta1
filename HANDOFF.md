@@ -26,6 +26,7 @@
 > **⭐ 2026-10-13 — ALBORZ'S NOTES, round 5 — four catches (phone).**
 > - **The dashboard rows' edge strip:** the 4px strip at the row's right edge that says it swipes (the show rows' hint) — ACCENT like theirs (his second call; the pane behind stays friend blue) (`GroupRow`, `editorial/Dashboard.tsx`).
 > - **The dashboard's paper note** sits 30px higher (`top: 48`), clear of "Invite new friend group →"; it may brush the title's last word, which he accepted.
+> - **The desktop group room's paper note** sits in line with the pitched rail — the rail's 288 at the content's right edge (was hanging 224px past it) — 2026-10-13, his catch after the site switch.
 > - **The group room's paper note** rides OVER the chat corner: it's rendered at the page root after the corner (inside the title block's stacking context it was trapped under the corner's z-index). It sits up at the title's second line (`top: safe + 150`, was 208) like the dashboard's note — over the heading rather than over the finished row under the sky (his call).
 > - **The gear** sits 2px (plus its hit box's 4) after the title's last word (was 10) — a footnote mark on the title (`TitleGear`, both platforms).
 > - **The grip drag vs iOS text selection:** a held grip woke Safari's long-press text selection on the row's words and broke the drag — the group rows and the grip are unselectable with the touch callout off (`user-select: none`, `-webkit-touch-callout: none`).
