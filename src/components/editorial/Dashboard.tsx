@@ -173,7 +173,7 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
       data-grip="1" role="button" aria-label="Drag to reorder" title="Drag to reorder"
       onPointerDown={grip.onPointerDown} onPointerMove={grip.onPointerMove} onPointerUp={grip.onPointerUp} onPointerCancel={grip.onPointerCancel}
       onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 44, marginRight: -6, flexShrink: 0, color: E.color.inkFaint, cursor: grip.active ? "grabbing" : "grab", touchAction: "none" }}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 44, marginRight: -6, flexShrink: 0, color: E.color.inkFaint, cursor: grip.active ? "grabbing" : "grab", touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
     >
       <GripVertical size={18} strokeWidth={1.6} aria-hidden="true" />
     </span>
@@ -181,7 +181,7 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
   const carried: React.CSSProperties = lift != null ? { transform: `translateY(${lift}px)`, zIndex: 3, boxShadow: "0 6px 18px rgba(26,58,74,0.18)" } : {};
   if (desktop) {
     return (
-      <div ref={rowRef} className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, position: "relative", background: E.color.cream, ...carried }}>
+      <div ref={rowRef} className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, position: "relative", background: E.color.cream, userSelect: "none", ...carried }}>
         {children}
         {onOptions && (
           <span className="e-pen" role="button" aria-label="Group settings" title="Group settings" onClick={(e) => { e.stopPropagation(); onOptions(e.currentTarget.getBoundingClientRect()); }} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
@@ -193,7 +193,9 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
     );
   }
   return (
-    <div ref={rowRef} style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, ...carried }} {...swipe.handlers}>
+    // Nothing in the row is selectable and the long-press callout is off
+    // (his catch): a held grip no longer wakes iOS's text selection mid-drag.
+    <div ref={rowRef} style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", ...carried }} {...swipe.handlers}>
       {onOptions && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.friend, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
           <span role="button" aria-label="Group settings" onClick={() => onOptions()} style={{ display: "inline-flex", width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
