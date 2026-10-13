@@ -45,6 +45,10 @@ export const NOTE_FIELD: React.CSSProperties = { width: "100%", boxSizing: "bord
 export const MONO_WORD: React.CSSProperties = { ...E.type.label10, background: "transparent", border: 0, padding: "6px 0", cursor: "pointer", color: E.color.ink, display: "inline-flex", alignItems: "center", gap: 4 };
 export const INK_SMALL: React.CSSProperties = { ...E.type.label11, height: 34, padding: "0 14px", background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", cursor: "pointer" };
 export const FRAME_SMALL: React.CSSProperties = { ...E.type.label11, height: 34, padding: "0 14px", background: "transparent", color: E.color.ink, border: `1px solid ${E.color.ink}`, display: "inline-flex", alignItems: "center", cursor: "pointer", boxSizing: "border-box" };
+/** The opened letter's acts (Alborz's notes, item 7): an underlined mono word, the mid ink block, the reply paper's textarea reset. */
+export const UNDERLINE_WORD: React.CSSProperties = { ...E.type.label11, color: E.color.ink, background: "transparent", border: 0, padding: "6px 0", textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", whiteSpace: "nowrap", WebkitTapHighlightColor: "transparent" };
+export const INK_BLOCK_M: React.CSSProperties = { ...E.type.button16, fontSize: 14, height: 44, padding: "0 22px", background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box" };
+export const REPLY_TA_CSS = `textarea.e-reply-ta{background:transparent !important;color:${E.color.ink} !important;} textarea.e-reply-ta::placeholder{color:${E.color.inkMuted};}`;
 
 /** A sealed note's body: the dashed friend frame, the lock, when it unseals. */
 export function SealedNoteBody({ s, e, size = 36 }: { s: number; e: number; size?: number }) {

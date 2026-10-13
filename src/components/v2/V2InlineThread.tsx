@@ -1,6 +1,10 @@
 import WhatsNextPanel from "../WhatsNextPanel";
 import { useEditorialScope } from "../../lib/skin";
 import { E } from "../../styles/editorial";
+import { Confirm, BottomSheet } from "../editorial/Overlays";
+import { EditorialDialog } from "../editorial/GroupRoom";
+import { Block } from "../editorial/Onboarding";
+import { UNDERLINE_WORD, INK_BLOCK_M, INK_SMALL, REPLY_TA_CSS } from "../editorial/MapNotes";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -648,6 +652,14 @@ export default function V2InlineThread({
     fontSize: 13, fontWeight: 700, padding: "8px 16px", minHeight: 36,
     borderRadius: 9999, boxSizing: "border-box",
   };
+  // The editorial letter's foot (Alborz's notes, item 7): the acts as
+  // underlined mono words (Delete in alert), Write back as the ink block,
+  // the hints and the delete as the bible's dialog / sheet / confirm.
+  const edWord = UNDERLINE_WORD;
+  const edHint = (onClose: () => void, body: React.ReactNode) => mobileIdiom
+    ? <BottomSheet onClose={onClose} zIndex={1300} label="Hint">{body}<Block onClick={onClose} style={{ marginTop: 20 }}>Got it</Block></BottomSheet>
+    : <EditorialDialog onClose={onClose} width={480} label="Hint" align="left">{body}<Block onClick={onClose} style={{ marginTop: 20 }}>Got it</Block></EditorialDialog>;
+  const edP: React.CSSProperties = { ...E.type.body15, color: E.color.ink, margin: "0 0 14px" };
 
   // The two collapse buttons (above-replies and end-of-thread) share the
   // same call path — onCollapseTop is wired in V2RoomFeed to clear
@@ -657,7 +669,7 @@ export default function V2InlineThread({
     // Ghost S pill (polish pass 2026-09-15): no border, 0.85, real chevron.
     <button
       onClick={onCollapseTop}
-      style={{
+      style={editorialScope ? { ...edWord, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 0" } : {
         background: "transparent",
         border: "none",
         color: "var(--dos-fg)",
@@ -675,16 +687,16 @@ export default function V2InlineThread({
         boxSizing: "border-box",
       }}
     >
-      <ChevronUp size={16} color="var(--dos-fg)" /> Close
+      <ChevronUp size={16} color={editorialScope ? E.color.ink : "var(--dos-fg)"} /> Close
     </button>
   );
   // "Write back" — the letter's reply CTA (cream outline + text,
   // cream-fill/Sky-text hover; M pill 14/700).
   const writeBackButton = (
     <button
-      className="btn sb-cream-outline"
+      className={editorialScope ? undefined : "btn sb-cream-outline"}
       onClick={openComposer}
-      style={{ fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
+      style={editorialScope ? INK_BLOCK_M : { fontSize: 14, fontWeight: 700, padding: "12px 28px", minHeight: 44, borderRadius: 9999, boxSizing: "border-box" }}
     >
       Write back
     </button>
@@ -700,32 +712,33 @@ export default function V2InlineThread({
         </div>
       ) : editing ? (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+          {editorialScope && <style>{REPLY_TA_CSS}</style>}
           <input
-            className="badge"
+            className={editorialScope ? undefined : "badge"}
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
             placeholder="Title"
-            style={{ width: "100%", height: 40, fontWeight: 700, border: "none" }}
+            style={editorialScope ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", ...E.type.letterTitle22, color: E.color.ink, padding: "0 0 8px" } : { width: "100%", height: 40, fontWeight: 700, border: "none" }}
           />
           <textarea
-            className="card"
+            className={editorialScope ? "e-reply-ta" : "card"}
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
             placeholder="Body"
-            style={{ width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
+            style={editorialScope ? { width: "100%", boxSizing: "border-box", height: editStartHeight, resize: "vertical", border: `1px solid ${E.color.ink}`, borderRadius: 0, padding: "10px 12px", ...E.type.letterBody15, lineHeight: 1.6, outline: "none", marginTop: 8 } : { width: "100%", height: editStartHeight, resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
           />
           {editError && (
             <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button className="btn" onClick={cancelEdit} disabled={editSubmitting}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: editorialScope ? 18 : 8 }}>
+            <button className={editorialScope ? undefined : "btn"} onClick={cancelEdit} disabled={editSubmitting} style={editorialScope ? edWord : undefined}>
               Cancel
             </button>
             <button
-              className="btn"
+              className={editorialScope ? undefined : "btn"}
               onClick={handleSaveEdit}
               disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
-              style={{ background: CANON.personal, color: CANON.cream, border: "2px solid var(--canon-personal,#7abd8e)" }}
+              style={editorialScope ? { ...INK_SMALL, opacity: editSubmitting || !editTitle.trim() || !editBody.trim() ? 0.6 : 1 } : { background: CANON.personal, color: CANON.cream, border: "2px solid var(--canon-personal,#7abd8e)" }}
             >
               {editSubmitting ? "Saving…" : "Save"}
             </button>
@@ -736,7 +749,19 @@ export default function V2InlineThread({
               blend into the sky room background like the old inline banner did.
               Logic unchanged: first Save sets showRetagWarning → this modal →
               "Save & retag" re-calls handleSaveEdit, which bumps the tag. */}
-          {showRetagWarning && (
+          {showRetagWarning && editorialScope && (
+            <Confirm
+              desktop={!mobileIdiom}
+              title="Heads up — this letter will be retagged"
+              note={`Your progress has moved to S${String(editTagS).padStart(2, "0")} E${String(editTagE).padStart(2, "0")}. Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it.`}
+              confirmLabel={editSubmitting ? "Saving…" : "Save & retag"}
+              cancelLabel="Go back"
+              onConfirm={handleSaveEdit}
+              onCancel={() => { if (!editSubmitting) setShowRetagWarning(false); }}
+              busy={editSubmitting}
+            />
+          )}
+          {showRetagWarning && !editorialScope && (
             <Modal
               onClose={() => { if (!editSubmitting) setShowRetagWarning(false); }}
               width="min(420px, 90vw)"
@@ -827,7 +852,7 @@ export default function V2InlineThread({
         </div>
       )}
       {!isTombstone && !editing && !pickMode && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: editorialScope ? 18 : 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
           {isOwn && (
             <>
               {replyCount > 0 || hasNote ? (
@@ -839,8 +864,8 @@ export default function V2InlineThread({
                   width={220}
                 >
                   <button
-                    className="btn"
-                    style={{ ...sPillGeom, opacity: 0.45, pointerEvents: "none" }}
+                    className={editorialScope ? undefined : "btn"}
+                    style={{ ...(editorialScope ? edWord : sPillGeom), opacity: 0.45, pointerEvents: "none" }}
                     disabled
                   >
                     Edit
@@ -855,18 +880,18 @@ export default function V2InlineThread({
                   width={260}
                 >
                   <button
-                    className="btn sb-edit-business"
+                    className={editorialScope ? undefined : "btn sb-edit-business"}
                     onClick={openEdit}
-                    style={sPillGeom}
+                    style={editorialScope ? edWord : sPillGeom}
                   >
                     Edit
                   </button>
                 </Tooltip>
               )}
               <button
-                className="btn btn-danger"
+                className={editorialScope ? undefined : "btn btn-danger"}
                 onClick={openDelete}
-                style={sPillGeom}
+                style={editorialScope ? { ...edWord, color: E.color.alert } : sPillGeom}
               >
                 Delete
               </button>
@@ -877,9 +902,9 @@ export default function V2InlineThread({
             // highlight — the slot searches for a show instead, opening the
             // search field in the proposals panel above (his ask).
             <button
-              className="btn sb-hl-entry"
+              className={editorialScope ? undefined : "btn sb-hl-entry"}
               onClick={() => setSbSearchOpen(true)}
-              style={sPillGeom}
+              style={editorialScope ? edWord : sPillGeom}
             >
               Search for a show…
             </button>
@@ -890,9 +915,9 @@ export default function V2InlineThread({
             // mode on — sentences are tapped instead of selected.
             <button
               ref={highlightBtnRef}
-              className="btn sb-hl-entry"
+              className={editorialScope ? undefined : "btn sb-hl-entry"}
               onClick={mobileIdiom ? startPick : handleHighlightClick}
-              style={sPillGeom}
+              style={editorialScope ? edWord : sPillGeom}
             >
               Add a note
             </button>
@@ -901,9 +926,9 @@ export default function V2InlineThread({
             // Cream outline + text, cream-fill/Sky-text hover (Alborz
             // 2026-08-13 tweak — the Business version got lost on sky).
             <button
-              className="btn sb-cream-outline"
+              className={editorialScope ? undefined : "btn sb-cream-outline"}
               onClick={handleQuoteThread}
-              style={sPillGeom}
+              style={editorialScope ? edWord : sPillGeom}
             >
               Quote…
             </button>
@@ -925,7 +950,7 @@ export default function V2InlineThread({
       {/* Reply count indicator — under entry, above replies. */}
       {replyCount > 0 && (
         // Cream Label (polish pass 2026-09-15 — dark at 0.7 on sky was weak).
-        <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, marginTop: 24, color: "var(--dos-fg)" }}>
+        <div style={editorialScope ? { ...E.type.label11, color: E.color.ink, marginTop: 28, paddingBottom: 8, borderBottom: `1px solid ${E.color.ink}` } : { fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 14, marginTop: 24, color: "var(--dos-fg)" }}>
           {replyCount} {replyCount === 1 ? "response" : "responses"}
         </div>
       )}
@@ -1059,7 +1084,10 @@ export default function V2InlineThread({
 
       {/* Empty-selection hint modal — same shape as the Quote hint below;
           shown when the user clicks Highlight without first selecting text. */}
-      {highlightHint && (
+      {highlightHint && editorialScope && edHint(() => setHighlightHint(false), (
+        <p style={{ ...edP, margin: 0 }}>Want to leave a note? Highlight a portion of text, then click "Add a note".</p>
+      ))}
+      {highlightHint && !editorialScope && (
         <Modal onClose={() => setHighlightHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
           <div>
             <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
@@ -1074,7 +1102,14 @@ export default function V2InlineThread({
 
       {/* Quote hint modal — v1's copy ported verbatim. Shown when the user
           clicks Quote with no text highlighted. */}
-      {threadQuoteHint && (
+      {threadQuoteHint && editorialScope && edHint(() => setThreadQuoteHint(false), (
+        <>
+          <p style={edP}>Highlight the portion of any letter that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this letter and vice-versa.</p>
+          <p style={edP}>The thread stays linear, but the connections between ideas are visible.</p>
+          <p style={{ ...E.type.quote14, color: E.color.inkSub, margin: 0 }}>This might feel confusing, but try it out! You can always edit your response after you post it.</p>
+        </>
+      ))}
+      {threadQuoteHint && !editorialScope && (
         <Modal onClose={() => setThreadQuoteHint(false)} width="min(520px,92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: CANON.cream, color: "var(--canon-dark,#1a3a4a)", animation: "dCardRise 180ms ease-out" }}>
           <div>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
@@ -1093,7 +1128,19 @@ export default function V2InlineThread({
         </Modal>
       )}
 
-      {showDeleteModal && (
+      {showDeleteModal && editorialScope && (
+        <Confirm
+          desktop={!mobileIdiom}
+          title="Delete this letter?"
+          note={responsesOff ? "The letter disappears from the room." : "If it has responses, they'll stay visible in the room as a tombstone. Otherwise the letter disappears from the room."}
+          confirmLabel={deleteSubmitting ? "Deleting…" : "Delete"}
+          tone="alert"
+          onConfirm={handleDelete}
+          onCancel={cancelDelete}
+          busy={deleteSubmitting}
+        />
+      )}
+      {showDeleteModal && !editorialScope && (
         // Yellow dialog (polish pass 2026-09-15): acting on a room's entry.
         <Modal onClose={cancelDelete} width="min(360px, 92vw)" cardStyle={{ borderRadius: 24, padding: 32, background: "var(--canon-accent,#dea838)", color: CANON.cream, animation: "dCardRise 180ms ease-out" }}>
           <div>

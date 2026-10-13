@@ -1,6 +1,9 @@
 import { X as XIcon } from "lucide-react";
 import React, { useRef, useState, useEffect } from "react";
 import { CANON } from "../styles/canon";
+import { useEditorialScope } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { UNDERLINE_WORD, INK_BLOCK_M, INK_SMALL, REPLY_TA_CSS } from "./editorial/MapNotes";
 import { useAuth } from "../lib/auth";
 import { insertReply, fetchPrompts, logThreadPrompt } from "../lib/db";
 import type { PromptRow } from "../lib/db";
@@ -101,6 +104,11 @@ export default function ResponseComposer({
   const replyTagE = postTagEpisode ?? viewerEpisode;
   const { user, profile } = useAuth();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The editorial reply box (Alborz's notes, item 7): the writing in Lora
+  // inside a 1px ink frame on the paper, the staged quotation and the
+  // "responding to" chip as mono frames, Send as the ink block, Cancel as an
+  // underlined word. Same send, same request path.
+  const editorialScope = useEditorialScope();
   // M-pill geometry for the composer's buttons (colors/hovers stay on the
   // sb-* classes; polish pass 2026-09-15).
   const mPillGeom: React.CSSProperties = {
@@ -288,7 +296,7 @@ export default function ResponseComposer({
       // marginLeft 8 lines the box up with the reply cards (their own
       // marginLeft — Alborz 2026-08-13 tweak 2); 0 on mobile, where both
       // sit centered (Alborz 2026-08-18).
-      style={{ marginTop: 16, marginLeft: mobileIdiom ? 0 : 8 }}
+      style={{ marginTop: 16, marginLeft: editorialScope || mobileIdiom ? 0 : 8 }}
       id="response-composer"
     >
       {requestSent ? (
@@ -301,9 +309,9 @@ export default function ResponseComposer({
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
             <button
-              className="btn"
+              className={editorialScope ? undefined : "btn"}
               onClick={onCancel}
-              style={{ background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
+              style={editorialScope ? INK_SMALL : { background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
             >
               Done
             </button>
@@ -320,19 +328,19 @@ export default function ResponseComposer({
       {/* Pending reference row */}
       {pendingReference && pendingReference.type === "quote" && !quoteInserted && (
         <div style={{ marginBottom: 8 }}>
-          <div className="insert-quote-chip">
-            <button className="insert-quote-main" onClick={handleInsertQuote}>
+          <div className="insert-quote-chip" style={editorialScope ? { border: `1px solid ${E.color.ink}`, borderRadius: 0, ...E.type.label11, minHeight: 34 } : undefined}>
+            <button className="insert-quote-main" onClick={handleInsertQuote} style={editorialScope ? { color: E.color.ink, fontFamily: E.font.label, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: 11 } : undefined}>
               Insert quotation from {pendingReference.authorName}.
             </button>
-            <button className="insert-quote-cancel" onClick={onClearReference} title="Cancel" style={{ display: "inline-flex", alignItems: "center" }}><XIcon size={14} /></button>
+            <button className="insert-quote-cancel" onClick={onClearReference} title="Cancel" style={{ display: "inline-flex", alignItems: "center", ...(editorialScope ? { color: E.color.ink, borderLeft: `1px solid ${E.color.ink}`, opacity: 1 } : {}) }}><XIcon size={14} /></button>
           </div>
         </div>
       )}
       {pendingReference && pendingReference.type === "link" && (
         <div style={{ marginBottom: 8 }}>
-          <span className="pending-ref-chip">
+          <span className="pending-ref-chip" style={editorialScope ? { background: "transparent", border: `1px solid ${E.color.ink}`, borderRadius: 0, ...E.type.label10, fontStyle: "normal", color: E.color.ink, padding: "6px 10px" } : undefined}>
             Responding to {pendingReference.authorName}
-            <button onClick={onClearReference} title="Discard reference">×</button>
+            <button onClick={onClearReference} title="Discard reference" style={editorialScope ? { color: E.color.ink, opacity: 1 } : undefined}>×</button>
           </span>
         </div>
       )}
@@ -341,15 +349,29 @@ export default function ResponseComposer({
           at the TEXTAREA's corner, so the 8px right/bottom shell padding
           floats it 8px up-and-left of the visible corner (Alborz 2026-08-13
           tweak 1 — it got lost flush in the corner). */}
-      <div style={{ background: CANON.cream, borderRadius: 12, padding: "0 8px 8px 0" }}>
+      {editorialScope && <style>{REPLY_TA_CSS}</style>}
+      <div style={editorialScope ? { background: "transparent", border: `1px solid ${E.color.ink}`, borderRadius: 0, padding: "0 8px 8px 0" } : { background: CANON.cream, borderRadius: 12, padding: "0 8px 8px 0" }}>
         <textarea
           ref={textareaRef}
-          className="d-comp-ta"
+          className={editorialScope ? "d-comp-ta e-reply-ta" : "d-comp-ta"}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write your response…"
           rows={8}
-          style={{
+          style={editorialScope ? {
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            background: "transparent",
+            color: E.color.ink,
+            border: "none",
+            borderRadius: 0,
+            padding: "14px 16px",
+            ...E.type.letterBody15,
+            lineHeight: 1.6,
+            resize: "vertical",
+            outline: "none",
+          } : {
             display: "block",
             width: "100%",
             boxSizing: "border-box",
@@ -424,24 +446,24 @@ export default function ResponseComposer({
         <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{error}</div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12, marginTop: 8 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: editorialScope ? 18 : 12, marginTop: editorialScope ? 12 : 8 }}>
         <button
           // Cream outline at rest; alert only on hover (polish pass
           // 2026-09-15 — cancelling a draft isn't destructive, and the
           // draft-loss confirm already exists).
-          className="btn sb-cancel-quiet"
+          className={editorialScope ? undefined : "btn sb-cancel-quiet"}
           onClick={onCancel}
           disabled={submitting}
-          style={mPillGeom}
+          style={editorialScope ? UNDERLINE_WORD : mPillGeom}
         >
           Cancel
         </button>
         {requestMode ? (
           <button
-            className="btn"
+            className={editorialScope ? undefined : "btn"}
             onClick={() => handleSubmit(false)}
             disabled={submitting || !body.trim()}
-            style={{ ...mPillGeom, background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
+            style={editorialScope ? { ...INK_BLOCK_M, opacity: submitting || !body.trim() ? 0.6 : 1 } : { ...mPillGeom, background: CANON.cream, border: "2px solid var(--canon-accent,#dea838)", color: CANON.accent }}
           >
             {submitting ? "Sending…" : "Send request"}
           </button>
@@ -459,10 +481,10 @@ export default function ResponseComposer({
             // sb-send (theme.ts): Identity fill + cream text; hover = cream
             // fill + identity text.
             <button
-              className="btn sb-send"
+              className={editorialScope ? undefined : "btn sb-send"}
               onClick={() => handleSubmit(false)}
               disabled={submitting || !body.trim()}
-              style={mPillGeom}
+              style={editorialScope ? { ...INK_BLOCK_M, opacity: submitting || !body.trim() ? 0.6 : 1 } : mPillGeom}
             >
               {submitting ? "Sending…" : label}
             </button>

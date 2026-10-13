@@ -2,6 +2,12 @@ import { isSidebarAuthor, sidebarTag, type SidebarLetterKind } from "../lib/side
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { MessageSquare, Link2, X, Heart, Lock } from "lucide-react";
 import { CANON } from "../styles/canon";
+import { useEditorialScope } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { Confirm, BottomSheet } from "./editorial/Overlays";
+import { EditorialDialog } from "./editorial/GroupRoom";
+import { Block } from "./editorial/Onboarding";
+import { UNDERLINE_WORD, INK_SMALL, REPLY_TA_CSS } from "./editorial/MapNotes";
 
 /** Resolves once the page finishes scrolling (scrollend event or debounce fallback). */
 function afterScroll(): Promise<void> {
@@ -239,6 +245,15 @@ function ReplyBody({
 }) {
   // Suppress the unused-quoteSups warning while the API surface is preserved.
   void quoteSups;
+  // The editorial letter (Alborz's notes, item 7): a response reads in Lora
+  // like the letter it answers; the quotation is a plain ink-ruled block.
+  const editorialScope = useEditorialScope();
+  const bodyStyle: React.CSSProperties = editorialScope
+    ? { ...E.type.letterBody15, lineHeight: 1.6, marginTop: 8, whiteSpace: "pre-wrap", color: E.color.ink }
+    : { marginTop: 8, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" };
+  const quoteStyle: React.CSSProperties | undefined = editorialScope
+    ? { borderLeft: `2px solid ${E.color.ink}`, background: "transparent", borderRadius: 0, padding: "4px 12px", margin: "8px 0", fontStyle: "italic", ...(onScrollToRef ? { cursor: "pointer" } : {}) }
+    : (onScrollToRef ? { cursor: "pointer" } : undefined);
 
   if (referenceType === "quote") {
     // Determine display name: "I" for self-quotes, else author name or "Unknown"
@@ -254,7 +269,7 @@ function ReplyBody({
       const afterStart = match.index + match[0].length;
       const after = body.slice(afterStart);
       return (
-        <div style={{ marginTop: 8, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+        <div style={bodyStyle}>
           <HighlightableBody
             body={before}
             highlights={highlights}
@@ -271,7 +286,7 @@ function ReplyBody({
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
-            style={onScrollToRef ? { cursor: "pointer" } : undefined}
+            style={quoteStyle}
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
@@ -301,7 +316,7 @@ function ReplyBody({
       const afterStart = idx + "[QUOTE]".length;
       const after = body.slice(afterStart);
       return (
-        <div style={{ marginTop: 8, fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+        <div style={bodyStyle}>
           <HighlightableBody
             body={before}
             highlights={highlights}
@@ -318,7 +333,7 @@ function ReplyBody({
           <blockquote
             className="blockquote-ref"
             onClick={onScrollToRef}
-            style={onScrollToRef ? { cursor: "pointer" } : undefined}
+            style={quoteStyle}
             title={onScrollToRef ? "Click to jump to cited response" : undefined}
           >
             <div className="blockquote-author">{displayAuthor} wrote:</div>
@@ -345,7 +360,7 @@ function ReplyBody({
   // and highlight overlays. linkify forwards through to plain-text segments
   // for URL auto-linking, matching the pre-refactor behavior.
   return (
-    <div style={{ marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
+    <div style={editorialScope ? bodyStyle : { marginTop: 8, fontSize: 15, whiteSpace: "pre-wrap" }}>
       <HighlightableBody
         body={body}
         highlights={highlights}
@@ -443,6 +458,17 @@ export default function RepliesList({
   mobileIdiom?: boolean;
 }) {
   const dn = (u: string) => displayNames?.[u] ?? u;
+  // The editorial letter (Alborz's notes, item 7): responses as hairline
+  // rows on the paper — the byline in mono, the body in Lora, the acts as
+  // underlined mono words (Delete in alert); a response from ahead as the
+  // sealed idiom; the hints and the delete as the bible's dialog / sheet /
+  // confirm. Same reads, same edits, same notes.
+  const editorialScope = useEditorialScope();
+  const edWord = UNDERLINE_WORD;
+  const edHint = (onClose: () => void, body: React.ReactNode) => mobileIdiom
+    ? <BottomSheet onClose={onClose} zIndex={1300} label="Hint">{body}<Block onClick={onClose} style={{ marginTop: 20 }}>Got it</Block></BottomSheet>
+    : <EditorialDialog onClose={onClose} width={480} label="Hint" align="left">{body}<Block onClick={onClose} style={{ marginTop: 20 }}>Got it</Block></EditorialDialog>;
+  const edP: React.CSSProperties = { ...E.type.body15, color: E.color.ink, margin: "0 0 14px" };
   const { user, profile } = useAuth();
   const { scrollTo: scrollHighlight } = useScrollHighlight();
 
@@ -930,7 +956,10 @@ export default function RepliesList({
       {/* Hint modals (2026-09-16): the same cream info card the entry-level
           hints got in the desktop polish pass — dark ink, Body 15, an
           Identity "Got it" (these reply-card copies had been missed). */}
-      {highlightHint && (
+      {highlightHint && editorialScope && edHint(() => setHighlightHint(null), (
+        <p style={{ ...edP, margin: 0 }}>Want to leave a note? Highlight a portion of text, then click "Add a note".</p>
+      ))}
+      {highlightHint && !editorialScope && (
         <Modal onClose={() => setHighlightHint(null)} width="min(520px,92vw)" cardStyle={hintCard}>
           <div>
             <p style={{ margin: "0 0 24px", fontSize: 15, lineHeight: 1.6 }}>
@@ -943,7 +972,14 @@ export default function RepliesList({
         </Modal>
       )}
 
-      {quoteHintId && (
+      {quoteHintId && editorialScope && edHint(() => setQuoteHintId(null), (
+        <>
+          <p style={edP}>Highlight the portion of any letter that you'd like to respond to, then click the Quote button. This will open a new response where you can add your thoughts — your quotation will link back to this letter and vice-versa.</p>
+          <p style={edP}>The thread stays linear, but the connections between ideas are visible.</p>
+          <p style={{ ...E.type.quote14, color: E.color.inkSub, margin: 0 }}>This might feel confusing, but try it out! You can always edit your response after you post it.</p>
+        </>
+      ))}
+      {quoteHintId && !editorialScope && (
         <Modal onClose={() => setQuoteHintId(null)} width="min(520px,92vw)" cardStyle={hintCard}>
           <div>
             <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.6 }}>
@@ -988,7 +1024,19 @@ export default function RepliesList({
         </Modal>
       )}
 
-      {deleteConfirmId && (
+      {deleteConfirmId && editorialScope && (
+        <Confirm
+          desktop={!mobileIdiom}
+          title="Delete this response?"
+          note="If anyone has responded to it, it'll stay as a stub so the chain remains readable. Otherwise it'll vanish entirely. This can't be undone."
+          confirmLabel="Delete it"
+          cancelLabel="Nevermind"
+          tone="alert"
+          onConfirm={() => handleDeleteReply(deleteConfirmId)}
+          onCancel={() => setDeleteConfirmId(null)}
+        />
+      )}
+      {deleteConfirmId && !editorialScope && (
         <Modal onClose={() => setDeleteConfirmId(null)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <h3 className="title" style={{ margin: 0 }}>Delete this response?</h3>
@@ -1017,7 +1065,7 @@ export default function RepliesList({
       )}
 
       {repliesLoading && <div className="muted" style={{ fontSize: 14 }}>Loading replies<LoadingDots /></div>}
-      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gap: editorialScope ? 0 : 12 }}>
         {sortedReplies.map((r) => {
           const isReplyDeleted = r.isDeleted || !!localDeleted[r.id];
           const isReplyEdited = r.isEdited;
@@ -1036,10 +1084,10 @@ export default function RepliesList({
               <div
                 key={r.id}
                 id={`reply-${r.id}`}
-                className="card"
-                style={{ marginLeft: 8, opacity: 0.45, borderLeft: "4px solid var(--dos-border)" }}
+                className={editorialScope ? undefined : "card"}
+                style={editorialScope ? { padding: "12px 0", opacity: 0.5, borderTop: `1px solid ${E.color.hairline}` } : { marginLeft: 8, opacity: 0.45, borderLeft: "4px solid var(--dos-border)" }}
               >
-                <span className="muted" style={{ fontSize: 14 }}>
+                <span className={editorialScope ? undefined : "muted"} style={editorialScope ? { ...E.type.quote14, color: E.color.ink } : { fontSize: 14 }}>
                   ({dn(r.author)}) deleted their reply.
                 </span>
               </div>
@@ -1061,7 +1109,19 @@ export default function RepliesList({
               <div
                 key={r.id}
                 id={`reply-${r.id}`}
-                style={{
+                style={editorialScope ? {
+                  // The sealed idiom under the skin: the dashed friend frame on the paper.
+                  border: `2px dashed ${E.color.friend}`,
+                  borderRadius: 0,
+                  background: "transparent",
+                  color: E.color.ink,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  margin: "10px 0",
+                  cursor: "default",
+                } : {
                   // Gated-writing idiom (polish pass 2026-09-15): dashed
                   // cream + lock, replacing the grey .redacted pill.
                   border: "2px dashed rgba(254,248,234,0.8)",
@@ -1076,7 +1136,7 @@ export default function RepliesList({
                 }}
               >
                 <Lock size={18} strokeWidth={2} color={CANON.alert} style={{ flexShrink: 0 }} />
-                <div style={{ fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
+                <div style={editorialScope ? { ...E.type.note13, lineHeight: 1.45 } : { fontWeight: 400, fontSize: 14, lineHeight: 1.45, opacity: 0.9 }}>
                   <b>{dn(r.author)}</b> responded from {tag.toLowerCase()}. It opens when you catch up.
                 </div>
               </div>
@@ -1140,8 +1200,18 @@ export default function RepliesList({
             <div
               key={r.id}
               id={`reply-${r.id}`}
-              className="card reply-card"
-              style={{
+              className={editorialScope ? undefined : "card reply-card"}
+              style={editorialScope ? {
+                // The editorial row: a hairline above, no frame, the paper's ink.
+                borderTop: `1px solid ${E.color.hairline}`,
+                padding: "14px 0 6px",
+                marginLeft: 0,
+                position: "relative",
+                color: E.color.ink,
+                ["--dos-accent" as any]: E.color.ink,
+                ["--dos-cyan" as any]: E.color.ink,
+                ["--dos-gray" as any]: E.color.inkMuted,
+              } : {
                 border: (() => {
                   const w = compactBorders ? 2 : 4;
                   return progressReveal[r.id]
@@ -1161,14 +1231,14 @@ export default function RepliesList({
               }}
             >
               {isNewReply && (
-                <div style={{ position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
+                <div style={editorialScope ? { position: "absolute", left: -16, top: 20, width: 8, height: 8, borderRadius: "50%", background: E.color.identity, pointerEvents: "none" } : { position: "absolute", left: -10, top: -10, width: 20, height: 20, borderRadius: "50%", background: "var(--green)", boxShadow: "0 1px 4px rgba(0,0,0,0.3)", zIndex: 2, pointerEvents: "none" }} />
               )}
 
               {/* One caption byline (polish pass 2026-09-15): name · tag ·
                   time, 13 at 0.8 — the time joins the line instead of
                   hanging on the right edge. */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2px 6px" }}>
-                <div style={{ fontSize: 13, lineHeight: 1.45, opacity: 0.8, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
+                <div style={editorialScope ? { ...E.type.label10, color: E.color.inkMuted, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" } : { fontSize: 13, lineHeight: 1.45, opacity: 0.8, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0 6px" }}>
                   <Username name={r.author} displayName={dn(r.author)} userId={r.authorId} onClickProfile={onClickProfile ?? (() => {})} bold />
                   {groupId && departedUsernames?.has(r.author) && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.75 }}>has left the room</span>
@@ -1194,15 +1264,15 @@ export default function RepliesList({
                       />
                     </span>
                   )}
-                  <span className="muted">&middot; {timeAgo(r.updatedAt)}</span>
+                  <span className={editorialScope ? undefined : "muted"}>&middot; {timeAgo(r.updatedAt)}</span>
                   {isReplyEdited && (
                     <span style={{ fontStyle: "italic", fontSize: 12, opacity: 0.7 }}>(edited)</span>
                   )}
                   {/* "Responding to" inline for link-type references */}
                   {r.referenceType === "link" && (referencedReply || r.referencedThreadId) && (
                     <button
-                      className="responding-to-label"
-                      style={{ fontSize: 13 }}
+                      className={editorialScope ? undefined : "responding-to-label"}
+                      style={editorialScope ? { ...E.type.label10, color: E.color.ink, background: "none", border: 0, padding: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer" } : { fontSize: 13 }}
                       onClick={() =>
                         r.referencedReplyId
                           ? scrollHighlight(`reply-${r.referencedReplyId}`)
@@ -1223,10 +1293,17 @@ export default function RepliesList({
                      primary, which picked up public-context green
                      overrides (theme.ts public-context block) and rendered
                      inconsistently with the write box alongside it. */}
+                  {editorialScope && <style>{REPLY_TA_CSS}</style>}
                   <textarea
+                    className={editorialScope ? "e-reply-ta" : undefined}
                     value={editReplyBody}
                     onChange={e => setEditReplyBody(e.target.value)}
-                    style={{
+                    style={editorialScope ? {
+                      width: "100%", boxSizing: "border-box",
+                      border: `1px solid ${E.color.ink}`, borderRadius: 0,
+                      padding: "10px 12px", ...E.type.letterBody15, lineHeight: 1.6, resize: "vertical", outline: "none",
+                      height: editStartHeight,
+                    } : {
                       width: "100%", boxSizing: "border-box",
                       background: "#FEF8EA", color: "#000",
                       border: "none", borderRadius: 8,
@@ -1240,7 +1317,7 @@ export default function RepliesList({
                     <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 4 }}>{editReplyError}</div>
                   )}
                   {retagWarningReplyId === r.id ? (
-                    <div className="retag-warning" style={{ background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 24, padding: "12px 14px", marginTop: 8, fontSize: 13 }}>
+                    <div className={editorialScope ? undefined : "retag-warning"} style={editorialScope ? { border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.alert}`, padding: "12px 14px", marginTop: 10, ...E.type.note13, color: E.color.ink } : { background: "var(--dos-bg)", border: "1px solid var(--dos-border)", borderRadius: 24, padding: "12px 14px", marginTop: 8, fontSize: 13 }}>
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>Heads up — this reply will be retagged</div>
                       <div style={{ opacity: 0.85, marginBottom: 10 }}>
                         Your progress has moved to{" "}
@@ -1256,7 +1333,7 @@ export default function RepliesList({
                         <button
                           onClick={() => setRetagWarningReplyId(null)}
                           disabled={editReplySubmitting}
-                          style={{
+                          style={editorialScope ? edWord : {
                             background: "transparent",
                             border: "2px solid #FEF8EA",
                             color: "#FEF8EA",
@@ -1273,7 +1350,7 @@ export default function RepliesList({
                         <button
                           onClick={() => handleSaveEditReply(r.id, true)}
                           disabled={editReplySubmitting}
-                          style={{
+                          style={editorialScope ? { ...INK_SMALL, background: E.color.alert } : {
                             background: "transparent",
                             border: "2px solid var(--danger)",
                             color: "var(--danger)",
@@ -1290,21 +1367,21 @@ export default function RepliesList({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: editorialScope ? 18 : 8, marginTop: editorialScope ? 10 : 6 }}>
                       <button
-                        className="btn"
+                        className={editorialScope ? undefined : "btn"}
                         onClick={handleCancelEditReply}
                         disabled={editReplySubmitting}
-                        style={{ background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
+                        style={editorialScope ? edWord : { background: "transparent", border: "2px solid var(--danger)", color: "var(--danger)" }}
                       >
                         Cancel
                       </button>
                       <button
-                        className="btn"
+                        className={editorialScope ? undefined : "btn"}
                         onClick={() => handleSaveEditReply(r.id)}
                         disabled={editReplySubmitting || !editReplyBody.trim()}
                         // Mobile: cream outline so Save reads clearly against the card.
-                        style={{ background: "var(--danger)", border: mobileIdiom ? "2px solid var(--canon-cream,#FEF8EA)" : "2px solid var(--danger)", color: "#FEF8EA" }}
+                        style={editorialScope ? { ...INK_SMALL, opacity: editReplySubmitting || !editReplyBody.trim() ? 0.6 : 1 } : { background: "var(--danger)", border: mobileIdiom ? "2px solid var(--canon-cream,#FEF8EA)" : "2px solid var(--danger)", color: "#FEF8EA" }}
                       >
                         {editReplySubmitting ? "Saving…" : "Save"}
                       </button>
@@ -1344,7 +1421,7 @@ export default function RepliesList({
               )}
 
               {!isCurrentlyEditing && (
-                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap", gap: editorialScope ? 18 : 8, marginTop: editorialScope ? 6 : 10 }}>
                   {/* No heart on room responses (polish pass 2026-09-15 —
                       the action set is Edit/Delete/Highlight…/Quote…);
                       public/journal surfaces keep theirs. */}
@@ -1359,8 +1436,8 @@ export default function RepliesList({
                   )}
                   {isReplyOwn && (
                     <>
-                      <button className="btn sb-reply-friend" style={sPillGeom} onClick={() => handleStartEditReply(r)}>Edit</button>
-                      <button className="btn btn-danger" style={sPillGeom} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
+                      <button className={editorialScope ? undefined : "btn sb-reply-friend"} style={editorialScope ? edWord : sPillGeom} onClick={() => handleStartEditReply(r)}>Edit</button>
+                      <button className={editorialScope ? undefined : "btn btn-danger"} style={editorialScope ? { ...edWord, color: E.color.alert } : sPillGeom} onClick={() => setDeleteConfirmId(r.id)}>Delete</button>
                     </>
                   )}
                   {highlightsEnabled && !mobileIdiom && (
@@ -1368,9 +1445,9 @@ export default function RepliesList({
                     // outline + Accent text (Alborz 2026-08-13).
                     <button
                       ref={el => { highlightBtnRefs.current[r.id] = el; }}
-                      className="sb-hl-reply"
+                      className={editorialScope ? undefined : "sb-hl-reply"}
                       onClick={() => handleHighlightClickReply(r.id)}
-                      style={{
+                      style={editorialScope ? edWord : {
                         ...sPillGeom,
                         background: "#adc8d7",
                         color: "#FEF8EA",
@@ -1387,8 +1464,8 @@ export default function RepliesList({
                       {/* Styled by the `.reply-card .btn` rules (theme.ts,
                           !important) — inline colors here are dead weight. */}
                       <button
-                        className="btn sb-reply-friend"
-                        style={sPillGeom}
+                        className={editorialScope ? undefined : "btn sb-reply-friend"}
+                        style={editorialScope ? edWord : sPillGeom}
                         onClick={() => handleQuote(r)}
                         title="Quote this response"
                       >
@@ -1398,8 +1475,8 @@ export default function RepliesList({
                   )}
                   {!hideRespondButtons && (
                     <button
-                      className="btn"
-                      style={{ fontSize: 13 }}
+                      className={editorialScope ? undefined : "btn"}
+                      style={editorialScope ? edWord : { fontSize: 13 }}
                       onClick={() => handleLink(r)}
                       title="Respond"
                     >
