@@ -18,7 +18,8 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows } from "../../lib/db";
+import type { Show } from "../../lib/db";
 import { groupDisplayName, joinNames } from "../../lib/groupNames";
 import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
@@ -114,6 +115,15 @@ export default function ShowReference({
   // (as of now). This local override reflects the jump immediately; the
   // host page's own copy refreshes on its next load.
   const [progressOverride, setProgressOverride] = useState<{ s: number; e: number } | null>(null);
+  // Finished (Alborz, round 5 follow-up): the band's rule — at the show's
+  // last catalog episode; the catalog row carries the aired counts.
+  const [catalogShow, setCatalogShow] = useState<Show | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setCatalogShow(null);
+    fetchShows().then((rows) => { if (!cancelled) setCatalogShow(rows.find((x) => x.id === showId) ?? null); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [showId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +177,8 @@ export default function ShowReference({
   // The effective dial: the prop, unless a canon-add just jumped it.
   const prog = progressOverride ?? viewerProgress;
   const vIdx = idx(prog.s, prog.e);
+  const seasonCounts = (catalogShow as { seasons?: number[] } | null)?.seasons;
+  const finished = !!seasonCounts?.length && (prog.s > seasonCounts.length || (prog.s === seasonCounts.length && prog.e >= (seasonCounts[seasonCounts.length - 1] ?? 1)));
 
   const visiblePeople = useMemo(
     () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= vIdx),
@@ -267,12 +279,35 @@ export default function ShowReference({
     };
     const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary));
     const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary) })).filter((season) => season.eps.length > 0);
-    const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null }) => (
-      <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
-        <div style={{ ...E.type.label10, color: E.color.inkMuted }}>S{ep.s} E{ep.e} · {ep.title}</div>
-        <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
-      </div>
-    );
+    // The star on the plot (Alborz, round 5 follow-up): a line and a star
+    // after each episode's label, for a show you've FINISHED that's in your
+    // canon — the essentials live where their plot sits.
+    const starAllowed = !!user && !!canonOn && finished;
+    const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null }) => {
+      const starred = essentials.has(idx(ep.s, ep.e));
+      return (
+        <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ ...E.type.label10, color: E.color.inkMuted, minWidth: 0 }}>S{ep.s} E{ep.e} · {ep.title}</span>
+            {starAllowed && (
+              <>
+                <span aria-hidden="true" style={{ flex: 1, minWidth: 24, height: 1, background: E.color.hairline }} />
+                <button
+                  type="button"
+                  onClick={() => toggleEssential(ep.s, ep.e)}
+                  aria-pressed={starred}
+                  title={starred ? "Un-star this essential" : "Star as an essential episode"}
+                  style={{ background: "transparent", border: 0, padding: 0, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "flex-end", cursor: "pointer", flexShrink: 0 }}
+                >
+                  <Star size={16} color={E.color.accent} fill={starred ? E.color.accent : "none"} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </>
+            )}
+          </div>
+          <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
+        </div>
+      );
+    };
     return (
       <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
         {/* The room link above the stop line, the group's name in quotes
@@ -323,7 +358,8 @@ export default function ShowReference({
             season you're in starts open; opening one closes the other. The
             episode list that followed is gone (his call: it only ever showed
             the season you're in, and the plot and the picker already say
-            what's been seen); the canon's essentials star went with it. */}
+            what's been seen); the essentials star moved onto the plot
+            entries (finished canon shows). */}
         {plotEpisodes.length > 0 && (
           <>
             <SectionHead style={{ marginTop: 28 }}>Plot so far</SectionHead>
