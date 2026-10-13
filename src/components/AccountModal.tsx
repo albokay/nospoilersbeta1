@@ -4,12 +4,12 @@ import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
-import { deleteAccount, setOwnDisplayName, setOwnSkin, type ProfileSkin } from "../lib/db";
+import { deleteAccount, setOwnDisplayName, setOwnSkin, adminSetSiteSkin, type ProfileSkin } from "../lib/db";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY, LORA } from "../mobile/m";
 import { D } from "./dashboardChrome";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
-import { useEditorial } from "../lib/skin";
+import { useEditorial, useSiteSkin, setSiteSkinLocal } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { SectionHead } from "./editorial/Chrome";
 import { AnswerRow, EditorialDialog } from "./editorial/GroupRoom";
@@ -67,12 +67,27 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
 
   const canDelete = confirmText.trim().toUpperCase() === "DELETE";
 
-  // Look (the editorial skin's switch, checkpoint 1 2026-10-10): an account
-  // that has been given the editorial look — or an admin — can go back and
-  // forth here. Everyone else never sees the section (classic stays classic).
+  // Look (the editorial skin's switch, checkpoint 1 2026-10-10; admin-only
+  // since 2026-10-13): the admin's own look, for comparing — and below it
+  // the site's look, which every other account follows. Everyone else never
+  // sees the section.
   const currentSkin: ProfileSkin = profile?.skin === "editorial" ? "editorial" : "classic";
-  const canPickSkin = !!profile && (!!profile.is_admin || currentSkin === "editorial");
+  const canPickSkin = !!profile && !!profile.is_admin;
   const [skinSaving, setSkinSaving] = useState(false);
+  const siteSkin = useSiteSkin();
+  const [siteSaving, setSiteSaving] = useState(false);
+  async function chooseSiteSkin(next: ProfileSkin) {
+    if (!profile?.is_admin || siteSaving || next === (siteSkin ?? "classic")) return;
+    setSiteSaving(true);
+    try {
+      await adminSetSiteSkin(next);
+      setSiteSkinLocal(next);
+    } catch (err) {
+      console.error("[account] adminSetSiteSkin failed:", err);
+    } finally {
+      setSiteSaving(false);
+    }
+  }
   async function chooseSkin(next: ProfileSkin) {
     if (!user?.id || next === currentSkin || skinSaving) return;
     setSkinSaving(true);
@@ -146,9 +161,12 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
         {nameError && <div style={err}>{nameError}</div>}
         {canPickSkin && (
           <>
-            <SectionHead style={{ marginTop: 28 }}>Look</SectionHead>
-            <div style={note}>The editorial look is being built page by page. Switch back any time.</div>
-            <AnswerRow label="Look" options={[{ value: "classic", label: "Classic" }, { value: "editorial", label: "Editorial" }]} value={currentSkin} onChange={(v) => { void chooseSkin(v as ProfileSkin); }} />
+            <SectionHead style={{ marginTop: 28 }}>Your look</SectionHead>
+            <div style={note}>Your own account, for comparing. Everyone else follows the site&rsquo;s look below.</div>
+            <AnswerRow label="Your look" options={[{ value: "classic", label: "Classic" }, { value: "editorial", label: "Editorial" }]} value={currentSkin} onChange={(v) => { void chooseSkin(v as ProfileSkin); }} />
+            <SectionHead style={{ marginTop: 28 }}>Everyone&rsquo;s look</SectionHead>
+            <div style={note}>The look every account and the signed-out pages follow. Others see it on their next page load.{siteSaving ? " Saving…" : ""}</div>
+            <AnswerRow label="Everyone's look" options={[{ value: "classic", label: "Classic" }, { value: "editorial", label: "Editorial" }]} value={siteSkin ?? "classic"} onChange={(v) => { void chooseSiteSkin(v as ProfileSkin); }} />
           </>
         )}
         <SectionHead style={{ marginTop: 28, color: E.color.alert, borderBottomColor: E.color.alert }}>Delete account</SectionHead>

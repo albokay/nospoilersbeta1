@@ -19,8 +19,9 @@
  * the top: `const editorial = useEditorial();` — the data under both looks is
  * the same.
  */
-import { createContext, useContext } from "react";
+import { createContext, useContext, useSyncExternalStore } from "react";
 import { useAuthOptional } from "./auth";
+import { fetchSiteSkin } from "./db";
 
 export type Skin = "classic" | "editorial";
 
@@ -53,12 +54,47 @@ export function visitSkin(): Skin | null {
   return VISIT_SKIN;
 }
 
-/** The look this account (or this visit) sees. */
+// ── The site's look (Alborz 2026-10-13): site_settings.default_skin, which
+//    every account follows unless its own row says otherwise. Read once per
+//    load; the last value is remembered in localStorage so a page paints in
+//    the right look at once (a brand-new browser may show one classic paint
+//    before the first read lands). The admin's flip updates it in place.
+const SITE_KEY = "ns_site_skin";
+function readCachedSiteSkin(): Skin | null {
+  try {
+    const v = window.localStorage.getItem(SITE_KEY);
+    return v === "editorial" || v === "classic" ? v : null;
+  } catch { return null; }
+}
+let siteSkin: Skin | null = typeof window === "undefined" ? null : readCachedSiteSkin();
+const siteListeners = new Set<() => void>();
+export function setSiteSkinLocal(s: Skin | null): void {
+  siteSkin = s;
+  try { if (s) window.localStorage.setItem(SITE_KEY, s); else window.localStorage.removeItem(SITE_KEY); } catch { /* fine */ }
+  siteListeners.forEach((l) => l());
+}
+function subscribeSite(l: () => void): () => void { siteListeners.add(l); return () => { siteListeners.delete(l); }; }
+let siteFetched = false;
+function ensureSiteSkin(): void {
+  if (siteFetched || typeof window === "undefined") return;
+  siteFetched = true;
+  fetchSiteSkin().then((s) => { if (s !== siteSkin) setSiteSkinLocal(s); }).catch(() => { /* classic stays */ });
+}
+/** The site's look, live. */
+export function useSiteSkin(): Skin | null {
+  return useSyncExternalStore(subscribeSite, () => siteSkin, () => siteSkin);
+}
+ensureSiteSkin();
+
+/** The look this account (or this visit) sees: the account's own pick,
+ *  else the address's visit flag, else the site's look, else classic. */
 export function useSkin(): Skin {
   const profile = useAuthOptional()?.profile;
+  const site = useSiteSkin();
   if (profile?.skin === "editorial") return "editorial";
-  if (VISIT_SKIN === "editorial") return "editorial";
-  return "classic";
+  if (profile?.skin === "classic") return "classic";
+  if (VISIT_SKIN) return VISIT_SKIN;
+  return site ?? "classic";
 }
 
 export function useEditorial(): boolean {

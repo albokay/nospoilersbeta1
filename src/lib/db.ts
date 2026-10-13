@@ -3110,8 +3110,26 @@ export async function adminSetProfileSkin(userId: string, skin: ProfileSkin): Pr
   if (error) throw error;
 }
 
+/** The site-wide look (Alborz 2026-10-13): site_settings.default_skin,
+ *  public-read so the signed-out pages follow it too. Null before the
+ *  migration (no table) or when unset — the app then reads classic. */
+export async function fetchSiteSkin(): Promise<ProfileSkin | null> {
+  const { data, error } = await supabase.from("site_settings").select("value").eq("key", "default_skin").maybeSingle();
+  if (error || !data) return null;
+  const v = (data as { value?: string | null }).value;
+  return v === "editorial" ? "editorial" : v === "classic" ? "classic" : null;
+}
+
+/** Admin: flip the site's look for everyone (admin_set_site_skin —
+ *  SECURITY DEFINER, gated on public.is_admin()). */
+export async function adminSetSiteSkin(skin: ProfileSkin): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_site_skin", { p_skin: skin });
+  if (error) throw error;
+}
+
 /** Every account's look, for the admin page's Activity table. profiles is
- *  public-read; empty until the column exists (the select fails, tolerated). */
+ *  public-read; empty until the column exists (the select fails, tolerated).
+ *  An account that follows the site (NULL) reads classic here. */
 export async function fetchProfileSkins(): Promise<Record<string, ProfileSkin>> {
   const { data, error } = await supabase.from("profiles").select("id, skin");
   if (error || !data) return {};

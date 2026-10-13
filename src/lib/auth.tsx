@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js";
 // skin: which look the account sees — "classic" (the live site) or
 // "editorial" (the round-3 design behind a per-account switch; see
 // src/lib/skin.tsx). Classic until profiles.skin exists and says otherwise.
-type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null; skin: "classic" | "editorial" };
+type Profile = { id: string; username: string; display_name: string | null; is_seed: boolean; is_admin: boolean; bio: string | null; onboarded_at: string | null; skin: "classic" | "editorial" | null };
 
 // Sign-out cleanup (security pass 2026-08-14; refined 2026-08-15 after the
 // tips-reappear regression). Clear ONLY the DATA-bearing keys — cached
@@ -134,7 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         is_admin: row.is_admin,
         bio: bioSupported ? (row.bio ?? null) : null,
         onboarded_at: onboardedSupported ? (row.onboarded_at ?? null) : null,
-        skin: skinSupported && row.skin === "editorial" ? "editorial" : "classic",
+        // Tri-state since 2026-10-13: null = follows the site's look.
+        skin: skinSupported ? (row.skin === "editorial" ? "editorial" : row.skin === "classic" ? "classic" : null) : null,
       });
     } else {
       setProfile(null);
