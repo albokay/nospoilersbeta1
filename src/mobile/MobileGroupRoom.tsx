@@ -185,6 +185,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // The masthead grows with a long name (round 5): the title block's height.
   const titleBlockRef = useRef<HTMLDivElement>(null);
   const titleBlockH = useBlockHeight(titleBlockRef);
+  // The title and the With line alone (their block, top padding included):
+  // the note hangs under them (Alborz 2026-10-13, his pick of three).
+  const titleInnerRef = useRef<HTMLDivElement>(null);
+  const titleInnerH = useBlockHeight(titleInnerRef);
   // Measured in px (the block's min height already carries the phone's top
   // inset); the tokens' calc until the first measure lands.
   const mastH: number | string = titleBlockH ?? E.safe.plus(E.measure.phone.masthead);
@@ -1136,10 +1140,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           over it (round 5 catch: inside the title block it was trapped
           under the corner). Same spot as before — the block starts at the
           page's top. */}
-      {/* Over the "N finished together" row under the sky, centred on it
-          (his call, 2026-10-13: the least important row, still reachable
-          beside the note); it follows the masthead's live height. */}
-      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12), width: 244 }} />}
+      {/* At the band's lower LEFT (his pick, 2026-10-13): under the title and
+          the With line, its accent strip 16px from the edge, filling the
+          sky's empty space; its lower part dips over the start of the
+          "N finished together" row. The title, the With line and the chat
+          corner stay clear. It follows the title block's live height. */}
+      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: 16, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1158,7 +1164,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
-          <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
+          <div ref={titleInnerRef} style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
             <FittedTitle name={groupName} gear={<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />} />
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>

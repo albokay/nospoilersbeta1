@@ -209,12 +209,18 @@ export function EditorialTitle({ children, desktop = false, style }: { children:
  *  gear (2026-10-13, both platforms) sits as a SUPERSCRIPT after the last
  *  word of the FIRST line, 1px from it: each word is measured after layout
  *  and the gear is seated at the first line's end as its own layer, so it
- *  never pushes a word down. Measured before paint; measured again on
- *  resize and once the webfont has landed (it moves the line ends). */
-export function FittedTitle({ name, gear, desktop = false, style }: { name: string; gear?: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
+ *  never pushes a word down. `shrink` (the show rooms, 2026-10-13): a word
+ *  wider than the box — the title beside its poster — shrinks the size by
+ *  just the ratio that fits it (room left for the gear), down to a floor
+ *  (32 on the phone, 40 on desktop), and only past the floor does the word
+ *  break. Measured before paint; measured again on resize and once the
+ *  webfont has landed (it moves the line ends). */
+export function FittedTitle({ name, gear, desktop = false, shrink = false, style }: { name: string; gear?: React.ReactNode; desktop?: boolean; shrink?: boolean; style?: React.CSSProperties }) {
   const ref = useRef<HTMLHeadingElement>(null);
   // 0 = full size · 1 = stepped down · 2 = stepped down and cut at three lines.
   const [fit, setFit] = useState<0 | 1 | 2>(0);
+  // The shrunk size for a wide word: null = not measured yet, 0 = none needed.
+  const [scale, setScale] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   // The gear's seat: the first line's end, relative to the title.
   const [seat, setSeat] = useState<{ left: number; top: number } | null>(null);
@@ -226,10 +232,20 @@ export function FittedTitle({ name, gear, desktop = false, style }: { name: stri
     fonts?.ready?.then(() => { if (alive) setTick((t) => t + 1); }).catch(() => { /* fine */ });
     return () => { alive = false; window.removeEventListener("resize", onResize); };
   }, []);
-  useLayoutEffect(() => { setFit(0); }, [name, desktop, tick]);
+  useLayoutEffect(() => { setFit(0); setScale(null); }, [name, desktop, shrink, tick]);
+  const floorPx = desktop ? 40 : 32;
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const spans = Array.from(el.querySelectorAll<HTMLElement>("[data-word]"));
+    if (shrink && scale === null) {
+      // The widest word against the box (less the gear's seat at a line's end).
+      const room = el.clientWidth - (gear ? 20 : 0);
+      const widest = spans.reduce((m, s) => Math.max(m, s.offsetWidth), 0);
+      const fsNow = parseFloat(getComputedStyle(el).fontSize) || (desktop ? 64 : 46);
+      if (room > 0 && widest > room) { setScale(Math.max(floorPx, Math.floor(fsNow * room / widest))); return; }
+      setScale(0); return;
+    }
     if (fit < 2) {
       const lh = parseFloat(getComputedStyle(el).lineHeight) || 1;
       const lines = Math.round(el.getBoundingClientRect().height / lh);
@@ -238,7 +254,6 @@ export function FittedTitle({ name, gear, desktop = false, style }: { name: stri
     }
     // The last word on the first line: the words share the first word's top
     // until the line breaks.
-    const spans = Array.from(el.querySelectorAll<HTMLElement>("[data-word]"));
     if (!spans.length) { setSeat(null); return; }
     const top0 = spans[0].offsetTop;
     let last = spans[0];
@@ -248,13 +263,16 @@ export function FittedTitle({ name, gear, desktop = false, style }: { name: stri
     // the capitals), its left edge 1px past the word; the gear's hit box
     // (4px around the glyph, a 2px lead) is folded into the seat.
     setSeat({ left: last.offsetLeft + last.offsetWidth + 1 - 6, top: last.offsetTop + Math.round(fs * 0.1) - 4 });
-  }, [fit, name, desktop, tick]);
+  }, [fit, scale, name, desktop, shrink, gear, floorPx, tick]);
   const base = desktop ? E.type.title64 : E.type.title46;
   const small: React.CSSProperties = desktop ? { fontSize: 48, lineHeight: 1.02 } : { fontSize: 36, lineHeight: 1.04 };
+  const stepSize = fit > 0 ? (small.fontSize as number) : (base.fontSize as number);
+  const shrunk = shrink && !!scale && scale < stepSize ? { fontSize: scale } : {};
+  const atFloor = shrink && !!scale && scale <= floorPx;
   const words = name.trim().split(/\s+/);
   const body = words.map((w, i) => <React.Fragment key={i}>{i > 0 ? " " : ""}<span data-word="">{w}</span></React.Fragment>);
   return (
-    <h1 ref={ref} style={{ ...base, ...(fit > 0 ? small : {}), color: E.color.ink, margin: 0, overflowWrap: "anywhere", position: "relative", ...style }}>
+    <h1 ref={ref} style={{ ...base, ...(fit > 0 ? small : {}), ...shrunk, color: E.color.ink, margin: 0, overflowWrap: shrink && !atFloor ? "normal" : "anywhere", position: "relative", ...style }}>
       {fit === 2 ? (
         <span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], overflow: "hidden" }}>{body}</span>
       ) : body}

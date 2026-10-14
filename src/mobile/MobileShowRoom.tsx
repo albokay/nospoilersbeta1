@@ -18,7 +18,7 @@ import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import { RowPoster } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
@@ -1073,8 +1073,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />
             <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-              <div style={{ minWidth: 0 }}>
-              <EditorialTitle>{show?.name ?? "Show"}{!privateOnly && roomId && <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}</EditorialTitle>
+              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+              {/* The fitted title (Alborz 2026-10-13): a word that would reach the
+                  poster shrinks the size to fit; the gear as a superscript after
+                  the first line's last word. The box always takes the width
+                  beside the poster so the measure is the same for every name. */}
+              <FittedTitle shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
               ) : groupName ? (

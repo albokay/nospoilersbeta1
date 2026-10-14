@@ -53,7 +53,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle } from "./editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
@@ -1028,11 +1028,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <div style={{ position: "relative" }}>
                 <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><RowPoster tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
                 <div style={{ width: E.measure.desktop.letters - 120 }}>
-                  <EditorialTitle desktop>
-                    {show?.name ?? "Show"}
-                    {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}
-                    {!privateOnly && roomId && <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}
-                  </EditorialTitle>
+                  {/* The fitted title (Alborz 2026-10-13): a word that would reach
+                      the poster shrinks the size to fit; the gear (beside the name
+                      since round 2) as a superscript after the first line's last word. */}
+                  <FittedTitle desktop shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
                   ) : groupName ? (
