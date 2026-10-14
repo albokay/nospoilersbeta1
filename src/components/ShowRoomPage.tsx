@@ -931,8 +931,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // every render).
   const refEff = effectiveProgress(progressForShow);
   const referenceAvailable = !!show?.tvmazeId && !!refEff;
-  // The map's empty state (Alborz 2026-10-14): the dashed note alone under
-  // "Season map" — no "Click a cell…" words, no legend.
+  // The map's empty state (Alborz 2026-10-14): no map at all until someone
+  // reaches an episode.
   const mapEmpty = mapIsEmpty(mapMembers);
   useEffect(() => {
     // Only bounce AFTER the load has landed — on arrival from the dashboard
@@ -1390,7 +1390,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {/* The editorial rail (checkpoint 5): scrolls on its own, the
                   legend pinned at its foot on a cream fill. */}
               <div style={editorial ? { position: "sticky", top: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto", display: "flex", flexDirection: "column", scrollbarWidth: "none" } : { position: "sticky", top: 24 }}>
-              {editorial && <SectionHead right={mapEmpty ? null : <span style={{ color: E.color.inkMuted }}>Click a cell to open its letter</span>}>Season map</SectionHead>}
+              {/* No map at all while nobody has reached an episode (Alborz
+                  2026-10-14: "the empty state for the map is no map") — the
+                  rail stays so the letters column keeps its width. */}
+              {editorial && mapEmpty ? null : (<>
+              {editorial && <SectionHead right={<span style={{ color: E.color.inkMuted }}>Click a cell to open its letter</span>}>Season map</SectionHead>}
               <V2RoomMap
                 editorial={editorial}
                 members={mapMembers}
@@ -1409,7 +1413,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 firstHighlightedSet={firstHighlightedSet}
                 filteredUserId={userFilter}
               />
-              {editorial && !mapEmpty && <MapLegend pinned style={{ marginTop: "auto" }} />}
+              {editorial && <MapLegend pinned style={{ marginTop: "auto" }} />}
+              </>)}
               </div>
             </div>
           )}
