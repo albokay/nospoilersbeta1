@@ -349,11 +349,13 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
   // Two rows on one grid (his idea, 10-14): "Watched:" and "ep:" in the first
   // column, right-aligned so their colons line up; the season menu and the
   // numbers in the second, left-aligned, so a second row of numbers starts
-  // under the first number, never under the label. The grid is inline, so a
-  // host that centres its content centres the block when it is narrower than
-  // the band; once the numbers wrap it runs the band's width.
+  // under the first number, never under the label. The block centres itself
+  // on whatever band it sits in (his follow-up: the room band doesn't centre
+  // its content) while it is narrower than the band; once the numbers wrap
+  // it runs the band's width.
   return (
-    <div style={{ display: "inline-grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 10, alignItems: "baseline", maxWidth: "100%", marginTop: 12, textAlign: "left", verticalAlign: "top" }}>
+    <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 10, alignItems: "baseline", maxWidth: "100%", minWidth: 0, textAlign: "left" }}>
       <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end" }}>Watched:</span>
       {/* The season as a menu: a chevron at the underline's weight, so the two
           picking pieces read as one grammar and the arrow points at nothing. */}
@@ -384,6 +386,7 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }
