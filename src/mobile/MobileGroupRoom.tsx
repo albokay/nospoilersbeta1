@@ -168,6 +168,17 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // Cleared proposals (2026-09-29): the corner × on a proposed row you're
   // not in → its sheet (the long-press until 2026-10-08).
   const [clearSheet, setClearSheet] = useState<{ showId: string; name: string } | null>(null);
+  // The landing of your own pitch (round 6, his pick of 2 + 3): the pitched
+  // section scrolls into view, the new row flashes accent once, and keeps an
+  // alert dot until you leave the page.
+  const [justPitched, setJustPitched] = useState<Set<string>>(new Set());
+  const [flashShowId, setFlashShowId] = useState<string | null>(null);
+  function landPitch(showId: string) {
+    setJustPitched((prev) => new Set(prev).add(showId));
+    setFlashShowId(showId);
+    window.setTimeout(() => setFlashShowId((cur) => (cur === showId ? null : cur)), 2600);
+    window.setTimeout(() => document.getElementById(`pitched-${showId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }
   // Cancel pitch (Alborz's notes, round 5): your own pitch's one act.
   const [cancelSheet, setCancelSheet] = useState<{ showId: string; name: string; othersIn: boolean; selfWrote: boolean } | null>(null);
   // The masthead grows with a long name (round 5): the title block's height.
@@ -974,6 +985,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       }
       await clearMigrationDormantForShow(show.id);
       await refreshGroup();
+      landPitch(show.id);
     } catch (e) {
       console.error("[m-group] propose show failed", e);
     }
@@ -1022,6 +1034,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       await setShowVote(groupId, show.id, true);
       await clearMigrationDormantForShow(show.id);
       await refreshGroup();
+      landPitch(show.id);
     } catch (e) { console.error("[m-group] propose failed", e); }
     setSearchOpen(false);
   }
@@ -1300,6 +1313,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         line={proposalLine(r.pill.showId)}
                         dashed={r.passed}
                         fresh={freshPitches.fresh.has(r.pill.showId)}
+                        mine={justPitched.has(r.pill.showId)}
+                        flash={flashShowId === r.pill.showId}
+                        domId={`pitched-${r.pill.showId}`}
                         end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span>
                           : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                           : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}

@@ -194,7 +194,10 @@ export function useRowSwipe(onOptions?: () => void): { dx: number; dragging: boo
   return { dx, dragging, handlers: { onPointerDown: onDown, onPointerMove: onMove, onPointerUp: onUp, onPointerCancel: onUp } };
 }
 
-export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false }: {
+/** The arrival flash (round 6): an accent wash fading to cream over two seconds, once. */
+const FLASH_CSS = "@keyframes eRowFlash{from{background-color:#F0D49A}to{background-color:#FEF8EA}}";
+
+export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false, mine = false, flash = false, domId }: {
   tvmazeId?: string | null;
   /** false = a pitched row (no poster). */
   poster?: boolean;
@@ -215,6 +218,12 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   fresh?: boolean;
   /** A proposal you passed on: the name in ink-muted. */
   dashed?: boolean;
+  /** Your own pitch that just landed (round 6): an alert dot before the name until you leave the page. */
+  mine?: boolean;
+  /** The arrival flash (round 6): the accent wash, once. */
+  flash?: boolean;
+  /** An id on the row's outer element, so the host can scroll to it. */
+  domId?: string;
 }) {
   const { dx, dragging, handlers: swipeHandlers } = useRowSwipe(onOptions);
   const [hinting, setHinting] = useState(hint);
@@ -223,7 +232,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   const text = (
     <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: poster ? 5 : 4 }}>
       <span style={{ ...(nameSize === 17 ? E.type.row17 : E.type.row16), color: dashed ? E.color.inkMuted : E.color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {fresh && <span aria-label="New pitch" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
+        {(fresh || mine) && <span aria-label={mine ? "Your new pitch" : "New pitch"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: mine ? E.color.alert : E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
         {name}
       </span>
       {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>}
@@ -237,7 +246,8 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
 
   if (desktop) {
     return (
-      <button type="button" className="e-row" onClick={onOpen} style={rowStyle}>
+      <button type="button" id={domId} className="e-row" onClick={onOpen} style={{ ...rowStyle, ...(flash ? { animation: "eRowFlash 2s ease-out forwards" } : {}) }}>
+        {flash && <style>{FLASH_CSS}</style>}
         {poster && <RowPoster tvmazeId={tvmazeId} />}
         {text}
         {/* The hover pen sits in the row between the words and the end slot
@@ -264,9 +274,11 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   const shift = hinting ? -SWIPE_OPEN : dx;
   return (
     <div
+      id={domId}
       style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y" }}
       {...swipeHandlers}
     >
+      {flash && <style>{FLASH_CSS}</style>}
       {onOptions && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.accent, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
           <span role="button" aria-label={optionsLabel} onClick={() => onOptions()} style={{ display: "inline-flex", width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>{PEN}</span>
@@ -275,7 +287,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
       <button
         type="button"
         onClick={() => { if (!dragging && dx === 0) onOpen(); }}
-        style={{ ...rowStyle, borderBottom: 0, padding: padding ?? (poster ? `16px ${gutter}px` : `14px ${gutter}px`), background: E.color.cream, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 260ms ease" }}
+        style={{ ...rowStyle, borderBottom: 0, padding: padding ?? (poster ? `16px ${gutter}px` : `14px ${gutter}px`), background: E.color.cream, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 260ms ease", ...(flash ? { animation: "eRowFlash 2s ease-out forwards" } : {}) }}
       >
         {poster && <RowPoster tvmazeId={tvmazeId} />}
         {text}

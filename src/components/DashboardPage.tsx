@@ -342,6 +342,17 @@ export default function DashboardPage() {
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
   // Cleared proposals (2026-09-29): the proposal pill's corner "x" → confirm.
   const [clearConfirm, setClearConfirm] = useState<{ showId: string; name: string } | null>(null);
+  // The landing of your own pitch (round 6, his pick of 2 + 3): the pitched
+  // section scrolls into view, the new row flashes accent once, and keeps an
+  // alert dot until you leave the page.
+  const [justPitched, setJustPitched] = useState<Set<string>>(new Set());
+  const [flashShowId, setFlashShowId] = useState<string | null>(null);
+  function landPitch(showId: string) {
+    setJustPitched((prev) => new Set(prev).add(showId));
+    setFlashShowId(showId);
+    window.setTimeout(() => setFlashShowId((cur) => (cur === showId ? null : cur)), 2600);
+    window.setTimeout(() => document.getElementById(`pitched-${showId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }
   // Cancel pitch (Alborz's notes, round 5): your own pitch's one act.
   const [cancelConfirm, setCancelConfirm] = useState<{ showId: string; name: string; othersIn: boolean; selfWrote: boolean } | null>(null);
   // Finished-together drawer (2026-09-13): per active-group room — DNF
@@ -1330,6 +1341,7 @@ export default function DashboardPage() {
       await clearMigrationDormantForShow(show.id);
       setRailGroups(await loadRail(user.id));
       await refreshGroup(activeGroupId);
+      landPitch(show.id);
     } catch (e) {
       console.error("[dashboard] add show failed", e);
     }
@@ -1392,6 +1404,7 @@ export default function DashboardPage() {
       await clearMigrationDormantForShow(show.id);
       setRailGroups(await loadRail(user.id));
       await refreshGroup(activeGroupId);
+      landPitch(show.id);
     } catch (e) { console.error("[dashboard] propose failed", e); }
     closeSearch();
   }
@@ -2290,6 +2303,9 @@ export default function DashboardPage() {
                             line={editorialProposalLine(r.pill.showId)}
                             dashed={r.passed}
                             fresh={freshPitches.fresh.has(r.pill.showId)}
+                            mine={justPitched.has(r.pill.showId)}
+                            flash={flashShowId === r.pill.showId}
+                            domId={`pitched-${r.pill.showId}`}
                             end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
                               : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
