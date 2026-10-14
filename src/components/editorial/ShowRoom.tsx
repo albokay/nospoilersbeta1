@@ -17,7 +17,9 @@
  *                  tab's colour with the identity back square, the show ·
  *                  tab · episode in mono, and the map glyph.
  *   EntryShell     a letter in the stream: ink rule above, hairline below,
- *                  the stamp at the right, the head at least 74px tall.
+ *                  the stamp at the right, the head at least 74px tall; a
+ *                  closed letter carries a down chevron at its bottom right
+ *                  (Alborz 2026-10-13: the expand cue, on every letter).
  *   SealedEntry    FROM · SEALED UNTIL, one dim line, the lock on the stamp.
  *   RoadRule       "You are here · S1 E3" as a mono rule.
  *   SidebarPaper   the letter from Sidebar's paper: hairline frame, the sky
@@ -26,6 +28,7 @@
  *   CastRow / EpisodeRow / DraftRow   the guide's and the drafts' rows.
  */
 import React, { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { E } from "../../styles/editorial";
 import { NumbersPicker, EditorialDialog } from "./GroupRoom";
 import { UnderlineWord } from "./Chrome";
@@ -202,13 +205,16 @@ export function RoadRule({ text, ariaLabel }: { text: string; ariaLabel?: string
 
 /** The frame of a letter in the stream. `stamp` sits at the top-right; the
  *  head reserves it and is at least 74px tall. */
-export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, style }: {
-  stamp?: React.ReactNode; stampReserve: number; head: React.ReactNode; children?: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; dim?: boolean; highlighted?: boolean; style?: React.CSSProperties;
+export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, chevron = false, style }: {
+  stamp?: React.ReactNode; stampReserve: number; head: React.ReactNode; children?: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; dim?: boolean; highlighted?: boolean;
+  /** A closed letter's expand cue: the down chevron at the bottom right, in
+   *  its own 10px of foot room so nothing runs under it. */
+  chevron?: boolean; style?: React.CSSProperties;
 }) {
   return (
     <div
       onClick={onClick}
-      style={{ position: "relative", padding: "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", ...style }}
+      style={{ position: "relative", padding: chevron ? "12px 0 26px" : "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", ...style }}
     >
       {/* The map-tap frame (Alborz's notes, round 5): the identity outline
           stands 12px clear of the words on both sides, drawn as its own
@@ -217,6 +223,7 @@ export function EntryShell({ stamp, stampReserve, head, children, onClick, dim =
       {stamp && <span style={{ position: "absolute", top: 10, right: 0, display: "inline-block" }}>{stamp}</span>}
       <div style={{ minHeight: E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
       {children}
+      {chevron && <ChevronDown size={16} color={E.color.ink} strokeWidth={1.5} aria-hidden="true" style={{ position: "absolute", right: 0, bottom: 6 }} />}
     </div>
   );
 }

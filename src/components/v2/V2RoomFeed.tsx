@@ -1088,11 +1088,12 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           if (sbClosed) {
             return (
               <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, marginTop: 16 }} onClick={(e) => toggleExpand(entry.threadId, e)}>
-                <SidebarPaper style={{ cursor: "pointer" }}>
+                <SidebarPaper style={{ cursor: "pointer", paddingBottom: 26 }}>
                   <span style={{ position: "absolute", right: 14, top: 12 }}><Stamp spec={stampSpec} label={stampLabel} scale={0.66} ink={E.color.friend} lineWidth={1.4} /></span>
                   <div style={{ ...FROM_LINE, paddingRight: 80 }}>From: {SIDEBAR_DISPLAY_NAME}{demoMode ? "" : ` · ${timeAgo(entry.updatedAt)}`}</div>
                   <div style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 10, paddingRight: 80 }}>{entry.title}</div>
                   <div className="clamp3" style={{ ...E.type.letterBody15, fontSize: 14, lineHeight: 1.5, marginTop: 6, color: "rgba(26,58,74,0.8)" }}>{entry.preview}</div>
+                  <ChevronDown size={16} color={E.color.ink} strokeWidth={1.5} aria-hidden="true" style={{ position: "absolute", right: 14, bottom: 6 }} />
                 </SidebarPaper>
               </div>
             );
@@ -1115,6 +1116,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               <EntryShell
                 stamp={eStamp}
                 stampReserve={eReserve}
+                chevron={!isExpanded}
                 dim={isEngaged && !isExpanded}
                 highlighted={isHighlighted}
                 onClick={isExpanded ? undefined : (e) => toggleExpand(entry.threadId, e)}
