@@ -271,7 +271,10 @@ function StripRow({ title, shows, onPick, action, desktop, size, bleed }: { titl
       </div>
       <div ref={scroller} onScroll={measure} className="e-strip" style={{ display: "flex", gap, marginTop: 12, overflowX: "auto", scrollSnapType: "x mandatory", scrollbarWidth: "none", paddingBottom: 4, ...(desktop ? {} : { marginRight: -bleed, paddingRight: bleed }) }}>
         {shows.map((s) => (
-          <button key={s.tvmazeId} type="button" onClick={() => onPick(s)} title={s.name} aria-label={`${s.name} — ${action.toLowerCase()}`} style={{ width: w, flexShrink: 0, background: "transparent", border: 0, padding: 0, cursor: "pointer", textAlign: "left", scrollSnapAlign: "start", color: E.color.ink, WebkitTapHighlightColor: "transparent" }}>
+          // A column from the top (Alborz, round 6): a button centres its content, so a
+          // two-line name was lifting its poster above the others; the posters now sit on
+          // one line and the words hang below as long as they need.
+          <button key={s.tvmazeId} type="button" onClick={() => onPick(s)} title={s.name} aria-label={`${s.name} — ${action.toLowerCase()}`} style={{ width: w, flexShrink: 0, background: "transparent", border: 0, padding: 0, cursor: "pointer", textAlign: "left", scrollSnapAlign: "start", color: E.color.ink, WebkitTapHighlightColor: "transparent", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "flex-start", alignSelf: "flex-start" }}>
             <span style={{ display: "block", width: w, height: h, background: E.color.draft, overflow: "hidden" }}>
               {s.imageUrl && <img src={s.imageUrl} alt="" loading="lazy" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
             </span>
