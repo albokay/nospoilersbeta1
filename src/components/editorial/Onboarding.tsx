@@ -32,12 +32,12 @@ export const FORM_CSS = `
   .e-strip::-webkit-scrollbar { display: none; }
 `;
 
-/** The step counter: three 22×4 bars, outlined ink, filled as they're done (the current one too). */
+/** The step counter: three 22×4 bars, outlined green (personal — his note, 10-14; was ink), filled as they're done (the current one too). */
 export function StepsBars({ step, total = 3, style }: { step: number; total?: number; style?: React.CSSProperties }) {
   return (
     <span aria-label={`Signup step ${step} of ${total}`} style={{ display: "inline-flex", gap: 6, ...style }}>
       {Array.from({ length: total }, (_, i) => (
-        <i key={i} style={{ display: "block", width: 22, height: 4, boxSizing: "border-box", border: `1px solid ${E.color.ink}`, background: i < step ? E.color.ink : "transparent" }} />
+        <i key={i} style={{ display: "block", width: 22, height: 4, boxSizing: "border-box", border: `1px solid ${E.color.personal}`, background: i < step ? E.color.personal : "transparent" }} />
       ))}
     </span>
   );
@@ -163,13 +163,18 @@ export function FriendRows({ rows, onChange, onAdd, max = 7, desktop = false }: 
   );
 }
 
-/** "Show:" and a field on one rule; the matches (Sidebar's catalog, then TVMaze) as hairline rows under it. */
-export function ShowField({ shows, onPickShow, onPickTv, busy = false, excludeSlugs, label = "Show:", placeholder = "find your show", autoFocus = false, style }: {
-  shows: Show[]; onPickShow: (s: Show) => void; onPickTv: (tv: TVmazeShow) => void; busy?: boolean; excludeSlugs?: Set<string>; label?: string; placeholder?: string; autoFocus?: boolean; style?: React.CSSProperties;
+/** "Show:" and a field on one rule; the matches (Sidebar's catalog, then TVMaze) as hairline rows under it.
+ *  `float` (his notes, 10-14): the matches sit in a panel floating over whatever is under the field
+ *  (the onboarding's strips, the invitee's picks) instead of pushing it down the page as they come
+ *  and go; a click or tap outside the field, or Escape, closes the panel. The hosts that live in a
+ *  clipped dialog (the invite dialog, the invite sheet) keep the in-flow rows. */
+export function ShowField({ shows, onPickShow, onPickTv, busy = false, excludeSlugs, label = "Show:", placeholder = "find your show", autoFocus = false, float = false, style }: {
+  shows: Show[]; onPickShow: (s: Show) => void; onPickTv: (tv: TVmazeShow) => void; busy?: boolean; excludeSlugs?: Set<string>; label?: string; placeholder?: string; autoFocus?: boolean; float?: boolean; style?: React.CSSProperties;
 }) {
   const [query, setQuery] = useState("");
   const [tvResults, setTvResults] = useState<TVmazeShow[]>([]);
   const deb = useRef<number | null>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   const catalog = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -200,29 +205,54 @@ export function ShowField({ shows, onPickShow, onPickTv, busy = false, excludeSl
   }, [tvResults, shows, excludeSlugs]);
   const reset = () => { setQuery(""); setTvResults([]); };
   const searching = query.trim().length >= 2 && catalog.length === 0 && tvToAdd.length === 0;
+  const hasRows = catalog.length > 0 || tvToAdd.length > 0;
+  const open = float && (hasRows || searching);
+  // The floating panel closes on a press outside the field (a press on a
+  // match is inside, so the pick lands first) and on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => { if (wrap.current && e.target instanceof Node && !wrap.current.contains(e.target)) reset(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") reset(); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("pointerdown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [open]);
   const row: React.CSSProperties = { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, padding: "12px 0", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface, fontWeight: 600, fontSize: 15 };
+  const rows = (
+    <>
+      {catalog.map((s) => (
+        <button key={s.id} type="button" style={row} onClick={() => { onPickShow(s); reset(); }}>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+        </button>
+      ))}
+      {tvToAdd.map(({ tv, id }) => (
+        <button key={id} type="button" style={row} disabled={busy} onClick={() => { onPickTv(tv); reset(); }}>
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
+          {networkLabel(tv) && <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{networkLabel(tv)}</span>}
+        </button>
+      ))}
+    </>
+  );
+  const hint = searching ? <div style={{ ...E.type.label10, color: E.color.inkMuted, padding: "12px 0" }}>{busy ? "adding…" : "searching…"}</div> : null;
   return (
-    <div style={style}>
+    <div ref={wrap} style={{ ...(float ? { position: "relative" } : {}), ...style }}>
       <label style={FIELD_BOX}>
         <span style={{ flexShrink: 0 }}>{label}</span>
         <input className="e-field" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} autoFocus={autoFocus} aria-label="Find a show" autoComplete="off" style={FIELD_INPUT} />
       </label>
-      {(catalog.length > 0 || tvToAdd.length > 0) && (
-        <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 4 }}>
-          {catalog.map((s) => (
-            <button key={s.id} type="button" style={row} onClick={() => { onPickShow(s); reset(); }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-            </button>
-          ))}
-          {tvToAdd.map(({ tv, id }) => (
-            <button key={id} type="button" style={row} disabled={busy} onClick={() => { onPickTv(tv); reset(); }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tv.name}</span>
-              {networkLabel(tv) && <span style={{ ...E.type.label10, color: E.color.inkMuted, flexShrink: 0 }}>{networkLabel(tv)}</span>}
-            </button>
-          ))}
-        </div>
+      {float ? (
+        open && (
+          <div style={{ position: "absolute", left: 0, right: 0, top: "100%", marginTop: 4, zIndex: 20, maxHeight: 320, overflowY: "auto", boxSizing: "border-box", padding: "0 12px", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxShadow: E.shadow.cardStack }}>
+            {hasRows && rows}
+            {hint}
+          </div>
+        )
+      ) : (
+        <>
+          {hasRows && <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 4 }}>{rows}</div>}
+          {hint}
+        </>
       )}
-      {searching && <div style={{ ...E.type.label10, color: E.color.inkMuted, padding: "12px 0" }}>{busy ? "adding…" : "searching…"}</div>}
     </div>
   );
 }

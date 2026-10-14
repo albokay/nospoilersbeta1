@@ -248,7 +248,7 @@ export default function MobileInviteSheet({
           onCancel={() => setStep("form")}
           onSubmitted={() => {}}
           initialTitle="Let's do this!"
-          editorial={{ banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{letterShow.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+          editorial={{ banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{letterShow.name}</b>:</>, sub: `If you've already started watching, everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends arrive" : "friend arrives"}.` } }}
           promptButton={{ label: "Want help with what to write?" }}
           promptPoolTag={letterFresh ? "onb-fresh" : "onb-returning"}
           bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}

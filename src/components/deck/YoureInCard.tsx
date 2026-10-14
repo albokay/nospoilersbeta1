@@ -80,7 +80,10 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
     const alert: React.CSSProperties = { color: E.color.alert, fontWeight: 600 };
     return (
       <div
-        style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 900, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, padding: mobile ? `calc(env(safe-area-inset-top, 0px) + 120px) ${E.space.gutter}px 40px` : "190px 24px 60px" }}
+        // 1002 on desktop (his catch, 10-14): the dashboard's header rides at 1001
+        // during the onboarding as its escape hatch, and at 900 this page sat
+        // under it — the dashboard's logo painted over the card's own.
+        style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 1002, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, padding: mobile ? `calc(env(safe-area-inset-top, 0px) + 120px) ${E.space.gutter}px 40px` : "190px 24px 60px" }}
         onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
       >
         {!mobile && <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} betaBadge /></div>}

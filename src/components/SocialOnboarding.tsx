@@ -60,7 +60,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import SidebarLogo from "./SidebarLogo";
 import { CornerTab } from "./editorial/Chrome";
-import { pageStyle, COLUMN, RIGHT_OF_COLUMN, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, BrowseHead, FriendRows, LinkRows } from "./editorial/Onboarding";
+import { pageStyle, COLUMN, RIGHT_OF_COLUMN, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, FriendRows, LinkRows } from "./editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
@@ -109,6 +109,10 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   }
 
   const bootRef = useRef<Boot>({});
+  // The editorial step-1 page scrolls on its own; a pick scrolls it back to
+  // the top so the band shows the result at once (his note, 10-14).
+  const pageRef = useRef<HTMLDivElement>(null);
+  const scrollPageTop = () => { pageRef.current?.scrollTo({ top: 0, behavior: "smooth" }); };
 
   // A tab left behind by the email-confirm link catches up when the person
   // returns to it: setup finished elsewhere → close; questions answered
@@ -171,6 +175,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
     setProg({ s: 0, e: 0 });
     setQuery("");
     setTvResults([]);
+    scrollPageTop();
   }
 
   async function pickTvShow(tv: TVmazeShow) {
@@ -362,7 +367,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
   if (step === 1) {
     if (editorial) {
       return (
-        <div style={pageStyle(1002)}>
+        <div ref={pageRef} style={pageStyle(1002)}>
           <style>{FORM_CSS}</style>
           <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70, zIndex: 3 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge /></div>
           <div style={{ position: "absolute", right: RIGHT_OF_COLUMN, top: 52, zIndex: 3 }}><StepsBars step={1} /></div>
@@ -377,8 +382,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
             </>
           )}
           <div style={{ ...COLUMN, marginTop: show ? 56 : 40, paddingBottom: 80 }}>
-            {show && <BrowseHead style={{ marginBottom: 18 }} />}
-            <ShowField shows={shows} onPickShow={pickShow} onPickTv={pickTvShow} busy={creatingShow} autoFocus={!show} />
+            <ShowField float shows={shows} onPickShow={pickShow} onPickTv={pickTvShow} busy={creatingShow} autoFocus={!show} />
             <EditorialStrips desktop excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
           </div>
         </div>
@@ -475,7 +479,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
           <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70, zIndex: 3 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="sky" betaBadge /></div>
           <div style={{ position: "absolute", right: RIGHT_OF_COLUMN, top: 52, zIndex: 3 }}><StepsBars step={2} /></div>
           <div style={{ ...COLUMN, position: "relative", zIndex: 2, paddingTop: 150 }}>
-            <OnbQuestion desktop align="left" sub="You can invite more later.">Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
+            <OnbQuestion desktop align="left">Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
           </div>
           <div style={{ ...COLUMN, marginTop: 96, paddingBottom: 80 }}>
             <FriendRows desktop rows={friends} onChange={setFriendField} onAdd={() => setFriends((prev) => [...prev, { name: "", email: "" }])} max={MAX_FRIENDS} />
@@ -561,7 +565,7 @@ export default function SocialOnboarding({ onDone, onWarmRail }: { onDone: (grou
             onCancel={() => setStep(2)}
             onSubmitted={() => {}}
             initialTitle="Let's do this!"
-            editorial={{ desktop: true, banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+            editorial={{ desktop: true, banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `If you've already started watching, everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends arrive" : "friend arrives"}.` } }}
             promptButton={{ label: "Want help with what to write?" }}
             promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
             bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}

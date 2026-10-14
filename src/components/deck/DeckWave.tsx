@@ -289,7 +289,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
           </div>
           {welcome && !hasAnswered && (
             <div style={{ marginTop: 22, textAlign: "center", ...E.type.note13, lineHeight: 1.45, color: E.color.cream }}>
-              {mobile ? "Swipe, or tap a stamp" : "Tap a stamp, or use ← / →"}
+              {mobile ? "Swipe, or tap your answer" : "Tap your answer, or use ← / →"}
             </div>
           )}
         </div>

@@ -201,6 +201,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           </div>
         )}
         <ShowField
+          float
           shows={unpicked}
           excludeSlugs={pickedIds}
           style={{ marginTop: 18 }}

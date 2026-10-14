@@ -59,7 +59,7 @@ import { tvmazeEpisodes, slugify, type TVmazeShow } from "../lib/tvmaze";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab } from "../components/editorial/Chrome";
-import { pageStyle, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, BrowseHead, FriendRows, LinkRows } from "../components/editorial/Onboarding";
+import { pageStyle, FORM_CSS, StepsBars, Block, OnbQuestion, PickBand, ProgressBand, ShowField, EditorialStrips, FriendRows, LinkRows } from "../components/editorial/Onboarding";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const C = {
@@ -108,6 +108,10 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   // — the inline picker + "next" take over from there.
   const [browseBusy, setBrowseBusy] = useState(false);
   const noExclusions = useMemo(() => new Set<number>(), []);
+  // The editorial step-1 page scrolls on its own; a pick scrolls it back to
+  // the top so the band shows the result at once (his note, 10-14).
+  const pageRef = useRef<HTMLDivElement>(null);
+  const scrollPageTop = () => { pageRef.current?.scrollTo({ top: 0, behavior: "smooth" }); };
   async function pickBrowseShow(b: BrowseShow) {
     if (browseBusy) return;
     setBrowseBusy(true);
@@ -116,6 +120,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
       setShows((prev) => (prev.some((x) => x.id === s.id) ? prev : [...prev, s]));
       setShow(s);
       setProg({ s: 0, e: 0 });
+      scrollPageTop();
     } catch (e) { console.error("[m-onboarding] browse pick failed", e); }
     finally { setBrowseBusy(false); }
   }
@@ -138,6 +143,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
       setShows((prev) => (prev.some((s) => s.id === created.id) ? prev : [...prev, created]));
       setShow(created);
       setProg({ s: 0, e: 0 });
+      scrollPageTop();
     } catch (e) { console.error("[m-onboarding] add show from TVMaze failed", e); }
     finally { setCreatingShow(false); }
   }
@@ -324,7 +330,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
   if (step === 1) {
     if (editorial) {
       return (
-        <div style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 30px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
+        <div ref={pageRef} style={pageStyle(1000, { padding: `calc(env(safe-area-inset-top, 0px) + 30px) ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` })}>
           <style>{FORM_CSS}</style>
           <div style={{ display: "flex", justifyContent: "flex-end" }}><StepsBars step={1} /></div>
           <OnbQuestion sub="You can add more later." style={{ paddingTop: 56 }}>What&rsquo;s the show you&rsquo;re most excited to watch with a friend?</OnbQuestion>
@@ -335,8 +341,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
               <Block onClick={() => setStep(2)} style={{ marginTop: 28 }}>Next</Block>
             </>
           )}
-          {show && <BrowseHead style={{ marginTop: 56 }} />}
-          <ShowField shows={shows} onPickShow={(s) => { setShow(s); setProg({ s: 0, e: 0 }); }} onPickTv={pickTvShow} busy={creatingShow || browseBusy} style={{ marginTop: show ? 18 : 40 }} />
+          <ShowField float shows={shows} onPickShow={(s) => { setShow(s); setProg({ s: 0, e: 0 }); scrollPageTop(); }} onPickTv={pickTvShow} busy={creatingShow || browseBusy} style={{ marginTop: show ? 56 : 40 }} />
           <EditorialStrips excludeTvmazeIds={noExclusions} onPick={pickBrowseShow} />
         </div>
       );
@@ -417,7 +422,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
           <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: E.safe.plus(250), background: E.color.friend }} />
           <CornerTab kind="back" onClick={() => setStep(1)} />
           <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "flex-end" }}><StepsBars step={2} /></div>
-          <OnbQuestion align="left" sub="You can invite more later." style={{ position: "relative", zIndex: 2, paddingTop: 56 }}>Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
+          <OnbQuestion align="left" style={{ position: "relative", zIndex: 2, paddingTop: 56 }}>Who&rsquo;s at least one friend you always text about TV?</OnbQuestion>
           <div style={{ marginTop: 70 }}>
             <FriendRows rows={friends} onChange={setFriendField} onAdd={() => setFriends((prev) => [...prev, { name: "", email: "" }])} max={MAX_FRIENDS} />
           </div>
@@ -512,7 +517,7 @@ export default function MobileSocialOnboarding({ onDone, onWarmRail }: { onDone:
             onCancel={() => setStep(2)}
             onSubmitted={() => {}}
             initialTitle="Let's do this!"
-            editorial={{ banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+            editorial={{ banner: { step: 3, title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `If you've already started watching, everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends arrive" : "friend arrives"}.` } }}
             promptButton={{ label: "Want help with what to write?" }}
             promptPoolTag={prog.s < 1 || (prog.s === 1 && prog.e <= 4) ? "onb-fresh" : "onb-returning"}
             bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}

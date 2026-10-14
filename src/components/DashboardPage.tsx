@@ -2782,7 +2782,7 @@ export default function DashboardPage() {
                 onCancel={() => setInviteStep("form")}
                 onSubmitted={() => {}}
                 initialTitle="Let's do this!"
-                editorial={{ desktop: true, banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `Everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends get" : "friend gets"} there.` } }}
+                editorial={{ desktop: true, banner: { title: <>Tell your {many ? "friends" : "friend"} why you&rsquo;re excited about <b>{show.name}</b>:</>, sub: `If you've already started watching, everything you write is stamped with the episode you're on and stays sealed until your ${many ? "friends arrive" : "friend arrives"}.` } }}
                 promptButton={{ label: "Want help with what to write?" }}
                 promptPoolTag={fresh ? "onb-fresh" : "onb-returning"}
                 bodyPlaceholder={`What are you hoping for with this show? Why do you want to watch with your ${many ? "friends" : "friend"}?`}
