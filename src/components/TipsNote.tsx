@@ -12,11 +12,11 @@
  * flag on dismiss (so first-visit auto-open never returns). Parenthetical
  * asides render italic + muted, the retired sticky's grammar.
  */
-import { useLayoutEffect, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import StickyNote from "./StickyNote";
 import TipText from "./TipText";
-import { tipsFor, GROUP_ROOM_TIPS, type Tip, type TipsPage } from "../lib/tipsContent";
+import { tipsFor, GROUP_ROOM_TIPS, DASHBOARD_TIP_SEAT, type Tip, type TipsPage } from "../lib/tipsContent";
 import { useEditorial } from "../lib/skin";
 
 function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
@@ -68,20 +68,36 @@ export default function TipsNote({ page, onDismiss }: {
   }
 
   // Tips about a viewport-fixed control measure that control (tagged
-  // data-tip-anchor) and pin beside it. Re-measured per step and on resize;
-  // layout effect so the first paint is already in place.
+  // data-tip-anchor) and pin beside it. Tips SEATED in the page (2026-10-13)
+  // measure their tagged element against the scroll frame and sit at its
+  // corner plus the seat's offset, scrolling with the page. Re-measured per
+  // step, on resize and whenever the page's height changes (rows loading
+  // in move the anchors); layout effect so the first paint is in place.
+  const frameRef = useRef<HTMLDivElement>(null);
   const anchorKey = page === "groupRoom" ? GROUP_ROOM_TIPS[idx]?.anchor : undefined;
+  const seat = page === "groupRoom" ? GROUP_ROOM_TIPS[idx]?.seat : DASHBOARD_TIP_SEAT;
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [seatPos, setSeatPos] = useState<{ top: number; left: number } | null>(null);
   useLayoutEffect(() => {
-    if (!anchorKey) { setAnchorRect(null); return; }
     const measure = () => {
-      const el = document.querySelector(`[data-tip-anchor="${anchorKey}"]`);
-      setAnchorRect(el ? el.getBoundingClientRect() : null);
+      if (anchorKey) {
+        const el = document.querySelector(`[data-tip-anchor="${anchorKey}"]`);
+        setAnchorRect(el ? el.getBoundingClientRect() : null);
+      } else setAnchorRect(null);
+      const frame = frameRef.current;
+      const el = seat ? document.querySelector(`[data-tip-anchor="${seat.anchor}"]`) : null;
+      if (seat && el && frame) {
+        const a = el.getBoundingClientRect(), f = frame.getBoundingClientRect();
+        const next = { left: Math.round(a.left - f.left + seat.dx), top: Math.round(a.top - f.top + seat.dy) };
+        setSeatPos((p) => (p && p.left === next.left && p.top === next.top ? p : next));
+      } else setSeatPos(null);
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [anchorKey]);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(document.body);
+    return () => { window.removeEventListener("resize", measure); ro?.disconnect(); };
+  }, [anchorKey, seat]);
 
   // The shell's >=1160px gate is skipped throughout: these only exist when
   // the user pressed "?" (or first-visit auto-open) — hiding them then
@@ -91,14 +107,15 @@ export default function TipsNote({ page, onDismiss }: {
     const atStart = idx === 0;
     const atEnd = idx === GROUP_ROOM_TIPS.length - 1;
     // Deck tip: its bottom edge 16px above the docked tab, left edge on the
-    // tab's title text. Chat tip: its right edge 16px left of the edge tab,
-    // top level with it. Both FIXED — the controls are. No target found
-    // (e.g. the deck dock self-hides) → the static page placement.
+    // tab's title text — FIXED, the tab is. No target found (the deck dock
+    // self-hides) → the static page placement. A seated tip sits at its
+    // measured spot in the scroll frame; no tag → the static placement.
     const pinned: CSSProperties | null = t.anchor && anchorRect
-      ? t.anchor === "deck-dock"
-        ? { position: "fixed", left: anchorRect.left + 24, bottom: window.innerHeight - anchorRect.top + 16 }
-        : { position: "fixed", right: window.innerWidth - anchorRect.left + 16, top: anchorRect.top }
+      ? { position: "fixed", left: anchorRect.left + 24, bottom: window.innerHeight - anchorRect.top + 16 }
       : null;
+    const seated: CSSProperties = seatPos
+      ? { position: "absolute", top: seatPos.top, left: seatPos.left, pointerEvents: "auto" }
+      : { position: "absolute", top: t.top, left: t.left, pointerEvents: "auto" };
     const note = (
       <StickyNote
         key={idx}
@@ -114,7 +131,7 @@ export default function TipsNote({ page, onDismiss }: {
         entranceDelayMs={0}
         // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
         boxShadow="0 4px 14px rgba(0,0,0,0.13)"
-        style={pinned ? { ...pinned, pointerEvents: "auto" } : { position: "absolute", top: t.top, left: t.left, pointerEvents: "auto" }}
+        style={pinned ? { ...pinned, pointerEvents: "auto" } : seated}
       >
         <TipBody tip={t} />
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 10 }}>
@@ -130,11 +147,11 @@ export default function TipsNote({ page, onDismiss }: {
         </div>
       </StickyNote>
     );
-    return pinned ? note : <div style={scrollFrame}>{note}</div>;
+    return pinned ? note : <div ref={frameRef} style={scrollFrame}>{note}</div>;
   }
   const tips = tipsFor(page, "desktop", editorial);
   return (
-    <div style={scrollFrame}>
+    <div ref={frameRef} style={scrollFrame}>
     <StickyNote
       tilt={-2}
       width={300}
@@ -147,9 +164,12 @@ export default function TipsNote({ page, onDismiss }: {
       entranceDelayMs={0}
       // Subtle drop shadow (Alborz 2026-08-15) — lifts the tip off the page.
       boxShadow="0 4px 14px rgba(0,0,0,0.13)"
-      // Adjacent to the avatar clusters (QA round 3) — just right of the
-      // centered cluster row, ~1/3 down where the clusters rest.
-      style={{ position: "absolute", top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))", pointerEvents: "auto" }}
+      // Seated over the right half of the group rows from the second row
+      // down (his scribble, 2026-10-13); the old spot beside the clusters
+      // stays as the fallback when the editorial head isn't on the page.
+      style={seatPos
+        ? { position: "absolute", top: seatPos.top, left: seatPos.left, pointerEvents: "auto" }
+        : { position: "absolute", top: "36%", left: "min(calc(50% + 340px), calc(100vw - 180px))", pointerEvents: "auto" }}
     >
       {tips.map((t, i) => <TipBody key={i} tip={t} first={i === 0} />)}
     </StickyNote>

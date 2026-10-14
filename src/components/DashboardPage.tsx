@@ -2295,7 +2295,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div style={{ width: W.railCol, flexShrink: 0, paddingTop: settledCount > 0 ? 64 : 0 }}>
-                      <SectionHead>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                      <div data-tip-anchor="pitched-rail"><SectionHead>Shows pitched({groupShelves.notStarted.length}):</SectionHead></div>
                       {groupShelves.notStarted.map((r) => {
                         const st = myStanceFor(r.pill.showId);
                         const passed = r.passed && (st === "out" || st === "seen");
@@ -2336,7 +2336,7 @@ export default function DashboardPage() {
               </EditorialColumn>
               {!groupLoading && (
                 <div style={{ padding: "30px 24px 8px", background: E.color.accent }}>
-                  <div style={{ maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
+                  <div data-tip-anchor="find-head" style={{ maxWidth: 912, margin: "0 auto" }}><SectionHead>Find something new to watch</SectionHead></div>
                   <div style={{ maxWidth: 912, margin: "-2px auto 0", paddingBottom: 60 }}><EditorialStrips size="tile" desktop excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} /></div>
                 </div>
               )}

@@ -1141,11 +1141,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           under the corner). Same spot as before — the block starts at the
           page's top. */}
       {/* At the band's lower LEFT (his pick, 2026-10-13): under the title and
-          the With line, its accent strip 16px from the edge, filling the
-          sky's empty space; its lower part dips over the start of the
-          "N finished together" row. The title, the With line and the chat
-          corner stay clear. It follows the title block's live height. */}
-      {editorial && roomNote && user && <PaperNote swipe="left" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: 16, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
+          the With line, the dashboard note's mirror — running 40px off the
+          LEFT edge, its accent strip at its right, the words right-aligned
+          — filling the sky's empty space; its lower part dips over the
+          start of the "N finished together" row. The title, the With line
+          and the chat corner stay clear. It follows the title block's live
+          height. */}
+      {editorial && roomNote && user && <PaperNote side="left" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: -40, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile

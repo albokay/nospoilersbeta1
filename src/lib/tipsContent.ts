@@ -30,39 +30,31 @@ export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
 
 /** Desktop group room: one sticky per tip, placed by what it points at
  *  (Alborz's screenshot markup, QA round 1). QA round 2: shown ONE at a
- *  time, stepped with < > in THIS array order (welcome → gear → chat →
- *  deck) — all four at once was overwhelming. Positions are
- *  viewport-relative anchors for the centered StickyNote transform. */
-/** `anchor` (2026-09-16): tips about a VIEWPORT-FIXED control (the docked
- *  deck tab, the chat edge tab) pin to that control's on-screen rect and
- *  stay fixed with it — in the page's scroll frame they drifted away as
- *  the page scrolled. `top`/`left` remain the fallback placement. */
-export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean; anchor?: "deck-dock" | "chat-tab" };
+ *  time, stepped with < > in THIS array order (welcome → deck → chat) —
+ *  all at once was overwhelming. 2026-10-13 (Alborz): the GEAR tip is
+ *  dropped on both platforms (the gear is a superscript on the title now);
+ *  the deck tip is 2 and the chat tip 3. `top`/`left` are viewport-relative
+ *  fallbacks for the centered StickyNote transform. */
+/** `anchor` (2026-09-16): a tip about a VIEWPORT-FIXED control (the docked
+ *  deck tab) pins to that control's on-screen rect and stays fixed with it.
+ *  `seat` (2026-10-13, his scribbles): a tip seated IN THE PAGE — its
+ *  centre at the tagged element's top-left corner plus (dx, dy) — scrolls
+ *  with the page like the content it sits beside; `top`/`left` remain the
+ *  fallback when the tag isn't on the page (the classic look). */
+export type TipSeat = { anchor: string; dx: number; dy: number };
+export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean; anchor?: "deck-dock"; seat?: TipSeat };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
     body: "Welcome to your group room. Shows you and your friends add accumulate here — you can propose more shows, vote on each others' picks, add more friends, and start a show room from this page.",
     aside: "(The show room is where you write to your friends.)",
-    tilt: -2, top: "44%", left: "24%",
-  },
-  {
-    body: "Use the ⚙️ for general group maintenance. You can change your group name, nudge whoever hasn't joined yet, or leave the room from here.",
-    // 2026-09-27 (Alborz, rev 2): the note's ⚙ sits DIRECTLY UNDER the
-    // header's gear, tuned for the default "Group 1" title. Geometry: the
-    // title row (Display 40 "Group 1" + 4 + the 44px gear) is centred in
-    // the 96px bar, so the gear glyph is at x ≈ 50%+73, y ≈ 38, and the
-    // "with …" caption ends at y ≈ 81. The note is 300×~167 (border-box),
-    // tilted 2°, and `top`/`left` are its CENTER: its ⚙ lands ≈ 61px left
-    // of centre on the first line (≈ 60px above centre), and its top-left
-    // corner ≈ 147 left / 89 above. So centre x = 50%+134 puts the ⚙ under
-    // the gear, and centre y = 178 clears the caption by ~8px (⚙ ≈ 80px
-    // below the gear). While open it sits over the right half of "Open
-    // show rooms" and the first show. Re-derive if the header changes; a
-    // longer group name moves the gear right of the note's ⚙.
-    tilt: 2, top: "178px", left: "min(calc(50% + 134px), calc(100vw - 180px))",
+    // Seated at the page's left, straddling the top of the "Find something
+    // new to watch" band (his scribble): centre 49px right of the band's
+    // head, 20px above it — the note runs ~100px into the left margin.
+    tilt: -2, top: "44%", left: "24%", seat: { anchor: "find-head", dx: 49, dy: -20 },
   },
   // DESKTOP-ONLY as of 2026-08-11 (Alborz sign-off): the mobile sheet drops
   // this tip entirely — self-explanatory there, and it made the sheet too
-  // long. The desktop sticky is unchanged.
+  // long. Pinned to the docked tab (fixed) — its placement stays, his call.
   {
     body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
@@ -72,11 +64,20 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   // sits mid-body ("("-paragraphs render italic); no trailing aside.
   // 2026-10-13 (Alborz, round 5): opens on "Use the …" and drops the
   // "Sidebar is for you and your friends." send-off, both platforms.
+  // Seated over the pitched rail (his scribble): centre 261px right of the
+  // "Shows pitched" head's left edge and 72px under its top — the note runs
+  // past the column's right edge toward the chat corner — and it SCROLLS
+  // with the page (it was pinned to the chat tab).
   {
     body: "Use the 💬 button for non-show-specific conversations.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nYou can also use it to discuss what you want to watch next.",
-    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", anchor: "chat-tab",
+    tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", seat: { anchor: "pitched-rail", dx: 261, dy: 72 },
   },
 ];
+
+/** The desktop dashboard's one sticky (his scribble, 2026-10-13): seated
+ *  over the right half of the group rows from the second row down — centre
+ *  528px right of the "Groups" head's left edge, 233px under its top. */
+export const DASHBOARD_TIP_SEAT: TipSeat = { anchor: "groups-head", dx: 528, dy: 233 };
 
 export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile", editorial = false): Tip[] {
   if (page === "dashboard") {

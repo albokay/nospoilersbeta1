@@ -317,7 +317,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
 
   return (
     <div>
-      <SectionHead right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new friend group →</UnderlineWord> : null}>Groups</SectionHead>
+      <div data-tip-anchor="groups-head"><SectionHead right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new friend group →</UnderlineWord> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);
@@ -369,9 +369,12 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   );
 }
 
-/** `swipe`: the way the phone's note goes — off the edge it's pinned to
- *  (right for the dashboard's, left for the group room's since 2026-10-13). */
-export function PaperNote({ text, at, uid, desktop = false, swipe = "right", style }: { text: string; at: number; uid: string; desktop?: boolean; swipe?: "left" | "right"; style?: React.CSSProperties }) {
+/** `side`: the edge the phone's note is pinned to (right for the
+ *  dashboard's, left for the group room's since 2026-10-13). A left note
+ *  is the right one's mirror on every front: the accent strip at its
+ *  right, the words right-aligned with the strip's 16px inset, the tilt
+ *  the other way, and it swipes LEFT — off its own edge. */
+export function PaperNote({ text, at, uid, desktop = false, side = "right", style }: { text: string; at: number; uid: string; desktop?: boolean; side?: "left" | "right"; style?: React.CSSProperties }) {
   const key = `ns_dash_note_${uid}`;
   const isDismissed = () => {
     try {
@@ -397,7 +400,7 @@ export function PaperNote({ text, at, uid, desktop = false, swipe = "right", sty
     startX.current = e.clientX; setDragging(true);
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
   };
-  const leftward = swipe === "left";
+  const leftward = side === "left";
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (startX.current == null) return;
     const d = e.clientX - startX.current;
@@ -413,10 +416,10 @@ export function PaperNote({ text, at, uid, desktop = false, swipe = "right", sty
   return (
     <div
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-      style={{ position: "absolute", zIndex: 3, transform: "rotate(-3deg)", overflow: "hidden", background: revealed ? E.color.accent : "transparent", touchAction: "pan-y", ...style }}
+      style={{ position: "absolute", zIndex: 3, transform: `rotate(${leftward ? 3 : -3}deg)`, overflow: "hidden", background: revealed ? E.color.accent : "transparent", touchAction: "pan-y", ...style }}
     >
       {revealed && <span aria-hidden="true" style={{ position: "absolute", ...(leftward ? { right: 14 } : { left: 14 }), top: "50%", transform: "translateY(-50%)", color: E.color.cream, fontSize: 22, lineHeight: 1 }}>×</span>}
-      <div className="e-note" style={{ position: "relative", boxSizing: "border-box", padding: desktop ? "12px 100px 13px 16px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
+      <div className="e-note" style={{ position: "relative", boxSizing: "border-box", padding: desktop ? "12px 100px 13px 16px" : leftward ? "12px 16px 13px 60px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, ...(leftward ? { borderRight: `5px solid ${E.color.accent}`, textAlign: "right" as const } : { borderLeft: `5px solid ${E.color.accent}` }), ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
         {text}
         {desktop && (
           <button type="button" className="e-nx" aria-label="Dismiss" title="Dismiss" onClick={dismiss} style={{ position: "absolute", right: 46, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, lineHeight: 1, color: E.color.ink, background: "transparent", border: 0, padding: 0, cursor: "pointer" }}>×</button>
