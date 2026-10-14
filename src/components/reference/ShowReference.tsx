@@ -206,9 +206,13 @@ export default function ShowReference({
     return () => window.clearTimeout(t);
   }, [nudgeEssentials, editorial, ref]);
 
+  // Before the first episode (the guide opens on day one, Alborz
+  // 2026-10-13) the cast billed from the pilot shows — the people on the
+  // poster and in the trailer, not a spoiler.
+  const castIdx = Math.max(vIdx, idx(1, 1));
   const visiblePeople = useMemo(
-    () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= vIdx),
-    [ref, vIdx],
+    () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= castIdx),
+    [ref, castIdx],
   );
 
   // Watched episodes (dropdown options) + the selected one, clamped to the
@@ -345,7 +349,7 @@ export default function ShowReference({
             ))}
           </div>
         )}
-        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>Everything below stops at S{prog.s} E{prog.e}. Nothing past it.</div>
+        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>{vIdx < idx(1, 1) ? "Nothing watched yet. Everything below is safe before S1 E1." : `Everything below stops at S${prog.s} E${prog.e}. Nothing past it.`}</div>
         {user && canonOn && (
           <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
             <UnderlineWord onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })} title="See your canon on the dashboard">In your canon →</UnderlineWord>
@@ -368,7 +372,7 @@ export default function ShowReference({
                   </optgroup>
                 ))}
               </SelectWord>
-            ) : null}>{episodeCast ? "Cast" : "Cast so far"}</SectionHead>
+            ) : null}>{episodeCast || vIdx < idx(1, 1) ? "Cast" : "Cast so far"}</SectionHead>
             {castList.map((p) => (
               <CastRow key={p.name} img={p.img ? `https://image.tmdb.org/t/p/w185${p.img}` : null} name={p.name} role={roleOf(p)} onClick={() => openActorImdb(p)} />
             ))}

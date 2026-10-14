@@ -21,6 +21,7 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import { RowPoster } from "../components/editorial/GroupRoom";
+import TrailerPoster from "../components/TrailerPoster";
 import { PaperNote } from "../components/editorial/Dashboard";
 import { MapLegend } from "../components/editorial/MapNotes";
 import { BottomSheet } from "../components/editorial/Overlays";
@@ -954,11 +955,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     requestAnimationFrame(() => { const el = pageRef.current; if (el) { el.scrollTop += 1; el.scrollTop -= 1; } });
   }, []);
 
-  // The reference exists once the dial reaches S1E1 (and the show can be
-  // bridged to the databases) — rewatch-aware. MUST sit above the loading
-  // early-return (hooks run on every render).
+  // The guide is there from day one (Alborz 2026-10-13: the trailer and the
+  // pilot's cast before the first episode; it used to wait for S1E1) as
+  // long as the show can be bridged to the databases — rewatch-aware. MUST
+  // sit above the loading early-return (hooks run on every render).
   const refEff = effectiveProgress(progressForShow);
-  const referenceAvailable = !!show?.tvmazeId && !!refEff && (refEff.s > 1 || (refEff.s === 1 && refEff.e >= 1));
+  const referenceAvailable = !!show?.tvmazeId && !!refEff;
   useEffect(() => {
     // Only bounce AFTER the load has landed — on arrival from the dashboard
     // band the progress row isn't fetched yet, and the pre-load bounce was
@@ -1091,7 +1093,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </EditorialSub>
               ) : null}
               </div>
-              <span style={{ marginTop: 12, flexShrink: 0 }}><RowPoster tvmazeId={show?.tvmazeId} w={64} h={90} /></span>
+              {/* The poster carries the trailer (Alborz 2026-10-13): a play mark
+                  once one resolves, opening the trailer band in a sheet. */}
+              <span style={{ marginTop: 12, flexShrink: 0 }}><TrailerPoster mobile showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={64} h={90} /></span>
             </div>
           </div>
         ) : (

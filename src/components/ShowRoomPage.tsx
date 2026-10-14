@@ -45,6 +45,7 @@ import ShowReference from "./reference/ShowReference";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
+import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
@@ -923,11 +924,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     return m;
   }, [mapMembers, roomContactNames]);
 
-  // The reference exists once the dial reaches S1E1 (and the show can be
-  // bridged to the databases) — rewatch-aware. MUST sit above the loading
-  // early-return like displayNames (hooks run on every render).
+  // The guide is there from day one (Alborz 2026-10-13: the trailer and the
+  // pilot's cast before the first episode; it used to wait for S1E1) as
+  // long as the show can be bridged to the databases — rewatch-aware. MUST
+  // sit above the loading early-return like displayNames (hooks run on
+  // every render).
   const refEff = effectiveProgress(progressForShow);
-  const referenceAvailable = !!show?.tvmazeId && !!refEff && (refEff.s > 1 || (refEff.s === 1 && refEff.e >= 1));
+  const referenceAvailable = !!show?.tvmazeId && !!refEff;
   useEffect(() => {
     // Only bounce AFTER the load has landed — on arrival from the dashboard
     // band the progress row isn't fetched yet, and the pre-load bounce was
@@ -1026,7 +1029,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </EditorialColumn>
             <EditorialColumn wide>
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><RowPoster tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
+                {/* The poster carries the trailer (Alborz 2026-10-13): a play
+                    mark once one resolves, opening the trailer band in a dialog. */}
+                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
                 <div style={{ width: E.measure.desktop.letters - 120 }}>
                   {/* The fitted title (Alborz 2026-10-13): a word that would reach
                       the poster shrinks the size to fit; the gear (beside the name
@@ -1623,13 +1628,14 @@ const editorialComposeShell: React.CSSProperties = {
 };
 // Alert (Alborz's notes, round 5): a letter waiting to be sent pulls the eye.
 // The minimized compose's way back (Alborz 2026-10-13): a bottom TAB like
-// the docked "How we watch TV" tab — the ink frame, no bottom edge, running
-// off the page's bottom — in alert with cream words, 320 × 56, hanging over
-// the letters column's left part and 40px past its edge so it reads as the
-// column's own (it sat as a small block at the window's far right).
+// the docked "How we watch TV" tab, running off the page's bottom — the red
+// fill alone with cream words (no frame, his call), 320 × 56, seated where
+// he drew it: its left edge 633px into the 1080 column, over the letters
+// column's right end and across the gap onto the map rail (it sat as a
+// small block at the window's far right).
 const editorialContinueBlock: React.CSSProperties = {
-  position: "fixed", bottom: 0, left: `max(16px, calc(50% - ${E.measure.desktop.wide / 2 + 40}px))`, zIndex: 1001, width: 320, height: 56, padding: "0 20px", boxSizing: "border-box",
-  background: E.color.alert, color: E.color.cream, border: `1px solid ${E.color.ink}`, borderBottom: 0, cursor: "pointer",
+  position: "fixed", bottom: 0, left: `calc(50% - ${E.measure.desktop.wide / 2}px + 633px)`, zIndex: 1001, width: 320, height: 56, padding: "0 20px", boxSizing: "border-box",
+  background: E.color.alert, color: E.color.cream, border: 0, cursor: "pointer",
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, ...E.type.label11, fontSize: 13,
 };
 const continueChip: React.CSSProperties = {
