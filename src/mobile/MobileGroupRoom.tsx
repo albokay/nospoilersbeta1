@@ -1145,7 +1145,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           sky's empty space; its lower part dips over the start of the
           "N finished together" row. The title, the With line and the chat
           corner stay clear. It follows the title block's live height. */}
-      {editorial && roomNote && user && <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: 16, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
+      {editorial && roomNote && user && <PaperNote swipe="left" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: 16, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile

@@ -369,7 +369,9 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   );
 }
 
-export function PaperNote({ text, at, uid, desktop = false, style }: { text: string; at: number; uid: string; desktop?: boolean; style?: React.CSSProperties }) {
+/** `swipe`: the way the phone's note goes — off the edge it's pinned to
+ *  (right for the dashboard's, left for the group room's since 2026-10-13). */
+export function PaperNote({ text, at, uid, desktop = false, swipe = "right", style }: { text: string; at: number; uid: string; desktop?: boolean; swipe?: "left" | "right"; style?: React.CSSProperties }) {
   const key = `ns_dash_note_${uid}`;
   const isDismissed = () => {
     try {
@@ -395,20 +397,25 @@ export function PaperNote({ text, at, uid, desktop = false, style }: { text: str
     startX.current = e.clientX; setDragging(true);
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
   };
-  const onMove = (e: React.PointerEvent<HTMLDivElement>) => { if (startX.current != null) setDx(Math.max(0, e.clientX - startX.current)); };
+  const leftward = swipe === "left";
+  const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (startX.current == null) return;
+    const d = e.clientX - startX.current;
+    setDx(leftward ? Math.min(0, d) : Math.max(0, d));
+  };
   const onUp = () => {
     if (startX.current == null) return;
     const d = dx; startX.current = null; setDragging(false);
-    if (d > 80) dismiss(); else setDx(0);
+    if (Math.abs(d) > 80) dismiss(); else setDx(0);
   };
-  const shift = gone ? 420 : dx;
-  const revealed = shift > 0;
+  const shift = gone ? (leftward ? -420 : 420) : dx;
+  const revealed = shift !== 0;
   return (
     <div
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
       style={{ position: "absolute", zIndex: 3, transform: "rotate(-3deg)", overflow: "hidden", background: revealed ? E.color.accent : "transparent", touchAction: "pan-y", ...style }}
     >
-      {revealed && <span aria-hidden="true" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: E.color.cream, fontSize: 22, lineHeight: 1 }}>×</span>}
+      {revealed && <span aria-hidden="true" style={{ position: "absolute", ...(leftward ? { right: 14 } : { left: 14 }), top: "50%", transform: "translateY(-50%)", color: E.color.cream, fontSize: 22, lineHeight: 1 }}>×</span>}
       <div className="e-note" style={{ position: "relative", boxSizing: "border-box", padding: desktop ? "12px 100px 13px 16px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
         {text}
         {desktop && (
