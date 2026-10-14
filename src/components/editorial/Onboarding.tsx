@@ -85,22 +85,22 @@ export function Band({ color, children, desktop = false, inset = E.space.gutter,
   );
 }
 
-/** YOUR PICK on the accent band: the poster, the name, the seasons, "Pick a different show". */
+/** YOUR PICK on the accent band as a centred column (his pick from the canvas,
+ *  10-14; was a 48×68 poster in a row that didn't read as chosen): the label,
+ *  the poster at the shelf size under the letter shadow, the name, the
+ *  seasons, "Pick a different show". One band for the onboarding and the
+ *  invite flow's pick alike. */
 export function PickBand({ show, onChangePick, desktop = false, inset, style }: { show: Show; onChangePick: () => void; desktop?: boolean; inset?: number; style?: React.CSSProperties }) {
   const n = show.seasons?.length ?? 0;
   const meta = [show.status === "Running" || show.status === "In Development" ? "Returning" : null, n ? `${n} season${n === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ");
   return (
     <Band color={E.color.accent} desktop={desktop} inset={inset} style={style}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", ...E.type.label11, color: E.color.ink }}>
-        <span>Your pick</span>
-        <UnderlineWord onClick={onChangePick}>Pick a different show</UnderlineWord>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14 }}>
-        <RowPoster tvmazeId={show.tvmazeId} w={48} h={68} />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontFamily: E.font.interface, fontWeight: 600, fontSize: 18, letterSpacing: "-0.01em", color: E.color.ink }}>{show.name}</span>
-          {meta && <span style={{ display: "block", ...E.type.label10, letterSpacing: "0.04em", color: E.color.inkMuted, marginTop: 4 }}>{meta}</span>}
-        </span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div style={{ ...E.type.label11, color: E.color.ink }}>Your pick</div>
+        <div style={{ marginTop: 14, boxShadow: E.shadow.sidebarLetter, background: E.color.draft }}><RowPoster tvmazeId={show.tvmazeId} w={104} h={148} /></div>
+        <div style={{ marginTop: 16, fontFamily: E.font.interface, fontWeight: 600, fontSize: 20, lineHeight: 1.2, letterSpacing: "-0.01em", color: E.color.ink }}>{show.name}</div>
+        {meta && <div style={{ ...E.type.label10, letterSpacing: "0.04em", color: E.color.inkMuted, marginTop: 4 }}>{meta}</div>}
+        <div style={{ marginTop: 16 }}><UnderlineWord onClick={onChangePick}>Pick a different show</UnderlineWord></div>
       </div>
     </Band>
   );

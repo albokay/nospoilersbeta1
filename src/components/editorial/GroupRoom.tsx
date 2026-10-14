@@ -364,7 +364,7 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
       <div aria-label="Episode" style={{ marginTop: 10, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "baseline", gap: "6px 11px" }}>
         {/* "ep:" in the small mono, muted, on the numbers' baseline (his note, 10-14):
             it wraps with the row, so the centred layout holds. */}
-        <span aria-hidden="true" style={{ ...E.type.label11, color: E.color.inkMuted }}>ep:</span>
+        <span aria-hidden="true" style={{ ...E.type.label11, textTransform: "none", color: E.color.inkMuted }}>ep:</span>
         {nums.map((n) => {
           const me = n === current;
           const watched = n === 0 ? false : value.s > season || (value.s === season && n <= value.e);
