@@ -2113,7 +2113,8 @@ export default function DashboardPage() {
             )) : (!socialOnbActive && !postAccept ? (
               <div style={{ position: "relative" }}>
                 <EditorialTitle desktop>Your watch groups</EditorialTitle>
-                {dashNote && user && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -210, top: -19, width: 320 }} />}
+                {/* 88px further left (Alborz 2026-10-13): halfway from where it hung to the look-up band's left edge, so it reads as placed on the page rather than off it. */}
+                {dashNote && user && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />}
               </div>
             ) : null)}
           </EditorialColumn>
