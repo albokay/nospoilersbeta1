@@ -82,12 +82,36 @@ function seasonsLabel(show: Show): string | null {
   return n ? `${n} season${n === 1 ? "" : "s"}` : null;
 }
 
-/** "▶ Trailer" on a draft frame; opens the show's card when a trailer exists. */
-function TrailerFrame({ desktop, onOpen }: { desktop: boolean; onOpen: () => void }) {
+/** The trailer in the band (his notes, 10-14): a 16:9 facade — the trailer's own
+ *  still under the cream play disc — that plays in place on one click. Desktop
+ *  seats it beside the poster and the lines (300 wide, so Join keeps its seat);
+ *  the phone runs it full width under them. The TMDB line rides under it. */
+function InlineTrailer({ ytKey, desktop }: { ytKey: string; desktop: boolean }) {
+  const [playing, setPlaying] = useState(false);
   return (
-    <button type="button" onClick={onOpen} aria-label="Watch the trailer" style={{ marginTop: desktop ? 22 : 18, width: "100%", height: desktop ? 190 : 150, background: E.color.draft, border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <span style={{ ...E.type.label11, display: "inline-flex", alignItems: "center", gap: 8, height: 34, padding: "0 14px", background: E.color.cream, color: E.color.ink }}>▶ Trailer</span>
-    </button>
+    <div style={desktop ? { width: 300, flexShrink: 0 } : { marginTop: 18, width: "100%" }}>
+      <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", background: E.color.draft, overflow: "hidden" }}>
+        {playing ? (
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${ytKey}?autoplay=1&rel=0`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title="Trailer"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0, display: "block" }}
+          />
+        ) : (
+          <button type="button" onClick={() => setPlaying(true)} aria-label="Play the trailer" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: 0, border: 0, background: "transparent", cursor: "pointer" }}>
+            <img src={`https://i.ytimg.com/vi/${ytKey}/hqdefault.jpg`} alt="" loading="lazy" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <span aria-hidden="true" style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: 44, height: 44, borderRadius: "50%", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ marginLeft: 2 }}><path d="M4 2.5v11l9-5.5z" fill={E.color.ink} /></svg>
+            </span>
+          </button>
+        )}
+      </div>
+      <div style={{ ...E.type.label9, textTransform: "none", letterSpacing: "0.04em", lineHeight: 1.4, color: "rgba(26,58,74,0.75)", marginTop: 8 }}>
+        Trailer data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
+      </div>
+    </div>
   );
 }
 
@@ -97,13 +121,19 @@ export function InviteWall({ token, info, inviterName, desktop = false, onJoin }
   const all = useMemo(() => [...watching, ...interested], [watching, interested]);
   const [trailerFor, setTrailerFor] = useState<Show | null>(null);
   const [trailerOk, setTrailerOk] = useState<Record<string, boolean>>({});
+  // The key itself, for the single pick's in-band player.
+  const [trailerKeys, setTrailerKeys] = useState<Record<string, string | null>>({});
   const asked = useRef(new Set<string>());
   useEffect(() => {
     let cancelled = false;
     for (const { show } of all) {
       if (asked.current.has(show.id)) continue;
       asked.current.add(show.id);
-      getTrailerKeyCached(show.id, show.tvmazeId).then((k) => { if (!cancelled) setTrailerOk((p) => ({ ...p, [show.id]: !!k })); }).catch(() => {});
+      getTrailerKeyCached(show.id, show.tvmazeId).then((k) => {
+        if (cancelled) return;
+        setTrailerOk((p) => ({ ...p, [show.id]: !!k }));
+        setTrailerKeys((p) => ({ ...p, [show.id]: k ?? null }));
+      }).catch(() => {});
     }
     return () => { cancelled = true; };
   }, [all]);
@@ -138,8 +168,9 @@ export function InviteWall({ token, info, inviterName, desktop = false, onJoin }
                       : `${inviterName} wants to start it with you.${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`}
                   </div>
                 </div>
+                {desktop && trailerKeys[single.show.id] && <InlineTrailer ytKey={trailerKeys[single.show.id] as string} desktop />}
               </div>
-              {trailerOk[single.show.id] && <TrailerFrame desktop={desktop} onOpen={() => setTrailerFor(single.show)} />}
+              {!desktop && trailerKeys[single.show.id] && <InlineTrailer ytKey={trailerKeys[single.show.id] as string} desktop={false} />}
             </div>
           </div>
           <div style={{ ...col, marginTop: 28 }}>

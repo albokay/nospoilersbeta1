@@ -29,6 +29,12 @@ import { AnswerRow } from "./editorial/GroupRoom";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
+/** The landing wash: cream to the rows' yellow, once. */
+const LAND_CSS = "@keyframes eRowLand{from{background-color:#FEF8EA}to{background-color:#DEA838}}";
+function pickKey(p: InviteShowPick): string {
+  return p.kind === "catalog" ? `c:${p.id}` : `t:${p.tvmazeId}`;
+}
+
 export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, bleedX = 0, children, editorial }: {
   token: string;
   idiom: "desktop" | "mobile";
@@ -116,8 +122,18 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
     setPicks(next);
     parkInvitePicks(token, next); // park on EVERY change — the join hop leaves this page
   }
+  // The pick that just landed (his notes, 10-14): its row fills from cream to
+  // yellow over a second — the group room's arrival wash, run in reverse so
+  // it ends on the yellow the rows wear.
+  const [landed, setLanded] = useState<string | null>(null);
+  function land(p: InviteShowPick) {
+    const k = pickKey(p);
+    setLanded(k);
+    window.setTimeout(() => setLanded((c) => (c === k ? null : c)), 1200);
+  }
   function addPick(p: InviteShowPick) {
     commit([...picks, p]);
+    land(p);
     setQuery("");
     setTvResults([]);
   }
@@ -164,7 +180,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
   }
   function setPicked(b: BrowseShow, on: boolean) {
     const p = pickOf(b);
-    if (on) { if (!isPicked(b)) commit([...picks, p]); }
+    if (on) { if (!isPicked(b)) { commit([...picks, p]); land(p); } }
     else commit(picks.filter((q) => !((q.kind === "catalog" && p.kind === "catalog" && q.id === p.id) || (q.kind === "tv" && p.kind === "tv" && q.tvmazeId === p.tvmazeId))));
   }
 
@@ -191,13 +207,20 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           Pitch the shows you&rsquo;d want to watch with {editorial.inviterName}. They land in the group as proposals once you&rsquo;re in.
         </div>
         {picks.length > 0 && (
-          <div style={{ marginTop: 18 }}>
-            {picks.map((p, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderTop: i === 0 ? `1px solid ${E.color.ink}` : undefined, borderBottom: `1px solid ${E.color.hairline}` }}>
-                <span style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, color: E.color.ink }}>{p.name}</span>
-                <UnderlineWord onClick={() => removePick(i)} label={`remove ${p.name}`}>Remove</UnderlineWord>
-              </div>
-            ))}
+          // The picks on yellow (his notes, 10-14): each row a padded accent bar
+          // with 2px of cream between them, so they read with the pitched band
+          // above; the one that just landed washes in from cream.
+          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+            <style>{LAND_CSS}</style>
+            {picks.map((p, i) => {
+              const k = pickKey(p);
+              return (
+                <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: E.color.accent, ...(landed === k ? { animation: "eRowLand 1s ease-out forwards" } : {}) }}>
+                  <span style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, color: E.color.ink }}>{p.name}</span>
+                  <UnderlineWord onClick={() => removePick(i)} label={`remove ${p.name}`}>Remove</UnderlineWord>
+                </div>
+              );
+            })}
           </div>
         )}
         <ShowField

@@ -25,8 +25,9 @@ import { readPendingDeckAnswers } from "../lib/deckPending";
 import { CANON } from "../styles/canon";
 import { preventLastWordOrphan } from "../lib/utils";
 import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
 import LoadingDots from "./LoadingDots";
-import { InviteWall, InviteStatePage, InvitePage } from "./editorial/Invite";
+import { InviteWall, InviteStatePage } from "./editorial/Invite";
 
 // After an invite sign-up, route the new account to /dashboard (where the
 // guided tour auto-fires) instead of the old onboarding. App's post-login
@@ -170,7 +171,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
     );
   }
 
-  // Joined — wave 1 over the plain green, then straight into the group room.
+  // Joined — wave 1 over the plain green, then the dashboard (his note,
+  // 10-14: the invitee lands where the standard onboarding lands; the group's
+  // cluster waits there, with their pitched picks already in it).
   if (status === "done") {
     return (
       <div style={page}>
@@ -184,7 +187,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             // Standing issue (b): hold wave 2 for their NEXT session — the
             // first visit is these 4 questions + the room itself.
             markJoinedThisSession();
-            navigate(info ? `/dashboard?g=${info.groupId}` : "/dashboard", { replace: true });
+            navigate("/dashboard", { replace: true });
           }}
         />
       </div>
@@ -239,7 +242,10 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             ? <InviteWall desktop token={token} info={info} inviterName={inviterLabel} onJoin={openAuth} />
             : <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
         ) : editorial ? (
-          <InvitePage desktop><div /></InvitePage>
+          // The welcome questions' own yellow ground (his catch, 10-14): the
+          // invite page drawn here flashed cream with the wordmark before the
+          // questions painted.
+          <div aria-hidden="true" style={{ position: "fixed", inset: 0, background: E.color.accent }} />
         ) : (
           <div style={page}>
             <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>

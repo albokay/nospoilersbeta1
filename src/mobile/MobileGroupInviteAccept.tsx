@@ -16,7 +16,8 @@ import HomepageNarrative from "../components/HomepageNarrative";
 import { readPendingDeckAnswers } from "../lib/deckPending";
 import { preventLastWordOrphan } from "../lib/utils";
 import { useEditorial } from "../lib/skin";
-import { InviteWall, InviteStatePage, InvitePage } from "../components/editorial/Invite";
+import { E } from "../styles/editorial";
+import { InviteWall, InviteStatePage } from "../components/editorial/Invite";
 import {
   getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
@@ -227,7 +228,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     );
   }
 
-  // ── Joined: wave 1 over the plain green → straight into the group room ────
+  // ── Joined: wave 1 over the plain green → the dashboard (his note, 10-14:
+  //    the invitee lands where the standard onboarding lands) ───────────────
   if (status === "done") {
     return (
       <div style={page}>
@@ -242,7 +244,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           onComplete={() => {
             // Standing issue (b) — see lib/joinSession.
             markJoinedThisSession();
-            navigate(info ? `/m/group/${info.groupId}` : "/m/dashboard", { replace: true });
+            navigate("/m/dashboard", { replace: true });
           }}
         />
       </div>
@@ -282,7 +284,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           )}
           {wallReady
             ? <InviteWall token={token} info={info} inviterName={inviterShown} onJoin={goAuth} />
-            : <InvitePage><div /></InvitePage>}
+            // The questions' own yellow ground (his catch, 10-14) — see the desktop page.
+            : <div aria-hidden="true" style={{ position: "fixed", inset: 0, background: E.color.accent }} />}
         </>
       );
     }
