@@ -52,11 +52,16 @@ async function resolveTmdbTvId(
 }
 
 // From a /videos results[] pick the earliest official YouTube Trailer, else
-// the earliest Teaser. Missing published_at sorts last (+Infinity).
+// the earliest official Teaser — and, with neither (Alborz 2026-10-14, Say
+// Nothing: TMDB's "official" flag is contributor-set and was off on both of
+// its real trailers, so the show had none), the earliest YouTube video TMDB
+// types as a Trailer, then a Teaser, flag or no flag. The earliest-published
+// rule holds throughout (the launch trailer, never a later season's).
+// Missing published_at sorts last (+Infinity).
 function pickTrailerKey(results: any[]): string | null {
-  const earliestOfType = (type: string): string | null => {
+  const earliestOfType = (type: string, officialOnly: boolean): string | null => {
     const vids = (results ?? []).filter(
-      (v) => v?.site === "YouTube" && v?.official === true && v?.type === type,
+      (v) => v?.site === "YouTube" && (!officialOnly || v?.official === true) && v?.type === type,
     );
     vids.sort((a, b) => {
       const ta = a?.published_at ? Date.parse(a.published_at) : NaN;
@@ -66,7 +71,8 @@ function pickTrailerKey(results: any[]): string | null {
     const key = vids[0]?.key;
     return typeof key === "string" && key ? key : null;
   };
-  return earliestOfType("Trailer") ?? earliestOfType("Teaser");
+  return earliestOfType("Trailer", true) ?? earliestOfType("Teaser", true)
+    ?? earliestOfType("Trailer", false) ?? earliestOfType("Teaser", false);
 }
 
 // Full resolve for one show. Returns the ~11-char YouTube key, or null (miss).
