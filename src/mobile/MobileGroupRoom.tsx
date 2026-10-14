@@ -1309,9 +1309,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   })}
                 </>
               )}
+              {/* The question sits ABOVE the pitched shelf (his call, 2026-10-14). */}
+              {empty && (
+                <div style={{ ...E.type.question30, color: E.color.ink, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
+                  What shows do you want to watch with {soloFriend ?? "your friends"}?
+                </div>
+              )}
               {groupShelves.notStarted.length > 0 && (
                 <>
-                  <SectionHead tab={E.color.accent} style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                  <SectionHead tab={E.color.accent} style={{ marginTop: (groupShelves.watching.length || celebrating.length || empty) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                   {groupShelves.notStarted.map((r) => {
                     // Your own pitch (round 5): one act, "Cancel pitch".
                     // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
@@ -1343,11 +1349,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                     );
                   })}
                 </>
-              )}
-              {empty && (
-                <div style={{ ...E.type.question30, color: E.color.ink, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
-                  What shows do you want to watch with {soloFriend ?? "your friends"}?
-                </div>
               )}
               <div style={{ display: "flex", gap: 10, marginTop: 44 }}>
                 <button type="button" onClick={() => setSearchOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" }}>Pitch a show</button>

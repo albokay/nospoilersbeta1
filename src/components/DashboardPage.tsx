@@ -2293,7 +2293,7 @@ export default function DashboardPage() {
                           (his catch, 2026-10-14); in ink, which it inherited as
                           cream before and vanished. */}
                       {groupShelves.watching.length === 0 && (
-                        <div style={{ ...E.type.question30, color: E.color.ink, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
+                        <div className="sb-balance" style={{ ...E.type.question30, color: E.color.ink, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
                           What shows do you want to watch with {soloFriend ?? "your friends"}?
                         </div>
                       )}
