@@ -12,6 +12,12 @@
  *
  * Gating (entry/reply visible iff `episode <= selectedEpisode`, episode 0
  * always visible) is applied by the consumer against modal-local state.
+ *
+ * The seven guide letters are Alborz's copy of 2026-10-13 (the tour under the
+ * editorial look). Under that look the tour runs LETTERS-ONLY, as the rooms
+ * do now — `tspDemoReplies` is not shown there but KEPT, verbatim, for a
+ * possible return of responses to the tour (his call); the classic tour
+ * still shows them.
  */
 import type { V2RoomFeedEntry } from "../components/v2/V2RoomFeed";
 import type { V2RoomMapMember } from "../components/v2/V2RoomMap";
@@ -115,44 +121,40 @@ const MOCK_ENTRIES: V2RoomFeedEntry[] = [
     body: `Reyes is the third party. She was the one Nadia was feeding Berlin intelligence to the whole time. She didn't discover the double agent — she created her. The defection at the end of episode six reframes the entire series and I've changed my read on Reyes three times since finishing the episode. Is she a traitor? A whistleblower? Someone who built an operation inside an operation because she stopped believing in the institution? The show doesn't tell you. It just shows you her face as she crosses and leaves you with that.\n\nJames — your filter idea from the episode three thread means something very specific now. The filter was always her.` }),
 ];
 
+// The guide letters — Alborz's copy, 2026-10-13. One closer for both ways in
+// (the final letter no longer says how to leave; the exit control does). A
+// last line of "—Sidebar" is drawn with the name in italics by the editorial
+// tour; the classic tour shows it as written.
 const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
   entry({ id: "tsp-gate-0", e: 0, author: U.alborz, isInstructional: true,
-    title: "Hello! Welcome to Sidebar.",
-    preview: `This is a show room for a fake show called The Sidebar Protocol.`,
-    body: `This is a show room for a fake show called The Sidebar Protocol. You can't write in here, but it's populated with mock letters to help you understand how the spoiler-gating works on the site. I'll guide you through the functions of the site with a few instructional letters like this one.\n\nSee that dropdown menu up top with "haven't started" selected? That means that you haven't watched any episodes of this show yet. This could still be a good time to start a conversation with your friends. You can write about why you're excited to start watching the show.\n\nNow open the dropdown above and tell Sidebar that you've watched Episode 1.` }),
+    title: "Welcome to Sidebar",
+    preview: `This is a mock show room for a made-up show, “The Sidebar Protocol.” You can’t write in here.`,
+    body: `This is a mock show room for a made-up show, “The Sidebar Protocol.” You can’t write in here. It’s filled with letters so you can see how the spoiler-gate works. A few letters from Sidebar, like this one, will walk you through it.\n\nUp top, the watch progress picker says you haven’t watched anything yet. This could still be a good time to start a conversation with your friends. You can write about why you’re excited to start watching the show.\n\nNow tap 1 up top to indicate you’ve watched the first episode.` }),
   entry({ id: "tsp-gate-1", e: 1, author: U.alborz, isInstructional: true,
-    title: "This appeared because you've now watched episode 1",
-    preview: `That's the whole idea of Sidebar. Nothing about an episode reaches you until you've actually seen it.`,
-    body: `That's the whole idea of Sidebar. Nothing about an episode reaches you until you've actually seen it. You just reached episode 1, so your friends' episode 1 letters are open now. Everything written past here is still sealed.\n\nKeep moving through the episodes one by one for more of this guide.` }),
+    title: "This letter appeared because you watched episode 1",
+    preview: `That’s the whole idea. Nothing about an episode reaches you until you’ve also seen it.`,
+    body: `That’s the whole idea. Nothing about an episode reaches you until you’ve also seen it. Your friends’ episode 1 letters are open now; everything written past episode 1 stays sealed.\n\nKeep going through the show one episode at a time. Tap episode 2.` }),
   entry({ id: "tsp-gate-2", e: 2, author: U.alborz, isInstructional: true,
-    title: "See how the others' letters opened too?",
-    preview: `You all watch at your own pace and you all update your progress after you watch.`,
-    body: `You all watch at your own pace and you all update your progress after you watch. No one can spoil you, and you can't spoil anyone. This is also true for responses inside letters.\n\nAdvance to episode 3 to learn about the map on the right.` }),
+    title: "See how other letters open too?",
+    preview: `You all watch at your own pace and mark your progress after each episode.`,
+    body: `You all watch at your own pace and mark your progress after each episode. No one can spoil you, and you can’t spoil anyone.\n\nTap 3 to learn about the season map.` }),
   entry({ id: "tsp-gate-3", e: 3, author: U.alborz, isInstructional: true,
-    title: "The map keeps score",
-    preview: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little star faces are everyone's episode ratings.`,
-    body: `Take a look at the grid. Each row represents an episode, each column represents a friend, and the little star faces are everyone's episode ratings. You can see the shape of everyone's journey at a glance. You can click on the map to jump to the letters available to you (the filled-in blue cells) and also have an indication of what's waiting for you once you watch more (the grey cells). It's the spoiler-free way to know your friends are out there.\n\nTry clicking the edit button at the top of your column. That unlocks the cells so that you can leave ratings for the episodes you've watched. When you're done rating, click the check mark at the top to confirm.\n\nNow unlock episode 4.` }),
+    title: "The season map",
+    preview: `Look right. That’s a map of your group’s progress.`,
+    body: `Look right. That’s a map of your group’s progress. A row is an episode, a column is a friend, and the stars are everyone’s ratings. A filled cell is a letter you can open; a sealed cell waits for you. Tap a cell to jump to its letter.\n\nTo rate what you’ve watched, tap the pen above your column, pick your stars, then Save.\n\nNow advance to episode 4.` }),
   entry({ id: "tsp-gate-4", e: 4, author: U.alborz, isInstructional: true,
-    title: "You're ahead of someone now",
-    preview: `The map can tell you how your watch progress relates to others'. Maya is still back on episode 2.`,
-    body: `The map can tell you how your watch progress relates to others'. Maya is still back on episode 2— so any letter you write about episode 4 stays sealed for her until she catches up. You don't have to be careful. The spoiler-gate does the work. Write freely; a letter only opens for people who are ready to read it.\n\nTwo more episodes.` }),
+    title: "You’re ahead of Maya now",
+    preview: `Maya is still on episode 2, so anything you write about episode 4 stays sealed for her until she catches up.`,
+    body: `Maya is still on episode 2, so anything you write about episode 4 stays sealed for her until she catches up. Write freely. The spoiler-gate does the work of protecting everyone from spoilers.\n\nTwo episodes to go.` }),
   entry({ id: "tsp-gate-5", e: 5, author: U.alborz, isInstructional: true,
-    title: "This is basically what a real room feels like",
-    preview: `By now it should be clicking: you update your progress, the room answers.`,
-    body: `By now it should be clicking: you update your progress, the room answers. Letters arrive, the map fills in, conversations stay sealed until everyone's ready for them. This is exactly how your own rooms will work — except the people will be your friends, and the show will be one you chose. One episode left in The Sidebar Protocol.` }),
+    title: "This is how your real friend rooms will work",
+    preview: `Hopefully it’s clicking. You mark your progress, the room answers.`,
+    body: `Hopefully it’s clicking. You mark your progress, the room answers. Letters open, the map fills in, and conversations stay sealed until you’re ready.\n\nOne episode left in “The Sidebar Protocol.”` }),
   entry({ id: "tsp-gate-6", e: 6, author: U.alborz, isInstructional: true,
     title: "Your turn.",
-    preview: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate.`,
-    body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nThe next room is yours. Close this window when you're ready, and let's find a show you're actually watching.\n\nSigned,\nSidebar` }),
+    preview: `That’s the tour. The spoiler-gate is what makes Sidebar unique.`,
+    body: `That’s the tour. The spoiler-gate is what makes Sidebar unique. It changes how you engage with your friends and your shows.\n\nSidebar is for you and your friends.\n\n—Sidebar` }),
 ];
-
-/** Gate-6 closer for the RE-ENTRY context (the show room's "how does this
- *  room work?" button — help-system arc CP3): the reader already has a room,
- *  so the "find a show" send-off would ring false. */
-export const TSP_GATE6_REENTRY = {
-  preview: `That's the tour. You've experienced the main thing that makes Sidebar different: the spoiler-gate.`,
-  body: `That's the tour. You've experienced the main thing that makes Sidebar unique: the spoiler-gate. I think it changes how you engage with your friends and the shows you're watching (in a good way!). I can't wait to hear how it works for you.\n\nClose this window when you're ready to head back to your room.\n\nSigned,\nSidebar`,
-};
 
 /** Full feed fixture — mock + instructional, interleaved (the feed sorts by episode). */
 export const tspDemoFeedEntries: V2RoomFeedEntry[] = [...MOCK_ENTRIES, ...INSTRUCTIONAL_ENTRIES];

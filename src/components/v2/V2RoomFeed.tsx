@@ -14,6 +14,7 @@ import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY
 import { E } from "../../styles/editorial";
 import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIEW, SidebarPaper, EntryFoot, FEED_VARS, DraftRow } from "../editorial/ShowRoom";
 import { UnderlineWord } from "../editorial/Chrome";
+import { UNDERLINE_WORD } from "../editorial/MapNotes";
 import { EditorialScope } from "../../lib/skin";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
@@ -332,6 +333,16 @@ const HIGHLIGHT_MS = 1500;
 // TSP demo: keep the last N words of a title together (non-breaking spaces) so
 // a title that wraps drops at least N words to the second row instead of
 // orphaning a lone word/number (e.g. the "1" in "…watched Episode 1").
+// The tour's open letter under the editorial skin (2026-10-13): the body as
+// the real open letter shows it; a final "—Sidebar" line wears the name in
+// italics (Alborz's call).
+const DEMO_SIGNOFF = /\n\n—\s?Sidebar\s*$/;
+function demoLetterBody(body: string): React.ReactNode {
+  const m = body.match(DEMO_SIGNOFF);
+  if (!m || m.index == null) return body;
+  return <>{body.slice(0, m.index)}{"\n\n—"}<em>Sidebar</em></>;
+}
+
 function keepTailTogether(text: string, n = 3): string {
   const words = text.split(" ");
   if (words.length <= n) return text;
@@ -953,31 +964,47 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // stamp with the letter's own words ("What / next?", "next /
         // season"). Closed, it sits on cream paper with the stamp in Friend
         // blue and no preview; open, it looks like any ticket.
-        const isSb = isSidebarAuthor(entry.authorUsername);
+        // The tour's guide letters are letters from Sidebar under the
+        // editorial skin (2026-10-13): its paper closed, its framed stamp
+        // with the episode. The classic tour keeps its sparkles.
+        const isSb = isSidebarAuthor(entry.authorUsername) || (editorial && demoMode && !!entry.isInstructional);
         const sbClosed = isSb && !isExpanded;
         const stampSpec = isSb ? SIDEBAR_STAMP_SPEC : stampSpecFor(entry.authorId || entry.authorUsername);
         const stampScale = mobileIdiom ? 0.78 : 1;
         const stampSize = stampBox(stampSpec);
         const stampInitial = isSb ? "" : dn(entry.authorUsername).trim().charAt(0).toUpperCase();
         const isRewatchTag = !isSb && !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
-        const stampLabel = isSb ? sidebarStampLabel(entry.sidebarKind) : isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
+        const stampLabel = isSb
+          ? (demoMode && entry.isInstructional ? (entry.e > 0 ? `Episode\n${entry.e}` : "The\ntour") : sidebarStampLabel(entry.sidebarKind))
+          : isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
         const stampEl = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={stampScale} rewatch={isRewatchTag} ink={sbClosed ? CANON.friend : undefined} />;
         const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
         const stampReserve = stampEl ? Math.round(stampSize.w * stampScale) + 12 : 0;
         const stampMinH = stampEl ? Math.round(stampSize.h * stampScale) : 0;
-        if (editorial && !demoMode) {
+        if (editorial) {
           // ── The editorial letter (checkpoint 4, 2026-10-12; the bible's
           //    LetterEntry): an ink rule above, the mono FROM line, the Lora
           //    title, the Lora preview, the writer's stamp at hairline weight
           //    at the right, a hairline below; the head clears the stamp.
           //    Opened, the same thread as the classic card, in ink. A closed
-          //    letter from Sidebar is its paper. A draft is its row. ──
+          //    letter from Sidebar is its paper. A draft is its row. In the
+          //    tour (demoMode, 2026-10-13) the open letter is its body and
+          //    Close alone — no thread behind it, no time in the FROM line. ──
           const eScale = mobileIdiom ? 0.78 : 0.9;
           const eStamp = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={eScale} rewatch={isRewatchTag} ink={isSb ? E.color.friend : E.color.ink} lineWidth={1.4} />;
           const eReserve = eStamp ? Math.round(stampSize.w * eScale) + 12 : 0;
           const authorName = isSb ? SIDEBAR_DISPLAY_NAME : dn(entry.authorUsername);
           const canOpenProfile = !isSb && !!onClickProfile;
-          const threadEl = (
+          const threadEl = demoMode ? (
+            <div onClick={(e) => e.stopPropagation()}>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>{demoLetterBody(entry.body)}</div>
+              <div style={{ marginTop: 16 }}>
+                <button type="button" onClick={() => handleCollapseTop(entry.threadId)} style={{ ...UNDERLINE_WORD, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 0" }}>
+                  <ChevronUp size={16} color={E.color.ink} /> Close
+                </button>
+              </div>
+            </div>
+          ) : (
             <div onClick={(e) => e.stopPropagation()}>
               <V2InlineThread
                       thread={entry.thread}
@@ -1038,7 +1065,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, marginTop: 16 }} onClick={(e) => toggleExpand(entry.threadId, e)}>
                 <SidebarPaper style={{ cursor: "pointer" }}>
                   <span style={{ position: "absolute", right: 14, top: 12 }}><Stamp spec={stampSpec} label={stampLabel} scale={0.66} ink={E.color.friend} lineWidth={1.4} /></span>
-                  <div style={{ ...FROM_LINE, paddingRight: 80 }}>From: {SIDEBAR_DISPLAY_NAME} · {timeAgo(entry.updatedAt)}</div>
+                  <div style={{ ...FROM_LINE, paddingRight: 80 }}>From: {SIDEBAR_DISPLAY_NAME}{demoMode ? "" : ` · ${timeAgo(entry.updatedAt)}`}</div>
                   <div style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 10, paddingRight: 80 }}>{entry.title}</div>
                   <div className="clamp3" style={{ ...E.type.letterBody15, fontSize: 14, lineHeight: 1.5, marginTop: 6, color: "rgba(26,58,74,0.8)" }}>{entry.preview}</div>
                 </SidebarPaper>
@@ -1076,7 +1103,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           onClick={canOpenProfile ? (ev) => { ev.stopPropagation(); onClickProfile!(entry.authorUsername); } : undefined}
                           style={canOpenProfile ? { cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 } : undefined}
                         >{authorName}</span>
-                        {" · "}{timeAgo(entry.updatedAt)}
+                        {demoMode ? null : <>{" · "}{timeAgo(entry.updatedAt)}</>}
                         {entry.isDeparted ? " · has left the room" : ""}
                         {!entry.isDeleted && entry.isEdited ? " · edited" : ""}
                       </span>
