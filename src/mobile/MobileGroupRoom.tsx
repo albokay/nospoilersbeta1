@@ -175,9 +175,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const [flashShowId, setFlashShowId] = useState<string | null>(null);
   function landPitch(showId: string) {
     setJustPitched((prev) => new Set(prev).add(showId));
-    setFlashShowId(showId);
-    window.setTimeout(() => setFlashShowId((cur) => (cur === showId ? null : cur)), 2600);
+    // The scroll first, the flash once the row has settled in view (his note).
     window.setTimeout(() => document.getElementById(`pitched-${showId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+    window.setTimeout(() => setFlashShowId(showId), 700);
+    window.setTimeout(() => setFlashShowId((cur) => (cur === showId ? null : cur)), 700 + 2600);
   }
   // Cancel pitch (Alborz's notes, round 5): your own pitch's one act.
   const [cancelSheet, setCancelSheet] = useState<{ showId: string; name: string; othersIn: boolean; selfWrote: boolean } | null>(null);
