@@ -1144,7 +1144,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto" }}>
               <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))" }}>
                 {show && progressForShow ? (
-                  <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+                  // The picker centres on the COLUMN, not on the band that runs
+                  // off the window's right edge (his catch, 10-14): a box the
+                  // column's inner width holds it.
+                  <div style={{ width: E.measure.desktop.wide - 2 * E.space.gutter, maxWidth: "100%" }}>
+                    <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+                  </div>
                 ) : null}
               </RoomBand>
             </div>
