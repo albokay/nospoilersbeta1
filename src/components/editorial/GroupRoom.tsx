@@ -25,7 +25,7 @@
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { SquarePen, MessageCircle } from "lucide-react";
+import { SquarePen, MessageCircle, ChevronDown } from "lucide-react";
 import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
 import { fetchTvmazePoster } from "../../lib/tvmaze";
@@ -346,25 +346,30 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
   if (allowZero && season === 1) nums.push(0);
   for (let i = 1; i <= count; i++) nums.push(i);
   const current = value.s === 0 ? 0 : value.s === season ? value.e : -1;
+  // Two rows on one grid (his idea, 10-14): "Watched:" and "ep:" in the first
+  // column, right-aligned so their colons line up; the season menu and the
+  // numbers in the second, left-aligned, so a second row of numbers starts
+  // under the first number, never under the label. The grid is inline, so a
+  // host that centres its content centres the block when it is narrower than
+  // the band; once the numbers wrap it runs the band's width.
   return (
-    <>
-      <div style={{ ...E.type.label11, marginTop: 12, display: "flex", justifyContent: "center", gap: 14, alignItems: "baseline", color: E.color.ink }}>
-        <span style={{ opacity: 0.7 }}>Watched</span>
-        <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 6, cursor: "pointer" }}>
-          <span>Season {season}</span><span style={{ fontSize: 9 }}>▼</span>
-          <select
-            aria-label="Season" value={season}
-            onChange={(e) => { const s = Number(e.target.value); onChange({ s, e: Math.min(Math.max(1, value.s === s ? value.e : 1), seasons[s - 1] ?? 1) }); }}
-            style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
-          >
-            {seasons.map((_, i) => <option key={i + 1} value={i + 1}>Season {i + 1}</option>)}
-          </select>
-        </label>
-      </div>
-      <div aria-label="Episode" style={{ marginTop: 10, display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "baseline", gap: "6px 11px" }}>
-        {/* "ep:" in the small mono, muted, on the numbers' baseline (his note, 10-14):
-            it wraps with the row, so the centred layout holds. */}
-        <span aria-hidden="true" style={{ ...E.type.label11, textTransform: "none", color: E.color.inkMuted }}>ep:</span>
+    <div style={{ display: "inline-grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 10, alignItems: "baseline", maxWidth: "100%", marginTop: 12, textAlign: "left", verticalAlign: "top" }}>
+      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end" }}>Watched:</span>
+      {/* The season as a menu: a chevron at the underline's weight, so the two
+          picking pieces read as one grammar and the arrow points at nothing. */}
+      <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", ...E.type.label11, color: E.color.ink }}>
+        <span>Season {season}</span>
+        <ChevronDown size={14} strokeWidth={2.25} color={E.color.ink} aria-hidden="true" style={{ flexShrink: 0, alignSelf: "center" }} />
+        <select
+          aria-label="Season" value={season}
+          onChange={(e) => { const s = Number(e.target.value); onChange({ s, e: Math.min(Math.max(1, value.s === s ? value.e : 1), seasons[s - 1] ?? 1) }); }}
+          style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+        >
+          {seasons.map((_, i) => <option key={i + 1} value={i + 1}>Season {i + 1}</option>)}
+        </select>
+      </label>
+      <span aria-hidden="true" style={{ ...E.type.label11, textTransform: "none", color: E.color.inkMuted, justifySelf: "end" }}>ep:</span>
+      <div aria-label="Episode" style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", alignItems: "baseline", gap: "6px 11px", minWidth: 0 }}>
         {nums.map((n) => {
           const me = n === current;
           const watched = n === 0 ? false : value.s > season || (value.s === season && n <= value.e);
@@ -379,7 +384,7 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 
