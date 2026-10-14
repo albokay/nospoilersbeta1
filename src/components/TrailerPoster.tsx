@@ -32,7 +32,10 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile
   const disc = mobile ? 24 : 28;
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label="Watch the trailer" title="Watch the trailer" style={{ position: "relative", display: "block", padding: 0, border: 0, background: "transparent", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+      {/* zIndex 3 (his catch, 2026-10-14): the disc pokes 8px past the poster
+          into the tabs row's box below, a positioned sibling drawn later —
+          without a z-index that transparent box took the disc's clicks. */}
+      <button type="button" onClick={() => setOpen(true)} aria-label="Watch the trailer" title="Watch the trailer" style={{ position: "relative", zIndex: 3, display: "block", padding: 0, border: 0, background: "transparent", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
         {poster}
         <span aria-hidden="true" style={{ position: "absolute", right: -8, bottom: -8, width: disc, height: disc, borderRadius: "50%", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width={mobile ? 9 : 10} height={mobile ? 9 : 10} viewBox="0 0 10 10" style={{ marginLeft: 1 }}><path d="M2 1 L9 5 L2 9 Z" fill={E.color.ink} /></svg>

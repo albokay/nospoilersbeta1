@@ -2266,7 +2266,7 @@ export default function DashboardPage() {
                       )}
                       {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
                         <>
-                          <SectionHead style={{ marginTop: settledCount > 0 ? 36 : 0 }}>You&rsquo;re watching:</SectionHead>
+                          <SectionHead tab={E.color.personal} style={{ marginTop: settledCount > 0 ? 36 : 0 }}>You&rsquo;re watching:</SectionHead>
                           {celebrating.map((c) => (
                             <ShowRow desktop key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
                           ))}
@@ -2295,7 +2295,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div style={{ width: W.railCol, flexShrink: 0, paddingTop: settledCount > 0 ? 64 : 0 }}>
-                      <div data-tip-anchor="pitched-rail"><SectionHead>Shows pitched({groupShelves.notStarted.length}):</SectionHead></div>
+                      <div data-tip-anchor="pitched-rail"><SectionHead tab={E.color.accent}>Shows pitched({groupShelves.notStarted.length}):</SectionHead></div>
                       {groupShelves.notStarted.map((r) => {
                         const st = myStanceFor(r.pill.showId);
                         const passed = r.passed && (st === "out" || st === "seen");

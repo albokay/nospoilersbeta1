@@ -181,11 +181,16 @@ export function TopRight({ items, right, textTop, gap, hit, zIndex = 4, safe = f
 
 /** A section head: mono caps on a 1px ink rule, with an optional count or
  *  underlined link at the right end. */
-export function SectionHead({ children, right, style }: { children: React.ReactNode; right?: React.ReactNode; style?: React.CSSProperties }) {
+export function SectionHead({ children, right, tab, style }: {
+  children: React.ReactNode; right?: React.ReactNode;
+  /** A filled tab on the rule (Alborz 2026-10-14, his mockup): the label in
+   *  cream on this colour, flush with the rule's left end, the words inset 8px. */
+  tab?: string; style?: React.CSSProperties;
+}) {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
-      <span>{children}</span>
-      {right}
+    <div style={{ display: "flex", alignItems: tab ? "flex-end" : "baseline", justifyContent: "space-between", gap: 12, paddingBottom: tab ? 0 : 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
+      <span style={tab ? { display: "inline-block", background: tab, color: E.color.cream, padding: "7px 8px" } : undefined}>{children}</span>
+      {tab && right ? <span style={{ paddingBottom: 7 }}>{right}</span> : right}
     </div>
   );
 }

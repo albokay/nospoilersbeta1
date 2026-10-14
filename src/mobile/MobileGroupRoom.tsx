@@ -1284,7 +1284,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             <>
               {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
                 <>
-                  <SectionHead style={{ marginTop: settledCount > 0 ? 36 : 96 }}>You&rsquo;re watching:</SectionHead>
+                  <SectionHead tab={E.color.personal} style={{ marginTop: settledCount > 0 ? 36 : 96 }}>You&rsquo;re watching:</SectionHead>
                   {celebrating.map((c) => (
                     <EditorialShowRow key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
                   ))}
@@ -1309,7 +1309,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               )}
               {groupShelves.notStarted.length > 0 && (
                 <>
-                  <SectionHead style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                  <SectionHead tab={E.color.accent} style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                   {groupShelves.notStarted.map((r) => {
                     // Your own pitch (round 5): one act, "Cancel pitch".
                     // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
