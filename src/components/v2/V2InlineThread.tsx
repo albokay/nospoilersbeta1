@@ -193,7 +193,7 @@ export default function V2InlineThread({
   // When non-null, the HighlightPicker is open, anchored to anchorRect,
   // with the captured selection range ready to submit.
   const [highlightPicker, setHighlightPicker] = useState<
-    | { anchorRect: DOMRect; start: number; end: number; text: string }
+    | { anchorRect: DOMRect; start: number; end: number; text: string; range?: globalThis.Range }
     | null
   >(null);
   // Inline error message shown below the body (overlap / network / etc).
@@ -315,6 +315,27 @@ export default function V2InlineThread({
     if (!rect) return;
     setHighlightError(null);
     setHighlightPicker({ anchorRect: rect, start: sel.start, end: sel.end, text: sel.text });
+  };
+
+  // Desktop (Alborz 2026-10-13): selecting a stretch of a published letter
+  // opens the note box by itself, just under the end of the selection — no
+  // trip to "Add a note" at the foot (the button stays as the prompt). The
+  // box isn't focused, so the selection stays lit as the cue; a click into
+  // the box starts the note. Quote (where responses are on) still reads
+  // the selection, since the box doesn't take it.
+  const handleBodyMouseUp = () => {
+    if (mobileIdiom || !groupId || !userId || highlightPicker || pickMode || editing || isTombstone) return;
+    window.setTimeout(() => {
+      const sel = selectionToBodyOffsets(bodyRef.current);
+      if (!sel || !sel.text.trim()) return;
+      const live = window.getSelection();
+      if (!live || live.rangeCount === 0) return;
+      const range: globalThis.Range = live.getRangeAt(0).cloneRange();
+      const rects = range.getClientRects();
+      const last = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+      setHighlightError(null);
+      setHighlightPicker({ anchorRect: last, start: sel.start, end: sel.end, text: sel.text, range });
+    }, 0);
   };
 
   // One create path for both platforms: the desktop picker's selection and
@@ -827,7 +848,7 @@ export default function V2InlineThread({
           )}
         </div>
       ) : (
-        <div ref={bodyRef} style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
+        <div ref={bodyRef} onMouseUp={handleBodyMouseUp} style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
           <HighlightableBody
             body={thread.body}
             highlights={highlights}
@@ -1123,7 +1144,9 @@ export default function V2InlineThread({
       {highlightPicker && (
         <HighlightPicker
           anchorRect={highlightPicker.anchorRect}
-          anchorEl={highlightBtnRef.current}
+          anchorEl={highlightPicker.range ? null : highlightBtnRef.current}
+          anchorRectFn={highlightPicker.range ? () => { const r = highlightPicker.range!.getClientRects(); return r.length ? r[r.length - 1] : highlightPicker.range!.getBoundingClientRect(); } : undefined}
+          autoFocus={!highlightPicker.range}
           onClose={() => setHighlightPicker(null)}
           onConfirm={handleHighlightConfirm}
         />

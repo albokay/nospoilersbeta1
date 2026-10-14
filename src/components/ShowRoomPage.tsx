@@ -1452,7 +1452,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         {composeMinimized && (
           editorial ? (
             <button onClick={() => setComposeMinimized(false)} style={editorialContinueBlock}>
-              <SquarePen size={14} color={E.color.cream} /> Continue writing
+              <SquarePen size={18} color={E.color.cream} /> Continue writing
             </button>
           ) : (
           <button onClick={() => setComposeMinimized(false)} style={{ ...continueChip, color: CANON.identity }}>
@@ -1622,10 +1622,15 @@ const editorialComposeShell: React.CSSProperties = {
   position: "fixed", inset: 0, zIndex: 1000, background: E.color.cream, overflowY: "auto",
 };
 // Alert (Alborz's notes, round 5): a letter waiting to be sent pulls the eye.
+// The minimized compose's way back (Alborz 2026-10-13): a bottom TAB like
+// the docked "How we watch TV" tab — the ink frame, no bottom edge, running
+// off the page's bottom — in alert with cream words, 320 × 56, hanging over
+// the letters column's left part and 40px past its edge so it reads as the
+// column's own (it sat as a small block at the window's far right).
 const editorialContinueBlock: React.CSSProperties = {
-  position: "fixed", bottom: 24, right: 32, zIndex: 1001, height: 48, padding: "0 20px",
-  background: E.color.alert, color: E.color.cream, border: 0, cursor: "pointer",
-  display: "inline-flex", alignItems: "center", gap: 8, ...E.type.label11,
+  position: "fixed", bottom: 0, left: `max(16px, calc(50% - ${E.measure.desktop.wide / 2 + 40}px))`, zIndex: 1001, width: 320, height: 56, padding: "0 20px", boxSizing: "border-box",
+  background: E.color.alert, color: E.color.cream, border: `1px solid ${E.color.ink}`, borderBottom: 0, cursor: "pointer",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, ...E.type.label11, fontSize: 13,
 };
 const continueChip: React.CSSProperties = {
   position: "fixed", bottom: 0, right: 220, zIndex: 1001,

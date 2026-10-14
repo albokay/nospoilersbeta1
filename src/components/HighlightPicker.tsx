@@ -37,6 +37,13 @@ interface Props {
    *  fixed container, not the window) and resize, so it travels with the
    *  page instead of staying pinned to where it opened. */
   anchorEl?: HTMLElement | null;
+  /** The selection's end (2026-10-13): when the box opens from a selection
+   *  rather than the button, this re-reads the stretch's last line box on
+   *  scroll and resize so the box travels with the words. */
+  anchorRectFn?: () => DOMRect | null;
+  /** Off when the box opens from a selection: the selection stays lit as the
+   *  cue of what the note sits on until the writer clicks into the box. */
+  autoFocus?: boolean;
   onClose: () => void;
   onConfirm: (payload: { kind: "yup" } | { kind: "note"; note: string }) => void | Promise<void>;
   /** Color for the radio dot AND the `ok` button — defaults to canon-yellow
@@ -45,16 +52,16 @@ interface Props {
   color?: string;
 }
 
-export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfirm, color = CANON_YELLOW }: Props) {
+export default function HighlightPicker({ anchorRect, anchorEl, anchorRectFn, autoFocus = true, onClose, onConfirm, color = CANON_YELLOW }: Props) {
   const editorialScope = useEditorialScope();
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const [rect, setRect] = useState<DOMRect>(anchorRect);
   useEffect(() => {
-    if (!anchorEl) return;
+    if (!anchorEl && !anchorRectFn) return;
     let raf = 0;
     const follow = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setRect(anchorEl.getBoundingClientRect()));
+      raf = requestAnimationFrame(() => setRect((prev) => anchorEl ? anchorEl.getBoundingClientRect() : (anchorRectFn?.() ?? prev)));
     };
     window.addEventListener("scroll", follow, true);
     window.addEventListener("resize", follow);
@@ -63,7 +70,7 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
       window.removeEventListener("scroll", follow, true);
       window.removeEventListener("resize", follow);
     };
-  }, [anchorEl]);
+  }, [anchorEl, anchorRectFn]);
   const noteInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [note, setNote] = useState("");
@@ -111,8 +118,9 @@ export default function HighlightPicker({ anchorRect, anchorEl, onClose, onConfi
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Straight into writing: focus the box as soon as it opens.
-  useEffect(() => { setTimeout(() => noteInputRef.current?.focus(), 0); }, []);
+  // Straight into writing: focus the box as soon as it opens (from the
+  // button; a box opened from a selection waits for the click).
+  useEffect(() => { if (autoFocus) setTimeout(() => noteInputRef.current?.focus(), 0); }, [autoFocus]);
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Hard cap at NOTE_MAX even if the browser somehow lets a paste through.
     setNote(e.target.value.slice(0, NOTE_MAX));
