@@ -34,7 +34,7 @@ import { ensureShowReference } from "../lib/reference";
 import { roomLetterKey } from "../lib/tipsContent";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "./v2/V2RoomFeed";
-import V2RoomMap, { type V2RoomMapMember } from "./v2/V2RoomMap";
+import V2RoomMap, { mapIsEmpty, type V2RoomMapMember } from "./v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "./UnlockLine";
 import { linearIndex } from "../lib/groupPills";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
@@ -931,6 +931,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // every render).
   const refEff = effectiveProgress(progressForShow);
   const referenceAvailable = !!show?.tvmazeId && !!refEff;
+  // The map's empty state (Alborz 2026-10-14): the dashed note alone under
+  // "Season map" — no "Click a cell…" words, no legend.
+  const mapEmpty = mapIsEmpty(mapMembers);
   useEffect(() => {
     // Only bounce AFTER the load has landed — on arrival from the dashboard
     // band the progress row isn't fetched yet, and the pre-load bounce was
@@ -1387,7 +1390,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {/* The editorial rail (checkpoint 5): scrolls on its own, the
                   legend pinned at its foot on a cream fill. */}
               <div style={editorial ? { position: "sticky", top: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto", display: "flex", flexDirection: "column", scrollbarWidth: "none" } : { position: "sticky", top: 24 }}>
-              {editorial && <SectionHead right={<span style={{ color: E.color.inkMuted }}>Click a cell to open its letter</span>}>Season map</SectionHead>}
+              {editorial && <SectionHead right={mapEmpty ? null : <span style={{ color: E.color.inkMuted }}>Click a cell to open its letter</span>}>Season map</SectionHead>}
               <V2RoomMap
                 editorial={editorial}
                 members={mapMembers}
@@ -1406,7 +1409,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 firstHighlightedSet={firstHighlightedSet}
                 filteredUserId={userFilter}
               />
-              {editorial && <MapLegend pinned style={{ marginTop: "auto" }} />}
+              {editorial && !mapEmpty && <MapLegend pinned style={{ marginTop: "auto" }} />}
               </div>
             </div>
           )}

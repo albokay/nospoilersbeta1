@@ -305,6 +305,18 @@ function isAbove(
   return e > effE;
 }
 
+/** True while nobody in the room has reached an episode — the map has no
+ *  rows (the same rule as `touchedSeasons` inside). The host reads it to
+ *  drop the map's surroundings in the empty state (Alborz 2026-10-14). */
+export function mapIsEmpty(members: V2RoomMapMember[]): boolean {
+  for (const m of members) {
+    const eff = effectiveProgress(m.progress);
+    if (!eff) continue;
+    if ((eff.e >= 1 ? eff.s : eff.s - 1) >= 1) return false;
+  }
+  return true;
+}
+
 export default function V2RoomMap({
   members: membersProp,
   displayNames,
@@ -667,6 +679,19 @@ export default function V2RoomMap({
   // Every spine / stub / terminal dot: Business on desktop's dark surface,
   // Friend blue on the mobile sheet's cream (Alborz 2026-09-23).
   const lineColor = mobile ? CANON.friend : CANON.business;
+
+  // The desktop's empty state under the editorial skin (Alborz 2026-10-14):
+  // the dashed note alone, nearly square across the rail — no column heads,
+  // no pen or poll, no rule, no legend (the host drops its own head's right
+  // words and the legend too). The phone's sheet and the classic map keep
+  // their note inside the grid.
+  if (editorial && !mobile && rows.length === 0) {
+    return (
+      <div style={{ marginTop: 14, minHeight: 300, boxSizing: "border-box", padding: "24px 22px", border: "2px dashed rgba(26,58,74,0.35)", display: "flex", alignItems: "center", color: CANON.dark, fontFamily: '"Inter", sans-serif', fontSize: 15, lineHeight: 1.5, opacity: 0.9 }}>
+        Once you start watching, an episode map will appear here to help you navigate your writing.
+      </div>
+    );
+  }
 
   return (
     <div
