@@ -1106,7 +1106,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const groupName = group ? groupGenericName(group, viewerNumber) : "Group";
   // The empty shelves' question names the one friend (Alborz's notes, round 5).
   const soloFriend = others.length === 1 ? personDisplayName(contactNames, others[0].userId, others[0].username, others[0].displayName) : null;
-  const empty = groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0;
+  // Whenever nothing is being watched — pitched shows nobody has joined
+  // don't fill the shelf (his catch, 2026-10-14).
+  const empty = groupShelves.watching.length === 0;
 
   // The group's settings sheet — the gear beside the classic title, the gear
   // word in the editorial chrome.
@@ -1343,7 +1345,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 </>
               )}
               {empty && (
-                <div style={{ ...E.type.question30, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
+                <div style={{ ...E.type.question30, color: E.color.ink, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
                   What shows do you want to watch with {soloFriend ?? "your friends"}?
                 </div>
               )}

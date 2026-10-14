@@ -2288,8 +2288,12 @@ export default function DashboardPage() {
                           })}
                         </>
                       )}
-                      {groupShelves.watching.length === 0 && groupShelves.notStarted.length === 0 && (
-                        <div style={{ ...E.type.question30, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
+                      {/* The watching column's question whenever nothing is being
+                          watched — pitched shows nobody has joined don't fill it
+                          (his catch, 2026-10-14); in ink, which it inherited as
+                          cream before and vanished. */}
+                      {groupShelves.watching.length === 0 && (
+                        <div style={{ ...E.type.question30, color: E.color.ink, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
                           What shows do you want to watch with {soloFriend ?? "your friends"}?
                         </div>
                       )}

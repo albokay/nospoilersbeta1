@@ -1,5 +1,7 @@
 # Sidebar — Technical State (2026-10-14)
 
+> **⭐ 2026-10-14 — The group room's question (his catch, both platforms):** "What shows do you want to watch with your friends / {name}?" is drawn in ink (it inherited cream and vanished) and shows whenever nothing is being WATCHED — pitched shows nobody has joined no longer hide it (the condition dropped its "no pitches" half: `watching.length === 0` on desktop, `empty` on the phone).
+
 > **⭐ 2026-10-14 — Two catches:** the poster's play disc takes the click now (`TrailerPoster`'s button at `zIndex: 3` — the disc pokes 8px past the poster into the tabs row's box, a positioned sibling drawn later, whose transparent box was taking the disc's clicks); and the group room's shelf heads are coloured TABS on their rules (`SectionHead tab`, his mockup): "You're watching:" in cream on personal green, "Shows pitched(N):" in cream on accent, the tab flush with the rule's left end and the words inset 8px, 7px above and below, both platforms. The other heads are unchanged.
 
 > **⭐ 2026-10-13 — The trailer from inside the room + the guide from day one + the tab's seat (his picks):**
