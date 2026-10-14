@@ -1550,6 +1550,10 @@ export default function DashboardPage() {
   //     Proposed shelf only if yours was the last yes.
   async function doVote(showId: string, voted: boolean) {
     if (!activeGroupId || !user) return;
+    // A yes on a show nobody else is in yet is a NEW PITCH (the opt-in
+    // dialog, the browse rows): it lands like one (round 6).
+    const before = groupShows.find((gs) => gs.showId === showId);
+    const newPitch = voted && !before?.members.some((m) => m.userId !== user.id);
     try {
       await setShowVote(activeGroupId, showId, voted);
       if (voted && !progress[showId]) {
@@ -1581,6 +1585,7 @@ export default function DashboardPage() {
       // poster drops out of its row as the shelves refresh below.
       if (voted) setClicked((prev) => (prev && prev.showId === showId && prev.fromBrowse ? null : prev));
       await refreshGroup(activeGroupId);
+      if (newPitch) landPitch(showId);
     } catch (e) { console.error("[dashboard] vote failed", e); }
   }
 
@@ -2293,6 +2298,8 @@ export default function DashboardPage() {
                       {groupShelves.notStarted.map((r) => {
                         const st = myStanceFor(r.pill.showId);
                         const passed = r.passed && (st === "out" || st === "seen");
+                        // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
+                        const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id || justPitched.has(r.pill.showId);
                         return (
                           <ShowRow
                             desktop
@@ -2307,14 +2314,14 @@ export default function DashboardPage() {
                             flash={flashShowId === r.pill.showId}
                             domId={`pitched-${r.pill.showId}`}
                             end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
-                              : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
+                              : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                             onOpen={() => onPillClick(r.pill, r.name)}
                             // Your own pitch (round 5): one act, "Cancel pitch".
-                            onOptions={freshPitches.pitcherOf.get(r.pill.showId) === user?.id
+                            onOptions={mine
                               ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelConfirm({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
                               : r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
-                            optionsLabel={freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                            optionsLabel={mine ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
                           />
                         );
                       })}

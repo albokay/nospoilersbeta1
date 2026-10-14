@@ -818,6 +818,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   //     Proposed shelf only if yours was the last yes.
   async function doVote(showId: string, voted: boolean) {
     if (!user) return;
+    // A yes on a show nobody else is in yet is a NEW PITCH (the opt-in sheet,
+    // the browse rows): it lands like one (round 6).
+    const before = groupShows.find((gs) => gs.showId === showId);
+    const newPitch = voted && !before?.members.some((m) => m.userId !== user.id);
     try {
       await setShowVote(groupId, showId, voted);
       if (voted && !progress[showId]) {
@@ -847,6 +851,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       // of its row as the shelves refresh.
       if (voted) setClicked((prev) => (prev && prev.showId === showId && prev.fromBrowse ? null : prev));
       await refreshGroup();
+      if (newPitch) landPitch(showId);
     } catch (e) { console.error("[m-group] vote failed", e); }
   }
 
@@ -1298,7 +1303,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   <SectionHead style={{ marginTop: (groupShelves.watching.length || celebrating.length) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                   {groupShelves.notStarted.map((r) => {
                     // Your own pitch (round 5): one act, "Cancel pitch".
-                    const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id;
+                    // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
+                    const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id || justPitched.has(r.pill.showId);
                     const act = mine
                       ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelSheet({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
                       : r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearSheet({ showId: r.pill.showId, name: r.name });
@@ -1317,7 +1323,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         flash={flashShowId === r.pill.showId}
                         domId={`pitched-${r.pill.showId}`}
                         end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span>
-                          : freshPitches.pitcherOf.get(r.pill.showId) === user?.id ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
+                          : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                           : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                         onOpen={() => onRowClick(r.pill, r.name)}
                         onOptions={act}
