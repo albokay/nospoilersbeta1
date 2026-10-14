@@ -205,11 +205,14 @@ export function RoadRule({ text, ariaLabel }: { text: string; ariaLabel?: string
 
 /** The frame of a letter in the stream. `stamp` sits at the top-right; the
  *  head reserves it and is at least 74px tall. */
-export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, chevron = false, style }: {
+export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, chevron = false, headMinHeight, style }: {
   stamp?: React.ReactNode; stampReserve: number; head: React.ReactNode; children?: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; dim?: boolean; highlighted?: boolean;
   /** A closed letter's expand cue: the down chevron at the bottom right, in
    *  its own 10px of foot room so nothing runs under it. */
-  chevron?: boolean; style?: React.CSSProperties;
+  chevron?: boolean;
+  /** The head's clearance when the stamp is taller than the 74px default
+   *  (Alborz 2026-10-13: the tall stamp ran into the preview). */
+  headMinHeight?: number; style?: React.CSSProperties;
 }) {
   return (
     <div
@@ -221,7 +224,7 @@ export function EntryShell({ stamp, stampReserve, head, children, onClick, dim =
           layer so the letter never shifts. */}
       <span aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: -12, right: -12, border: `2px solid ${E.color.identity}`, pointerEvents: "none", opacity: highlighted ? 1 : 0, transition: "opacity 300ms ease", zIndex: 1 }} />
       {stamp && <span style={{ position: "absolute", top: 10, right: 0, display: "inline-block" }}>{stamp}</span>}
-      <div style={{ minHeight: E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
+      <div style={{ minHeight: headMinHeight ?? E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
       {children}
       {chevron && <ChevronDown size={16} color={E.color.ink} strokeWidth={1.5} aria-hidden="true" style={{ position: "absolute", right: 0, bottom: 6 }} />}
     </div>

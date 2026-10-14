@@ -203,41 +203,63 @@ export function EditorialTitle({ children, desktop = false, style }: { children:
   return <h1 style={{ ...(desktop ? E.type.title64 : E.type.title46), color: E.color.ink, margin: 0, ...style }}>{children}</h1>;
 }
 
-/** A title that fits (Alborz's notes, round 5): the name with its gear glued
- *  to the last word so the gear never sits alone on a line; a name that
- *  would run to three lines steps down one size (46 → 36 on the phone,
- *  64 → 48 on desktop); past three lines at that size it's cut with an
- *  ellipsis (the gear then follows the cut name). Measured before paint. */
+/** A title that fits (Alborz's notes, round 5): a name that would run to
+ *  three lines steps down one size (46 → 36 on the phone, 64 → 48 on
+ *  desktop); past three lines at that size it's cut with an ellipsis. The
+ *  gear (2026-10-13, both platforms) sits as a SUPERSCRIPT after the last
+ *  word of the FIRST line, 1px from it: each word is measured after layout
+ *  and the gear is seated at the first line's end as its own layer, so it
+ *  never pushes a word down. Measured before paint; measured again on
+ *  resize and once the webfont has landed (it moves the line ends). */
 export function FittedTitle({ name, gear, desktop = false, style }: { name: string; gear?: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
   const ref = useRef<HTMLHeadingElement>(null);
   // 0 = full size · 1 = stepped down · 2 = stepped down and cut at three lines.
   const [fit, setFit] = useState<0 | 1 | 2>(0);
   const [tick, setTick] = useState(0);
+  // The gear's seat: the first line's end, relative to the title.
+  const [seat, setSeat] = useState<{ left: number; top: number } | null>(null);
   useEffect(() => {
     const onResize = () => setTick((t) => t + 1);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    let alive = true;
+    const fonts = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts;
+    fonts?.ready?.then(() => { if (alive) setTick((t) => t + 1); }).catch(() => { /* fine */ });
+    return () => { alive = false; window.removeEventListener("resize", onResize); };
   }, []);
   useLayoutEffect(() => { setFit(0); }, [name, desktop, tick]);
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || fit === 2) return;
-    const lh = parseFloat(getComputedStyle(el).lineHeight) || 1;
-    const lines = Math.round(el.getBoundingClientRect().height / lh);
-    if (fit === 0 && lines >= 3) setFit(1);
-    else if (fit === 1 && lines > 3) setFit(2);
+    if (!el) return;
+    if (fit < 2) {
+      const lh = parseFloat(getComputedStyle(el).lineHeight) || 1;
+      const lines = Math.round(el.getBoundingClientRect().height / lh);
+      if (fit === 0 && lines >= 3) { setFit(1); return; }
+      if (fit === 1 && lines > 3) { setFit(2); return; }
+    }
+    // The last word on the first line: the words share the first word's top
+    // until the line breaks.
+    const spans = Array.from(el.querySelectorAll<HTMLElement>("[data-word]"));
+    if (!spans.length) { setSeat(null); return; }
+    const top0 = spans[0].offsetTop;
+    let last = spans[0];
+    for (const w of spans) { if (Math.abs(w.offsetTop - top0) <= 2) last = w; else break; }
+    const fs = parseFloat(getComputedStyle(el).fontSize) || (desktop ? 64 : 46);
+    // The glyph's top a tenth of the size under the line's top (the top of
+    // the capitals), its left edge 1px past the word; the gear's hit box
+    // (4px around the glyph, a 2px lead) is folded into the seat.
+    setSeat({ left: last.offsetLeft + last.offsetWidth + 1 - 6, top: last.offsetTop + Math.round(fs * 0.1) - 4 });
   }, [fit, name, desktop, tick]);
   const base = desktop ? E.type.title64 : E.type.title46;
   const small: React.CSSProperties = desktop ? { fontSize: 48, lineHeight: 1.02 } : { fontSize: 36, lineHeight: 1.04 };
   const words = name.trim().split(/\s+/);
-  const head = words.slice(0, -1).join(" ");
-  const last = words[words.length - 1] ?? "";
+  const body = words.map((w, i) => <React.Fragment key={i}>{i > 0 ? " " : ""}<span data-word="">{w}</span></React.Fragment>);
   return (
-    <h1 ref={ref} style={{ ...base, ...(fit > 0 ? small : {}), color: E.color.ink, margin: 0, overflowWrap: "anywhere", ...style }}>
+    <h1 ref={ref} style={{ ...base, ...(fit > 0 ? small : {}), color: E.color.ink, margin: 0, overflowWrap: "anywhere", position: "relative", ...style }}>
       {fit === 2 ? (
-        <><span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], overflow: "hidden" }}>{name}</span>{gear}</>
-      ) : (
-        <>{head ? `${head} ` : ""}<span style={{ whiteSpace: "nowrap" }}>{last}{gear}</span></>
+        <span style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], overflow: "hidden" }}>{body}</span>
+      ) : body}
+      {gear && (
+        <span style={{ position: "absolute", left: seat?.left ?? 0, top: seat?.top ?? 0, visibility: seat ? "visible" : "hidden", lineHeight: 0, zIndex: 1 }}>{gear}</span>
       )}
     </h1>
   );

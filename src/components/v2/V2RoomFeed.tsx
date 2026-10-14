@@ -1002,6 +1002,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           const eScale = mobileIdiom ? 0.78 : 0.9;
           const eStamp = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={eScale} rewatch={isRewatchTag} ink={isSb ? E.color.friend : E.color.ink} lineWidth={1.4} />;
           const eReserve = eStamp ? Math.round(stampSize.w * eScale) + 12 : 0;
+          // The head clears the stamp's real box by 8px on desktop (Alborz
+          // 2026-10-13: the tall family ran into the preview); the phone
+          // keeps the 74px default, which he read as right.
+          const eClear = eStamp && !mobileIdiom ? Math.max(E.space.stampClear, 10 + Math.round(stampSize.h * eScale) + 8) : undefined;
           const authorName = isSb ? SIDEBAR_DISPLAY_NAME : dn(entry.authorUsername);
           const canOpenProfile = !isSb && !!onClickProfile;
           const threadEl = demoMode ? (
@@ -1116,6 +1120,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
               <EntryShell
                 stamp={eStamp}
                 stampReserve={eReserve}
+                headMinHeight={eClear}
                 chevron={!isExpanded}
                 dim={isEngaged && !isExpanded}
                 highlighted={isHighlighted}
