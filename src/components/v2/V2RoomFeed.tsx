@@ -342,6 +342,15 @@ function demoLetterBody(body: string): React.ReactNode {
   if (!m || m.index == null) return body;
   return <>{body.slice(0, m.index)}{"\n\n—"}<em>Sidebar</em></>;
 }
+// A guide letter's body on Sidebar's paper: Lora paragraphs as the pinned
+// letter from Sidebar draws them; the sign-off line with the name in italics.
+const DEMO_P: React.CSSProperties = { ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" };
+function demoPaperParagraphs(body: string): React.ReactNode {
+  return body.split(/\n{2,}/).map((para, i) => {
+    const signoff = /^—\s?Sidebar\s*$/.test(para);
+    return <p key={i} style={DEMO_P}>{signoff ? <>—<em>Sidebar</em></> : para}</p>;
+  });
+}
 
 function keepTailTogether(text: string, n = 3): string {
   const words = text.split(" ");
@@ -965,8 +974,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         // season"). Closed, it sits on cream paper with the stamp in Friend
         // blue and no preview; open, it looks like any ticket.
         // The tour's guide letters are letters from Sidebar under the
-        // editorial skin (2026-10-13): its paper closed, its framed stamp
-        // with the episode. The classic tour keeps its sparkles.
+        // editorial skin (2026-10-13): always open on its paper, its framed
+        // stamp with the episode. The classic tour keeps its sparkles.
         const isSb = isSidebarAuthor(entry.authorUsername) || (editorial && demoMode && !!entry.isInstructional);
         const sbClosed = isSb && !isExpanded;
         const stampSpec = isSb ? SIDEBAR_STAMP_SPEC : stampSpecFor(entry.authorId || entry.authorUsername);
@@ -1048,6 +1057,22 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             </div>
           );
           const refProps = { ref: (el: HTMLDivElement | null) => { ticketRefs.current[entry.threadId] = el; }, "data-thread-id": entry.threadId };
+          if (demoMode && entry.isInstructional) {
+            // The tour's guide letters (Alborz 2026-10-13): ALWAYS open, on
+            // Sidebar's paper with the sky stack, so they stand apart from
+            // the friends' letters (a closed stub got lost among them) — the
+            // framed stamp, FROM, the title, the whole body; nothing to click.
+            return (
+              <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, margin: "16px 0" }}>
+                <SidebarPaper>
+                  <span style={{ position: "absolute", right: 14, top: 12 }}><Stamp spec={stampSpec} label={stampLabel} ink={E.color.friend} lineWidth={1.4} scale={0.9} /></span>
+                  <div style={{ ...FROM_LINE, paddingRight: 120 }}>From: {SIDEBAR_DISPLAY_NAME}</div>
+                  <div style={{ ...E.type.letterTitle22, marginTop: 12, paddingRight: 120 }}>{entry.title}</div>
+                  {demoPaperParagraphs(entry.body)}
+                </SidebarPaper>
+              </div>
+            );
+          }
           if (editorialDrafts && !isExpanded) {
             return (
               <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72 }}>

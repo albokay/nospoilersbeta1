@@ -8,9 +8,8 @@
  *
  * Under the editorial skin (Alborz 2026-10-13) the sample room inside IS the
  * editorial room: the folder tab and the band with the numbers picker, the
- * letters as the feed's editorial entries (Sidebar's guide letters on its
- * paper, the friends' letters ahead of you as sealed lines), the season map
- * in ink with its legend. Letters only, as the rooms are now — the fixture's
+ * letters as the feed's editorial entries (Sidebar's guide letters always
+ * open on its paper), the season map in ink with its legend. Letters only, as the rooms are now — the fixture's
  * responses stay in the fixture for a possible return (his call); the
  * classic tour still shows them.
  */
@@ -95,22 +94,16 @@ export default function TSPDemoModal({ onClose, reentry }: {
   // Pass the FULL reply set; V2RoomFeed's demo render gates per-reply against
   // viewerProgress, showing ahead-of-progress replies as stubs (reply gating).
 
-  // The editorial tour's stream (2026-10-13): what you can read, newest
-  // episode first with Sidebar's guide letter leading its episode (the
-  // feed's own order), then the friends' letters you haven't reached as
-  // SEALED lines, nearest first — the real room's sealed idiom carries the
-  // gate now that responses are off. Response counts are zeroed: letters only.
-  const editorialEntries = useMemo<V2RoomFeedEntry[]>(() => {
-    const readable = allEntries
-      .filter((e) => e.e <= selectedEpisode)
-      .sort((a, b) => (b.e - a.e) || (b.updatedAt - a.updatedAt))
-      .map((e) => ({ ...e, replyCount: 0 }));
-    const sealed = allEntries
-      .filter((e) => e.e > selectedEpisode && !e.isInstructional)
-      .sort((a, b) => (a.e - b.e) || (b.updatedAt - a.updatedAt))
-      .map((e) => ({ ...e, replyCount: 0, gatedStub: true }));
-    return [...readable, ...sealed];
-  }, [allEntries, selectedEpisode]);
+  // The editorial tour's stream (2026-10-13): the same gate as the classic
+  // tour — a letter appears once you reach its episode (his call: a first
+  // cut showed the letters ahead as sealed lines; the tour's sequence of
+  // letters being published as you advance is the point) — newest episode
+  // first with Sidebar's guide letter leading its episode (the feed's own
+  // order). Response counts are zeroed: letters only.
+  const editorialEntries = useMemo<V2RoomFeedEntry[]>(() => gatedEntries
+    .slice()
+    .sort((a, b) => (b.e - a.e) || (b.updatedAt - a.updatedAt))
+    .map((e) => ({ ...e, replyCount: 0 })), [gatedEntries]);
 
   const userProgress: ProgressEntry = selectedEpisode > 0
     ? { s: 1, e: selectedEpisode, highestS: 1, highestE: selectedEpisode }
