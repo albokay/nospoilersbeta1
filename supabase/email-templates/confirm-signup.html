@@ -3,8 +3,9 @@
   NOT auto-applied — paste this into the Supabase dashboard:
     Authentication → Emails → Templates → "Confirm signup" → Message body.
   Styling mirrors the invite email (send-group-invite): indented 560px column,
-  #1a2c3a headings/body, accent-yellow (#dea838) pill button matching
-  "Join the group →". {{ .ConfirmationURL }} is Supabase's confirm link.
+  #1a2c3a headings/body, accent-yellow (#dea838) square-cornered button with
+  cream words matching "Join in →" (Alborz, 2026-10-14: no pill).
+  {{ .ConfirmationURL }} is Supabase's confirm link.
 -->
 <!DOCTYPE html>
 <html>
@@ -16,7 +17,7 @@
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Tap the button below to confirm your email — it'll sign you in automatically.
   </p>
-  <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
+  <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#dea838;color:#fef8ea;text-decoration:none;padding:12px 28px;border-radius:0;font-size:15px;font-weight:700">
     Confirm your email →
   </a>
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">

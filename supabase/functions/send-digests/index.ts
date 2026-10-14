@@ -50,7 +50,9 @@
 //   chat_last_seen_at and pitches_last_seen_at — the same stamps the app's
 //   dots read). What they've already opened never emails; nothing left, no
 //   email. The digest's sender is letters@ (Promotions), the finished
-//   letter wears the ★, and the opt-out line's gear is the site's glyph.
+//   letter wears the ★, and the opt-out line's gear is the ⚙️ emoji again
+//   (Alborz, 10-14: the hosted glyph showed as a broken square where images
+//   don't load).
 //
 // 2026-09-28 (Alborz) — LETTERS FROM SIDEBAR: before the scan, this run
 //   PLANTS the "what's next" and "returning season" alerts as letters from
@@ -283,7 +285,7 @@ function buildDigestHtml(
   ${sections}${proposalSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    To stop getting emails about your friend rooms, open a room and click the <img src="${baseUrl}/email/gear.png" width="14" height="14" alt="gear" style="vertical-align:-2px"> next to its name, then choose &ldquo;unsubscribe.&rdquo;
+    To stop getting emails about your friend rooms, open a room and click the ⚙️ next to its name, then choose &ldquo;unsubscribe.&rdquo;
   </p>
 </div>
 </body>

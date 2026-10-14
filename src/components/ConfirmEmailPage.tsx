@@ -28,6 +28,9 @@ import { supabase } from "../lib/supabaseClient";
 import SidebarLogo from "./SidebarLogo";
 import LoadingDots from "./LoadingDots";
 import { CANON } from "../styles/canon";
+import { useEditorial } from "../lib/skin";
+import { E } from "../styles/editorial";
+import { Frame } from "./editorial/Onboarding";
 
 /** ?next= arrives as the signup's full redirect URL. Same-origin paths only
  *  (open-redirect guard); anything else falls back to the default landing. */
@@ -45,6 +48,11 @@ export default function ConfirmEmailPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<"verifying" | "failed">("verifying");
   const ranRef = useRef(false); // StrictMode double-mount guard — the token is one-shot
+  const editorial = useEditorial();
+  // The destination's ground (his notes, 10-14): green toward the dashboard,
+  // cream toward an invite — the confirm page reads as the start of the page
+  // it leads to, not as a screen of its own.
+  const toInvite = typeof window !== "undefined" && !!safeNextPath(new URLSearchParams(window.location.search).get("next"))?.startsWith("/group-invite");
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -67,6 +75,22 @@ export default function ConfirmEmailPage() {
     })();
   }, [navigate]);
 
+  if (editorial) {
+    return (
+      <div style={{ ...page, background: toInvite ? E.color.cream : E.color.personal, color: E.color.ink, fontFamily: E.font.interface }} aria-busy={state === "verifying"}>
+        <div style={{ position: "absolute", left: "50%", top: "calc(env(safe-area-inset-top, 0px) + 24px)", marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge /></div>
+        {state === "verifying" ? (
+          <span style={{ ...E.type.label11, color: toInvite ? E.color.inkMuted : E.color.ink }}>confirming your email<LoadingDots /></span>
+        ) : (
+          <div style={{ width: "min(420px, 100%)", textAlign: "left" }}>
+            <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em" }}>This confirmation link has expired or was already used.</div>
+            <div style={{ ...E.type.body15, lineHeight: 1.6, marginTop: 14, color: E.color.inkSub }}>Your email may already be confirmed &mdash; try signing in.</div>
+            <Frame onClick={() => navigate("/", { replace: true })} style={{ marginTop: 28, width: 320, maxWidth: "100%" }}>Sign in</Frame>
+          </div>
+        )}
+      </div>
+    );
+  }
   return (
     <div style={page}>
       <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>

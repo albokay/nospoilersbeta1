@@ -47,6 +47,7 @@ const HowItWorksV2 = lazyWithReload(() => import("./components/HowItWorksV2"), "
 import HomepageNarrative from "./components/HomepageNarrative";
 import EditorialHomepage from "./components/editorial/Homepage";
 import { useEditorial } from "./lib/skin";
+import { E } from "./styles/editorial";
 const InviteAcceptPage = lazyWithReload(() => import("./components/InviteAcceptPage"), "./components/InviteAcceptPage");
 const AllowResponsePage = lazyWithReload(() => import("./components/AllowResponsePage"), "./components/AllowResponsePage");
 const ConfirmEmailPage = lazyWithReload(() => import("./components/ConfirmEmailPage"), "./components/ConfirmEmailPage");
@@ -70,6 +71,21 @@ const PublicDashboardPage = lazyWithReload(() => import("./components/PublicDash
 // transition from main bundle → lazy chunk doesn't flash white. Only
 // renders for the (usually <100ms) window between chunk request and parse.
 function RouteFallback() {
+  // Under the editorial look (his notes, 10-14: the old green "loading…"
+  // flashed between the pages on the way in) a chunk's wait paints NOTHING
+  // for its first 0.4s — the body's cream — and only then the mono line on
+  // cream; most chunks arrive before it shows at all.
+  const editorial = useEditorial();
+  const [shown, setShown] = useState(false);
+  useEffect(() => { const t = window.setTimeout(() => setShown(true), 400); return () => window.clearTimeout(t); }, []);
+  if (editorial) {
+    if (!shown) return null;
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: E.color.cream, color: E.color.ink }} aria-busy="true">
+        <span style={{ ...E.type.label11, color: E.color.inkMuted }}>loading<LoadingDots /></span>
+      </div>
+    );
+  }
   return (
     <div style={{
       minHeight: "100vh",

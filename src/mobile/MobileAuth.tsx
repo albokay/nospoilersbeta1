@@ -149,7 +149,7 @@ export default function MobileAuth() {
     const para: React.CSSProperties = { ...E.type.body15, lineHeight: 1.6, margin: "0 0 12px" };
     const note: React.CSSProperties = { ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, margin: 0 };
     const err: React.CSSProperties = { ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 12 };
-    const title = confirmSent ? "Check your email" : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
+    const title = confirmSent ? "Check your email." : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
     let body: React.ReactNode;
     if (confirmSent) {
       body = (
@@ -206,15 +206,16 @@ export default function MobileAuth() {
       );
     }
     return (
-      <div style={{ position: "relative", minHeight: "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: `0 ${E.space.gutter}px calc(env(safe-area-inset-bottom, 0px) + 32px)` }}>
+      <div style={{ position: "relative", minHeight: "100dvh", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, boxSizing: "border-box", padding: "0 0 calc(env(safe-area-inset-bottom, 0px) + 32px)" }}>
         <style>{FORM_CSS}</style>
-        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: E.safe.plus(213), background: E.color.friend }} />
         <CornerTab kind="back" onClick={back} />
         <div style={{ position: "absolute", left: "50%", top: "calc(env(safe-area-inset-top, 0px) + 24px)", transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={26} /></div>
-        <div style={{ position: "relative", zIndex: 2, paddingTop: "calc(env(safe-area-inset-top, 0px) + 110px)" }}>
-          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
+        {/* The sky band wraps the line and ends 36px under it, however long the
+            line runs (his catch, 10-14: a fixed band ran into the first field). */}
+        <div style={{ background: E.color.friend, padding: `calc(env(safe-area-inset-top, 0px) + 110px) ${E.space.gutter}px 36px` }}>
+          <div style={{ position: "relative", zIndex: 2, fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
         </div>
-        <div style={{ marginTop: 58 }}>{body}</div>
+        <div style={{ marginTop: 20, padding: `0 ${E.space.gutter}px` }}>{body}</div>
       </div>
     );
   }

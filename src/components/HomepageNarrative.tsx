@@ -158,26 +158,6 @@ function Copy({ children, size = 32, delay = 0, balance = false, editorial = fal
   );
 }
 
-// The editorial scroll's foot (checkpoint 8; the E3Scroll board): the logo's
-// five blocks scattered on the green, settling as they come into view.
-function BlockScatter() {
-  const { ref, visible } = useReveal(0.2);
-  const blocks: { x: number; y: number; color: string; z: number }[] = [
-    { x: 222, y: 0, color: E.color.cream, z: 2 },
-    { x: 182, y: 26, color: E.color.identity, z: 3 },
-    { x: 151, y: 57, color: E.color.friend, z: 1 },
-    { x: 55, y: 79, color: E.color.alert, z: 2 },
-    { x: 116, y: 106, color: E.color.accent, z: 1 },
-  ];
-  return (
-    <div ref={ref} aria-hidden style={{ position: "relative", width: 390, maxWidth: "100%", height: 156, margin: "60px auto 0", overflow: "hidden" }}>
-      {blocks.map((b, i) => (
-        <div key={i} style={{ position: "absolute", left: b.x, top: b.y, width: 50, height: 50, borderRadius: 14, background: b.color, zIndex: b.z, opacity: visible ? 1 : 0, transform: visible ? "none" : `translateY(${24 + i * 6}px)`, transition: `opacity 0.7s ease ${i * 0.08}s, transform 0.7s ease ${i * 0.08}s` }} />
-      ))}
-    </div>
-  );
-}
-
 // SidebarLogo intrinsic size at scale=1 (from component source: W=280, H=148)
 const LOGO_W = 280;
 const LOGO_H = 148;
@@ -349,9 +329,11 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
   /** The editorial skin (checkpoint 8, 2026-10-12; the E3Scroll and
    *  E3OnbInvitee / D3OnbInvitee boards): the same bubbles, the copy in
    *  Lora, no docking logo — the homepage's scroll ends on "Sidebar is where
-   *  you can talk freely." over the logo's scattered blocks; the invitee's
-   *  opens on "{name} wants you to join them on Sidebar." and ends on the
-   *  big line, the logo settling and "Join {name} →" as a block. */
+   *  you can talk freely." over the logo settling (the full mark since 10-14;
+   *  the scattered blocks alone read as a broken logo); the invitee's opens
+   *  on "{name} wants you to join them on Sidebar." and ends on the big
+   *  line, the logo settling and "Join {name} →" as a block, the cluster
+   *  centred on a full screen (10-14). */
   editorial?: boolean;
 }) {
   const ed = editorial;
@@ -432,19 +414,21 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           Invitee: the HERO alone, centered on its own screen — exactly three
           lines at every width (the responsive HeroCopy). */}
       {ed ? (
-        // The editorial finale: the big line, then (homepage) the scattered
-        // blocks or (invitee) the logo settling and "Join {name} →".
-        <section style={{ minHeight: "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box" }}>
+        // The editorial finale: the big line, then the logo settling and
+        // (invitee) "Join {name} →". The invitee's section is a full screen so
+        // the cluster lands centred at the scroll's end, with the line lifted
+        // 88px clear of the logo (his notes, 10-14).
+        <section style={{ minHeight: invitee ? "100svh" : "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box" }}>
           <Copy size={38} editorial>Sidebar is where<br />you can talk freely.</Copy>
           {invitee ? (
             <>
-              <div style={{ marginTop: 56 }}><StaticLogo /></div>
+              <div style={{ marginTop: 88 }}><StaticLogo /></div>
               <div style={{ marginTop: 40, width: "min(480px, 100%)" }}>
                 <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} editorial />
               </div>
             </>
           ) : (
-            <BlockScatter />
+            <div style={{ marginTop: 56 }}><StaticLogo /></div>
           )}
         </section>
       ) : invitee ? (

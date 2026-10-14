@@ -1961,7 +1961,7 @@ export default function DashboardPage() {
   };
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  if (authLoading) {
+  if (authLoading && !editorial) {
     return (
       <div style={{ ...pageStyle, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
         {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
@@ -1969,7 +1969,9 @@ export default function DashboardPage() {
       </div>
     );
   }
-  if (loading) {
+  // Under the editorial look the session's restore paints the same cold-open
+  // ghosts as the data's wait (his notes, 10-14): one load state, not two.
+  if (loading || authLoading) {
     // Cold-open ghosts (desktop twin of the 09-14 /m pass, 2026-09-19): the
     // header bar paints immediately (logo + title depend on nothing) and two
     // ghost clusters hold the pile geometry so the real clusters land in

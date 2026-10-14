@@ -116,7 +116,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     const para: React.CSSProperties = { ...E.type.body15, lineHeight: 1.6, margin: "0 0 12px" };
     const note: React.CSSProperties = { ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, margin: 0 };
     const err: React.CSSProperties = { ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 12 };
-    const title = confirmSent ? "Check your email" : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
+    const title = confirmSent ? "Check your email." : mode === "recovery" ? "Reset your password" : (hint ?? (mode === "signin" ? "Sign in to Sidebar." : "Create your account."));
     let body: React.ReactNode;
     if (confirmSent) {
       body = (
@@ -177,13 +177,16 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
     return (
       <div style={pageStyle(1100)}>
         <style>{FORM_CSS}</style>
-        <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 230, background: E.color.friend }} />
         <CornerTab kind="back" desktop onClick={onClose} zIndex={1112} />
         <div style={{ position: "absolute", left: "50%", top: 36, transform: "translateX(-50%)", zIndex: 3 }}><Wordmark height={34} /></div>
-        <div style={{ ...COLUMN, position: "relative", zIndex: 2, paddingTop: 120 }}>
-          <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
+        {/* The sky band wraps the line and ends 40px under it, however long the
+            line runs (his catch, 10-14: a fixed 230px band ran into the first field). */}
+        <div style={{ background: E.color.friend, padding: "120px 0 40px" }}>
+          <div style={{ ...COLUMN, position: "relative", zIndex: 2 }}>
+            <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.15, letterSpacing: "-0.01em", color: E.color.ink }}>{title}</div>
+          </div>
         </div>
-        <div style={{ ...COLUMN, marginTop: 64, paddingBottom: 80 }}>{body}</div>
+        <div style={{ ...COLUMN, marginTop: 24, paddingBottom: 80 }}>{body}</div>
       </div>
     );
   }
