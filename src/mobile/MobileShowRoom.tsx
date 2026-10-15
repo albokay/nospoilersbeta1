@@ -23,7 +23,6 @@ import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButto
 import { RowPoster } from "../components/editorial/GroupRoom";
 import TrailerPoster from "../components/TrailerPoster";
 import { PaperNote } from "../components/editorial/Dashboard";
-import { PICKER_HINT_TEXT, pickerHintDone, markPickerHintDone } from "../lib/pickerHint";
 import { MapLegend } from "../components/editorial/MapNotes";
 import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
@@ -1011,11 +1010,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // The room's paper note (checkpoint 4): the letters you haven't opened yet,
   // by writer; hidden when nothing waits. Dismissed per account and room.
-  // The picker's first-contact note (his placement, 10-14): the LEFT-side
-  // variant at the band's lower left, running off the left edge, while this
-  // room's progress is 0/0 and the viewer has never picked; the band grows
-  // under the numbers to make its room.
-  const pickerNoteOn = editorial && !!user?.id && !!show && !!progressForShow && !pickerHintDone(user?.id) && (() => { const eff = effectiveProgress(progressForShow); return !!eff && eff.s === 0 && eff.e === 0; })();
   const roomNote = editorial ? (() => {
     const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
     if (fresh.length === 0) return null;
@@ -1163,16 +1157,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 onChange={(t) => setTab(t)}
               />
             </div>
-            <div style={{ position: "relative" }}>
-              {pickerNoteOn && user?.id && (
-                <PaperNote side="left" pad="12px 14px 13px 48px" text={PICKER_HINT_TEXT} at={1} uid={`${user.id}:picker`} style={{ left: -40, bottom: 14, width: 210 }} />
-              )}
-              <RoomBand tab={tab} style={pickerNoteOn ? { paddingBottom: 96 } : undefined}>
-                {show && progressForShow ? (
-                  <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={(v) => { markPickerHintDone(user?.id); onProgressConfirm(v); }} onForwardPick={(v) => { markPickerHintDone(user?.id); onForwardPick(v); }} />
-                ) : null}
-              </RoomBand>
-            </div>
+            <RoomBand tab={tab}>
+              {show && progressForShow ? (
+                <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+              ) : null}
+            </RoomBand>
           </>
         ) : (
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>

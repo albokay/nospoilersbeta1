@@ -357,13 +357,15 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
     <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
     <div style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 6, alignItems: "baseline", maxWidth: "100%", minWidth: 0, textAlign: "left" }}>
       {/* On the phone the label stacks — "You've" over "watched:" — so the numbers get the
-          width (his note, 10-14); the lines sit tighter than the season and episode rows,
-          and "watched:" keeps the season's baseline. */}
-      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end", textAlign: "right", alignSelf: "last baseline" }}><span className="e-pick-l1">You’ve </span>watched:</span>
+          width (his note, 10-14); the lines sit tighter than the season and episode rows.
+          The season menu DROPS to the lower line (his pick): both cells of the first row
+          sit on their bottoms, and two equal line boxes put "watched:" and "Season" on
+          one baseline — the colon leads into the season. */}
+      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end", textAlign: "right", alignSelf: "end" }}><span className="e-pick-l1">You’ve </span>watched:</span>
       <style>{`@media (max-width: 767px){ .e-pick-l1 { display: block; line-height: 1.1; } }`}</style>
       {/* The season as a menu: a chevron at the underline's weight, so the two
           picking pieces read as one grammar and the arrow points at nothing. */}
-      <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", ...E.type.label11, color: E.color.ink }}>
+      <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", alignSelf: "end", ...E.type.label11, color: E.color.ink }}>
         <span>Season {season}</span>
         <ChevronDown size={14} strokeWidth={2.25} color={E.color.ink} aria-hidden="true" style={{ flexShrink: 0, alignSelf: "center" }} />
         <select
