@@ -1011,6 +1011,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // The room's paper note (checkpoint 4): the letters you haven't opened yet,
   // by writer; hidden when nothing waits. Dismissed per account and room.
+  // The picker's first-contact note (his placement, 10-14): the LEFT-side
+  // variant at the band's lower left, running off the left edge, while this
+  // room's progress is 0/0 and the viewer has never picked; the band grows
+  // under the numbers to make its room.
+  const pickerNoteOn = editorial && !!user?.id && !!show && !!progressForShow && !pickerHintDone(user?.id) && (() => { const eff = effectiveProgress(progressForShow); return !!eff && eff.s === 0 && eff.e === 0; })();
   const roomNote = editorial ? (() => {
     const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
     if (fresh.length === 0) return null;
@@ -1159,14 +1164,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               />
             </div>
             <div style={{ position: "relative" }}>
-              {/* The picker's first-contact note (his placement, 10-14): straddling
-                  the band's top edge at the right, running off the screen like the
-                  dashboard's note, clear of the Drafts tab (left 266) and of the
-                  numbers (top −44); while this room's progress is 0/0. */}
-              {user?.id && show && progressForShow && (() => { const eff = effectiveProgress(progressForShow); return !!eff && eff.s === 0 && eff.e === 0; })() && !pickerHintDone(user.id) && (
-                <PaperNote pad="12px 48px 13px 14px" text={PICKER_HINT_TEXT} at={1} uid={`${user.id}:picker`} style={{ left: 266, top: -44, width: "calc(100% - 226px)" }} />
+              {pickerNoteOn && user?.id && (
+                <PaperNote side="left" pad="12px 14px 13px 48px" text={PICKER_HINT_TEXT} at={1} uid={`${user.id}:picker`} style={{ left: -40, bottom: 14, width: 210 }} />
               )}
-              <RoomBand tab={tab}>
+              <RoomBand tab={tab} style={pickerNoteOn ? { paddingBottom: 96 } : undefined}>
                 {show && progressForShow ? (
                   <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={(v) => { markPickerHintDone(user?.id); onProgressConfirm(v); }} onForwardPick={(v) => { markPickerHintDone(user?.id); onForwardPick(v); }} />
                 ) : null}

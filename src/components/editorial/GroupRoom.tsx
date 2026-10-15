@@ -356,7 +356,11 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
     <div style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 6, alignItems: "baseline", maxWidth: "100%", minWidth: 0, textAlign: "left" }}>
-      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end" }}>You’ve watched:</span>
+      {/* On the phone the label stacks — "You've" over "watched:" — so the numbers get the
+          width (his note, 10-14); the lines sit tighter than the season and episode rows,
+          and "watched:" keeps the season's baseline. */}
+      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end", textAlign: "right", alignSelf: "last baseline" }}><span className="e-pick-l1">You’ve </span>watched:</span>
+      <style>{`@media (max-width: 767px){ .e-pick-l1 { display: block; line-height: 1.1; } }`}</style>
       {/* The season as a menu: a chevron at the underline's weight, so the two
           picking pieces read as one grammar and the arrow points at nothing. */}
       <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", ...E.type.label11, color: E.color.ink }}>
