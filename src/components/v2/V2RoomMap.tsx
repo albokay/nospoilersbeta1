@@ -1315,10 +1315,12 @@ export default function V2RoomMap({
                     onClick={() => toggleSeason(row.season)}
                     aria-label={`Expand season ${row.season}`}
                     aria-expanded={false}
-                    style={seasonToggleBtn}
+                    // Ink under the editorial look (his catch, 10-14): the folded
+                    // label kept the classic cream and vanished on the cream map.
+                    style={{ ...seasonToggleBtn, color: editorial ? CANON.dark : CANON.cream }}
                   >
                     Season {row.season}
-                    <ChevronDown size={14} color={CANON.cream} strokeWidth={2.5} />
+                    <ChevronDown size={14} color={editorial ? CANON.dark : CANON.cream} strokeWidth={2.5} />
                     {seasonSignal[row.season] && (
                       <span
                         aria-hidden
