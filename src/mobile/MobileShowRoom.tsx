@@ -23,6 +23,7 @@ import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButto
 import { RowPoster } from "../components/editorial/GroupRoom";
 import TrailerPoster from "../components/TrailerPoster";
 import { PaperNote } from "../components/editorial/Dashboard";
+import { PICKER_HINT_TEXT, pickerHintDone, markPickerHintDone } from "../lib/pickerHint";
 import { MapLegend } from "../components/editorial/MapNotes";
 import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
@@ -1157,11 +1158,20 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 onChange={(t) => setTab(t)}
               />
             </div>
-            <RoomBand tab={tab}>
-              {show && progressForShow ? (
-                <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
-              ) : null}
-            </RoomBand>
+            <div style={{ position: "relative" }}>
+              {/* The picker's first-contact note (his placement, 10-14): straddling
+                  the band's top edge at the right, running off the screen like the
+                  dashboard's note, clear of the Drafts tab (left 266) and of the
+                  numbers (top −44); while this room's progress is 0/0. */}
+              {user?.id && show && progressForShow && (() => { const eff = effectiveProgress(progressForShow); return !!eff && eff.s === 0 && eff.e === 0; })() && !pickerHintDone(user.id) && (
+                <PaperNote pad="12px 48px 13px 14px" text={PICKER_HINT_TEXT} at={1} uid={`${user.id}:picker`} style={{ left: 266, top: -44, width: "calc(100% - 226px)" }} />
+              )}
+              <RoomBand tab={tab}>
+                {show && progressForShow ? (
+                  <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={(v) => { markPickerHintDone(user?.id); onProgressConfirm(v); }} onForwardPick={(v) => { markPickerHintDone(user?.id); onForwardPick(v); }} />
+                ) : null}
+              </RoomBand>
+            </div>
           </>
         ) : (
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>

@@ -356,7 +356,7 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
     <div style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 6, alignItems: "baseline", maxWidth: "100%", minWidth: 0, textAlign: "left" }}>
-      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end" }}>Watched:</span>
+      <span style={{ ...E.type.label11, color: E.color.inkMuted, justifySelf: "end" }}>You’ve watched:</span>
       {/* The season as a menu: a chevron at the underline's weight, so the two
           picking pieces read as one grammar and the arrow points at nothing. */}
       <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", ...E.type.label11, color: E.color.ink }}>

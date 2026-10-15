@@ -58,6 +58,7 @@ import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, 
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
+import { PICKER_HINT_TEXT, pickerHintDone, markPickerHintDone } from "../lib/pickerHint";
 import { MapLegend } from "./editorial/MapNotes";
 import { Frame } from "./editorial/Onboarding";
 import { CANON } from "../styles/canon";
@@ -1141,14 +1142,21 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 onChange={(t) => setTab(t)}
               />
             </EditorialColumn>
-            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto" }}>
+            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto", position: "relative" }}>
+              {/* The picker's first-contact note (his placement, 10-14): a paper note
+                  straddling the band's top edge to the right of the season menu,
+                  above the numbers, while this room's progress is 0/0 and the
+                  viewer has never picked. */}
+              {user?.id && show && progressForShow && (() => { const eff = effectiveProgress(progressForShow); return !!eff && eff.s === 0 && eff.e === 0; })() && !pickerHintDone(user.id) && (
+                <PaperNote desktop pad="12px 48px 13px 16px" closeRight={12} text={PICKER_HINT_TEXT} at={1} uid={`${user.id}:picker`} style={{ left: 605, top: -36, width: 244 }} />
+              )}
               <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))" }}>
                 {show && progressForShow ? (
                   // The picker centres on the COLUMN, not on the band that runs
                   // off the window's right edge (his catch, 10-14): a box the
                   // column's inner width holds it.
                   <div style={{ width: E.measure.desktop.wide - 2 * E.space.gutter, maxWidth: "100%" }}>
-                    <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+                    <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={(v) => { markPickerHintDone(user?.id); onProgressConfirm(v); }} onForwardPick={(v) => { markPickerHintDone(user?.id); onForwardPick(v); }} />
                   </div>
                 ) : null}
               </RoomBand>
