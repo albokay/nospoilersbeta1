@@ -581,10 +581,12 @@ export default function DashboardPage() {
   }
   function editorialProposalLine(showId: string): string | null {
     const gsRow = groupShows.find((x) => x.showId === showId);
-    if (gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     const line = answerRowLine(answerNamesFor(showId));
     const st = myStanceFor(showId);
     const mine = st === "out" || st === "seen" ? st : null;
+    // Your own room that nobody has joined yet — only while nobody has
+    // answered (his catch, 10-14: a friend's "seen it" hid behind this line).
+    if (!line && !mine && gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     if (!line && !mine) return null;
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   }
@@ -875,6 +877,9 @@ export default function DashboardPage() {
   // A friend's new pitch (round 3): the pitched shows the viewer hasn't seen
   // (showId → pitcher), stamped seen once drawn. Classic: nothing.
   const freshPitches = useFreshPitches(editorial && inGroup ? activeGroupId : null, user?.id ?? null);
+  // A fresh answer's dot clears the moment its row is opened (his pick, 10-14);
+  // the stamp the hook sets clears the rest for the next visit.
+  const [openedAnswers, setOpenedAnswers] = useState<Set<string>>(new Set());
   // The masthead grows with a long name (round 5): the title block's height.
   const titleBlockRef = useRef<HTMLDivElement>(null);
   const titleBlockH = useBlockHeight(titleBlockRef);
@@ -2316,14 +2321,14 @@ export default function DashboardPage() {
                             name={r.name}
                             line={editorialProposalLine(r.pill.showId)}
                             dashed={r.passed}
-                            fresh={freshPitches.fresh.has(r.pill.showId)}
+                            fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                             mine={justPitched.has(r.pill.showId)}
                             flash={flashShowId === r.pill.showId}
                             domId={`pitched-${r.pill.showId}`}
                             end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
                               : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
-                            onOpen={() => onPillClick(r.pill, r.name)}
+                            onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onPillClick(r.pill, r.name); }}
                             // Your own pitch (round 5): one act, "Cancel pitch".
                             onOptions={mine
                               ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelConfirm({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }

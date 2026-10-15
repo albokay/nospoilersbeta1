@@ -179,6 +179,10 @@ const alsoInLine = (names: string[]): string => `${formatNames(names)} ${names.l
 // holds nothing else is subject-lined "There's a new letter in your X room".
 type SidebarLetterDigest = { groupId: string; roomName: string; threadId: string; title: string };
 type ChatDigest = { groupId: string; groupLabel: string; senderNames: string[] };
+// Answers to the recipient's own pitches (Alborz, 10-14): one block per
+// group, one line per answer — "Rodrigo answered your Say Nothing pitch:
+// seen it." `lead` is the line without its answer, for the subject.
+type AnswerDigest = { groupId: string; groupLabel: string; lines: { text: string; lead: string }[] };
 
 const SECTION_H2 = `margin:0 0 6px;font-size:18px;color:#1a2c3a;font-weight:800;line-height:1.3`;
 const ITEM_P = `margin:0 0 8px;font-size:15px;color:#1a2c3a;line-height:1.5`;
@@ -191,8 +195,9 @@ function buildDigestHtml(
   chats: ChatDigest[] = [],
   greetName: string | null = null,
   sidebarLetters: SidebarLetterDigest[] = [],
+  answers: AnswerDigest[] = [],
 ): string {
-  const hasFriendContent = rooms.length > 0 || proposals.length > 0 || chats.length > 0 || deckNames.length > 0;
+  const hasFriendContent = rooms.length > 0 || proposals.length > 0 || chats.length > 0 || deckNames.length > 0 || answers.length > 0;
   const sidebarBlock = sidebarLetters
     .map((l) => {
       const url = `${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`;
@@ -260,6 +265,22 @@ function buildDigestHtml(
     })
     .join("");
 
+  // Answers to your pitches (10-14): one answer is its own linked line; more
+  // than one in a group head with a count and list under it.
+  const answerSections = answers
+    .map((a) => {
+      const url = `${baseUrl}/dashboard?g=${encodeURIComponent(a.groupId)}`;
+      const one = a.lines.length === 1;
+      const head = one ? a.lines[0].text : `${a.lines.length} answers to your pitches in ${a.groupLabel}.`;
+      const items = one ? "" : a.lines.map((l) => `<p style="${ITEM_P}">&mdash; ${escapeHtml(l.text)}</p>`).join("");
+      return `
+  <div style="margin:0 0 28px">
+    <h2 style="${SECTION_H2}"><a href="${url}" style="color:#1a2c3a">${escapeHtml(head)}</a></h2>
+    ${items}
+  </div>`;
+    })
+    .join("");
+
   // Chats: one section per group; the link opens the room WITH the chat box.
   const chatSections = chats
     .map((c) => {
@@ -282,7 +303,7 @@ function buildDigestHtml(
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     What your friends wrote today.
   </h1>` : ""}
-  ${sections}${proposalSections}${chatSections}${deckNames.length ? `
+  ${sections}${proposalSections}${answerSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     To stop getting emails about your friend rooms, open a room and click the ⚙️ next to its name, then choose &ldquo;unsubscribe.&rdquo;
@@ -297,11 +318,11 @@ function buildDigestHtml(
 // the classic bulk-mail fingerprint Gmail files under Promotions. Names the
 // most specific item by rank — entries → responses → chat → proposals → deck —
 // and admits the rest with ", and more". The h1 stays the stable frame.
-function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = []): string {
+function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = [], answers: AnswerDigest[] = []): string {
   const entryRooms = rooms.filter((r) => r.entries.length > 0);
   const respRooms = rooms.filter((r) => r.responses.length > 0);
   const noteRooms = rooms.filter((r) => (r.notes ?? []).length > 0);
-  const kinds = [entryRooms.length > 0, respRooms.length > 0, noteRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0].filter(Boolean).length;
+  const kinds = [entryRooms.length > 0, respRooms.length > 0, noteRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0, answers.length > 0].filter(Boolean).length;
   let lead = "What your friends wrote today";
   if (entryRooms.length) {
     const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
@@ -332,6 +353,10 @@ function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: Propo
     const total = proposals.reduce((n, p) => n + p.shows.length, 0);
     if (proposals.length === 1) lead = total === 1 ? `${proposals[0].proposerName} proposed ${proposals[0].shows[0].showName}` : `${proposals[0].proposerName} proposed ${total} new shows`;
     else lead = `${total} new show proposals`;
+  } else if (answers.length) {
+    // Answers to your pitches (10-14) rank with proposals.
+    const all = answers.flatMap((a) => a.lines);
+    lead = all.length === 1 ? all[0].lead : `${all.length} answers to your pitches`;
   } else if (deckNames.length) {
     lead = `${formatNames(deckNames)} answered more How We Watch TV questions`;
   } else if (sidebarLetters.length) {
@@ -352,6 +377,7 @@ function buildDigestText(
   chats: ChatDigest[] = [],
   greetName: string | null = null,
   sidebarLetters: SidebarLetterDigest[] = [],
+  answers: AnswerDigest[] = [],
 ): string {
   const sections = rooms
     .map((r) => {
@@ -393,7 +419,10 @@ function buildDigestText(
   const deckLine = deckNames.length
     ? `\n\n${formatNames(deckNames)} answered more "How We Watch TV" questions.`
     : "";
-  const blocks = [sections, proposalLines, chatLines].filter(Boolean).join("\n\n");
+  const answerLines = answers
+    .map((a) => `${a.lines.length === 1 ? a.lines[0].text : `${a.lines.length} answers to your pitches in ${a.groupLabel}.`} — ${baseUrl}/dashboard?g=${encodeURIComponent(a.groupId)}${a.lines.length === 1 ? "" : `\n${a.lines.map((l) => `  - ${l.text}`).join("\n")}`}`)
+    .join("\n\n");
+  const blocks = [sections, proposalLines, answerLines, chatLines].filter(Boolean).join("\n\n");
   const sidebarLines = sidebarLetters
     .map((l) => `${l.title} — ${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`)
     .join("\n");
@@ -637,6 +666,8 @@ serve(async (req) => {
     .gte("created_at", since);
   const recentVotes = (voteRows ?? []) as any[];
   let proposals: { groupId: string; showId: string; proposerId: string; createdAt: string }[] = [];
+  // A yes on a pair that already had votes is an ANSWER to its pitch (10-14).
+  const answerVotes: any[] = [];
   if (recentVotes.length) {
     const vGroupIds = [...new Set(recentVotes.map((v) => v.group_id))];
     const vShowIds = [...new Set(recentVotes.map((v) => v.show_id))];
@@ -655,6 +686,41 @@ serve(async (req) => {
       if (!cur || new Date(v.created_at).getTime() < new Date(cur.created_at).getTime()) earliestByPair.set(key, v);
     }
     proposals = [...earliestByPair.values()].map((v) => ({ groupId: v.group_id, showId: v.show_id, proposerId: v.user_id, createdAt: v.created_at }));
+    for (const v of recentVotes) if (priorPairs.has(`${v.group_id}|${v.show_id}`)) answerVotes.push(v);
+  }
+
+  // 1c-ans. Answers to pitches (Alborz, 10-14): the passes in the window
+  //     ("sit this out" / "seen it") plus the later yes-votes above. The
+  //     pitcher — the pair's EARLIEST vote, in or before the window — is the
+  //     recipient; an answer by the pitcher themself is not an answer.
+  const { data: passRows } = await admin
+    .from("group_show_passes")
+    .select("group_id, show_id, user_id, kind, created_at")
+    .gte("created_at", since);
+  const rawAnswers: { groupId: string; showId: string; byUserId: string; kind: "in" | "out" | "seen"; createdAt: string }[] = [
+    ...answerVotes.map((v) => ({ groupId: v.group_id as string, showId: v.show_id as string, byUserId: v.user_id as string, kind: "in" as const, createdAt: v.created_at as string })),
+    ...((passRows ?? []) as any[])
+      .filter((p) => p.kind === "out" || p.kind === "seen")
+      .map((p) => ({ groupId: p.group_id as string, showId: p.show_id as string, byUserId: p.user_id as string, kind: p.kind as "out" | "seen", createdAt: p.created_at as string })),
+  ];
+  let answers: { groupId: string; showId: string; pitcherId: string; byUserId: string; kind: "in" | "out" | "seen"; createdAt: string }[] = [];
+  if (rawAnswers.length) {
+    const { data: allVotes } = await admin
+      .from("group_show_votes")
+      .select("group_id, show_id, user_id, created_at")
+      .in("group_id", [...new Set(rawAnswers.map((a) => a.groupId))])
+      .in("show_id", [...new Set(rawAnswers.map((a) => a.showId))]);
+    const pitcherByPair = new Map<string, { userId: string; at: number }>();
+    for (const v of (allVotes ?? []) as any[]) {
+      const key = `${v.group_id}|${v.show_id}`;
+      const at = new Date(v.created_at).getTime();
+      const cur = pitcherByPair.get(key);
+      if (!cur || at < cur.at) pitcherByPair.set(key, { userId: v.user_id, at });
+    }
+    answers = rawAnswers.flatMap((a) => {
+      const p = pitcherByPair.get(`${a.groupId}|${a.showId}`);
+      return p && p.userId !== a.byUserId ? [{ ...a, pitcherId: p.userId }] : [];
+    });
   }
 
   // 1d. Responses (2026-09-22): friend-room replies in the window, plus the
@@ -731,7 +797,7 @@ serve(async (req) => {
     }
   }
 
-  if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length && !recentNotes.length) {
+  if (!recentLinks.length && !recentChats.length && !proposals.length && !recentReplies.length && !recentNotes.length && !answers.length) {
     return json({ ok: true, sent: 0, reason: "nothing new", planted });
   }
 
@@ -760,6 +826,7 @@ serve(async (req) => {
   const showIds = [...new Set([
     ...[...activeGroups.values()].map((g) => g.show_id),
     ...proposals.map((p) => p.showId),
+    ...answers.map((a) => a.showId),
   ])].filter(Boolean);
   const showNameById = new Map<string, string>();
   if (showIds.length) {
@@ -788,6 +855,7 @@ serve(async (req) => {
   const pgIds = [...new Set([
     ...recentChats.map((c) => c.group_id),
     ...proposals.map((p) => p.groupId),
+    ...answers.map((a) => a.groupId),
   ])];
   const pgNameById = new Map<string, string | null>();
   const pgMembersByGroup = new Map<string, string[]>();
@@ -815,6 +883,7 @@ serve(async (req) => {
     ...recentNotes.map((h) => h.author_id),
     ...recentChats.map((c) => c.author_id),
     ...proposals.map((p) => p.proposerId),
+    ...answers.map((a) => a.byUserId),
     ...[...pgMembersByGroup.values()].flat(),
   ])];
   const usernameById = new Map<string, string>();
@@ -997,7 +1066,19 @@ serve(async (req) => {
     }
   }
 
-  const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys()])];
+  // 6a-ans. Per-recipient answers to their own pitches (10-14), gated like the
+  //     pitches: skipped once the pitcher has opened the pitched list since.
+  const perUserAnswers = new Map<string, typeof answers>();
+  for (const a of answers) {
+    if (seedAuthors.has(a.byUserId)) continue;
+    if (onlyUserId && a.pitcherId !== onlyUserId) continue;
+    if (!(pgMembersByGroup.get(a.groupId) ?? []).includes(a.pitcherId)) continue;
+    if (seenBefore(pgStampByKey.get(`${a.groupId}|${a.pitcherId}`)?.pitches, a.createdAt)) continue;
+    if (!perUserAnswers.has(a.pitcherId)) perUserAnswers.set(a.pitcherId, []);
+    perUserAnswers.get(a.pitcherId)!.push(a);
+  }
+
+  const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys(), ...perUserAnswers.keys()])];
   if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new", planted });
   // Greeting (Alborz 2026-09-22): the recipient's own first name opens the
   // email — a personal first line is one of the signals that keeps a
@@ -1190,6 +1271,15 @@ serve(async (req) => {
       }))
       .sort((a, b) => a.groupLabel.localeCompare(b.groupLabel));
 
+    // Answers to your pitches (10-14): one block per group, in arrival order.
+    const ansByGroup = new Map<string, AnswerDigest>();
+    for (const a of [...(perUserAnswers.get(userId) ?? [])].sort((x, y) => new Date(x.createdAt).getTime() - new Date(y.createdAt).getTime())) {
+      if (!ansByGroup.has(a.groupId)) ansByGroup.set(a.groupId, { groupId: a.groupId, groupLabel: groupLabel(a.groupId), lines: [] });
+      const lead = `${authorName(a.byUserId)} answered your ${showNameById.get(a.showId) ?? a.showId} pitch`;
+      ansByGroup.get(a.groupId)!.lines.push({ lead, text: `${lead}: ${a.kind === "in" ? "I’m in" : a.kind === "seen" ? "seen it" : "sitting this out"}.` });
+    }
+    const answerDigests: AnswerDigest[] = [...ansByGroup.values()].sort((a, b) => a.groupLabel.localeCompare(b.groupLabel));
+
     const deckNames = deckNamesByRecipient.get(userId) ?? [];
     if (dryRun) {
       report.push({
@@ -1199,6 +1289,7 @@ serve(async (req) => {
         responses: roomDigests.reduce((n, r) => n + r.responses.length, 0),
         notes: roomDigests.reduce((n, r) => n + r.notes.length, 0),
         proposals: proposalDigests.reduce((n, p) => n + p.shows.length, 0),
+        answers: answerDigests.reduce((n, a) => n + a.lines.length, 0),
         sidebarLetters: sidebarLetters.length,
         chats: chatDigests.length,
         deckNames: deckNames.length,
@@ -1209,12 +1300,12 @@ serve(async (req) => {
     const ok = await sendResendEmail(
       resendKey,
       email,
-      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames, sidebarLetters),
-      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters),
-      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters),
+      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames, sidebarLetters, answerDigests),
+      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests),
+      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests),
     );
     if (ok) sent++;
-    report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, chats: chatDigests.length, sent: ok });
+    report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, answers: answerDigests.length, chats: chatDigests.length, sent: ok });
   }
 
   return json({ ok: true, dryRun, candidates: recipientIds.length, sent, planted, report });

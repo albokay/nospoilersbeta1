@@ -438,6 +438,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // A friend's new pitch (round 3): the pitched shows the viewer hasn't seen
   // (showId → pitcher), stamped seen once drawn. Classic: nothing.
   const freshPitches = useFreshPitches(editorial ? groupId : null, user?.id ?? null);
+  // A fresh answer's dot clears the moment its row is opened (his pick, 10-14).
+  const [openedAnswers, setOpenedAnswers] = useState<Set<string>>(new Set());
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     for (const mem of members) m[mem.userId] = personDisplayName(contactNames, mem.userId, mem.username, mem.displayName);
@@ -907,12 +909,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // The proposals row's second line: who's in by name, passes as counts,
   // then your own pass.
   const proposalLine = (showId: string): string | null => {
-    // Your own room that nobody has joined yet (2026-10-08).
     const gsRow = groupShows.find((x) => x.showId === showId);
-    if (gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     const line = answerRowLine(answerNamesFor(showId));
     const st = myStanceFor(showId);
     const mine = st === "out" || st === "seen" ? st : null;
+    // Your own room that nobody has joined yet (2026-10-08) — only while nobody
+    // has answered (his catch, 10-14: a friend's "seen it" hid behind this line).
+    if (!line && !mine && gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     if (!line && !mine) return null;
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   };
@@ -1335,14 +1338,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         name={r.name}
                         line={proposalLine(r.pill.showId)}
                         dashed={r.passed}
-                        fresh={freshPitches.fresh.has(r.pill.showId)}
+                        fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                         mine={justPitched.has(r.pill.showId)}
                         flash={flashShowId === r.pill.showId}
                         domId={`pitched-${r.pill.showId}`}
                         end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span>
                           : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                           : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
-                        onOpen={() => onRowClick(r.pill, r.name)}
+                        onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onRowClick(r.pill, r.name); }}
                         onOptions={act}
                         optionsLabel={mine ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
                       />

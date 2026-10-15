@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchGroupShowVotes, fetchGroupPitchActivity, markGroupPitchesSeen } from "./db";
+import { fetchGroupShowVotes, fetchGroupShowPasses, fetchGroupPitchActivity, markGroupPitchesSeen } from "./db";
 
 /** The pitches in a group room the viewer hasn't seen (Alborz's notes, round
  *  3): a show's EARLIEST vote is its pitch; it's fresh when someone else made
@@ -13,8 +13,13 @@ export type FreshPitches = {
   fresh: Map<string, string>;
   /** showId → the pitcher (the earliest vote), for every pitched show. */
   pitcherOf: Map<string, string>;
+  /** The viewer's OWN pitches that a friend answered (in, sitting this out,
+   *  seen it) after the same stamp (Alborz, 10-14): the row takes the
+   *  identity dot until the viewer opens it, and the stamp clears it for
+   *  the next visit like a fresh pitch. */
+  freshAnswers: Set<string>;
 };
-const EMPTY: FreshPitches = { fresh: new Map(), pitcherOf: new Map() };
+const EMPTY: FreshPitches = { fresh: new Map(), pitcherOf: new Map(), freshAnswers: new Set() };
 
 export default function useFreshPitches(groupId: string | null | undefined, userId: string | null | undefined): FreshPitches {
   const [fresh, setFresh] = useState<FreshPitches>(EMPTY);
@@ -23,7 +28,7 @@ export default function useFreshPitches(groupId: string | null | undefined, user
     let cancelled = false;
     (async () => {
       try {
-        const [votes, activity] = await Promise.all([fetchGroupShowVotes(groupId), fetchGroupPitchActivity(userId)]);
+        const [votes, activity, passes] = await Promise.all([fetchGroupShowVotes(groupId), fetchGroupPitchActivity(userId), fetchGroupShowPasses(groupId)]);
         if (cancelled) return;
         const seen = activity.find((a) => a.groupId === groupId)?.pitchesLastSeenAt ?? null;
         const earliest = new Map<string, { userId: string; at: number }>();
@@ -37,7 +42,14 @@ export default function useFreshPitches(groupId: string | null | undefined, user
           pitcherOf.set(showId, e.userId);
           if (e.userId !== userId && (seen == null || e.at > seen)) next.set(showId, e.userId);
         }
-        setFresh({ fresh: next, pitcherOf });
+        const freshAnswers = new Set<string>();
+        for (const v of votes) {
+          if (pitcherOf.get(v.showId) === userId && v.userId !== userId && (seen == null || v.createdAt > seen)) freshAnswers.add(v.showId);
+        }
+        for (const p of passes) {
+          if (pitcherOf.get(p.showId) === userId && p.userId !== userId && p.createdAt != null && (seen == null || p.createdAt > seen)) freshAnswers.add(p.showId);
+        }
+        setFresh({ fresh: next, pitcherOf, freshAnswers });
         markGroupPitchesSeen(groupId).catch(() => { /* the stamp waits for the migration */ });
       } catch {
         if (!cancelled) setFresh(EMPTY);

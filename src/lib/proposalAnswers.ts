@@ -21,12 +21,14 @@ export function answerLines(names: AnswerNames): string[] {
   return out;
 }
 
-/** The /m shelf row's one line: names for who's in, counts for the passes. */
+/** The shelf row's one line (both platforms): names for who's in, and the
+ *  passes by name up to two, counts past that (Alborz, 10-14: a pitcher must
+ *  see WHO answered WHAT — "Rodrigo has seen it", not "1 seen it"). */
 export function answerRowLine(names: AnswerNames): string | null {
   const parts: string[] = [];
   if (names.in.length) parts.push(`${list(names.in)} ${names.in.length === 1 ? "is" : "are"} in`);
-  if (names.out.length) parts.push(`${names.out.length} sitting out`);
-  if (names.seen.length) parts.push(`${names.seen.length} seen it`);
+  if (names.out.length) parts.push(names.out.length <= 2 ? `${list(names.out)} ${names.out.length === 1 ? "is" : "are"} sitting this out` : `${names.out.length} sitting out`);
+  if (names.seen.length) parts.push(names.seen.length <= 2 ? `${list(names.seen)} ${names.seen.length === 1 ? "has" : "have"} seen it` : `${names.seen.length} seen it`);
   return parts.length ? parts.join(" · ") : null;
 }
 

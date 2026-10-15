@@ -2631,16 +2631,16 @@ export async function restoreGroupShow(groupId: string, showId: string, userId: 
   if (error) throw error;
 }
 
-export type GroupShowPass = { groupId: string; userId: string; showId: string; kind: "out" | "seen" };
+export type GroupShowPass = { groupId: string; userId: string; showId: string; kind: "out" | "seen"; /** When the answer landed (ms); the fresh-answer mark reads it. */ createdAt: number | null };
 export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPass[]> {
   const { data, error } = await supabase
     .from("group_show_passes")
-    .select("group_id, user_id, show_id, kind")
+    .select("group_id, user_id, show_id, kind, created_at")
     .eq("group_id", groupId);
   if (error || !data) return [];
   return (data as any[])
     .filter((r) => r.kind === "out" || r.kind === "seen")
-    .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind }));
+    .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind, createdAt: r.created_at ? new Date(r.created_at).getTime() : null }));
 }
 /** null clears the caller's pass (an "I'm in", or entering the room). */
 export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {
