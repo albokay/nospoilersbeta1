@@ -60,6 +60,9 @@ export default function MobileAuth() {
   const params = new URLSearchParams(location.search);
   const lockEmail = params.get("lock") === "1";
   const hint = params.get("hint");
+  // ?letterFrom= (the invitee-flow pass, 2026-10-17): the inviter left this
+  // invited friend a letter — the confirmation email names them.
+  const letterFrom = params.get("letterFrom") || undefined;
   const [email, setEmail] = useState(() => new URLSearchParams(location.search).get("email") ?? "");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -108,7 +111,7 @@ export default function MobileAuth() {
       if (password.length < 8) { setError("Password must be at least 8 characters."); setLoading(false); return; }
       // Confirmation link returns the user back into /m (the validated returnTo).
       const redirect = typeof window !== "undefined" ? `${window.location.origin}${returnTo}` : undefined;
-      const res = await signUp(email.trim(), password, firstName.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      const res = await signUp(email.trim(), password, firstName.trim(), { ...(redirect ? { emailRedirectTo: redirect } : {}), ...(letterFrom ? { inviteLetterFrom: letterFrom } : {}) });
       setLoading(false);
       if (res.error) { setError(res.error); return; }
       if (res.needsConfirmation) { setConfirmSent(true); return; }

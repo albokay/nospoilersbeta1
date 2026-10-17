@@ -6,6 +6,7 @@ import SidebarLogo from "../components/SidebarLogo";
 import LoadingDots from "../components/LoadingDots";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { claimInvitePicks } from "../lib/invitePicks";
+import { setInviteeWelcome } from "../lib/inviteeWelcome";
 import InviteShowSuggest from "../components/InviteShowSuggest";
 import InvitePoster from "../components/InvitePoster";
 import InviteShowCard from "../components/InviteShowCard";
@@ -19,7 +20,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { InviteWall, InviteStatePage } from "../components/editorial/Invite";
 import {
-  getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite,
+  getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, fetchInviteLetter, type InviteLetter,
   fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser,
   fetchPublicPool, fetchInvitePool, type PublicPoolShow,
   type GroupInviteInfo, type Show,
@@ -55,6 +56,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   const editorial = useEditorial();
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
+  // The inviter's first letter (the invitee-flow pass, 2026-10-17) — see the desktop page.
+  const [letter, setLetter] = useState<InviteLetter | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
   const [detail, setDetail] = useState<string>("");
 
@@ -69,8 +72,9 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await getPeopleGroupInvite(token);
+      const [res, lt] = await Promise.all([getPeopleGroupInvite(token), fetchInviteLetter(token)]);
       if (cancelled) return;
+      setLetter(lt);
       if (!res.ok) {
         // Don't log/paint the raw token (security pass 2026-08-14) — see the
         // desktop GroupInviteAcceptPage for the rationale.
@@ -176,6 +180,8 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       // Suggested-shows picks from the wall become proposals in the group —
       // fire-and-forget while wave 1 plays, so they exist by room load.
       if (user && info) claimInvitePicks(user.id, info.groupId, token).catch(() => {});
+      // The first-visit tips speak to an invitee whose friend left a letter.
+      if (user && info && letter) setInviteeWelcome(user.id, { groupId: info.groupId, inviter: info.inviterDisplayName || info.inviterName, showId: letter.showId, showName: letter.showName });
       setStatus("done");
       return;
     }
@@ -195,7 +201,13 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
     const inviterLabel = info.inviterDisplayName || `@${info.inviterName}`;
     q.set("hint", info.inviteeHasAccount
       ? `Sign in to watch shows with ${inviterLabel} on Sidebar.`
-      : `Create your account to watch shows with ${inviterLabel} on Sidebar.`);
+      : letter
+        ? letter.sealed
+          ? `Create your account to watch shows with ${inviterLabel}.`
+          : `Create your account to watch shows with ${inviterLabel} (and read the first letter that’s waiting for you).`
+        : `Create your account to watch shows with ${inviterLabel} on Sidebar.`);
+    // The confirmation email names the friend whose letter waits.
+    if (letter && !info.inviteeHasAccount) q.set("letterFrom", info.inviterDisplayName || info.inviterName);
     navigate(`/m/auth?${q.toString()}`);
   }
 
@@ -220,7 +232,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
         </div>
         <YoureInCard
           idiom="mobile"
-          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName }}
+          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName, showName: letter?.showName, opensAt: letter?.sealed ? { s: letter.s, e: letter.e } : undefined }}
           busy={status === "joining"}
           onDone={join}
         />
@@ -266,6 +278,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
             editorial={editorial}
             invitee={{
               inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
+              showName: letter?.showName,
               onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },
             }}
           />
@@ -280,10 +293,10 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
       return (
         <>
           {!wallReady && (
-            <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="mobile" onComplete={() => setPrewallDone(true)} />
+            <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="mobile" inviterName={inviterShown} onComplete={() => setPrewallDone(true)} />
           )}
           {wallReady
-            ? <InviteWall token={token} info={info} inviterName={inviterShown} onJoin={goAuth} />
+            ? <InviteWall token={token} info={info} inviterName={inviterShown} onJoin={goAuth} letter={letter} />
             // The questions' own yellow ground (his catch, 10-14) — see the desktop page.
             : <div aria-hidden="true" style={{ position: "fixed", inset: 0, background: E.color.accent }} />}
         </>

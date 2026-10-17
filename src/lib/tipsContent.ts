@@ -41,7 +41,10 @@ export const TIPS_LAUNCH_MS = Date.parse("2026-07-26T00:00:00Z");
  *  centre at the tagged element's top-left corner plus (dx, dy) — scrolls
  *  with the page like the content it sits beside; `top`/`left` remain the
  *  fallback when the tag isn't on the page (the classic look). */
-export type TipSeat = { anchor: string; dx: number; dy: number };
+/** `below` (2026-10-17): the note's top-left corner at the tagged element's
+ *  BOTTOM-left plus (dx, dy) instead of its centre at the top-left — a tip
+ *  that hangs under a row whatever the row's height. */
+export type TipSeat = { anchor: string; dx: number; dy: number; below?: boolean };
 export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean; anchor?: "deck-dock"; seat?: TipSeat };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
@@ -110,6 +113,35 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile", editorial =
   // same sheet, and needs no teaching — Alborz's call), so the tip went
   // with it; the two platforms now share the desktop set.
   return tips;
+}
+
+/** The invited friend's first-visit tips (Alborz's copy, 2026-10-17): shown
+ *  in place of a page's standard set on its first-visit auto-open, when the
+ *  account joined from an invite whose inviter left a letter (lib/
+ *  inviteeWelcome); the "?" afterwards brings back the standard set. The
+ *  group room's first tip hangs under the show's own row. */
+export type InviteeTipsCtx = { inviter: string; showName: string };
+export function inviteeDashboardTips(w: InviteeTipsCtx): Tip[] {
+  return [
+    { body: "Welcome in. Your watch groups live here." },
+    { body: `The letter ${w.inviter} wrote you about ${w.showName} is inside your watch group with them.` },
+  ];
+}
+export function inviteeGroupRoomTips(w: InviteeTipsCtx): GroupRoomTipSticky[] {
+  return [
+    {
+      body: `Welcome to your watch group with ${w.inviter}. The shows you’re watching and the shows you pitch collect here. ${w.showName} is ${w.inviter}’s first pick. Open it to find their letter.`,
+      tilt: -2, top: "44%", left: "24%", seat: { anchor: "invitee-show", dx: 0, dy: 14, below: true },
+    },
+    {
+      body: `“How We Watch TV” is where you’ll see how ${w.inviter} answered those first questions. It grows as you all answer — you’ll get more questions periodically.`,
+      tilt: 2, top: "80%", left: "71%", anchor: "deck-dock",
+    },
+    {
+      body: "Use the 💬 button to discuss what you want to watch next.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)",
+      tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", seat: { anchor: "pitched-rail", dx: 261, dy: 72 },
+    },
+  ];
 }
 
 // Seen flags are PER USER as of 2026-08-01 (Alborz's invitee-flow catch):

@@ -12,11 +12,11 @@
  * flag on dismiss (so first-visit auto-open never returns). Parenthetical
  * asides render italic + muted, the retired sticky's grammar.
  */
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import StickyNote from "./StickyNote";
 import TipText from "./TipText";
-import { tipsFor, GROUP_ROOM_TIPS, DASHBOARD_TIP_SEAT, type Tip, type TipsPage } from "../lib/tipsContent";
+import { tipsFor, GROUP_ROOM_TIPS, DASHBOARD_TIP_SEAT, inviteeDashboardTips, inviteeGroupRoomTips, type Tip, type TipsPage, type InviteeTipsCtx } from "../lib/tipsContent";
 import { useEditorial } from "../lib/skin";
 
 function TipBody({ tip, first = true }: { tip: Tip; first?: boolean }) {
@@ -52,11 +52,18 @@ const scrollFrame: CSSProperties = {
   pointerEvents: "none", zIndex: 60,
 };
 
-export default function TipsNote({ page, onDismiss }: {
+export default function TipsNote({ page, onDismiss, invitee }: {
   page: TipsPage;
   onDismiss: () => void;
+  /** The invited friend's first-visit set (2026-10-17) in place of the standard one. */
+  invitee?: InviteeTipsCtx;
 }) {
   const editorial = useEditorial();
+  // Memoized: the layout effect below keys on the step's seat object.
+  const roomTips = useMemo(
+    () => (invitee ? inviteeGroupRoomTips(invitee) : GROUP_ROOM_TIPS),
+    [invitee?.inviter, invitee?.showName], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   // Stepper index (group room). The component unmounts when the "?" closes,
   // so a re-open always starts back at the welcome tip.
   const [idx, setIdx] = useState(0);
@@ -64,7 +71,7 @@ export default function TipsNote({ page, onDismiss }: {
   const [stepped, setStepped] = useState(false);
   function step(delta: number) {
     setStepped(true);
-    setIdx((i) => Math.max(0, Math.min(GROUP_ROOM_TIPS.length - 1, i + delta)));
+    setIdx((i) => Math.max(0, Math.min(roomTips.length - 1, i + delta)));
   }
 
   // Tips about a viewport-fixed control measure that control (tagged
@@ -74,8 +81,8 @@ export default function TipsNote({ page, onDismiss }: {
   // step, on resize and whenever the page's height changes (rows loading
   // in move the anchors); layout effect so the first paint is in place.
   const frameRef = useRef<HTMLDivElement>(null);
-  const anchorKey = page === "groupRoom" ? GROUP_ROOM_TIPS[idx]?.anchor : undefined;
-  const seat = page === "groupRoom" ? GROUP_ROOM_TIPS[idx]?.seat : DASHBOARD_TIP_SEAT;
+  const anchorKey = page === "groupRoom" ? roomTips[idx]?.anchor : undefined;
+  const seat = page === "groupRoom" ? roomTips[idx]?.seat : DASHBOARD_TIP_SEAT;
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [seatPos, setSeatPos] = useState<{ top: number; left: number } | null>(null);
   useLayoutEffect(() => {
@@ -88,7 +95,7 @@ export default function TipsNote({ page, onDismiss }: {
       const el = seat ? document.querySelector(`[data-tip-anchor="${seat.anchor}"]`) : null;
       if (seat && el && frame) {
         const a = el.getBoundingClientRect(), f = frame.getBoundingClientRect();
-        const next = { left: Math.round(a.left - f.left + seat.dx), top: Math.round(a.top - f.top + seat.dy) };
+        const next = { left: Math.round(a.left - f.left + seat.dx), top: Math.round((seat.below ? a.bottom : a.top) - f.top + seat.dy) };
         setSeatPos((p) => (p && p.left === next.left && p.top === next.top ? p : next));
       } else setSeatPos(null);
     };
@@ -103,9 +110,9 @@ export default function TipsNote({ page, onDismiss }: {
   // the user pressed "?" (or first-visit auto-open) — hiding them then
   // would make the button feel dead on narrow desktop windows.
   if (page === "groupRoom") {
-    const t = GROUP_ROOM_TIPS[idx];
+    const t = roomTips[idx];
     const atStart = idx === 0;
-    const atEnd = idx === GROUP_ROOM_TIPS.length - 1;
+    const atEnd = idx === roomTips.length - 1;
     // Deck tip: its bottom edge 16px above the docked tab, left edge on the
     // tab's title text — FIXED, the tab is. No target found (the deck dock
     // self-hides) → the static page placement. A seated tip sits at its
@@ -121,7 +128,8 @@ export default function TipsNote({ page, onDismiss }: {
         key={idx}
         tilt={t.tilt}
         width={300}
-        centered={!pinned}
+        // A tip hanging under its row (seat.below) places its own corner.
+        centered={!pinned && !(t.seat?.below && seatPos)}
         onDismiss={onDismiss}
         ariaLabel="Tips"
         ignoreViewportGate
@@ -139,7 +147,7 @@ export default function TipsNote({ page, onDismiss }: {
             style={{ ...stepBtn, opacity: atStart ? 0.3 : 1, cursor: atStart ? "default" : "pointer" }}>
             <ChevronLeft size={18} />
           </button>
-          <span style={{ opacity: 0.5, fontSize: 13, fontWeight: 700 }}>Tip {idx + 1} of {GROUP_ROOM_TIPS.length}</span>
+          <span style={{ opacity: 0.5, fontSize: 13, fontWeight: 700 }}>Tip {idx + 1} of {roomTips.length}</span>
           <button aria-label="next tip" disabled={atEnd} onClick={() => step(1)}
             style={{ ...stepBtn, opacity: atEnd ? 0.3 : 1, cursor: atEnd ? "default" : "pointer" }}>
             <ChevronRight size={18} />
@@ -149,7 +157,7 @@ export default function TipsNote({ page, onDismiss }: {
     );
     return pinned ? note : <div ref={frameRef} style={scrollFrame}>{note}</div>;
   }
-  const tips = tipsFor(page, "desktop", editorial);
+  const tips = invitee ? inviteeDashboardTips(invitee) : tipsFor(page, "desktop", editorial);
   return (
     <div ref={frameRef} style={scrollFrame}>
     <StickyNote

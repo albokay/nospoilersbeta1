@@ -197,7 +197,7 @@ export function useRowSwipe(onOptions?: () => void): { dx: number; dragging: boo
 /** The arrival flash (round 6): an accent wash fading to cream over two seconds, once. */
 const FLASH_CSS = "@keyframes eRowFlash{from{background-color:#F0D49A}to{background-color:#FEF8EA}}";
 
-export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false, mine = false, flash = false, domId }: {
+export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false, mine = false, flash = false, domId, tipAnchor }: {
   tvmazeId?: string | null;
   /** false = a pitched row (no poster). */
   poster?: boolean;
@@ -224,6 +224,8 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   flash?: boolean;
   /** An id on the row's outer element, so the host can scroll to it. */
   domId?: string;
+  /** data-tip-anchor on the row (desktop), so a tip can seat under it. */
+  tipAnchor?: string;
 }) {
   const { dx, dragging, handlers: swipeHandlers } = useRowSwipe(onOptions);
   const [hinting, setHinting] = useState(hint);
@@ -246,7 +248,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
 
   if (desktop) {
     return (
-      <button type="button" id={domId} className="e-row" onClick={onOpen} style={{ ...rowStyle, ...(flash ? { animation: "eRowFlash 2s ease-out forwards" } : {}) }}>
+      <button type="button" id={domId} data-tip-anchor={tipAnchor} className="e-row" onClick={onOpen} style={{ ...rowStyle, ...(flash ? { animation: "eRowFlash 2s ease-out forwards" } : {}) }}>
         {flash && <style>{FLASH_CSS}</style>}
         {poster && <RowPoster tvmazeId={tvmazeId} />}
         {text}

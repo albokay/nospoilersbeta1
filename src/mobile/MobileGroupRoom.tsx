@@ -1168,7 +1168,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         <div ref={titleBlockRef} style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px 40px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
           <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
-            ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
+            ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" groupId={groupId} tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
           <div ref={titleInnerRef} style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
@@ -1209,7 +1209,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             The negative margin cancels the bar's 12px side padding so the
             tab truly reaches the edge. New-chat dot straddles the curve. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0, marginRight: -12 }}>
-          {user && groupWaveDone && <MobileTipsSheet page="groupRoom" />}
+          {user && groupWaveDone && <MobileTipsSheet page="groupRoom" groupId={groupId} />}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
             <button style={chatTab} aria-label="open chat" onClick={() => navigate(`/m/group/${groupId}/chat`)}>
               {chatNew && (

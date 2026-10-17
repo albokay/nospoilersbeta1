@@ -12,7 +12,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, type GroupInviteInfo } from "../lib/db";
+import { getPeopleGroupInvite, acceptPeopleGroupInvite, declinePeopleGroupInvite, fetchInviteLetter, type GroupInviteInfo, type InviteLetter } from "../lib/db";
+import { setInviteeWelcome } from "../lib/inviteeWelcome";
 import SidebarLogo from "./SidebarLogo";
 import { markJoinedThisSession } from "../lib/joinSession";
 import { claimInvitePicks } from "../lib/invitePicks";
@@ -49,6 +50,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   const editorial = useEditorial();
   const [status, setStatus] = useState<Status>("loading");
   const [info, setInfo] = useState<GroupInviteInfo | null>(null);
+  // The inviter's first letter (the invitee-flow pass, 2026-10-17): read
+  // with the invite, so every step can lead with it; null keeps the old copy.
+  const [letter, setLetter] = useState<InviteLetter | null>(null);
   const [masked, setMasked] = useState<string | undefined>();
   const [detail, setDetail] = useState<string>("");
   // CP5b: brand-new invitee sign-up. "welcome" → rich landing; "signup" →
@@ -97,8 +101,9 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const res = await getPeopleGroupInvite(token);
+      const [res, lt] = await Promise.all([getPeopleGroupInvite(token), fetchInviteLetter(token)]);
       if (cancelled) return;
+      setLetter(lt);
       if (!res.ok) {
         // Don't log/paint the raw token (security pass 2026-08-14) — it lands
         // in support screenshots + any future console-capturing tool. The
@@ -132,6 +137,8 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
       // Suggested-shows picks from the wall become proposals in the group —
       // fire-and-forget while wave 1 plays, so they exist by room load.
       if (user && info) claimInvitePicks(user.id, info.groupId, token).catch(() => {});
+      // The first-visit tips speak to an invitee whose friend left a letter.
+      if (user && info && letter) setInviteeWelcome(user.id, { groupId: info.groupId, inviter: info.inviterDisplayName || info.inviterName, showId: letter.showId, showName: letter.showName });
       setStatus("done");
       return;
     }
@@ -163,7 +170,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
         <div style={{ position: "absolute", top: 16, left: 20 }}><SidebarLogo scale={0.5} blocksOpacity={1} /></div>
         <YoureInCard
           idiom="desktop"
-          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName }}
+          variant={{ kind: "invitee", friendName: info.inviterDisplayName || info.inviterName, showName: letter?.showName, opensAt: letter?.sealed ? { s: letter.s, e: letter.e } : undefined }}
           busy={status === "joining"}
           onDone={join}
         />
@@ -221,6 +228,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             editorial={editorial}
             invitee={{
               inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
+              showName: letter?.showName,
               onJoin: () => { window.scrollTo(0, 0); setPrologueDone(true); },
             }}
           />
@@ -239,7 +247,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             for them anyway. */}
         {(prewallDone || info.inviteeHasAccount) ? (
           editorial
-            ? <InviteWall desktop token={token} info={info} inviterName={inviterLabel} onJoin={openAuth} />
+            ? <InviteWall desktop token={token} info={info} inviterName={inviterLabel} onJoin={openAuth} letter={letter} />
             : <PublicDashboardPage username={info.inviterName} invite={{ onJoin: openAuth, token }} displayNameOverride={info.inviterDisplayName || undefined} />
         ) : editorial ? (
           // The welcome questions' own yellow ground (his catch, 10-14): the
@@ -252,7 +260,7 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
           </div>
         )}
         {!prewallDone && !info.inviteeHasAccount && (
-          <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="desktop" onComplete={() => setPrewallDone(true)} />
+          <DeckWave anonymous wave={1} leadCardId="just-wait-ep4" heading="welcome" idiom="desktop" inviterName={inviterLabel} onComplete={() => setPrewallDone(true)} />
         )}
         {phase === "signup" && (
           <AuthModal
@@ -261,13 +269,19 @@ export default function GroupInviteAcceptPage({ token }: { token: string }) {
             lockEmail={!!info.inviteeEmail}
             hint={info.inviteeHasAccount
               ? `Sign in to watch shows with ${inviterLabel} on Sidebar.`
-              : `Create your account to watch shows with ${inviterLabel} on Sidebar.`}
+              : letter
+                ? letter.sealed
+                  ? `Create your account to watch shows with ${inviterLabel}.`
+                  : `Create your account to watch shows with ${inviterLabel} (and read the first letter that’s waiting for you).`
+                : `Create your account to watch shows with ${inviterLabel} on Sidebar.`}
             onSuccess={onAuthSuccess}
             onClose={onSignupClose}
             // When "Confirm email" is enabled, a brand-new invitee's confirmation
             // link returns them HERE (signed in) so they land on the join confirm
             // and finish joining the group — not on a bare dashboard.
             signupRedirectTo={typeof window !== "undefined" ? `${window.location.origin}/group-invite/${token}` : undefined}
+            // The confirmation email names the friend whose letter waits.
+            signupLetterFrom={letter ? (info.inviterDisplayName || info.inviterName) : undefined}
           />
         )}
       </>

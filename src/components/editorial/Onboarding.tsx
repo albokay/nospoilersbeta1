@@ -355,12 +355,14 @@ export function LinkRows({ links, topRule = "ink", nameStyle = "text", style }: 
 }
 
 /** The welcome words above the deck's first card, in ink on the accent ground. */
-export function WelcomeHead({ desktop = false, style }: { desktop?: boolean; style?: React.CSSProperties }) {
+export function WelcomeHead({ desktop = false, style, inviterName }: { desktop?: boolean; style?: React.CSSProperties; /** The invitee's door (the invitee-flow pass, 2026-10-17): the friend who invited them. */ inviterName?: string }) {
   return (
     <div style={{ color: E.color.ink, ...style }}>
       <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em" }}>Welcome to Sidebar</div>
       <div style={{ ...E.type.body15, marginTop: 10 }}>A place for you and your friends to talk about TV, spoiler-free.</div>
-      <div style={{ ...E.type.note13, lineHeight: 1.5, marginTop: 12, opacity: 0.85 }}>Before you get set up, a few questions to get you in the mood for TV. Your friends will answer these too.</div>
+      <div style={{ ...E.type.note13, lineHeight: 1.5, marginTop: 12, opacity: 0.85 }}>{inviterName
+        ? <>Before you join {inviterName}, a few questions to get you in the mood for TV. {inviterName} has answered these already. You&rsquo;ll get to see where you two agree.</>
+        : <>Before you get set up, a few questions to get you in the mood for TV. Your friends will answer these too.</>}</div>
     </div>
   );
 }

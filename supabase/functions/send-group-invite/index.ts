@@ -190,6 +190,21 @@ serve(async (req) => {
       ep4 = a ? (a.answer as boolean) : null;
     } catch { /* fallback headline */ }
 
+    // ── The inviter's first letter (the invitee-flow pass, 2026-10-17) ───────
+    // The onboarding letter in the invite's room (get_invite_letter: the show
+    // and the letter's stamp, never its words). With one, the email leads
+    // with it ("Yalborz wants to watch Severance with you." / "…and they
+    // wrote you a letter about it."); a room-less invite or a missing letter
+    // keeps the email below as it was. Nudges keep their own text.
+    let letter: { showName: string; s: number; e: number } | null = null;
+    if (!isNudge) {
+      try {
+        const { data: l } = await admin.rpc("get_invite_letter", { invite_token: invToken });
+        if (l && l.show_name) letter = { showName: String(l.show_name), s: Number(l.season ?? 0), e: Number(l.episode ?? 0) };
+      } catch { /* the old email */ }
+    }
+    const letterSealed = !!letter && (letter.s > 0 || letter.e > 0);
+
     // ── Send via Resend ──────────────────────────────────────────────────────
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
@@ -205,7 +220,9 @@ serve(async (req) => {
     const email     = (inv.invitee_email as string).toLowerCase().trim();
     const subject   = isNudge
       ? `${senderName} still hopes you'll join them on Sidebar.`
-      : `${senderName} invited you to a watch group on Sidebar`;
+      : letter
+        ? `${senderName} wants to watch ${letter.showName} with you.`
+        : `${senderName} invited you to a watch group on Sidebar`;
 
     // Nudge email: the inviter's own text (escaped, line breaks kept), then
     // the Join in → button — the link is never part of the editable text so
@@ -240,6 +257,41 @@ serve(async (req) => {
     Join in →
   </a>`;
 
+    // The letter email (Alborz's copy, 2026-10-17): the subject carries the
+    // pick, the headline continues it, then why Sidebar, the button, and the
+    // P.S. lines — the episode-4 answer, and (a letter stamped past S0 E0)
+    // where the letter opens; the second becomes the P.S. when there's no
+    // episode-4 answer.
+    const P = (s: string) => `\n  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">${s}</p>`;
+    const nameH = escapeHtml(senderName);
+    const ep4LineText = ep4 === null ? null : `${senderName} ${ep4 ? "thinks" : "doesn't think"} "just wait till you see episode 4" counts as a TV spoiler. Do you?`;
+    const ep4LineHtml = ep4 === null ? null : `${nameH} ${ep4 ? "thinks" : "doesn&rsquo;t think"} &ldquo;just wait till you see episode 4&rdquo; counts as a TV spoiler. Do you?`;
+    const sealedLineText = letter && letterSealed ? `${senderName} is already at S${letter.s} E${letter.e}. Their letter will open when you get there.` : null;
+    const sealedLineHtml = letter && letterSealed ? `${nameH} is already at S${letter.s} E${letter.e}. Their letter will open when you get there.` : null;
+    const psText = [ep4LineText, sealedLineText].filter(Boolean).map((l, i) => `${i === 0 ? "P.S." : "P.P.S."} ${l}`);
+    const psHtml = [ep4LineHtml, sealedLineHtml].filter(Boolean).map((l, i) => `\n  <p style="margin:28px 0 0;font-size:15px;color:#1a2c3a;line-height:1.55">${i === 0 ? "P.S." : "P.P.S."} ${l}</p>`).join("");
+    const letterCta = letterSealed ? `Join ${senderName} →` : `Read ${senderName}’s letter →`;
+    const letterBody = [
+      "Your letter is waiting for you on Sidebar, a spoiler-free space for friends to talk about TV.",
+      "Typically, as soon as you start watching a good show, spoiler anxiety makes you avoid talking to your friends about it. Sidebar fixes that. Everything is filtered by your watch progress, so you can read and write without worrying about spoilers.",
+      "And Sidebar isn’t about “reviews” either. It’s built around ongoing conversation. Don’t let good TV make you run away from your friends — stay in touch.",
+    ];
+    const letterHtml = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    &hellip;and they wrote you a letter about it.
+  </h1>${letterBody.map(P).join("")}
+  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;margin-top:8px;background:#dea838;color:#fef8ea;text-decoration:none;padding:12px 28px;border-radius:0;font-size:15px;font-weight:700">
+    ${escapeHtml(letterCta)}
+  </a>${psHtml}${finePrintHtml}
+</div>
+</body>
+</html>`;
+    const letterText = `…and they wrote you a letter about it.\n\n${letterBody.join("\n\n")}\n\n${letterCta.replace(" →", "")}: ${inviteUrl}${psText.length ? `\n\n${psText.join("\n\n")}` : ""}\n\n${finePrintText}`;
+
     const html = isNudge
       ? `
 <!DOCTYPE html>
@@ -252,7 +304,7 @@ serve(async (req) => {
 </div>
 </body>
 </html>`
-      : `
+      : letter ? letterHtml : `
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
@@ -269,7 +321,7 @@ serve(async (req) => {
 
     const text = isNudge
       ? `${nudgeMessage}\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`
-      : `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV shows they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`;
+      : letter ? letterText : `${headlineText}${doYouText}\n\nSidebar lets friends have ongoing, spoiler-safe conversations about the TV shows they're watching — everything is filtered by each person's watch progress, so you can say what you actually think.\n\nJoin in: ${inviteUrl}\n\n${finePrintText}`;
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",

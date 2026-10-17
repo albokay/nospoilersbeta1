@@ -9,7 +9,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { E } from "../../styles/editorial";
-import { fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchPublicPool, fetchInvitePool, type PublicPoolShow, type Show, type GroupInviteInfo } from "../../lib/db";
+import { fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, fetchPublicPool, fetchInvitePool, type PublicPoolShow, type Show, type GroupInviteInfo, type InviteLetter } from "../../lib/db";
 import type { ProgressEntry } from "../../types";
 import { getTrailerKeyCached } from "../../lib/trailers";
 import { joinNames } from "../../lib/groupNames";
@@ -116,7 +116,7 @@ function InlineTrailer({ ytKey, desktop }: { ytKey: string; desktop: boolean }) 
 }
 
 /** The invite wall: the inviter's pick(s), Join, and the invitee's own picks. */
-export function InviteWall({ token, info, inviterName, desktop = false, onJoin }: { token: string; info: GroupInviteInfo; inviterName: string; desktop?: boolean; onJoin: () => void }) {
+export function InviteWall({ token, info, inviterName, desktop = false, onJoin, letter }: { token: string; info: GroupInviteInfo; inviterName: string; desktop?: boolean; onJoin: () => void; /** The inviter's first letter (the invitee-flow pass, 2026-10-17); null/undefined keeps the old line. */ letter?: InviteLetter | null }) {
   const { watching, interested, loaded } = useInviterPool(token, info.inviterName);
   const all = useMemo(() => [...watching, ...interested], [watching, interested]);
   const [trailerFor, setTrailerFor] = useState<Show | null>(null);
@@ -163,7 +163,13 @@ export function InviteWall({ token, info, inviterName, desktop = false, onJoin }
                   <div style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: desktop ? 20 : 18, letterSpacing: "-0.01em" }}>{single.show.name}</div>
                   {seasonsLabel(single.show) && <div style={{ ...E.type.label10, letterSpacing: "0.04em", color: E.color.inkMuted, marginTop: 4 }}>{seasonsLabel(single.show)}</div>}
                   <div style={{ fontFamily: E.font.interface, fontSize: desktop ? 15 : 14, lineHeight: 1.5, marginTop: 12, maxWidth: 460 }}>
-                    {watching.length
+                    {/* The letter line (Alborz's copy, 2026-10-17): a letter
+                        stamped past S0 E0 adds where it opens — the letter's
+                        own stamp, so "when you get there" holds even after
+                        the inviter has watched on. */}
+                    {letter && letter.showId === single.show.id
+                      ? `${inviterName} has already written you a letter about it. It’s waiting in your watch group.${letter.sealed ? ` (${inviterName} is at S${letter.s} E${letter.e}. Their letter opens when you get there.)` : ""}${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`
+                      : watching.length
                       ? `${inviterName} is at S${single.entry.s} E${single.entry.e}. ${others.length ? `${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too. ` : ""}The room is open and waiting for you.`
                       : `${inviterName} wants to start it with you.${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`}
                   </div>

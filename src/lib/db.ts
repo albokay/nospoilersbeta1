@@ -3044,6 +3044,21 @@ export async function fetchInvitePool(token: string): Promise<{ proposals: Publi
   } catch { return null; }
 }
 
+/** The inviter's first letter in the invite's room (the invitee-flow pass,
+ *  2026-10-17): the show and the letter's stamp, never its words. `sealed` =
+ *  stamped past S0 E0, so a brand-new invitee can't open it yet; `s`/`e` is
+ *  where it opens. Null = no room or no letter (an older server, a room-less
+ *  invite) — every surface then keeps its old wording. */
+export type InviteLetter = { showId: string; showName: string; s: number; e: number; sealed: boolean; inviterS: number; inviterE: number };
+export async function fetchInviteLetter(token: string): Promise<InviteLetter | null> {
+  try {
+    const { data, error } = await supabase.rpc("get_invite_letter", { invite_token: token });
+    if (error || !data || !data.show_name) return null;
+    const s = Number(data.season ?? 0), e = Number(data.episode ?? 0);
+    return { showId: data.show_id, showName: data.show_name, s, e, sealed: s > 0 || e > 0, inviterS: Number(data.inviter_season ?? 0), inviterE: Number(data.inviter_episode ?? 0) };
+  } catch { return null; }
+}
+
 // ── Contact names (CP2 dual-mode group naming, 2026-07-06) ──────────────────
 
 /** The viewer's own joined_at per group (groupId → ms) in ONE query — drives

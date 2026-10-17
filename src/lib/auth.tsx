@@ -55,7 +55,7 @@ type AuthCtx = {
   // firstName = the self-chosen display name (first-name identity arc). The
   // unique handle is auto-generated internally (slug + random suffix) and
   // never chosen by — or shown to — the user.
-  signUp: (email: string, password: string, firstName: string, opts?: { emailRedirectTo?: string }) => Promise<SignUpResult>;
+  signUp: (email: string, password: string, firstName: string, opts?: { emailRedirectTo?: string; inviteLetterFrom?: string }) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   // Re-reads the current user's profile row into context. Called after the
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     firstName: string,
-    opts?: { emailRedirectTo?: string },
+    opts?: { emailRedirectTo?: string; inviteLetterFrom?: string },
   ): Promise<SignUpResult> {
     const trimmed = firstName.trim();
     if (!trimmed) return { error: "Please enter your first name.", needsConfirmation: false };
@@ -226,7 +226,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        data: { username: slug, display_name: trimmed },
+        // invite_letter_from (the invitee-flow pass, 2026-10-17): an invited
+        // friend whose inviter left them a letter — the confirmation email's
+        // template reads it ("{name}'s letter is waiting.").
+        data: { username: slug, display_name: trimmed, ...(opts?.inviteLetterFrom ? { invite_letter_from: opts.inviteLetterFrom.slice(0, 40) } : {}) },
         // Where the confirmation link lands the user (only used when "Confirm
         // email" is enabled). Must be in the Supabase redirect allowlist.
         ...(opts?.emailRedirectTo ? { emailRedirectTo: opts.emailRedirectTo } : {}),

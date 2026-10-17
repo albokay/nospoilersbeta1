@@ -7,17 +7,31 @@
   cream words matching "Join in →" (Alborz, 2026-10-14: no pill).
   The link lands on /confirm (ConfirmEmailPage verifies the token_hash itself and
   routes to next=) — the form the live template has carried since 2026-08-01.
+  Subject (the same dashboard page, "Subject heading"): Confirm your email.
+  An invited friend whose inviter left them a letter signs up with
+  invite_letter_from (the inviter's first name) in their account data, so
+  their email reads "{name}'s letter is waiting." / "One tap and you're in."
+  (Alborz's invitee-flow copy, 2026-10-17); everyone else keeps the lines below.
 -->
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  {{ if .Data.invite_letter_from }}
+  <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    {{ .Data.invite_letter_from }}&rsquo;s letter is waiting.
+  </h1>
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    One tap and you&rsquo;re in.
+  </p>
+  {{ else }}
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     ✅ Confirm your email to finish setting up Sidebar.
   </h1>
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
     Tap the button below to confirm your email — it'll sign you in automatically.
   </p>
+  {{ end }}
   <a href="{{ .SiteURL }}/confirm?token_hash={{ .TokenHash }}&type=signup&next={{ .RedirectTo }}" style="display:inline-block;background:#dea838;color:#fef8ea;text-decoration:none;padding:12px 28px;border-radius:0;font-size:15px;font-weight:700">
     Confirm your email →
   </a>

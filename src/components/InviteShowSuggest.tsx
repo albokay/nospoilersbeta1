@@ -204,7 +204,7 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           <SectionHead right={<span style={{ color: E.color.inkMuted }}>Optional</span>}>Add your own picks</SectionHead>
         )}
         <div style={{ fontFamily: E.font.interface, fontSize: 14, lineHeight: 1.5, color: "rgba(26,58,74,0.8)", marginTop: 14 }}>
-          Pitch the shows you&rsquo;d want to watch with {editorial.inviterName}. They land in the group as proposals once you&rsquo;re in.
+          Anything else you&rsquo;d want to watch with {editorial.inviterName}? Pitch it, and it&rsquo;ll be waiting in your watch group.
         </div>
         {picks.length > 0 && (
           // The picks on yellow (his notes, 10-14): each row a padded accent bar

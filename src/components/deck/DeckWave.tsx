@@ -42,7 +42,7 @@ const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const DRIP_INTERVAL_DAYS = 14;
 const DRIP_INTERVAL_MS = DRIP_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
 
-export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, refreshKey = 0, onComplete }: {
+export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadCardId, anonymous, inviterName, refreshKey = 0, onComplete }: {
   /** 1 | 2 = the fixed onboarding waves. "drip" (CP4) = the catch-up/drip
    *  modal: up to 4 of the viewer's unanswered cards, oldest first, at most
    *  once per session (sessionStorage flag).
@@ -96,6 +96,9 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
    *  park in localStorage and are claimed by the next sign-in on this
    *  browser (see lib/deckPending). Used at the invitee's door, wave 1. */
   anonymous?: boolean;
+  /** The invitee's door (the invitee-flow pass, 2026-10-17): the welcome
+   *  words name the friend who invited them (editorial only). */
+  inviterName?: string;
   /** Bump to re-read the deck + answers in place (the current card stays up
    *  until the new queue lands). The onboarding catch-up uses it when a tab
    *  comes back after the questions were answered in another tab. */
@@ -263,7 +266,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
           <div style={{ position: "absolute", left: "50%", top: 44, marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} bg="accent" betaBadge /></div>
         )}
         <div style={{ width: mobile ? "100%" : 560, maxWidth: "100%" }}>
-          {welcome && <WelcomeHead desktop={!mobile} />}
+          {welcome && <WelcomeHead desktop={!mobile} inviterName={inviterName} />}
           <div
             key={card.id}
             {...touch}

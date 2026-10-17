@@ -26,7 +26,8 @@ import TipText from "./TipText";
 import { CANON } from "../styles/canon";
 import { OVERLAY, LORA } from "../mobile/m";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
-import { tipsFor, tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
+import { tipsFor, tipsDefaultOpen, markTipsSeen, inviteeDashboardTips, inviteeGroupRoomTips, type TipsPage } from "../lib/tipsContent";
+import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { BottomSheet } from "./editorial/Overlays";
@@ -39,7 +40,7 @@ function deparen(t: string): string {
   return m ? m[1] : t;
 }
 
-export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page: TipsPage; tabStyle?: React.CSSProperties }) {
+export default function MobileTipsSheet({ page, tabStyle: tabOverride, groupId }: { page: TipsPage; tabStyle?: React.CSSProperties; /** The group room's group — its first-visit tips speak to an invited friend who joined it (2026-10-17). */ groupId?: string }) {
   const { user } = useAuth();
   const editorial = useEditorial();
   // First-visit auto-open ARRIVES, it doesn't preexist (Alborz 2026-08-01):
@@ -47,18 +48,25 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
   // so the tip reads as an event, not furniture. Manual "?" opens stay
   // instant (the keyframe still plays, which is fine).
   const [open, setOpen] = useState(false);
+  // The first-visit auto-open (vs a "?" press) — only it shows an invited
+  // friend's own tips; the "?" is the standard set.
+  const [auto, setAuto] = useState(false);
   useEffect(() => {
     if (!tipsDefaultOpen(page, user?.id, user?.created_at)) return;
-    const t = window.setTimeout(() => setOpen(true), 700);
+    const t = window.setTimeout(() => { setAuto(true); setOpen(true); }, 700);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, user?.id]);
-  const tips = tipsFor(page, "mobile", editorial);
+  const welcome = auto ? readInviteeWelcome(user?.id) : null;
+  const tips = welcome && page === "dashboard" ? inviteeDashboardTips(welcome)
+    : welcome && page === "groupRoom" && groupId === welcome.groupId ? inviteeGroupRoomTips(welcome).map(({ body, aside }) => ({ body, aside }))
+    : tipsFor(page, "mobile", editorial);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function close() {
     markTipsSeen(page, user?.id);
     setOpen(false);
+    setAuto(false);
   }
 
   // Swipe-down joins tap-out as an exit (polish pass 2026-09-14); the
@@ -68,7 +76,7 @@ export default function MobileTipsSheet({ page, tabStyle: tabOverride }: { page:
   const swipe = useSheetSwipeDown(close, { scrollRef, open });
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} aria-label="tips" style={{ ...tabStyle, ...tabOverride }}>?</button>;
+    return <button onClick={() => { setAuto(false); setOpen(true); }} aria-label="tips" style={{ ...tabStyle, ...tabOverride }}>?</button>;
   }
 
   // The editorial sheet (Alborz's notes, item 7): the bottom sheet with

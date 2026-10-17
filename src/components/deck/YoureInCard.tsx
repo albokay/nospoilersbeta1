@@ -33,7 +33,18 @@ export type YoureInVariant =
    *  sent (background sends, finale perf) — swaps the "Sidebar has emailed…"
    *  line for the couldn't-email copy. names = pre-joined display names. */
   | { kind: "inviter"; showName: string; friendName: string; inviteLinks?: InviteLink[]; emailFailure?: { names: string; count: number } }
-  | { kind: "invitee"; friendName: string };
+  | { kind: "invitee"; friendName: string; /** The show the friend's first letter is about (the invitee-flow pass, 2026-10-17); without it the old line stays. */ showName?: string; /** Where that letter opens, when it's stamped past S0 E0. */ opensAt?: { s: number; e: number } };
+
+/** The invitee's line (Alborz's copy, 2026-10-17): the friend's letter about
+ *  the show waits in the watch group; a sealed one says where it opens. */
+function InviteeLine({ v, mark }: { v: Extract<YoureInVariant, { kind: "invitee" }>; mark: React.CSSProperties }) {
+  if (!v.showName) {
+    return <>Your friend, <span style={mark}>{v.friendName}</span> is waiting for you inside your group room. See the letters they&rsquo;ve already left you and let them know what you want to watch together.</>;
+  }
+  return v.opensAt
+    ? <><span style={mark}>{v.friendName}</span>&rsquo;s letter about <span style={mark}>{v.showName}</span> is waiting in your watch group. It opens at S{v.opensAt.s} E{v.opensAt.e}. Pitch anything else you want to watch together.</>
+    : <><span style={mark}>{v.friendName}</span>&rsquo;s letter about <span style={mark}>{v.showName}</span> is waiting in your watch group. Read it, write back, and pitch anything else you want to watch together.</>;
+}
 
 export default function YoureInCard({ variant, idiom, onDone, busy = false, errorText = null, onDismiss }: {
   variant: YoureInVariant;
@@ -120,7 +131,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
                 </>
               ) : (
                 <p style={{ margin: 0 }}>
-                  Your friend, <span style={alert}>{variant.friendName}</span> is waiting for you inside your group room. See the letters they&rsquo;ve already left you and let them know what you want to watch together.
+                  <InviteeLine v={variant} mark={alert} />
                 </p>
               )}
               {errorText && <p style={{ margin: "14px 0 0", color: E.color.alert, fontWeight: 700 }}>{errorText}</p>}
@@ -212,9 +223,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
             </>
           ) : (
             <p style={{ margin: 0 }}>
-              Your friend, <span style={alertSpan}>{variant.friendName}</span> is waiting for you inside
-              your group room. See the letters they&rsquo;ve already left you and let them know what you want
-              to watch together.
+              <InviteeLine v={variant} mark={alertSpan} />
             </p>
           )}
           {errorText && (

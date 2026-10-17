@@ -325,7 +325,7 @@ function StaticLogo() {
 //     freely." + the "Join {name} →" button (onJoin → the door questions).
 export default function HomepageNarrative({ headerHeight = 56, invitee, editorial = false }: {
   headerHeight?: number;
-  invitee?: { inviterName: string; onJoin: () => void };
+  invitee?: { inviterName: string; onJoin: () => void; /** The show the inviter picked and wrote about (the invitee-flow pass, 2026-10-17). */ showName?: string };
   /** The editorial skin (checkpoint 8, 2026-10-12; the E3Scroll and
    *  E3OnbInvitee / D3OnbInvitee boards): the same bubbles, the copy in
    *  Lora, no docking logo — the homepage's scroll ends on "Sidebar is where
@@ -343,12 +343,21 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         <>
           <Screen extraTop={0}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 40 }}>
-              <Copy balance editorial={ed}>{invitee.inviterName} wants you to join them on Sidebar.</Copy>
+              {/* The opening names the pick, and "Join {name} →" sits right
+                  under it so a friend who read the email can go straight in;
+                  the scroll below is for "(what's Sidebar?)" (Alborz's
+                  invitee-flow copy, 2026-10-17). */}
+              <Copy balance editorial={ed}>{invitee.showName
+                ? <>{invitee.inviterName} wants to watch {invitee.showName} with you on Sidebar.</>
+                : <>{invitee.inviterName} wants you to join them on Sidebar.</>}</Copy>
               {!ed && <StaticLogo />}
               {!ed && <Copy balance delay={0.15}>It&rsquo;s a place for you and your friends to talk about TV, spoiler-free.</Copy>}
+              <div style={{ width: "min(480px, 100%)", display: "flex", justifyContent: "center" }}>
+                <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} editorial={ed} />
+              </div>
             </div>
           </Screen>
-          <ScrollCue />
+          <ScrollCue label="(what’s Sidebar?)" />
         </>
       )}
 
@@ -489,7 +498,7 @@ function HeroCopy() {
 // The invitee opening's scroll cue — the HOMEPAGE arrow's exact treatment
 // (App.tsx: fixed bottom 8vh, centered, ArrowDown 49/2 cream, opacity 0.6
 // fading out over the first stretch of scrolling).
-function ScrollCue() {
+function ScrollCue({ label }: { label?: string } = {}) {
   const [opacity, setOpacity] = useState(0.6);
   useEffect(() => {
     let raf = 0;
@@ -511,7 +520,10 @@ function ScrollCue() {
       position: "fixed", bottom: "8vh", left: "50%", transform: "translateX(-50%)",
       opacity, pointerEvents: "none", zIndex: 10,
       transition: "opacity 0.15s ease",
+      display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
     }}>
+      {/* The small line above the arrow fades with it (Alborz 2026-10-17). */}
+      {label && <span style={{ fontFamily: '"Inter", system-ui, sans-serif', fontSize: 15, lineHeight: 1.3, color: CANON.cream, whiteSpace: "nowrap" }}>{label}</span>}
       <ArrowDown size={49} color={CANON.cream} strokeWidth={2} />
     </div>
   );

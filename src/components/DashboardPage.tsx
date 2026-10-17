@@ -93,6 +93,7 @@ import {
 import PendingInvitesPanel, { isInviteStale, staleInviteLine, type OtherPendingInvite } from "./PendingInvitesPanel";
 import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
+import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, answerRowLine, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
@@ -402,6 +403,11 @@ export default function DashboardPage() {
   // (Declared below postAccept — the auto-open gate reads it.)
   const tipsPage: TipsPage = activeGroupId ? "groupRoom" : "dashboard";
   const [tipsOpen, setTipsOpen] = useState(false);
+  // The first-visit auto-open (vs a "?" press): only it shows an invited
+  // friend's own tips (the invitee-flow pass, 2026-10-17); the "?" is the
+  // standard set.
+  const [tipsAuto, setTipsAuto] = useState(false);
+  const inviteeWelcome = useMemo(() => readInviteeWelcome(user?.id), [user?.id]);
   useEffect(() => {
     // Auto-open ARRIVES after the page paints (Alborz 2026-08-01) — the
     // sticky's own entrance animation plays when it mounts, so the delay is
@@ -413,10 +419,11 @@ export default function DashboardPage() {
     // never resolves, and onboarding can't be on screen there anyway.
     if (tipsPage === "dashboard" && (!onbResolved || showSocialOnb || postAccept)) { setTipsOpen(false); return; }
     if (!tipsDefaultOpen(tipsPage, user?.id, user?.created_at)) { setTipsOpen(false); return; }
-    const t = window.setTimeout(() => setTipsOpen(true), 700);
+    const t = window.setTimeout(() => { setTipsAuto(true); setTipsOpen(true); }, 700);
     return () => window.clearTimeout(t);
   }, [tipsPage, user, onbResolved, showSocialOnb, postAccept]);
-  function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); }
+  function closeTips() { markTipsSeen(tipsPage, user?.id); setTipsOpen(false); setTipsAuto(false); }
+  function openTips() { setTipsAuto(false); setTipsOpen(true); }
 
   // Pending-invites changeset CP2: the viewer's OWN pending invites for the
   // active group — drives the gear panel + the 3-day stale dot/tooltip.
@@ -2104,10 +2111,10 @@ export default function DashboardPage() {
           <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back to dashboard" : "Feedback"} onClick={inGroup ? () => navigate("/dashboard") : () => setFeedbackOpen(true)} />
           <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
             <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
-              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
+              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : openTips())} />,
               <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
             ] : [
-              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))} />,
+              <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : openTips())} />,
               <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
               ...(profile?.is_admin ? [<Word key="admin" hit={W.wordHit} label="Admin" onClick={() => navigate("/?admin")}>Admin</Word>] : []),
             ]} />
@@ -2181,7 +2188,7 @@ export default function DashboardPage() {
           <button
             style={{ ...topCircleBtn, ...(tipsOpen ? {} : { background: CANON.cream, border: `2px solid ${CANON.cream}` }) }}
             title="tips"
-            onClick={() => (tipsOpen ? closeTips() : setTipsOpen(true))}
+            onClick={() => (tipsOpen ? closeTips() : openTips())}
           >
             <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 20, lineHeight: 1, color: tipsOpen ? CANON.cream : (inGroup ? C.sky : C.green) }}>?</span>
           </button>
@@ -2206,7 +2213,13 @@ export default function DashboardPage() {
       )}
 
       {/* Help-system arc CP4: the pointer-tips sticky ("?" toggles). */}
-      {tipsOpen && <TipsNote page={tipsPage} onDismiss={closeTips} />}
+      {tipsOpen && (
+        <TipsNote
+          page={tipsPage}
+          onDismiss={closeTips}
+          invitee={tipsAuto && inviteeWelcome && (tipsPage === "dashboard" || activeGroupId === inviteeWelcome.groupId) ? inviteeWelcome : undefined}
+        />
+      )}
 
       {/* Edge tabs (group context only): back-to-dashboard left · chat right.
           Position-fixed, so DOM order relative to the heading is irrelevant.
@@ -2290,6 +2303,7 @@ export default function DashboardPage() {
                                 onOpen={() => onPillClick(r.pill, r.name)}
                                 onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}
                                 optionsLabel="Leave this show room"
+                                tipAnchor={inviteeWelcome && inviteeWelcome.groupId === activeGroupId && inviteeWelcome.showId === r.pill.showId ? "invitee-show" : undefined}
                               />
                             );
                           })}
@@ -2325,6 +2339,7 @@ export default function DashboardPage() {
                             mine={justPitched.has(r.pill.showId)}
                             flash={flashShowId === r.pill.showId}
                             domId={`pitched-${r.pill.showId}`}
+                            tipAnchor={inviteeWelcome && inviteeWelcome.groupId === activeGroupId && inviteeWelcome.showId === r.pill.showId ? "invitee-show" : undefined}
                             end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
                               : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}

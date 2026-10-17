@@ -34,7 +34,7 @@ const authX: React.CSSProperties = {
   color: CANON.dark, margin: "-10px -10px 0 0", borderRadius: "50%",
 };
 
-export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false, signupRedirectTo }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean; signupRedirectTo?: string }) {
+export default function AuthModal({ onClose, onSuccess, hint, initialMode = "signin", initialEmail = "", lockEmail = false, signupRedirectTo, signupLetterFrom }: { onClose: () => void; onSuccess?: (mode: Mode) => void; hint?: string; initialMode?: Mode; initialEmail?: string; lockEmail?: boolean; signupRedirectTo?: string; /** An invited friend whose inviter left them a letter: the inviter's name, for the confirmation email. */ signupLetterFrom?: string }) {
   const { signIn, signUp } = useAuth();
   const editorial = useEditorial();
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -69,7 +69,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
       if (firstName.trim().length > 40) { setError("That name is a little long — 40 characters max."); setLoading(false); return; }
       if (password.length < 8) { setError("Password must be at least 8 characters."); setLoading(false); return; }
       const redirect = signupRedirectTo ?? (typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined);
-      const res = await signUp(email.trim(), password, firstName.trim(), redirect ? { emailRedirectTo: redirect } : undefined);
+      const res = await signUp(email.trim(), password, firstName.trim(), (redirect || signupLetterFrom) ? { ...(redirect ? { emailRedirectTo: redirect } : {}), ...(signupLetterFrom ? { inviteLetterFrom: signupLetterFrom } : {}) } : undefined);
       setLoading(false);
       if (res.error) { setError(res.error); return; }
       if (res.needsConfirmation) { setConfirmSent(true); return; }
