@@ -266,8 +266,8 @@ serve(async (req) => {
     const nameH = escapeHtml(senderName);
     const ep4LineText = ep4 === null ? null : `${senderName} ${ep4 ? "thinks" : "doesn't think"} "just wait till you see episode 4" counts as a TV spoiler. Do you?`;
     const ep4LineHtml = ep4 === null ? null : `${nameH} ${ep4 ? "thinks" : "doesn&rsquo;t think"} &ldquo;just wait till you see episode 4&rdquo; counts as a TV spoiler. Do you?`;
-    const sealedLineText = letter && letterSealed ? `${senderName} is already at S${letter.s} E${letter.e}. Their letter will open when you get there.` : null;
-    const sealedLineHtml = letter && letterSealed ? `${nameH} is already at S${letter.s} E${letter.e}. Their letter will open when you get there.` : null;
+    const sealedLineText = letter && letterSealed ? `${senderName} wrote you from S${letter.s} E${letter.e}. Their letter opens when you get there.` : null;
+    const sealedLineHtml = letter && letterSealed ? `${nameH} wrote you from S${letter.s} E${letter.e}. Their letter opens when you get there.` : null;
     const psText = [ep4LineText, sealedLineText].filter(Boolean).map((l, i) => `${i === 0 ? "P.S." : "P.P.S."} ${l}`);
     const psHtml = [ep4LineHtml, sealedLineHtml].filter(Boolean).map((l, i) => `\n  <p style="margin:28px 0 0;font-size:15px;color:#1a2c3a;line-height:1.55">${i === 0 ? "P.S." : "P.P.S."} ${l}</p>`).join("");
     const letterCta = letterSealed ? `Join ${senderName} →` : `Read ${senderName}’s letter →`;

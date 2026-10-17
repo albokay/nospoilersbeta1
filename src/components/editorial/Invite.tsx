@@ -164,11 +164,11 @@ export function InviteWall({ token, info, inviterName, desktop = false, onJoin, 
                   {seasonsLabel(single.show) && <div style={{ ...E.type.label10, letterSpacing: "0.04em", color: E.color.inkMuted, marginTop: 4 }}>{seasonsLabel(single.show)}</div>}
                   <div style={{ fontFamily: E.font.interface, fontSize: desktop ? 15 : 14, lineHeight: 1.5, marginTop: 12, maxWidth: 460 }}>
                     {/* The letter line (Alborz's copy, 2026-10-17): a letter
-                        stamped past S0 E0 adds where it opens — the letter's
-                        own stamp, so "when you get there" holds even after
-                        the inviter has watched on. */}
+                        stamped past S0 E0 adds where it was written from —
+                        the letter's own stamp, which never goes stale the
+                        way "{name} is at" did once the inviter watched on. */}
                     {letter && letter.showId === single.show.id
-                      ? `${inviterName} has already written you a letter about it. It’s waiting in your watch group.${letter.sealed ? ` (${inviterName} is at S${letter.s} E${letter.e}. Their letter opens when you get there.)` : ""}${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`
+                      ? `${inviterName} has already written you a letter about it. It’s waiting in your watch group.${letter.sealed ? ` (${inviterName} wrote you from S${letter.s} E${letter.e}. Their letter opens when you get there.)` : ""}${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`
                       : watching.length
                       ? `${inviterName} is at S${single.entry.s} E${single.entry.e}. ${others.length ? `${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too. ` : ""}The room is open and waiting for you.`
                       : `${inviterName} wants to start it with you.${others.length ? ` ${joinNames(others)} ${others.length > 1 ? "are" : "is"} in too.` : ""}`}
