@@ -3,7 +3,7 @@
  * the E3Dash / D3Dash boards). Rendered under the editorial skin only, by
  * MobileDashboard and DashboardPage; the classic dashboards are untouched.
  *
- *   EditorialGroups  "Groups" on a rule with "Invite new friend group →";
+ *   EditorialGroups  "Groups" on a rule with "Invite new watch group →" (was "…friend group", Alborz 2026-10-17);
  *                    hairline rows — the members' initials, the group's
  *                    name, a mono second line (new letters · a sealed
  *                    letter · new in chat · the room with the latest
@@ -317,7 +317,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
 
   return (
     <div>
-      <div data-tip-anchor="groups-head"><SectionHead tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new friend group →</UnderlineWord> : null}>Groups</SectionHead></div>
+      <div data-tip-anchor="groups-head"><SectionHead tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new watch group →</UnderlineWord> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);

@@ -48,8 +48,9 @@ export type TipSeat = { anchor: string; dx: number; dy: number; below?: boolean 
 export type GroupRoomTipSticky = Tip & { tilt: number; top: string; left: string; mobileOmit?: boolean; anchor?: "deck-dock"; seat?: TipSeat };
 export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   {
-    body: "Welcome to your group room. Shows you and your friends add accumulate here — you can propose more shows, vote on each others' picks, add more friends, and start a show room from this page.",
-    aside: "(The show room is where you write to your friends.)",
+    // The 10-17 refresh (Alborz's copy): watch group, pitch, "I'm in" opens
+    // the room (no separate start step), and the way to more friends.
+    body: "Welcome to your watch group. The shows you’re watching and the shows you pitch collect here. Answer a friend’s pitch with “I’m in” to join its show room, where you write each other letters. Know someone else who’d watch with you? Add them with “Invite.”",
     // Seated at the page's left, straddling the top of the "Find something
     // new to watch" band (his scribble): centre 49px right of the band's
     // head, 20px above it — the note runs ~100px into the left margin.
@@ -59,7 +60,7 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   // this tip entirely — self-explanatory there, and it made the sheet too
   // long. Pinned to the docked tab (fixed) — its placement stays, his call.
   {
-    body: "“How We Watch TV” is a conversation starter for you and your friends. It grows as you all answer — you'll get more questions periodically.",
+    body: "“How We Watch TV” is a conversation starter for you and your friends. You’ll see a friend’s answer once you’ve answered the same question. It grows as you all answer — you’ll get more questions periodically.",
     aside: "(Missing answers in your column? Open the grid and tap the pencil to fill them in.)",
     tilt: 2, top: "80%", left: "71%", mobileOmit: true, anchor: "deck-dock",
   },
@@ -72,7 +73,7 @@ export const GROUP_ROOM_TIPS: GroupRoomTipSticky[] = [
   // past the column's right edge toward the chat corner — and it SCROLLS
   // with the page (it was pinned to the chat tab).
   {
-    body: "Use the 💬 button for non-show-specific conversations.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)\n\nYou can also use it to discuss what you want to watch next.",
+    body: "Use the 💬 button to discuss what you want to watch next, or anything else that doesn’t risk spoilers — unlike the rest of Sidebar, the chat box isn’t spoiler-gated!",
     tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", seat: { anchor: "pitched-rail", dx: 261, dy: 72 },
   },
 ];
@@ -90,8 +91,11 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile", editorial =
     if (editorial) {
       return [
         { body: "This is your dashboard, where your watch groups live." },
-        { body: `Each group lists your friends by their initials. A dashed circle is a friend who hasn't joined yet. Sidebar has emailed their invite, and you can nudge them ${idiom === "mobile" ? "by swiping on the row" : "from the pen at the end of the row"}.` },
-        { body: "While you wait for friends to join, you can still go inside to add more shows or start writing." },
+        // The 10-17 refresh (Alborz's copy): nudge a slow friend in your own
+        // words, a letter waits for whoever arrives, and more friends.
+        { body: `Each group lists your friends by their initials. A dashed circle is a friend who hasn't joined yet. Sidebar has emailed their invite. If they're slow to respond, nudge them ${idiom === "mobile" ? "by swiping on the row" : "from the pen at the end of the row"}. Your nudge goes out in your own words.` },
+        { body: "While you wait, go inside to pitch more shows or write a letter. Whatever you write will be waiting for your friends when they arrive." },
+        { body: "Have other friends you watch TV with? Start a group with them from “Invite new watch group.”" },
       ];
     }
     // Alborz's 2026-08-01 rewrite (replaces the QA round 3 copy; same on
@@ -138,7 +142,7 @@ export function inviteeGroupRoomTips(w: InviteeTipsCtx): GroupRoomTipSticky[] {
       tilt: 2, top: "80%", left: "71%", anchor: "deck-dock",
     },
     {
-      body: "Use the 💬 button to discuss what you want to watch next.\n\n(Careful, unlike the show rooms, the chat box isn't spoiler-gated!)",
+      body: "Use the 💬 button to discuss what you want to watch next, or anything else that doesn’t risk spoilers — unlike the rest of Sidebar, the chat box isn’t spoiler-gated!",
       tilt: -2, top: "48%", left: "min(84vw, calc(100vw - 175px))", seat: { anchor: "pitched-rail", dx: 261, dy: 72 },
     },
   ];
