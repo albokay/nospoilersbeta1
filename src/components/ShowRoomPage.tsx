@@ -1373,7 +1373,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
             {tab === "reference" && show && refEff && (
               <div style={editorial ? { marginTop: 28 } : undefined}>
-                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} />
+                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={() => { void load(); }} />
               </div>
             )}
             {/* Friend + drafts columns stay MOUNTED (display:none) on the

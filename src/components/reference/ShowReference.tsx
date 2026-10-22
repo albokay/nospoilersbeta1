@@ -18,7 +18,9 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating } from "../../lib/db";
+import StarFace from "../v2/StarFace";
+import { RATING_LABELS } from "../RatingCaptureModal";
 import type { Show } from "../../lib/db";
 import { groupDisplayName, joinNames } from "../../lib/groupNames";
 import { M } from "../../mobile/m";
@@ -29,8 +31,11 @@ const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated,
 }: {
+  /** Rating from the guide (2026-10-22): fires after a rating lands, so the
+   *  room can refresh its map cells. */
+  onRated?: () => void;
   /** The editorial skin (checkpoint 4, 2026-10-12; the bible's GuideRows):
    *  the same guide as hairline rows in ink — the stops line, CAST with the
    *  as-of episode, PLOT SO FAR in Lora, EPISODES with Watched / You are
@@ -110,6 +115,36 @@ export default function ShowReference({
   }, [showId, user?.id, showRoomLinks]);
   // CP4: the owner's essential-episode stars (canon shows only) — epIndex set.
   const [essentials, setEssentials] = useState<Set<number>>(new Set());
+  // Rating from the guide (Alborz 2026-10-22, the mockups on the canvas): the
+  // viewer's own ratings by "s-e", the map's cell on every plot row, and
+  // which row's picker is open. Rating never moves progress — the guide only
+  // lists what's been reached.
+  const [ratings, setRatings] = useState<Map<string, number>>(new Map());
+  const [ratingOpen, setRatingOpen] = useState<string | null>(null);
+  useEffect(() => {
+    setRatings(new Map()); setRatingOpen(null);
+    if (!user) return;
+    let cancelled = false;
+    supabase.from("episode_ratings").select("season_number, episode_number, rating").eq("user_id", user.id).eq("show_id", showId)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setRatings(new Map((data as any[]).map((r) => [`${r.season_number}-${r.episode_number}`, Number(r.rating)])));
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, showId]); // eslint-disable-line react-hooks/exhaustive-deps
+  function setRating(s: number, e: number, n: number) {
+    if (!user) return;
+    const key = `${s}-${e}`;
+    const prev = ratings.get(key) ?? null;
+    setRatings((m) => { const next = new Map(m); if (n) next.set(key, n); else next.delete(key); return next; });
+    setRatingOpen(null);
+    const write = n
+      ? upsertEpisodeRating({ userId: user.id, showId, season: s, episode: e, rating: n })
+      : deleteEpisodeRating({ userId: user.id, showId, season: s, episode: e });
+    write.then(() => onRated?.()).catch(() => {
+      setRatings((m) => { const next = new Map(m); if (prev) next.set(key, prev); else next.delete(key); return next; });
+    });
+  }
   // Canon rule (Alborz 2026-09-07): adding a show to your canon SETS YOUR
   // PROGRESS to the latest catalog episode — canon means you've seen it all
   // (as of now). This local override reflects the jump immediately; the
@@ -313,15 +348,24 @@ export default function ShowReference({
     // after each episode's label, for a show you've FINISHED that's in your
     // canon — the essentials live where their plot sits.
     const starAllowed = !!user && !!canonOn && finished;
+    const ratingAllowed = !!user;
+    const ratedCount = plotEpisodes.filter((ep) => ratings.has(`${ep.s}-${ep.e}`)).length;
+    const circle = (size: number, on: boolean, extra?: React.CSSProperties): React.CSSProperties => ({
+      width: size, height: size, borderRadius: "50%", border: `2px solid ${E.color.identity}`, background: on ? E.color.identity : "transparent",
+      padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", ...extra,
+    });
     const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null }) => {
       const starred = essentials.has(idx(ep.s, ep.e));
+      const rKey = `${ep.s}-${ep.e}`;
+      const r = ratings.get(rKey) ?? 0;
+      const open = ratingOpen === rKey;
       return (
         <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ ...E.type.label10, color: E.color.inkMuted, minWidth: 0 }}>S{ep.s} E{ep.e} · {ep.title}</span>
+            {(starAllowed || ratingAllowed) && <span aria-hidden="true" style={{ flex: 1, minWidth: 24, height: 1, background: E.color.hairline }} />}
             {starAllowed && (
               <>
-                <span aria-hidden="true" style={{ flex: 1, minWidth: 24, height: 1, background: E.color.hairline }} />
                 <button
                   type="button"
                   onClick={() => toggleEssential(ep.s, ep.e)}
@@ -333,8 +377,32 @@ export default function ShowReference({
                 </button>
               </>
             )}
+            {ratingAllowed && (
+              // The map's rating cell: an identity ring unrated, cream stars on
+              // the identity fill once rated (his note on the mockups).
+              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, r > 0 || open)}>
+                {r > 0 && <StarFace rating={r} size={18} color={E.color.cream} />}
+              </button>
+            )}
           </div>
           <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
+          {open && (
+            // The picker: seven circles — the empty ring (no rating, the map's
+            // no-stars state) then 1 to 6 — the chosen one filled, its words under.
+            <div style={{ marginTop: 12, padding: "12px 14px", border: `1px solid ${E.color.ink}`, display: "flex", flexDirection: "column", gap: 10, ...(mobile ? {} : { width: 360, boxSizing: "border-box", marginLeft: "auto" }) }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                {[0, 1, 2, 3, 4, 5, 6].map((n) => {
+                  const on = r === n;
+                  return (
+                    <button key={n} type="button" aria-pressed={on} aria-label={n ? RATING_LABELS[n] : "No rating"} title={n ? RATING_LABELS[n] : "No rating"} onClick={() => setRating(ep.s, ep.e, n)} style={circle(36, on)}>
+                      {n > 0 && <StarFace rating={n} size={28} color={on ? E.color.cream : E.color.identity} />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ ...E.type.label11, color: E.color.ink }}>{r ? RATING_LABELS[r] : "No rating"}</div>
+            </div>
+          )}
         </div>
       );
     };
@@ -396,10 +464,16 @@ export default function ShowReference({
                 follow-up): a small star and "star the ones that mattered",
                 all in accent, while the stars are available. */}
             <div ref={plotHeadRef}>
-              <SectionHead style={{ marginTop: 28 }} right={starAllowed ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent, flexShrink: 0, whiteSpace: "nowrap" }}>
-                  <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
-                  Star the ones that mattered
+              <SectionHead style={{ marginTop: 28 }} right={(starAllowed || (ratingAllowed && ratedCount < plotEpisodes.length)) ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 12, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  {starAllowed && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent }}>
+                      <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
+                      Star the ones that mattered
+                    </span>
+                  )}
+                  {/* "3 of 8 rated" until every listed episode is rated (2026-10-22). */}
+                  {ratingAllowed && ratedCount < plotEpisodes.length && <span style={{ color: E.color.inkMuted }}>{ratedCount} of {plotEpisodes.length} rated</span>}
                 </span>
               ) : null}>Plot so far</SectionHead>
             </div>

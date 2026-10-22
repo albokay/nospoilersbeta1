@@ -1385,7 +1385,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
           <div style={editorial ? { marginTop: 18 } : undefined}>
-            <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} />
+            <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={() => { void load(); }} />
           </div>
         )}
         {/* Friend + drafts columns stay MOUNTED (display:none) on the other
