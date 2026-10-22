@@ -12,7 +12,7 @@ import { CANON } from "../../styles/canon";
 import { ChevronDown, ChevronUp, Lock, Mail, Mails, MessageSquareText, Users, Sparkles, Flag } from "lucide-react";
 import { isSidebarAuthor, sidebarStampLabel, SIDEBAR_STAMP_SPEC, SIDEBAR_DISPLAY_NAME, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import { E } from "../../styles/editorial";
-import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIEW, SidebarPaper, EntryFoot, FEED_VARS, DraftRow } from "../editorial/ShowRoom";
+import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIEW, SidebarPaper, EntryFoot, FEED_VARS, DraftRow, NudgeMark } from "../editorial/ShowRoom";
 import { UnderlineWord } from "../editorial/Chrome";
 import { UNDERLINE_WORD } from "../editorial/MapNotes";
 import { EditorialScope } from "../../lib/skin";
@@ -190,6 +190,10 @@ export type V2RoomFeedProps = {
    *  watching". Departed members are never passed. Needs `seasons` for
    *  real distances; without it the tag order still holds. */
   positions?: { username: string; s: number; e: number }[];
+  /** The nudge (2026-10-22): asked per marker with the friends on it (never
+   *  the viewer); returns the button's label + act when at least one is
+   *  3+ episodes behind the viewer, else null. Editorial markers only. */
+  nudgeFor?: (usernames: string[]) => { label: string; onClick: () => void } | null;
   /** The viewer's own marker (Alborz 2026-09-28): pass their handle and the
    *  feed marks their own position too — "You are here · S1 E4", sharing a
    *  marker with friends at the same spot ("You and Sam are here"). The
@@ -377,6 +381,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     gatedStubAudience = "the room",
     seasons,
     positions,
+    nudgeFor,
     viewerUsername,
     parentGroupId = null,
     onOpenRoom,
@@ -526,7 +531,8 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       ? `${list} ${plural ? "are" : "is"} here`
       : `${list} ${plural ? "haven't" : "hasn't"} started watching`;
     if (editorial) {
-      return <RoadRule key={`road-${m.idx}`} ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who} text={started ? `${who} · S${m.s} E${m.e}` : who} />;
+      const nudge = nudgeFor ? nudgeFor(m.people.filter((p) => !p.self).map((p) => p.username)) : null;
+      return <RoadRule key={`road-${m.idx}`} ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who} text={started ? `${who} · S${m.s} E${m.e}` : who} action={nudge ? <NudgeMark label={nudge.label} onClick={nudge.onClick} /> : undefined} />;
     }
     return (
       <RoadMarkerRow

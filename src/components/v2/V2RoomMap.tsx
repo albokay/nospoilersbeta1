@@ -173,6 +173,13 @@ export type V2RoomMapProps = {
       AskTheRoomPicker chooser went with it — both dormant). Without
       groupId, launcher mode is suppressed (names render plain). */
   groupId?: string;
+  /** The nudge (2026-10-22): the parent opens its nudge sheet for this
+   *  member; given, the map's own popover and the direction logic retire
+   *  (a nudge is the ahead friend's — only a member 3+ episodes behind
+   *  gets the tag under their name, and the name click does the same). */
+  onNudge?: (member: V2RoomMapMember) => void;
+  /** Which members carry the nudge tag (3+ episodes behind the viewer). */
+  nudgeable?: Set<string>;
   /** Fires when a cell with an entry is clicked. */
   onEntryClick: (threadId: string) => void;
   /** Fires when the viewer clicks one of their own cells in a way that
@@ -337,6 +344,8 @@ export default function V2RoomMap({
   onMemberClick,
   onEditModeChange,
   editorial = false,
+  onNudge,
+  nudgeable,
 }: V2RoomMapProps) {
   // Your own column is always the left-most (Alborz's notes, round 6), both
   // looks: the viewer first, then the rest in the order they came.
@@ -405,6 +414,8 @@ export default function V2RoomMap({
   // hypothetical callers without a room context get plain headers.
   // Mobile has no hover and no nudge/poll launchers — plain headers.
   const launcherMode = !!groupId && !mobile;
+  // With the parent's nudge, only the taggable members are clickable.
+  const canNudge = (m: V2RoomMapMember) => (onNudge ? !!nudgeable?.has(m.userId) : true);
   const [nudgeOpenFor, setNudgeOpenFor] = useState<{
     recipientId: string;
     recipientUsername: string;
@@ -900,7 +911,7 @@ export default function V2RoomMap({
               overflow: "visible",
             }}
           >
-            {launcherMode && (
+            {launcherMode && (!onNudge || (nudgeable?.size ?? 0) > 0) && (
               <div
                 style={{
                   position: "absolute",
@@ -916,7 +927,7 @@ export default function V2RoomMap({
                   whiteSpace: "nowrap",
                 }}
               >
-                click a name to<br />nudge a friend
+                {onNudge ? <>a friend 3+ behind<br />can be nudged</> : <>click a name to<br />nudge a friend</>}
               </div>
             )}
           </div>
@@ -927,7 +938,7 @@ export default function V2RoomMap({
             // members. The filtered user's own column (and the self
             // column, when self isn't the filtered one but isn't dimmed
             // either) keep their normal interactivity.
-            const isClickable = launcherMode && !isSelfCol && !m.isDeparted && !dimmed;
+            const isClickable = launcherMode && !isSelfCol && !m.isDeparted && !dimmed && canNudge(m);
             // The "(you)" label is INERT (Alborz 2026-09-16): the pencil is
             // the only way into rating-edit now, so the label lost its
             // click, its cursor and its tooltip. Other members' names keep
@@ -935,8 +946,8 @@ export default function V2RoomMap({
             const usernameTooltipText: React.ReactNode | null = isClickable
               ? (
                   <>
-                    <span style={{ display: "block" }}>Give {dn(m.username)}</span>
-                    <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>
+                    <span style={{ display: "block" }}>{onNudge ? "Nudge" : "Give"} {dn(m.username)}</span>
+                    {!onNudge && <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>}
                   </>
                 )
               : null;
@@ -1092,6 +1103,9 @@ export default function V2RoomMap({
                     maxWidth: isSelfCol ? dynamicHeaderHeight - (editMode ? 52 : 36) : dynamicHeaderHeight - 8,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
+                    // The nudge tag (2026-10-22): a friend 3+ behind wears
+                    // their name on the accent block — the column's NUDGE.
+                    ...(onNudge && isClickable ? { background: E.color.accent, color: E.color.ink, fontWeight: 700, padding: "2px 7px", boxSizing: "border-box" as const } : {}),
                     fontSize: 13,
                     fontWeight: 400,
                     color: editorial ? CANON.dark : CANON.cream, // "(you)" matches the friends' names (2026-09-25)
@@ -1106,6 +1120,7 @@ export default function V2RoomMap({
                       onClick={
                         isClickable
                           ? (e) => {
+                              if (onNudge) { onNudge(m); return; }
                               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                               const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
                               setNudgeOpenFor({
@@ -1123,6 +1138,7 @@ export default function V2RoomMap({
                           ? (e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
+                                if (onNudge) { onNudge(m); return; }
                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                 const status = nudgeStatusFor(m.progress, viewerProgress, seasons);
                                 setNudgeOpenFor({

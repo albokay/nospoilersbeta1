@@ -58,7 +58,8 @@ function corsHeaders(origin: string | null): Record<string, string> {
 // 24h window only generate one email (the first). Detection uses the
 // existing pings_rate_limit_idx (sender, recipient, group, sent_at).
 const EMAIL_RATE_LIMIT_WINDOW_HOURS      = 24;
-const MESSAGE_MAX_LENGTH                 = 80;
+// 200 since 2026-10-22 (the nudge is personal — "in your own words").
+const MESSAGE_MAX_LENGTH                 = 200;
 const FROM_ADDRESS                       = "Sidebar <invites@sidebar.watch>";
 const POLL_VOTE_NOTIFICATION_BATCH_MIN   = 5;
 
@@ -309,8 +310,12 @@ async function handlePing(
     return jsonOk({ ping_id: insertedPing.id, channel: "sticky", warning: "email_not_configured" });
   }
 
+  // The nudge email (Alborz's copy, 2026-10-22): the friend's words carry
+  // it — the old "letters piling up" / "no rush" lines are gone — and the
+  // button opens the room with the answer sheet (?answer=, CP2). The link
+  // is /show-room, which the phone forks to /m on its own.
   const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
-  const roomUrl = `${baseUrl}/room/${encodeURIComponent(group_id)}`;
+  const roomUrl = `${baseUrl}/show-room/${encodeURIComponent(group_id)}?answer=${encodeURIComponent(insertedPing.id)}`;
   const subject = `${senderHandle} sent you a nudge about ${showName}`;
 
   const html = `
@@ -319,38 +324,33 @@ async function handlePing(
 <body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
 <div style="max-width:560px;margin:0 auto;padding:56px 32px">
   <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
-    ${escapeHtml(senderHandle)} wants you in the room.
+    ${escapeHtml(senderHandle)} sent you a note about ${escapeHtml(showName)}.
   </h1>
-  <p style="margin:0 0 20px;font-size:15px;color:#1a2c3a;line-height:1.55">
-    Your friend room for <strong><em>${escapeHtml(showName)}</em></strong> has letters piling up for you. ${escapeHtml(senderHandle)} sent you a little nudge:
-  </p>
-  <p style="margin:0 0 28px;padding:16px 20px;background:#f6f4ee;border-left:3px solid #1a2c3a;font-size:16px;color:#1a2c3a;font-style:italic;line-height:1.5">
+  <p style="margin:0 0 28px;padding:4px 0 4px 16px;border-left:3px solid #dea838;font-size:17px;color:#1a2c3a;font-style:italic;line-height:1.5">
     ${escapeHtml(trimmedMessage)}
   </p>
-  <a href="${roomUrl}" style="display:inline-block;background:#dea838;color:#fff;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:15px;font-weight:700">
-    Open the room →
-  </a>
-  <p style="margin:28px 0 0;font-size:14px;color:#1a2c3a;font-style:italic">
-    no rush. when you're ready.
+  <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">
+    ${escapeHtml(senderHandle)} is wondering if you&rsquo;re still watching or thinking about sitting out the rest.
   </p>
-  <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
-    You're getting this because you're in a friend room with ${escapeHtml(senderHandle)} on Sidebar.
+  <a href="${roomUrl}" style="display:inline-block;background:#dea838;color:#fef8ea;text-decoration:none;padding:12px 28px;border-radius:0;font-size:15px;font-weight:700">
+    Answer ${escapeHtml(senderHandle)} →
+  </a>
+  <p style="margin:40px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
+    You're getting this because you're watching ${escapeHtml(showName)} with ${escapeHtml(senderHandle)} on Sidebar.
   </p>
 </div>
 </body>
 </html>`;
 
-  const text = `${senderHandle} wants you in the room.
-
-Your friend room for ${showName} has letters piling up for you. ${senderHandle} sent you a little nudge:
+  const text = `${senderHandle} sent you a note about ${showName}.
 
   ${trimmedMessage}
 
-Open the room: ${roomUrl}
+${senderHandle} is wondering if you're still watching or thinking about sitting out the rest.
 
-no rush. when you're ready.
+Answer ${senderHandle}: ${roomUrl}
 
-You're getting this because you're in a friend room with ${senderHandle} on Sidebar.`;
+You're getting this because you're watching ${showName} with ${senderHandle} on Sidebar.`;
 
   const sent = await sendResendEmail(resendKey, recipientEmail, subject, html, text);
   if (!sent) {

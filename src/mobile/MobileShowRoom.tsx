@@ -36,6 +36,7 @@ import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
+import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "../components/NudgeSheet";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -886,6 +887,40 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     .filter((m) => m.userId !== user?.id && !m.isDeparted)
     .map((m) => { const eff = effectiveProgress(m.progress); return { username: m.username, s: eff?.s ?? 0, e: eff?.e ?? 0 }; }), [mapMembers, user?.id]);
 
+
+  // The nudge (Alborz's "friend who pulls ahead" pass, CP1, 2026-10-22):
+  // a current friend 3+ episodes behind the viewer (never started counts
+  // as 0) can be nudged from their marker in the letters. The
+  // sheet takes one or more recipients (a shared marker nudges both).
+  const nudgeRecipientFor = useCallback((m: V2RoomMapMember): NudgeRecipient | null => {
+    if (!user || m.userId === user.id || m.isDeparted) return null;
+    const v = effectiveProgress(progressForShow);
+    const vIdx = v ? linearIndex(v.s, v.e, show?.seasons) : 0;
+    const me = effectiveProgress(m.progress);
+    const mIdx = me ? linearIndex(me.s, me.e, show?.seasons) : 0;
+    const behind = vIdx - mIdx;
+    if (behind < 3) return null;
+    return { userId: m.userId, name: displayNames[m.username] ?? m.username, behind, started: mIdx > 0 };
+  }, [user, progressForShow, show?.seasons, mapMembers]); // eslint-disable-line react-hooks/exhaustive-deps -- displayNames is declared below and read at call time (it follows mapMembers)
+  const [nudgeOpen, setNudgeOpen] = useState<NudgeRecipient[] | null>(null);
+  const nudgeFor = useCallback((usernames: string[]) => {
+    const rs = usernames.map((u) => mapMembers.find((m) => m.username === u)).map((m) => (m ? nudgeRecipientFor(m) : null)).filter((r): r is NudgeRecipient => !!r);
+    if (!rs.length) return null;
+    return { label: `Nudge ${joinNudgeNames(rs.map((r) => r.name))}`, onClick: () => setNudgeOpen(rs) };
+  }, [mapMembers, nudgeRecipientFor]);
+  const viewerEpisodes = useMemo(() => { const v = effectiveProgress(progressForShow); return v ? linearIndex(v.s, v.e, show?.seasons) : 0; }, [progressForShow, show?.seasons]);
+  // ?nudge=<friend's id> (the daily email's "Nudge Sam →", CP3): opens the
+  // sheet once the members are in, if that friend is still 3+ behind.
+  const nudgeParamRef = useRef<string | null>(new URLSearchParams(location.search).get("nudge"));
+  useEffect(() => {
+    const id = nudgeParamRef.current;
+    if (!id || !mapMembers.length) return;
+    nudgeParamRef.current = null;
+    const m = mapMembers.find((x) => x.userId === id);
+    const r = m ? nudgeRecipientFor(m) : null;
+    if (r) setNudgeOpen([r]);
+  }, [mapMembers, nudgeRecipientFor]);
+
   // The notes on a letter actually opened (the paper / the sheet): stamp
   // now + your progress, so the blue clears and a later unseal reads as new.
   const handleNotesOpened = useCallback((threadId: string) => {
@@ -1342,6 +1377,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
               seasons={show?.seasons}
               positions={roadPositions}
+              nudgeFor={nudgeFor}
               viewerUsername={profile?.username}
               parentGroupId={parentGroupId}
               onOpenRoom={(rid, sid) => navigate(`/m/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: parentGroupId } })}
@@ -1470,6 +1506,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              your own icon → the rating edit mode (Save commits; closing
              the sheet mid-edit drops unsaved taps). Red dots have no
              dismiss here (Alborz 2026-09-23). ── */}
+      {nudgeOpen && roomId && <NudgeSheet mobile recipients={nudgeOpen} groupId={roomId} viewerEpisodes={viewerEpisodes} onClose={() => setNudgeOpen(null)} />}
       {mapSheetOpen && roomId && show && user && mapEmpty && (editorial ? (
         <BottomSheet onClose={() => setMapSheetOpen(false)} title="Season map">
           <div style={{ width: "100%", aspectRatio: "1 / 1", boxSizing: "border-box", border: `1px dashed ${E.color.friend}`, color: E.color.inkSub, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 28, ...E.type.body15 }}>

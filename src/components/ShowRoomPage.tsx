@@ -49,6 +49,7 @@ import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
 import IncomingPingSticky from "./IncomingPingSticky";
+import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "./NudgeSheet";
 import PollSticky from "./PollSticky";
 import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
@@ -884,6 +885,40 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     .filter((m) => m.userId !== user?.id && !m.isDeparted)
     .map((m) => { const eff = effectiveProgress(m.progress); return { username: m.username, s: eff?.s ?? 0, e: eff?.e ?? 0 }; }), [mapMembers, user?.id]);
 
+
+  // The nudge (Alborz's "friend who pulls ahead" pass, CP1, 2026-10-22):
+  // a current friend 3+ episodes behind the viewer (never started counts
+  // as 0) can be nudged from their marker in the letters and the season map's column. The
+  // sheet takes one or more recipients (a shared marker nudges both).
+  const nudgeRecipientFor = useCallback((m: V2RoomMapMember): NudgeRecipient | null => {
+    if (!user || m.userId === user.id || m.isDeparted) return null;
+    const v = effectiveProgress(progressForShow);
+    const vIdx = v ? linearIndex(v.s, v.e, show?.seasons) : 0;
+    const me = effectiveProgress(m.progress);
+    const mIdx = me ? linearIndex(me.s, me.e, show?.seasons) : 0;
+    const behind = vIdx - mIdx;
+    if (behind < 3) return null;
+    return { userId: m.userId, name: displayNames[m.username] ?? m.username, behind, started: mIdx > 0 };
+  }, [user, progressForShow, show?.seasons, mapMembers]); // eslint-disable-line react-hooks/exhaustive-deps -- displayNames is declared below and read at call time (it follows mapMembers)
+  const [nudgeOpen, setNudgeOpen] = useState<NudgeRecipient[] | null>(null);
+  const nudgeFor = useCallback((usernames: string[]) => {
+    const rs = usernames.map((u) => mapMembers.find((m) => m.username === u)).map((m) => (m ? nudgeRecipientFor(m) : null)).filter((r): r is NudgeRecipient => !!r);
+    if (!rs.length) return null;
+    return { label: `Nudge ${joinNudgeNames(rs.map((r) => r.name))}`, onClick: () => setNudgeOpen(rs) };
+  }, [mapMembers, nudgeRecipientFor]);
+  const viewerEpisodes = useMemo(() => { const v = effectiveProgress(progressForShow); return v ? linearIndex(v.s, v.e, show?.seasons) : 0; }, [progressForShow, show?.seasons]);
+  // ?nudge=<friend's id> (the daily email's "Nudge Sam →", CP3): opens the
+  // sheet once the members are in, if that friend is still 3+ behind.
+  const nudgeParamRef = useRef<string | null>(new URLSearchParams(location.search).get("nudge"));
+  useEffect(() => {
+    const id = nudgeParamRef.current;
+    if (!id || !mapMembers.length) return;
+    nudgeParamRef.current = null;
+    const m = mapMembers.find((x) => x.userId === id);
+    const r = m ? nudgeRecipientFor(m) : null;
+    if (r) setNudgeOpen([r]);
+  }, [mapMembers, nudgeRecipientFor]);
+
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
     setFirstHighlightedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
@@ -1322,6 +1357,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   gatedStubAudience={mapMembers.filter((m) => !m.isDeparted && m.userId !== user?.id).length === 1 ? "you" : "the room"}
                   seasons={show?.seasons}
                   positions={roadPositions}
+                  nudgeFor={nudgeFor}
                   viewerUsername={profile?.username}
                   parentGroupId={parentGroupId}
                   onOpenRoom={(rid, sid) => navigate(`/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: parentGroupId } })}
@@ -1408,6 +1444,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 viewerProgress={progressForShow}
                 viewerUserId={user?.id}
                 groupId={roomId}
+                onNudge={(m) => { const r = nudgeRecipientFor(m); if (r) setNudgeOpen([r]); }}
+                nudgeable={new Set(mapMembers.filter((m) => !!nudgeRecipientFor(m)).map((m) => m.userId))}
                 visibleEntryIds={visibleEntryIds}
                 onEntryClick={handleCellClick}
                 onRateOwnCell={rateOwnCell}
@@ -1499,6 +1537,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {!privateOnly && roomId && user && (
         <>
           <IncomingPingSticky groupId={roomId} currentUserId={user.id} displayNames={displayNames} />
+          {nudgeOpen && <NudgeSheet recipients={nudgeOpen} groupId={roomId} viewerEpisodes={viewerEpisodes} onClose={() => setNudgeOpen(null)} />}
           <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} displayNames={displayNames} />
           {/* SIKW retired (2026-07-28) — SIKWSticky unmounted, component +
               tables dormant. Polls are the room's one ask flow now. */}

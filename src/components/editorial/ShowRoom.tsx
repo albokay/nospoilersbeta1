@@ -193,13 +193,38 @@ export function TourWord({ onClick }: { onClick: () => void }) {
 }
 
 /** "You are here · S1 E3" — a mono rule between what you've reached and what waits. */
-export function RoadRule({ text, ariaLabel }: { text: string; ariaLabel?: string }) {
+export function RoadRule({ text, ariaLabel, action }: { text: string; ariaLabel?: string; /** The nudge (2026-10-22): sits on the rule's line after the label. */ action?: React.ReactNode }) {
   return (
     <div aria-label={ariaLabel} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", ...E.type.label10, letterSpacing: "0.1em", color: "rgba(26,58,74,0.55)" }}>
-      <span style={{ flex: 1, height: 1, background: "rgba(26,58,74,0.25)" }} />
-      <span style={{ textAlign: "center" }}>{text}</span>
-      <span style={{ flex: 1, height: 1, background: "rgba(26,58,74,0.25)" }} />
+      <span style={{ flex: 1, minWidth: 12, height: 1, background: "rgba(26,58,74,0.25)" }} />
+      <span style={{ textAlign: "center", whiteSpace: action ? "nowrap" : undefined }}>{text}</span>
+      {action}
+      <span style={{ flex: 1, minWidth: 12, height: 1, background: "rgba(26,58,74,0.25)" }} />
     </div>
+  );
+}
+
+/** The nudge on a friend's marker (Alborz's mockup, 2026-10-21): lucide's
+ *  pointer turned on its side in the marker's grey, outside the yellow
+ *  block. Shown only for a friend 3+ episodes behind the viewer. */
+export function NudgeMark({ label, onClick, size = "row" }: { label: string; onClick: () => void; /** "row" on a marker; "tag" under a map column's name. */ size?: "row" | "tag" }) {
+  const tag = size === "tag";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: tag ? 4 : 8, flexShrink: 0 }}>
+      <SidewaysPointer size={tag ? 13 : 18} />
+      <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ ...E.type.tab14, fontSize: tag ? 10 : 11, height: tag ? 20 : 26, padding: tag ? "0 6px" : "0 10px", border: 0, background: E.color.accent, color: E.color.ink, cursor: "pointer", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center" }}>{label}</button>
+    </span>
+  );
+}
+function SidewaysPointer({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="rgba(26,58,74,0.55)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <g transform="translate(0 24) scale(1 -1) rotate(90 12 12)">
+        <path d="M22 14a8 8 0 0 1-8 8" /><path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+        <path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" /><path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10" />
+        <path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+      </g>
+    </svg>
   );
 }
 
