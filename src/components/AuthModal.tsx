@@ -169,7 +169,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
           </div>
           {mode === "signin" && <div style={{ marginTop: 14, textAlign: "center" }}><UnderlineWord onClick={() => switchMode("recovery")}>Forgot password?</UnderlineWord></div>}
           {mode === "signup" && (
-            <p style={{ ...note, marginTop: 24, textAlign: "center" }}>Sidebar only uses your email to sign you in and to send a daily update of your friends&rsquo; writing (only if there&rsquo;s new writing you haven&rsquo;t seen). Emails are never shared or sold.</p>
+            <p style={{ ...note, marginTop: 24, textAlign: "center" }}>Sidebar uses your email to sign you in, to send one daily update when there&rsquo;s something new for you, and to pass along a note when a friend sends you one directly. Never shared or sold.</p>
           )}
         </>
       );
@@ -370,7 +370,7 @@ export default function AuthModal({ onClose, onSuccess, hint, initialMode = "sig
 
       {mode === "signup" && (
         <p style={{ marginTop: 12, fontSize: 13, lineHeight: 1.5, color: CANON.dark, opacity: 0.7 }}>
-          Sidebar only uses your email to sign you in and to send a daily update of your friends&rsquo; writing (only if there&rsquo;s new writing you haven&rsquo;t seen). Emails are never shared or sold.
+          Sidebar uses your email to sign you in, to send one daily update when there&rsquo;s something new for you, and to pass along a note when a friend sends you one directly. Never shared or sold.
         </p>
       )}
 
