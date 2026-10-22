@@ -36,7 +36,7 @@ import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
-import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "../components/NudgeSheet";
+import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
 import NudgeAnswerSheet, { NudgeReplySheet } from "../components/NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -679,6 +679,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     } catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -700,6 +701,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -950,6 +952,26 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     : nudgeReplies.length
       ? { text: nudgeReplies.length === 1 ? `${nudgeReplies[0].senderName} answered your nudge.` : "Your nudges were answered.", at: Math.max(...nudgeReplies.map((n) => n.sentAt)), onClick: () => setReplyOpen(true) }
       : null;
+
+
+  // The finale letter (CP4, 2026-10-22): the compose page that opens by
+  // itself when a progress advance lands on the show's LAST aired episode
+  // wears a banner naming who is 3+ behind ("You've finished 6 episodes
+  // ahead of Sam."), and its paper asks "What made you surge ahead?". Set at
+  // the advance; cleared by the Write button and when the page closes. The
+  // banner is derived at render time so it sees the reloaded members.
+  const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
+  const isShowEnd = (t: { s: number; e: number }): boolean => {
+    const seasons = show?.seasons ?? [];
+    const total = seasons.reduce((n, x) => n + (x || 0), 0);
+    return total > 0 && linearIndex(t.s, t.e, seasons) >= total;
+  };
+  const finaleBanner = useMemo(() => {
+    if (!finaleAt || !composeAuto) return undefined;
+    const behind = mapMembers.map((m) => nudgeRecipientFor(m)).filter((r): r is NudgeRecipient => !!r).sort((a, b) => a.behind - b.behind);
+    const title = finaleBannerTitle(behind);
+    return title ? { title } : undefined;
+  }, [finaleAt, composeAuto, mapMembers, nudgeRecipientFor]);
 
   // The notes on a letter actually opened (the paper / the sheet): stamp
   // now + your progress, so the blue clears and a later unseal reads as new.
@@ -1329,7 +1351,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               /* S pill (Alborz 2026-09-16): the M pill read too thick
                  inside the 60px band — this matches the retired canon
                  pill's weight. */
-              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             ) : tab === "friend" && show && progressForShow ? (
               <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
@@ -1354,7 +1376,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               {!privateOnly && roomId && mapMembers.length > 0 && (
                 <button style={mapBtn} onClick={() => setMapSheetOpen(true)}><LayoutGrid size={16} /> Map</button>
               )}
-              <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             </div>
           )}
         </div>
@@ -1462,7 +1484,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `calc(12px + env(safe-area-inset-bottom, 0px) / 2) ${E.space.gutter}px calc(12px + env(safe-area-inset-bottom, 0px) / 2)` }}>
           <WriteBlock
             label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
-            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}
+            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}
             // Alert while a letter waits to be sent (Alborz's notes, round 5).
             style={{ width: "100%", ...(composeMinimized ? { background: E.color.alert } : {}) }}
           />
@@ -1492,7 +1514,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <ComposeForm
             ref={composeFormRef}
             autoPrompt={composeAuto}
-            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true) } : undefined}
+            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), banner: finaleBanner } : undefined}
+            bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
             mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}

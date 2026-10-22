@@ -140,3 +140,23 @@ export default function NudgeSheet({ recipients, groupId, viewerEpisodes, mobile
     </EditorialDialog>
   );
 }
+
+/** The finale letter's banner (the friend who pulls ahead, CP4, 2026-10-22;
+ *  his forms): the compose page that opens on the show's last episode
+ *  names who is 3+ episodes behind. Null when nobody is. */
+export function finaleBannerTitle(behind: NudgeRecipient[]): string | null {
+  if (!behind.length) return null;
+  const eps = (n: number) => `${n} episode${n === 1 ? "" : "s"}`;
+  if (behind.every((r) => !r.started)) {
+    const names = joinNudgeNames(behind.map((r) => r.name));
+    return `You’ve finished. ${names} ${behind.length === 1 ? "hasn’t" : "haven’t"} started yet.`;
+  }
+  if (behind.length === 1) return `You’ve finished ${eps(behind[0].behind)} ahead of ${behind[0].name}.`;
+  if (behind.length === 2) {
+    const [a, b] = behind;
+    return a.behind === b.behind
+      ? `You’ve finished ${eps(a.behind)} ahead of ${a.name} and ${b.name}.`
+      : `You’ve finished ${eps(a.behind)} ahead of ${a.name}, ${b.behind} ahead of ${b.name}.`;
+  }
+  return `You’ve finished at least ${eps(Math.min(...behind.map((r) => r.behind)))} ahead of everyone else.`;
+}

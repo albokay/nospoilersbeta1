@@ -48,7 +48,7 @@ import TSPDemoModal from "./TSPDemoModal";
 import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
-import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "./NudgeSheet";
+import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "./NudgeSheet";
 import NudgeAnswerSheet, { NudgeReplySheet } from "./NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import PollSticky from "./PollSticky";
@@ -608,6 +608,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     } catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -630,6 +631,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -947,6 +949,26 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     : nudgeReplies.length
       ? { text: nudgeReplies.length === 1 ? `${nudgeReplies[0].senderName} answered your nudge.` : "Your nudges were answered.", at: Math.max(...nudgeReplies.map((n) => n.sentAt)), onClick: () => setReplyOpen(true) }
       : null;
+
+
+  // The finale letter (CP4, 2026-10-22): the compose page that opens by
+  // itself when a progress advance lands on the show's LAST aired episode
+  // wears a banner naming who is 3+ behind ("You've finished 6 episodes
+  // ahead of Sam."), and its paper asks "What made you surge ahead?". Set at
+  // the advance; cleared by the Write button and when the page closes. The
+  // banner is derived at render time so it sees the reloaded members.
+  const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
+  const isShowEnd = (t: { s: number; e: number }): boolean => {
+    const seasons = show?.seasons ?? [];
+    const total = seasons.reduce((n, x) => n + (x || 0), 0);
+    return total > 0 && linearIndex(t.s, t.e, seasons) >= total;
+  };
+  const finaleBanner = useMemo(() => {
+    if (!finaleAt || !composeAuto) return undefined;
+    const behind = mapMembers.map((m) => nudgeRecipientFor(m)).filter((r): r is NudgeRecipient => !!r).sort((a, b) => a.behind - b.behind);
+    const title = finaleBannerTitle(behind);
+    return title ? { title } : undefined;
+  }, [finaleAt, composeAuto, mapMembers, nudgeRecipientFor]);
 
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
@@ -1276,7 +1298,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               //    on the band above. ──
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 {tab !== "reference" ? (
-                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
+                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
                 ) : <span />}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
                   const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
@@ -1304,7 +1326,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
                 )}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
@@ -1512,7 +1534,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <ComposeForm
               ref={composeFormRef}
               autoPrompt={composeAuto}
-              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true } : undefined}
+              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, banner: finaleBanner } : undefined}
+              bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}

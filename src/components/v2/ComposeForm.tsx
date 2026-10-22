@@ -193,7 +193,7 @@ type ComposeFormProps = {
    *  "Tell your friend why you're excited about {show}:" line with the
    *  S0 E0 stamp raised beside it, and the one line under; no context, no
    *  minimize. */
-  editorial?: { context?: string; onMinimize?: () => void; desktop?: boolean; banner?: { step?: number; title: React.ReactNode; sub: string } };
+  editorial?: { context?: string; onMinimize?: () => void; desktop?: boolean; banner?: { step?: number; title: React.ReactNode; sub?: string } };
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -654,7 +654,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", top: 104, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, zIndex: 2 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.2 }}>{editorial.banner.title}</div>
-                  <div style={{ ...E.type.note13, fontSize: 14, lineHeight: 1.5, color: E.color.inkSub, marginTop: 10 }}>{editorial.banner.sub}</div>
+                  {editorial.banner.sub && <div style={{ ...E.type.note13, fontSize: 14, lineHeight: 1.5, color: E.color.inkSub, marginTop: 10 }}>{editorial.banner.sub}</div>}
                 </div>
                 <div style={{ transform: "translateY(-8px)", flexShrink: 0 }}>{stampEl(1.1, E.color.cream)}</div>
               </div>
@@ -666,7 +666,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 23, lineHeight: 1.2, minWidth: 0 }}>{editorial.banner.title}</div>
                 <div style={{ transform: "translateY(-8px)", flexShrink: 0 }}>{stampEl(0.85, E.color.cream)}</div>
               </div>
-              <div style={{ ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, marginTop: 8 }}>{editorial.banner.sub}</div>
+              {editorial.banner.sub && <div style={{ ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, marginTop: 8 }}>{editorial.banner.sub}</div>}
             </div>
           )
         ) : desk ? (
