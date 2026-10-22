@@ -105,7 +105,7 @@ export default function NudgeSheet({ recipients, groupId, viewerEpisodes, mobile
     <div style={{ padding: "28px 0", textAlign: "center", fontFamily: E.font.display, fontWeight: 700, fontSize: 22, color: E.color.ink }}>Sent to {names}.</div>
   ) : (
     <>
-      <div style={{ ...E.type.body15, color: E.color.inkSub, marginTop: mobile ? 8 : 10 }}>{nudgeSubhead(recipients, viewerEpisodes)}</div>
+      <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: mobile ? 8 : 10 }}>{nudgeSubhead(recipients, viewerEpisodes)}</div>
       <label htmlFor="nudge-text" style={{ ...label, display: "block", marginTop: 24 }}>In your own words</label>
       <textarea
         id="nudge-text"

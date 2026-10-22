@@ -911,7 +911,7 @@ export default function V2RoomMap({
               overflow: "visible",
             }}
           >
-            {launcherMode && (!onNudge || (nudgeable?.size ?? 0) > 0) && (
+            {launcherMode && !onNudge && (
               <div
                 style={{
                   position: "absolute",
@@ -927,7 +927,7 @@ export default function V2RoomMap({
                   whiteSpace: "nowrap",
                 }}
               >
-                {onNudge ? <>a friend 3+ behind<br />can be nudged</> : <>click a name to<br />nudge a friend</>}
+                click a name to<br />nudge a friend
               </div>
             )}
           </div>
@@ -943,14 +943,21 @@ export default function V2RoomMap({
             // the only way into rating-edit now, so the label lost its
             // click, its cursor and its tooltip. Other members' names keep
             // the nudge affordance.
+            // Under the parent's nudge (2026-10-22, his notes): a nudgeable
+            // name's hover reads "Nudge Sam"; any other friend's explains
+            // the rule instead of the old rotated hint.
             const usernameTooltipText: React.ReactNode | null = isClickable
-              ? (
-                  <>
-                    <span style={{ display: "block" }}>{onNudge ? "Nudge" : "Give"} {dn(m.username)}</span>
-                    {!onNudge && <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>}
-                  </>
-                )
-              : null;
+              ? (onNudge
+                  ? <span style={{ display: "block" }}>Nudge {dn(m.username)}</span>
+                  : (
+                    <>
+                      <span style={{ display: "block" }}>Give {dn(m.username)}</span>
+                      <span style={{ display: "block", fontStyle: "italic" }}>a nudge.</span>
+                    </>
+                  ))
+              : (onNudge && launcherMode && !isSelfCol && !m.isDeparted && !dimmed)
+                ? <span style={{ display: "block" }}>A friend 3+ episodes behind can be nudged.</span>
+                : null;
             return (
               <div
                 key={m.userId}
@@ -1110,7 +1117,7 @@ export default function V2RoomMap({
                     fontWeight: 400,
                     color: editorial ? CANON.dark : CANON.cream, // "(you)" matches the friends' names (2026-09-25)
                     fontStyle: isClickable ? "italic" : undefined,
-                    borderBottom: isClickable ? `1px dotted ${editorial ? CANON.dark : "var(--canon-cream,#fef8ea)"}` : undefined,
+                    borderBottom: isClickable && !onNudge ? `1px dotted ${editorial ? CANON.dark : "var(--canon-cream,#fef8ea)"}` : undefined,
                     cursor: isClickable ? "pointer" : undefined,
                   };
                   const usernameDiv = (

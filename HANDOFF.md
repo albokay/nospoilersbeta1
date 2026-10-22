@@ -1,5 +1,7 @@
 # Sidebar — Technical State (2026-10-22)
 
+> **⭐ 2026-10-22 — His first live look at the nudge (five notes):** the sideways pointer's strokes are OPAQUE in the marker text's grey (`#808F92`, ink at 55% flattened on cream — the translucent strokes doubled where they crossed); the map's rotated "a friend 3+ behind / can be nudged" hint is GONE under the nudge (the classic "click a name to / nudge a friend" stays for the old popover); the rule moved into the HOVER — a nudgeable name's reads "Nudge Sam", any other friend's "A friend 3+ episodes behind can be nudged."; a name on the accent block loses the dotted underline; the nudge sheet's subhead is the dialogs' standard `note13` (the poll's), not `body15`.
+
 > **⭐ 2026-10-22 — THE FRIEND WHO PULLS AHEAD, CP5: THE SIGN-UP PROMISE (the arc's last).** The account page's line (both looks, both platforms — `AuthModal` ×2, `MobileAuth` ×2) reads, his copy: **"Sidebar uses your email to sign you in, to send one daily update when there's something new for you, and to pass along a note when a friend sends you one directly. Never shared or sold."** It now covers the nudge, its answer, the daily email's prompt and "reached your letter". The one email still outside it: the desktop poll emails (a vote, a close) — PARKED with polls (fold them into the daily email; maybe polls on the phone). The arc is complete: CP1 `c3bd9ec` · CP2 `e3cc101` · CP3 `221e45d` · CP4 `1a74669` · CP5 this commit.
 
 
