@@ -948,7 +948,12 @@ export default function V2RoomMap({
             // the rule instead of the old rotated hint.
             const usernameTooltipText: React.ReactNode | null = isClickable
               ? (onNudge
-                  ? <span style={{ display: "block" }}>Nudge {dn(m.username)}</span>
+                  ? (
+                    <>
+                      <span style={{ display: "block" }}>Nudge {dn(m.username)}</span>
+                      <span style={{ display: "block", fontStyle: "italic" }}>A friend 3+ episodes behind can be nudged.</span>
+                    </>
+                  )
                   : (
                     <>
                       <span style={{ display: "block" }}>Give {dn(m.username)}</span>
