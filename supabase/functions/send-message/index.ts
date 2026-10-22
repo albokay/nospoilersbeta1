@@ -64,6 +64,8 @@ const FROM_ADDRESS                       = "Sidebar <invites@sidebar.watch>";
 const POLL_VOTE_NOTIFICATION_BATCH_MIN   = 5;
 
 const PING_TEMPLATES = new Set(["nudge_ahead", "nudge_same", "nudge_behind"]);
+// A nudge's answer (CP2, 2026-10-22): a ping back to the nudger + an email.
+const REPLY_TEMPLATES = new Set(["nudge_reply"]);
 const POLL_TEMPLATES = new Set(["poll_invite", "poll_close", "poll_vote_notification"]);
 const SIKW_TEMPLATES = new Set(["sikw_ask_invite", "sikw_reply"]);
 const PUBLIC_TEMPLATES = new Set(["public_response_request"]);
@@ -146,6 +148,7 @@ serve(async (req) => {
     const template_type = (body as Record<string, string>).template_type;
     if (!template_type
         || (!PING_TEMPLATES.has(template_type)
+            && !REPLY_TEMPLATES.has(template_type)
             && !POLL_TEMPLATES.has(template_type)
             && !SIKW_TEMPLATES.has(template_type)
             && !PUBLIC_TEMPLATES.has(template_type))) {
@@ -155,6 +158,9 @@ serve(async (req) => {
     // Dispatch.
     if (PING_TEMPLATES.has(template_type)) {
       return await handlePing(body, user, admin, jsonOk, jsonError);
+    }
+    if (REPLY_TEMPLATES.has(template_type)) {
+      return await handleNudgeReply(body, user, admin, jsonOk, jsonError);
     }
     if (POLL_TEMPLATES.has(template_type)) {
       return await handlePoll(body, user, admin, userClient, jsonOk, jsonError);
@@ -176,6 +182,108 @@ serve(async (req) => {
 // ── Pings ────────────────────────────────────────────────────────────────
 // Round-1 logic, unchanged in behavior. Validates membership, rate-limits
 // (kill switch), inserts ping row, sends email iff nudge_ahead.
+
+// ── A nudge's answer (the friend who pulls ahead, CP2, 2026-10-22) ──────
+// The nudged friend answers the nudger: 'in' (still in) or 'out' (sitting
+// out the rest — the client then leaves the room AFTER this call, since
+// both must still be members). The answer is a ping back (nudge_reply,
+// reply_kind, reply_to) for the nudger's room note, the answered nudges
+// are stamped dismissed, and the nudger gets an email right away (a
+// friend writing back, per the sign-up promise) — no 24h gate, only the
+// daily backstop.
+
+async function handleNudgeReply(
+  body: Record<string, unknown>,
+  user: { id: string; email?: string },
+  admin: AdminClient,
+  jsonOk: (b: Record<string, unknown>) => Response,
+  jsonError: (code: string, status: number, message?: string) => Response,
+): Promise<Response> {
+  const { recipient_id, group_id, message, reply_kind } = body as Record<string, string>;
+  const rawReplyTo = (body as Record<string, unknown>).reply_to;
+  const replyTo: string[] = Array.isArray(rawReplyTo) ? (rawReplyTo as unknown[]).filter((x): x is string => typeof x === "string") : [];
+  if (!recipient_id || !group_id || message == null || (reply_kind !== "in" && reply_kind !== "out")) {
+    return jsonError("missing_fields", 400);
+  }
+  const words = String(message).trim();
+  if (!words) return jsonError("invalid_message", 400, "Say a few words back.");
+  if (words.length > MESSAGE_MAX_LENGTH) return jsonError("invalid_message", 400, `Message exceeds ${MESSAGE_MAX_LENGTH} characters.`);
+  if (recipient_id === user.id) return jsonError("self_ping", 400);
+
+  const { data: members, error: memErr } = await admin
+    .from("friend_group_members").select("user_id").eq("group_id", group_id).in("user_id", [user.id, recipient_id]);
+  if (memErr) return jsonError("internal", 500, memErr.message);
+  const memberIds = new Set((members ?? []).map((m: { user_id: string }) => m.user_id));
+  if (!memberIds.has(user.id) || !memberIds.has(recipient_id)) {
+    return jsonError("not_member", 403, "Both of you must still be in this room.");
+  }
+  const { data: grp, error: grpErr } = await admin.from("friend_groups").select("show_id, deleted_at").eq("id", group_id).single();
+  if (grpErr || !grp || grp.deleted_at) return jsonError("group_not_found", 404);
+
+  // The nudges this answers: the caller's, from this nudger, in this room.
+  let answered: string[] = [];
+  if (replyTo.length) {
+    const { data: nudges } = await admin
+      .from("pings").select("id").in("id", replyTo)
+      .eq("recipient_id", user.id).eq("sender_id", recipient_id).eq("group_id", group_id).eq("ping_type", "nudge_ahead");
+    answered = (nudges ?? []).map((n: { id: string }) => n.id);
+  }
+
+  const { data: reply, error: insErr } = await admin
+    .from("pings")
+    .insert({ sender_id: user.id, recipient_id, show_id: grp.show_id, group_id, ping_type: "nudge_reply", message: words, reply_kind, reply_to: answered[0] ?? null })
+    .select("id").single();
+  if (insErr || !reply) return jsonError("internal", 500, insErr?.message ?? "insert failed");
+  if (answered.length) {
+    await admin.from("pings").update({ dismissed_at: new Date().toISOString() }).in("id", answered).is("dismissed_at", null);
+  }
+
+  // The email to the nudger.
+  if (!(await dailyOk(admin, user.id, "email_action", EMAIL_DAILY_BACKSTOP))) {
+    return jsonOk({ ping_id: reply.id, channel: "sticky", email_skipped: "rate_limit" });
+  }
+  const { data: rcptUser, error: rcptErr } = await admin.auth.admin.getUserById(recipient_id);
+  if (rcptErr || !rcptUser?.user?.email) return jsonOk({ ping_id: reply.id, channel: "sticky", warning: "no_recipient_email" });
+  const { data: senderProfile } = await admin.from("profiles").select("username, display_name").eq("id", user.id).single();
+  const senderName = (senderProfile?.display_name ?? "").trim() || senderProfile?.username || "A friend";
+  const { data: showRow } = await admin.from("shows").select("name").eq("id", grp.show_id).single();
+  const showName = showRow?.name?.trim() || "the show";
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendKey) return jsonOk({ ping_id: reply.id, channel: "sticky", warning: "email_not_configured" });
+  const baseUrl = (Deno.env.get("APP_URL") ?? "https://beta.sidebar.watch").replace(/\/$/, "");
+  const roomUrl = `${baseUrl}/show-room/${encodeURIComponent(group_id)}`;
+  const stance = reply_kind === "in" ? `${senderName} is still in.` : `${senderName} is sitting out the rest.`;
+  const subject = `${senderName} answered your nudge about ${showName}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#ffffff;font-family:system-ui,-apple-system,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:56px 32px">
+  <h1 style="margin:0 0 24px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    ${escapeHtml(stance)}
+  </h1>
+  <p style="margin:0 0 28px;padding:4px 0 4px 16px;border-left:3px solid #dea838;font-size:17px;color:#1a2c3a;font-style:italic;line-height:1.5">
+    ${escapeHtml(words)}
+  </p>
+  <a href="${roomUrl}" style="display:inline-block;background:#dea838;color:#fef8ea;text-decoration:none;padding:12px 28px;border-radius:0;font-size:15px;font-weight:700">
+    Open the room →
+  </a>
+  <p style="margin:40px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
+    You're getting this because you nudged ${escapeHtml(senderName)} about ${escapeHtml(showName)} on Sidebar.
+  </p>
+</div>
+</body>
+</html>`;
+  const text = `${stance}
+
+  ${words}
+
+Open the room: ${roomUrl}
+
+You're getting this because you nudged ${senderName} about ${showName} on Sidebar.`;
+  const sent = await sendResendEmail(resendKey, rcptUser.user.email, subject, html, text);
+  return jsonOk({ ping_id: reply.id, channel: sent ? "email" : "sticky", ...(sent ? {} : { warning: "email_send_failed" }) });
+}
 
 async function handlePing(
   body: Record<string, unknown>,

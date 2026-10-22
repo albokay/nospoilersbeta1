@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./lib/auth";
 import SkinBody from "./components/SkinBody";
+import NudgeAnswerGate from "./components/NudgeAnswerGate";
 import App from "./App";
 import BetaGate from "./components/BetaGate";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -32,6 +33,7 @@ window.__reactRoot.render(
       <BrowserRouter>
         <AuthProvider>
           <SkinBody />
+          <NudgeAnswerGate />
           <ComposeModalProvider>
             <App />
           </ComposeModalProvider>

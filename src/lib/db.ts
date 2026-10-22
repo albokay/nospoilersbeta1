@@ -4160,6 +4160,9 @@ export async function sendMessage(args: {
   recipientId: string;
   groupId: string;
   message: string;
+  /** A nudge's answer (nudge_reply): which, and the nudges it answers. */
+  replyKind?: "in" | "out";
+  replyTo?: string[];
 }): Promise<SendMessageResult> {
   const { data: result, error } = await supabase.functions.invoke("send-message", {
     body: {
@@ -4167,6 +4170,8 @@ export async function sendMessage(args: {
       recipient_id:  args.recipientId,
       group_id:      args.groupId,
       message:       args.message,
+      ...(args.replyKind ? { reply_kind: args.replyKind } : {}),
+      ...(args.replyTo ? { reply_to: args.replyTo } : {}),
     },
   });
   if (error) {
@@ -4244,6 +4249,9 @@ type PingRow = {
   message:       string | null;
   sent_at:       string;
   dismissed_at:  string | null;
+  reply_kind?:   'in' | 'out' | null;
+  reply_to?:     string | null;
+  seen_at?:      string | null;
 };
 
 function rowToPing(row: PingRow, senderUsername?: string, senderDisplayName?: string): Ping {
@@ -4257,9 +4265,65 @@ function rowToPing(row: PingRow, senderUsername?: string, senderDisplayName?: st
     message:       row.message,
     sentAt:        new Date(row.sent_at).getTime(),
     dismissedAt:   row.dismissed_at ? new Date(row.dismissed_at).getTime() : null,
+    replyKind:     row.reply_kind ?? null,
+    replyTo:       row.reply_to ?? null,
+    seenAt:        row.seen_at ? new Date(row.seen_at).getTime() : null,
     senderUsername,
     senderDisplayName,
   };
+}
+
+// ── Answering a nudge (the friend who pulls ahead, CP2, 2026-10-22) ──────────
+
+/** A nudge waiting for the viewer, with what the answer sheet needs. */
+export type PendingNudge = Ping & {
+  senderName: string;
+  showName: string;
+  /** The room's people-group, for "I'll sit out the rest" (the stance). */
+  parentGroupId: string | null;
+};
+
+/** The viewer's unanswered nudges (every room), oldest first, named via
+ *  their contact names → the sender's first name → the handle. `unseenOnly`
+ *  = the ones that may still open by themselves. Tolerant → []. */
+export async function fetchPendingNudges(userId: string, opts?: { groupId?: string; unseenOnly?: boolean; kind?: "nudge_ahead" | "nudge_reply" }): Promise<PendingNudge[]> {
+  try {
+    let q = supabase
+      .from("pings")
+      .select("*")
+      .eq("recipient_id", userId)
+      .eq("ping_type", opts?.kind ?? "nudge_ahead")
+      .is("dismissed_at", null)
+      .not("message", "is", null)
+      .order("sent_at", { ascending: true });
+    if (opts?.groupId) q = q.eq("group_id", opts.groupId);
+    if (opts?.unseenOnly) q = q.is("seen_at", null);
+    const { data, error } = await q;
+    if (error || !data?.length) return [];
+    const rows = data as PingRow[];
+    const senderIds = [...new Set(rows.map((r) => r.sender_id))];
+    const showIds = [...new Set(rows.map((r) => r.show_id))];
+    const groupIds = [...new Set(rows.map((r) => r.group_id))];
+    const [profiles, shows, groups, contacts] = await Promise.all([
+      supabase.from("profiles").select("id, username, display_name").in("id", senderIds),
+      supabase.from("shows").select("id, name").in("id", showIds),
+      supabase.from("friend_groups").select("id, parent_group_id").in("id", groupIds),
+      fetchContactNames(userId),
+    ]);
+    const prof = new Map((profiles.data ?? []).map((p: any) => [p.id as string, p]));
+    const showName = new Map((shows.data ?? []).map((s: any) => [s.id as string, s.name as string]));
+    const parent = new Map((groups.data ?? []).map((g: any) => [g.id as string, (g.parent_group_id as string | null) ?? null]));
+    return rows.map((r) => {
+      const p = prof.get(r.sender_id);
+      const senderName = contacts[r.sender_id] ?? ((p?.display_name ?? "").trim() || p?.username || "a friend");
+      return { ...rowToPing(r, p?.username, p?.display_name ?? undefined), senderName, showName: showName.get(r.show_id) ?? "the show", parentGroupId: parent.get(r.group_id) ?? null };
+    });
+  } catch { return []; }
+}
+
+/** "Later" on the answer sheet: this room's nudges stop opening by themselves. */
+export async function markNudgesSeen(groupId: string): Promise<void> {
+  try { await supabase.rpc("mark_nudges_seen", { p_group_id: groupId }); } catch { /* the sheet may open once more */ }
 }
 
 // (2026-05-24) Per-ping 24h rate limit removed. Friends can nudge as

@@ -37,6 +37,8 @@ import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
 import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "../components/NudgeSheet";
+import NudgeAnswerSheet, { NudgeReplySheet } from "../components/NudgeAnswerSheet";
+import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
 import DeckWave from "../components/deck/DeckWave";
 import OneSelectProgress from "../components/OneSelectProgress";
@@ -921,6 +923,34 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (r) setNudgeOpen([r]);
   }, [mapMembers, nudgeRecipientFor]);
 
+
+  // Answering a nudge (CP2, 2026-10-22): this room's unanswered nudges to
+  // the viewer open as the answer sheet — from the email's ?answer= link,
+  // from the room's paper note, or by themselves once (the global gate
+  // stands down inside a room, so the room opens unseen ones itself). An
+  // answer that came back to the viewer (they nudged someone) is the
+  // note too, opening the reply sheet.
+  const [pendingNudges, setPendingNudges] = useState<PendingNudge[]>([]);
+  const [nudgeReplies, setNudgeReplies] = useState<PendingNudge[]>([]);
+  const [answerOpen, setAnswerOpen] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const answerParamRef = useRef<boolean>(new URLSearchParams(location.search).has("answer"));
+  useEffect(() => {
+    if (!user || !roomId) return;
+    let cancelled = false;
+    Promise.all([fetchPendingNudges(user.id, { groupId: roomId }), fetchPendingNudges(user.id, { groupId: roomId, kind: "nudge_reply" })]).then(([ns, rs]) => {
+      if (cancelled) return;
+      setPendingNudges(ns); setNudgeReplies(rs);
+      if (ns.length && (answerParamRef.current || ns.some((n) => !n.seenAt))) { answerParamRef.current = false; setAnswerOpen(true); }
+    });
+    return () => { cancelled = true; };
+  }, [user, roomId]);
+  const nudgeNote = pendingNudges.length
+    ? { text: `${joinNudgeNames([...new Set(pendingNudges.map((n) => n.senderName))])} nudged you. Tap to answer.`, at: Math.max(...pendingNudges.map((n) => n.sentAt)), onClick: () => setAnswerOpen(true) }
+    : nudgeReplies.length
+      ? { text: nudgeReplies.length === 1 ? `${nudgeReplies[0].senderName} answered your nudge.` : "Your nudges were answered.", at: Math.max(...nudgeReplies.map((n) => n.sentAt)), onClick: () => setReplyOpen(true) }
+      : null;
+
   // The notes on a letter actually opened (the paper / the sheet): stamp
   // now + your progress, so the blue clears and a later unseal reads as new.
   const handleNotesOpened = useCallback((threadId: string) => {
@@ -1045,7 +1075,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // The room's paper note (checkpoint 4): the letters you haven't opened yet,
   // by writer; hidden when nothing waits. Dismissed per account and room.
-  const roomNote = editorial ? (() => {
+  const lettersNote = editorial ? (() => {
     const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
     if (fresh.length === 0) return null;
     const by = new Map<string, number>();
@@ -1058,6 +1088,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     }
     return { text: "Letters are waiting for you.", at };
   })() : null;
+  // A nudge, or an answer to yours, outranks every other note (his call).
+  const roomNote: { text: string; at: number; onClick?: () => void } | null = editorial ? (nudgeNote ?? lettersNote) : null;
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg, ...(editorial ? { overflowX: "clip" as const } : {}) }}>
@@ -1210,7 +1242,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
       <div style={editorial ? { padding: `0 ${E.space.gutter}px 140px`, position: "relative" } : { padding: "16px 16px 120px" }}>
         {editorial && roomNote && user && (
-          <PaperNote text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ position: "relative", marginLeft: "auto", marginRight: -40, marginTop: -22, width: 244, transform: "rotate(-2.5deg)" }} />
+          <PaperNote text={roomNote.text} at={roomNote.at} onClick={roomNote.onClick} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ position: "relative", marginLeft: "auto", marginRight: -40, marginTop: -22, width: 244, transform: "rotate(-2.5deg)" }} />
         )}
         {/* The letter from Sidebar (2026-09-26) sits ABOVE the control card on
             /m — the old progress pointer's slot (Alborz: mobile only; desktop
@@ -1507,6 +1539,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              the sheet mid-edit drops unsaved taps). Red dots have no
              dismiss here (Alborz 2026-09-23). ── */}
       {nudgeOpen && roomId && <NudgeSheet mobile recipients={nudgeOpen} groupId={roomId} viewerEpisodes={viewerEpisodes} onClose={() => setNudgeOpen(null)} />}
+      {answerOpen && pendingNudges.length > 0 && roomId && user && <NudgeAnswerSheet mobile nudges={pendingNudges} userId={user.id} onClose={() => { setAnswerOpen(false); setPendingNudges((p) => p.map((n) => ({ ...n, seenAt: n.seenAt ?? Date.now() }))); }} onAnswered={() => setPendingNudges([])} onLeftRoom={() => closeRoom()} />}
+      {replyOpen && nudgeReplies.length > 0 && roomId && user && <NudgeReplySheet mobile replies={nudgeReplies} onClose={() => { setReplyOpen(false); setNudgeReplies([]); }} />}
       {mapSheetOpen && roomId && show && user && mapEmpty && (editorial ? (
         <BottomSheet onClose={() => setMapSheetOpen(false)} title="Season map">
           <div style={{ width: "100%", aspectRatio: "1 / 1", boxSizing: "border-box", border: `1px dashed ${E.color.friend}`, color: E.color.inkSub, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 28, ...E.type.body15 }}>

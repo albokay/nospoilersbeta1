@@ -139,7 +139,7 @@ export type PollResponse = {
 
 // ── Pings ─────────────────────────────────────────────────────────────────────
 
-export type PingType = 'nudge_ahead' | 'nudge_same' | 'nudge_behind';
+export type PingType = 'nudge_ahead' | 'nudge_same' | 'nudge_behind' | 'nudge_reply';
 
 export type Ping = {
   id: string;
@@ -151,6 +151,12 @@ export type Ping = {
   message: string | null;
   sentAt: number;
   dismissedAt: number | null;
+  /** A nudge answered (CP2, 2026-10-22): 'in' = still in, 'out' = sitting out the rest. */
+  replyKind?: 'in' | 'out' | null;
+  /** The nudge this reply answers. */
+  replyTo?: string | null;
+  /** "Later" on the answer sheet: seen, so it no longer opens by itself. */
+  seenAt?: number | null;
   // Resolved at fetch time when needed (e.g. for the in-room sticky which
   // displays "{sender} pinged you:"). Not always populated.
   // The handle is a KEY (contact-name lookups); senderDisplayName is what

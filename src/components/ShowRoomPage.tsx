@@ -48,8 +48,9 @@ import TSPDemoModal from "./TSPDemoModal";
 import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
-import IncomingPingSticky from "./IncomingPingSticky";
 import NudgeSheet, { joinNudgeNames, type NudgeRecipient } from "./NudgeSheet";
+import NudgeAnswerSheet, { NudgeReplySheet } from "./NudgeAnswerSheet";
+import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import PollSticky from "./PollSticky";
 import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
@@ -919,6 +920,34 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     if (r) setNudgeOpen([r]);
   }, [mapMembers, nudgeRecipientFor]);
 
+
+  // Answering a nudge (CP2, 2026-10-22): this room's unanswered nudges to
+  // the viewer open as the answer sheet — from the email's ?answer= link,
+  // from the room's paper note, or by themselves once (the global gate
+  // stands down inside a room, so the room opens unseen ones itself). An
+  // answer that came back to the viewer (they nudged someone) is the
+  // note too, opening the reply sheet.
+  const [pendingNudges, setPendingNudges] = useState<PendingNudge[]>([]);
+  const [nudgeReplies, setNudgeReplies] = useState<PendingNudge[]>([]);
+  const [answerOpen, setAnswerOpen] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const answerParamRef = useRef<boolean>(new URLSearchParams(location.search).has("answer"));
+  useEffect(() => {
+    if (!user || !roomId) return;
+    let cancelled = false;
+    Promise.all([fetchPendingNudges(user.id, { groupId: roomId }), fetchPendingNudges(user.id, { groupId: roomId, kind: "nudge_reply" })]).then(([ns, rs]) => {
+      if (cancelled) return;
+      setPendingNudges(ns); setNudgeReplies(rs);
+      if (ns.length && (answerParamRef.current || ns.some((n) => !n.seenAt))) { answerParamRef.current = false; setAnswerOpen(true); }
+    });
+    return () => { cancelled = true; };
+  }, [user, roomId]);
+  const nudgeNote = pendingNudges.length
+    ? { text: `${joinNudgeNames([...new Set(pendingNudges.map((n) => n.senderName))])} nudged you. Tap to answer.`, at: Math.max(...pendingNudges.map((n) => n.sentAt)), onClick: () => setAnswerOpen(true) }
+    : nudgeReplies.length
+      ? { text: nudgeReplies.length === 1 ? `${nudgeReplies[0].senderName} answered your nudge.` : "Your nudges were answered.", at: Math.max(...nudgeReplies.map((n) => n.sentAt)), onClick: () => setReplyOpen(true) }
+      : null;
+
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
     setFirstHighlightedSet((prev) => (prev.has(threadId) ? prev : new Set(prev).add(threadId)));
@@ -1004,7 +1033,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const bodyBg = editorial ? E.color.cream : tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
   // The room's paper note (checkpoint 4): the letters you haven't opened yet,
   // by writer; hidden when nothing waits. Dismissed per account and room.
-  const roomNote = editorial ? (() => {
+  const lettersNote = editorial ? (() => {
     const fresh = feedEntries.filter((e) => isNewMap?.[e.threadId] && !e.gatedStub && !e.isDeleted);
     if (fresh.length === 0) return null;
     const by = new Map<string, number>();
@@ -1017,6 +1046,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     }
     return { text: "Letters are waiting for you.", at };
   })() : null;
+  // A nudge, or an answer to yours, outranks every other note (his call).
+  const roomNote: { text: string; at: number; onClick?: () => void } | null = editorial ? (nudgeNote ?? lettersNote) : null;
 
 
   // Private entries rendered through the same V2RoomFeed as the friend feed so
@@ -1219,7 +1250,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             (visibility:hidden) so the column doesn't shift between tabs. ── */}
       <div style={editorial ? { maxWidth: E.measure.desktop.wide, margin: "24px auto 0", position: "relative" } : { padding: "24px 24px 0" }}>
         {roomNote && user && (
-          <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ right: -224, top: -8, width: 320 }} />
+          <PaperNote desktop text={roomNote.text} at={roomNote.at} onClick={roomNote.onClick} uid={`${user.id}:${roomId ?? privateShowId}`} style={{ right: -224, top: -8, width: 320 }} />
         )}
         <div style={{ display: "flex", gap: 64, alignItems: "flex-start", justifyContent: editorial ? "flex-start" : "center", maxWidth: editorial ? undefined : 1400, margin: editorial ? 0 : "0 auto" }}>
           {/* LEFT/CENTER pane: toolbar + feed (friend) or private writing */}
@@ -1536,8 +1567,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           room only (no group context in the private-only standalone). */}
       {!privateOnly && roomId && user && (
         <>
-          <IncomingPingSticky groupId={roomId} currentUserId={user.id} displayNames={displayNames} />
+          {/* The nudge sticky retired 2026-10-22 — a nudge is the room's paper note + the answer sheet now (both platforms). */}
           {nudgeOpen && <NudgeSheet recipients={nudgeOpen} groupId={roomId} viewerEpisodes={viewerEpisodes} onClose={() => setNudgeOpen(null)} />}
+          {answerOpen && pendingNudges.length > 0 && <NudgeAnswerSheet nudges={pendingNudges} userId={user.id} onClose={() => { setAnswerOpen(false); setPendingNudges((p) => p.map((n) => ({ ...n, seenAt: n.seenAt ?? Date.now() }))); }} onAnswered={() => setPendingNudges([])} onLeftRoom={() => navigate(parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard", { replace: true })} />}
+          {replyOpen && nudgeReplies.length > 0 && <NudgeReplySheet replies={nudgeReplies} onClose={() => { setReplyOpen(false); setNudgeReplies([]); }} />}
           <PollSticky groupId={roomId} currentUserId={user.id} refreshKey={pollRefreshKey} displayNames={displayNames} />
           {/* SIKW retired (2026-07-28) — SIKWSticky unmounted, component +
               tables dormant. Polls are the room's one ask flow now. */}
