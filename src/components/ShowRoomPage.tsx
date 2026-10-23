@@ -1373,7 +1373,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
             {tab === "reference" && show && refEff && (
               <div style={editorial ? { marginTop: 28 } : undefined}>
-                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={() => { void load(); }} />
+                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+                  if (m.userId !== user?.id) return m;
+                  if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
+                  const i = m.ratings.findIndex((x) => x.s === s && x.e === e);
+                  return { ...m, ratings: i >= 0 ? m.ratings.map((x, j) => (j === i ? { ...x, rating: r } : x)) : [...m.ratings, { s, e, rating: r }] };
+                }))} />
               </div>
             )}
             {/* Friend + drafts columns stay MOUNTED (display:none) on the

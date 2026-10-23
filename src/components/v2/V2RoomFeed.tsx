@@ -532,7 +532,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
       : `${list} ${plural ? "haven't" : "hasn't"} started watching`;
     if (editorial) {
       const nudge = nudgeFor ? nudgeFor(m.people.filter((p) => !p.self).map((p) => p.username)) : null;
-      return <RoadRule key={`road-${m.idx}`} ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who} text={started ? `${who} · S${m.s} E${m.e}` : who} action={nudge ? <NudgeMark label={nudge.label} onClick={nudge.onClick} /> : undefined} />;
+      return <RoadRule key={`road-${m.idx}`} ariaLabel={started ? `${who}, season ${m.s} episode ${m.e}` : who} text={started ? `${who} · S${m.s} E${m.e}` : who} action={nudge ? <NudgeMark label={mobileIdiom ? "Nudge" : nudge.label} onClick={nudge.onClick} /> : undefined} />;
     }
     return (
       <RoadMarkerRow

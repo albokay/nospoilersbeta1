@@ -33,9 +33,10 @@ const idx = (s: number, e: number) => s * 10000 + e;
 export default function ShowReference({
   showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated,
 }: {
-  /** Rating from the guide (2026-10-22): fires after a rating lands, so the
-   *  room can refresh its map cells. */
-  onRated?: () => void;
+  /** Rating from the guide (2026-10-22): fires after a rating lands (null =
+   *  cleared), so the room can patch its own map cell in place — no reload,
+   *  the viewer keeps rating and scrolling. */
+  onRated?: (season: number, episode: number, rating: number | null) => void;
   /** The editorial skin (checkpoint 4, 2026-10-12; the bible's GuideRows):
    *  the same guide as hairline rows in ink — the stops line, CAST with the
    *  as-of episode, PLOT SO FAR in Lora, EPISODES with Watched / You are
@@ -141,7 +142,7 @@ export default function ShowReference({
     const write = n
       ? upsertEpisodeRating({ userId: user.id, showId, season: s, episode: e, rating: n })
       : deleteEpisodeRating({ userId: user.id, showId, season: s, episode: e });
-    write.then(() => onRated?.()).catch(() => {
+    write.then(() => onRated?.(s, e, n || null)).catch(() => {
       setRatings((m) => { const next = new Map(m); if (prev) next.set(key, prev); else next.delete(key); return next; });
     });
   }
@@ -377,20 +378,24 @@ export default function ShowReference({
                 </button>
               </>
             )}
-            {ratingAllowed && (
-              // The map's rating cell: an identity ring unrated, cream stars on
-              // the identity fill once rated (his note on the mockups).
-              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, r > 0 || open)}>
+            {ratingAllowed && (r > 0 || open ? (
+              // Rated: the map's cell, cream stars on the identity fill (his
+              // note on the mockups). Open: the filled ring while picking.
+              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, true)}>
                 {r > 0 && <StarFace rating={r} size={18} color={E.color.cream} />}
               </button>
-            )}
+            ) : (
+              // Unrated: a word, not a bare ring (his note, 2026-10-22).
+              <UnderlineWord onClick={() => setRatingOpen(rKey)} label="Rate this episode" style={{ flexShrink: 0 }}>Rate episode →</UnderlineWord>
+            ))}
           </div>
-          <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
           {open && (
-            // The picker: seven circles — the empty ring (no rating, the map's
-            // no-stars state) then 1 to 6 — the chosen one filled, its words under.
-            <div style={{ marginTop: 12, padding: "12px 14px", border: `1px solid ${E.color.ink}`, display: "flex", flexDirection: "column", gap: 10, ...(mobile ? {} : { width: 360, boxSizing: "border-box", marginLeft: "auto" }) }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+            // The picker, right under the episode's line (his note): seven
+            // circles — the empty ring (no rating, the map's no-stars state)
+            // then 1 to 6 — the chosen one filled, its words under ITS circle
+            // (the first flush left, the last flush right).
+            <div style={{ marginTop: 10, padding: "12px 14px 10px", border: `1px solid ${E.color.ink}`, ...(mobile ? {} : { width: 360, boxSizing: "border-box", marginLeft: "auto" }) }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", justifyItems: "center", gap: 6 }}>
                 {[0, 1, 2, 3, 4, 5, 6].map((n) => {
                   const on = r === n;
                   return (
@@ -400,9 +405,12 @@ export default function ShowReference({
                   );
                 })}
               </div>
-              <div style={{ ...E.type.label11, color: E.color.ink }}>{r ? RATING_LABELS[r] : "No rating"}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6, marginTop: 8, minHeight: 14 }}>
+                <span style={{ ...E.type.label10, color: E.color.ink, gridColumn: r + 1, justifySelf: r === 0 ? "start" : r === 6 ? "end" : "center", width: "max-content", whiteSpace: "nowrap" }}>{r ? RATING_LABELS[r] : "No rating"}</span>
+              </div>
             </div>
           )}
+          <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
         </div>
       );
     };

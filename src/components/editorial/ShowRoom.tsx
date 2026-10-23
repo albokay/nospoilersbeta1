@@ -197,7 +197,8 @@ export function RoadRule({ text, ariaLabel, action }: { text: string; ariaLabel?
   return (
     <div aria-label={ariaLabel} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", ...E.type.label10, letterSpacing: "0.1em", color: "rgba(26,58,74,0.55)" }}>
       <span style={{ flex: 1, minWidth: 12, height: 1, background: "rgba(26,58,74,0.25)" }} />
-      <span style={{ textAlign: "center", whiteSpace: action ? "nowrap" : undefined }}>{text}</span>
+      {/* With the nudge the words go accent, so the label and the block read as one (Alborz 2026-10-22); the pointer and the lines stay grey. */}
+      <span style={{ textAlign: "center", whiteSpace: action ? "nowrap" : undefined, color: action ? E.color.accent : undefined }}>{text}</span>
       {action}
       <span style={{ flex: 1, minWidth: 12, height: 1, background: "rgba(26,58,74,0.25)" }} />
     </div>
