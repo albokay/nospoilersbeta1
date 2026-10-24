@@ -1,5 +1,7 @@
 # Sidebar — Technical State (2026-10-24)
 
+> **⭐ 2026-10-24 — The phone tour, the band stayed cream (his second look):** the cream page ran UNDER the home-indicator band (the screen's bottom inset is inside the viewport in the home-screen app), so the band showed the page. The page now stops above it — `bottom: calc(8px + env(safe-area-inset-bottom))` — and that band is the frame's red; the docked exit and the feed drop their own bottom-inset padding (the page no longer extends under it).
+
 > **⭐ 2026-10-24 — The phone tour, a third note:** the strip under the page (the home-indicator band in the home-screen app; the ground behind Safari's bar) is the document's own background, so while the tour is up the html + body backgrounds take the frame's alert red and return on close (the bottom-bleed sampler only runs in the home-screen app, and it reads the same red anyway).
 
 > **⭐ 2026-10-24 — The phone tour, his first look (two notes):** it opens AT THE TOP (the feed's first-expansion scroll landed a beat after mount and pushed the head off; a 120ms return to the top follows every episode change on the phone), and the frame's inner corners FOLLOW THE PHONE — the cream page takes `border-radius: min(40px, env(safe-area-inset-top))`, so a rounded screen gets a radius just inside the device's own and a square screen or a browser tab stays square. The page now portals to `document.body` (out of the room's own fixed scroller).

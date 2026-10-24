@@ -190,7 +190,10 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
     const corner = `min(40px, env(safe-area-inset-top, 0px))`;
     return createPortal(
       <div role="dialog" aria-modal="true" aria-label="A quick tour of The Sidebar Protocol" style={{ position: "fixed", inset: 0, zIndex: 1000, background: E.color.alert }}>
-        <div style={{ position: "absolute", inset: FRAME, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, overflow: "hidden", borderRadius: corner }}>
+        {/* The page stops ABOVE the home-indicator band (the screen's bottom
+            inset), so that band is the frame's red, not the page's cream
+            (Alborz 2026-10-24: it stayed cream — the page ran under it). */}
+        <div style={{ position: "absolute", top: FRAME, left: FRAME, right: FRAME, bottom: `calc(${FRAME}px + ${E.safe.bottom})`, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, overflow: "hidden", borderRadius: corner }}>
           <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overflowX: "clip" }}>
             <CornerTab kind="back" label="Back to your room" title="Back to your room" onClick={onClose} />
             <div style={{ padding: `${E.safe.plus(E.measure.phone.titleTop)} ${E.space.gutter}px 0` }}>
@@ -203,7 +206,7 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
               </RoomBand>
             </div>
             <div style={{ padding: `14px ${E.space.gutter}px 0` }}><MapButton onClick={() => setMapOpen(true)} /></div>
-            <div style={{ padding: `8px ${E.space.gutter}px calc(${E.safe.bottom} + 120px)` }}>
+            <div style={{ padding: `8px ${E.space.gutter}px 120px` }}>
               <V2RoomFeed
                 ref={feedRef}
                 entries={editorialEntries}
@@ -222,7 +225,7 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
             </div>
           </div>
           {/* The exit, docked at the foot inside the frame. */}
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: `12px ${E.space.gutter}px calc(${E.safe.bottom} + 20px)`, background: `linear-gradient(to bottom, rgba(254,248,234,0), ${E.color.cream} 30%)` }}>
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: `12px ${E.space.gutter}px 20px`, background: `linear-gradient(to bottom, rgba(254,248,234,0), ${E.color.cream} 30%)` }}>
             <Block onClick={onClose} style={{ height: 54 }}>{reentry ? "back to your room →" : "start finding shows →"}</Block>
           </div>
         </div>
