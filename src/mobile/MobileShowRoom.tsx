@@ -19,7 +19,8 @@ import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
-import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, type RoomTabKey } from "../components/editorial/ShowRoom";
+import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
+import TSPDemoModal from "../components/TSPDemoModal";
 import { RowPoster } from "../components/editorial/GroupRoom";
 import TrailerPoster from "../components/TrailerPoster";
 import { PaperNote } from "../components/editorial/Dashboard";
@@ -907,6 +908,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return { userId: m.userId, name: displayNames[m.username] ?? m.username, behind, started: mIdx > 0 };
   }, [user, progressForShow, show?.seasons, mapMembers]); // eslint-disable-line react-hooks/exhaustive-deps -- displayNames is declared below and read at call time (it follows mapMembers)
   const [nudgeOpen, setNudgeOpen] = useState<NudgeRecipient[] | null>(null);
+  // The phone's tour (2026-10-24): opened from "How does this room work? →"
+  // at the foot of the letters, as on desktop.
+  const [tourOpen, setTourOpen] = useState(false);
   const nudgeFor = useCallback((usernames: string[]) => {
     const rs = usernames.map((u) => mapMembers.find((m) => m.username === u)).map((m) => (m ? nudgeRecipientFor(m) : null)).filter((r): r is NudgeRecipient => !!r);
     if (!rs.length) return null;
@@ -1443,6 +1447,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               onReplyAdded={(tid) => setFeedEntries((prev) => prev.map((e) => (e.threadId === tid ? { ...e, replyCount: e.replyCount + 1 } : e)))}
             />
           )}
+          {editorial && !privateOnly && <TourWord onClick={() => setTourOpen(true)} />}
         </div>
         )}
         <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
@@ -1567,6 +1572,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
              the sheet mid-edit drops unsaved taps). Red dots have no
              dismiss here (Alborz 2026-09-23). ── */}
       {nudgeOpen && roomId && <NudgeSheet mobile recipients={nudgeOpen} groupId={roomId} viewerEpisodes={viewerEpisodes} onClose={() => setNudgeOpen(null)} />}
+      {tourOpen && <TSPDemoModal mobile reentry onClose={() => setTourOpen(false)} />}
       {answerOpen && pendingNudges.length > 0 && roomId && user && <NudgeAnswerSheet mobile nudges={pendingNudges} userId={user.id} onClose={() => { setAnswerOpen(false); setPendingNudges((p) => p.map((n) => ({ ...n, seenAt: n.seenAt ?? Date.now() }))); }} onAnswered={() => setPendingNudges([])} onLeftRoom={() => closeRoom()} />}
       {replyOpen && nudgeReplies.length > 0 && roomId && user && <NudgeReplySheet mobile replies={nudgeReplies} onClose={() => { setReplyOpen(false); setNudgeReplies([]); }} />}
       {mapSheetOpen && roomId && show && user && mapEmpty && (editorial ? (

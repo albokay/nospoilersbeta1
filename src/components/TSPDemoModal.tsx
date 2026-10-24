@@ -21,23 +21,33 @@ import OneSelectProgress from "./OneSelectProgress";
 import type { ProgressEntry } from "../types";
 import {
   TSP_DEMO_SHOW, TSP_EPISODE_COUNT,
-  tspDemoFeedEntries, tspDemoReplies, tspDemoSeedMembers,
+  tspDemoFeedEntries, tspDemoFeedEntriesMobile, tspDemoReplies, tspDemoSeedMembers,
 } from "../lib/tspDemoFixture";
 import { CANON } from "../styles/canon";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { INK_BLOCK_M, MapLegend } from "./editorial/MapNotes";
 import { SectionHead } from "./editorial/Chrome";
-import { FolderTabs, RoomBand } from "./editorial/ShowRoom";
+import { FolderTabs, RoomBand, MapButton } from "./editorial/ShowRoom";
 import { NumbersPicker } from "./editorial/GroupRoom";
+import { CornerTab } from "./editorial/Chrome";
+import { BottomSheet } from "./editorial/Overlays";
+import { Block } from "./editorial/Onboarding";
 
 const CREAM_BG = CANON.cream;
 const INK_SOFT = "#5a4d3a";
 const LORA = '"Lora", Georgia, serif';
 const C = { green: CANON.personal, sky: CANON.friend, cream: CANON.cream, midnight: CANON.dark };
 
-export default function TSPDemoModal({ onClose, reentry }: {
+export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
   onClose: () => void;
+  /** The phone's tour (Alborz 2026-10-24; the mockups on the canvas): a
+   *  full-screen page in the phone room's idiom inside an alert-red frame
+   *  pinned to the screen — the identity corner is the way out, "A quick
+   *  tour" in Lora over "of The Sidebar Protocol" in mono, the green band
+   *  with the numbers picker, Season map as the phone's sheet, the letters
+   *  column, "back to your room →" docked at the foot. Editorial only. */
+  mobile?: boolean;
   /** Help-system arc CP3: opened from the show room's "how does this room
    *  work?" button (vs the original post-signup flow) — the exit button
    *  sends the reader back to their room instead of "find a show". The
@@ -83,7 +93,8 @@ export default function TSPDemoModal({ onClose, reentry }: {
     }
   }, [selectedEpisode]);
 
-  const allEntries = tspDemoFeedEntries;
+  const allEntries = mobile ? tspDemoFeedEntriesMobile : tspDemoFeedEntries;
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Gate (spec §5): visible iff episode <= selectedEpisode (episode 0 always
   // visible). Evaluated on local state — never the live spoiler engine.
@@ -140,15 +151,67 @@ export default function TSPDemoModal({ onClose, reentry }: {
   const map = (
     <V2RoomMap
       editorial={editorial}
+      mobile={mobile}
       members={mapMembers}
       seasons={TSP_DEMO_SHOW.seasons}
       viewerProgress={userProgress}
       viewerUserId={user?.id ?? "tsp-demo-you"}
-      onEntryClick={(tid) => feedRef.current?.scrollToEntry(tid)}
+      onEntryClick={(tid) => { if (mobile) setMapOpen(false); feedRef.current?.scrollToEntry(tid); }}
       onRateOwnCell={applyRating}
       onCommitRatings={async (changes) => { changes.forEach((c) => applyRating(c.s, c.e, c.rating)); return { ok: true }; }}
     />
   );
+
+  if (editorial && mobile) {
+    const FRAME = 8;
+    return (
+      <div role="dialog" aria-modal="true" aria-label="A quick tour of The Sidebar Protocol" style={{ position: "fixed", inset: 0, zIndex: 1000, background: E.color.alert }}>
+        <div style={{ position: "absolute", inset: FRAME, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, overflow: "hidden" }}>
+          <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overflowX: "clip" }}>
+            <CornerTab kind="back" label="Back to your room" title="Back to your room" onClick={onClose} />
+            <div style={{ padding: `${E.safe.plus(E.measure.phone.titleTop)} ${E.space.gutter}px 0` }}>
+              <h1 style={{ margin: 0, fontFamily: E.font.display, fontWeight: 700, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em" }}>A quick tour</h1>
+              <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 8 }}>of The Sidebar Protocol</div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <RoomBand tab="friend">
+                <NumbersPicker show={TSP_DEMO_SHOW} value={pickerValue} onChange={pickEpisode} />
+              </RoomBand>
+            </div>
+            <div style={{ padding: `14px ${E.space.gutter}px 0` }}><MapButton onClick={() => setMapOpen(true)} /></div>
+            <div style={{ padding: `8px ${E.space.gutter}px calc(${E.safe.bottom} + 120px)` }}>
+              <V2RoomFeed
+                ref={feedRef}
+                entries={editorialEntries}
+                seasons={TSP_DEMO_SHOW.seasons}
+                viewerProgress={userProgress}
+                userId={user?.id ?? null}
+                sortOrder="desc"
+                preserveOrder
+                editorial
+                mobileIdiom
+                demoMode
+                responsesOff
+                scrollContainerRef={scrollRef}
+                initialExpandedThreadId="tsp-gate-0"
+              />
+            </div>
+          </div>
+          {/* The exit, docked at the foot inside the frame. */}
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: `12px ${E.space.gutter}px calc(${E.safe.bottom} + 20px)`, background: `linear-gradient(to bottom, rgba(254,248,234,0), ${E.color.cream} 30%)` }}>
+            <Block onClick={onClose} style={{ height: 54 }}>{reentry ? "back to your room →" : "start finding shows →"}</Block>
+          </div>
+        </div>
+        {mapOpen && (
+          <BottomSheet onClose={() => setMapOpen(false)} title="Season map">
+            <div style={{ ...E.type.note13, color: E.color.inkMuted }}>A row is an episode, a column is a friend. Tap a cell to open its letter.</div>
+            <div style={{ marginTop: 14 }}>{map}</div>
+            <div style={{ marginTop: 14 }}><MapLegend /></div>
+          </BottomSheet>
+        )}
+      </div>
+    );
+  }
 
   return (
     // Clicking the dim outside the tour card exits, same as the button

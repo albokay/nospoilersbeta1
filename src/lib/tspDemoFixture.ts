@@ -159,6 +159,15 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
 /** Full feed fixture — mock + instructional, interleaved (the feed sorts by episode). */
 export const tspDemoFeedEntries: V2RoomFeedEntry[] = [...MOCK_ENTRIES, ...INSTRUCTIONAL_ENTRIES];
 
+/** The phone's tour (2026-10-24): the same letters, but the season-map letter
+ *  points at the phone's own map — the Season map button under the picker,
+ *  the sheet, your own icon at the top of your column to rate. */
+const MOBILE_MAP_PREVIEW = `Tap Season map under the picker. That’s a map of your group’s progress.`;
+const MOBILE_MAP_BODY = `Tap Season map under the picker. That’s a map of your group’s progress. A row is an episode, a column is a friend, and the stars are everyone’s ratings. A filled cell is a letter you can open; a sealed cell waits for you. Tap a cell to jump to its letter.\n\nTo rate what you’ve watched, tap your own icon at the top of your column, pick your stars, then Save.\n\nNow advance to episode 4.`;
+export const tspDemoFeedEntriesMobile: V2RoomFeedEntry[] = tspDemoFeedEntries.map((e) =>
+  e.threadId === "tsp-gate-3" ? { ...e, preview: MOBILE_MAP_PREVIEW, body: MOBILE_MAP_BODY } : e,
+);
+
 // ── Map seed columns (fixed; the mock users never advance) ──────────────────
 const prog = (e: number): ProgressEntry => ({ s: 1, e, highestS: 1, highestE: e });
 const rate = (e: number, rating: number) => ({ s: 1, e, rating });
