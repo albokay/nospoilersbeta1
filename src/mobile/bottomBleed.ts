@@ -76,6 +76,9 @@ export function startBottomBleed(): () => void {
   const timers = new Set<number>();
   const apply = () => {
     try {
+      // A full-screen page that paints the band itself (the phone tour's red
+      // frame, 2026-10-24) holds the sampler off while it is up.
+      if (root.dataset.bleedHold) return;
       const c = sample();
       if (c && c !== last) { last = c; root.style.backgroundColor = c; }
     } catch { /* tolerate — the strip just keeps its last colour */ }

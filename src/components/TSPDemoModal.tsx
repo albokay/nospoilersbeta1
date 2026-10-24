@@ -81,13 +81,26 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
   // home-screen app, the ground behind Safari's bar) is the document's own
   // background, so while the tour is up it takes the frame's red (Alborz
   // 2026-10-24); the page's colour returns on close.
+  // Every painter of that strip is covered: the root's background (the
+  // canvas), the body's — set with priority, since the skin's own body rule
+  // is `!important` and beat the plain inline colour (his third look) — the
+  // browser's theme colour (Safari tints its bar from it), and the
+  // home-screen app's bottom-bleed sampler is held off meanwhile.
   useEffect(() => {
     if (!mobile) return;
     const root = document.documentElement, body = document.body;
-    const prev = [root.style.backgroundColor, body.style.backgroundColor];
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = { root: root.style.backgroundColor, body: body.style.getPropertyValue("background-color"), bodyPriority: body.style.getPropertyPriority("background-color"), theme: meta?.getAttribute("content") ?? null };
+    root.dataset.bleedHold = "1";
     root.style.backgroundColor = E.color.alert;
-    body.style.backgroundColor = E.color.alert;
-    return () => { root.style.backgroundColor = prev[0]; body.style.backgroundColor = prev[1]; };
+    body.style.setProperty("background-color", E.color.alert, "important");
+    meta?.setAttribute("content", E.color.alert);
+    return () => {
+      delete root.dataset.bleedHold;
+      root.style.backgroundColor = prev.root;
+      if (prev.body) body.style.setProperty("background-color", prev.body, prev.bodyPriority); else body.style.removeProperty("background-color");
+      if (meta && prev.theme) meta.setAttribute("content", prev.theme);
+    };
   }, [mobile]);
 
   // Guide posts appear EXPANDED the first time their episode is reached (still
