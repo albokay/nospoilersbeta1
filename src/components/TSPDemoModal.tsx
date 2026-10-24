@@ -77,6 +77,18 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
     document.body.classList.add("group-context");
     return () => { if (!had) document.body.classList.remove("group-context"); };
   }, []);
+  // The phone: the strip under the page (the home-indicator band in the
+  // home-screen app, the ground behind Safari's bar) is the document's own
+  // background, so while the tour is up it takes the frame's red (Alborz
+  // 2026-10-24); the page's colour returns on close.
+  useEffect(() => {
+    if (!mobile) return;
+    const root = document.documentElement, body = document.body;
+    const prev = [root.style.backgroundColor, body.style.backgroundColor];
+    root.style.backgroundColor = E.color.alert;
+    body.style.backgroundColor = E.color.alert;
+    return () => { root.style.backgroundColor = prev[0]; body.style.backgroundColor = prev[1]; };
+  }, [mobile]);
 
   // Guide posts appear EXPANDED the first time their episode is reached (still
   // collapsible afterward; single-expansion quietly collapses the prior card).
