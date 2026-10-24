@@ -14,6 +14,7 @@
  * classic tour still shows them.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../lib/auth";
 import V2RoomFeed, { type V2RoomFeedHandle, type V2RoomFeedEntry } from "./v2/V2RoomFeed";
 import V2RoomMap, { type V2RoomMapMember, type V2RoomMapRating } from "./v2/V2RoomMap";
@@ -91,7 +92,13 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
       autoExpandedGuidesRef.current.add(selectedEpisode);
       feedRef.current?.expandEntry(`tsp-gate-${selectedEpisode}`);
     }
-  }, [selectedEpisode]);
+    // The feed's expansion scrolls its container to the letter a beat
+    // later; on the phone that pushed the head off the top at open
+    // (Alborz 2026-10-24). Come back to the top once it has.
+    if (!mobile) return;
+    const t = window.setTimeout(() => scrollRef.current?.scrollTo({ top: 0 }), 120);
+    return () => window.clearTimeout(t);
+  }, [selectedEpisode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allEntries = mobile ? tspDemoFeedEntriesMobile : tspDemoFeedEntries;
   const [mapOpen, setMapOpen] = useState(false);
@@ -164,9 +171,14 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
 
   if (editorial && mobile) {
     const FRAME = 8;
-    return (
+    // The frame's inner corners follow the phone's screen (his note): on a
+    // rounded screen (a safe-area inset at the top) the cream page takes a
+    // radius just inside the device's own; a square screen or a browser
+    // tab (inset 0) stays square.
+    const corner = `min(40px, env(safe-area-inset-top, 0px))`;
+    return createPortal(
       <div role="dialog" aria-modal="true" aria-label="A quick tour of The Sidebar Protocol" style={{ position: "fixed", inset: 0, zIndex: 1000, background: E.color.alert }}>
-        <div style={{ position: "absolute", inset: FRAME, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: FRAME, background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, overflow: "hidden", borderRadius: corner }}>
           <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", overflowX: "clip" }}>
             <CornerTab kind="back" label="Back to your room" title="Back to your room" onClick={onClose} />
             <div style={{ padding: `${E.safe.plus(E.measure.phone.titleTop)} ${E.space.gutter}px 0` }}>
@@ -209,7 +221,8 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
             <div style={{ marginTop: 14 }}><MapLegend /></div>
           </BottomSheet>
         )}
-      </div>
+      </div>,
+      document.body,
     );
   }
 
