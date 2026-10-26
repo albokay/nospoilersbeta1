@@ -881,7 +881,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   return (
     <EditorialScope.Provider value={editorial}>
     <div style={editorial ? FEED_VARS : undefined}>
-      {sorted.map((entry) => {
+      {sorted.map((entry, entryIndex) => {
         const roadHere = markerBefore.get(entry.threadId);
         return (<React.Fragment key={`slot-${entry.threadId}`}>{roadHere ? renderMarkers(roadHere) : null}{(() => {
         // CP4: a spoiler-gated entry renders as a one-line non-interactive
@@ -1043,6 +1043,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       displayNames={displayNames}
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
+                      journalEntry={editorialDrafts}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}
@@ -1094,11 +1095,13 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             );
           }
           if (editorialDrafts && !isExpanded) {
+            // No section head over the journal (Alborz 2026-10-26): the
+            // first row carries the hairline the head used to supply.
             return (
-              <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72 }}>
+              <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, ...(entryIndex === 0 ? { marginTop: 20, borderTop: `1px solid ${E.color.hairline}` } : {}) }}>
                 <DraftRow
                   title={entry.isDeleted ? "(deleted)" : entry.title}
-                  meta={`Draft · S${entry.s} E${entry.e} · edited ${timeAgo(entry.updatedAt)}`}
+                  meta={`Journal · S${entry.s} E${entry.e} · edited ${timeAgo(entry.updatedAt)}`}
                   line={entry.isDeleted ? null : entry.preview}
                   onClick={(ev) => toggleExpand(entry.threadId, ev)}
                 />
@@ -1398,6 +1401,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       displayNames={displayNames}
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
+                      journalEntry={editorialDrafts}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}

@@ -1311,7 +1311,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
-          <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+          <RoomTab label="journal" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
         </div>
         )}
       </div>
@@ -1501,9 +1501,6 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         </div>
         )}
         <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
-            {editorial && (
-              <SectionHead style={{ marginTop: 24 }} right={<span style={{ color: E.color.inkMuted }}>{privateFeedEntries.length}</span>}>Your drafts</SectionHead>
-            )}
             {privateFeedEntries.length > 0 && (
               <V2RoomFeed
                 editorial={editorial}
@@ -1522,14 +1519,14 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               // The live site's words (round 3): above the list when it's empty, below it once there's writing.
               <div style={{ marginTop: privateFeedEntries.length ? 32 : 18, border: `1px dashed ${E.color.inkFaint}`, padding: "18px 18px 16px" }}>
                 <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
-                <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But this drafts space is just for you &mdash; no one will ever see what you write here.</p>
-                <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+                <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But your journal is just for you &mdash; no one will ever see what you write here.</p>
+                <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
               </div>
             ) : (
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
-              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
-              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But your journal is just for you — no one will ever see what you write here.</p>
+              <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
             </div>
             )}
         </div>
@@ -1543,7 +1540,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {editorial && tab !== "reference" && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `calc(12px + env(safe-area-inset-bottom, 0px) / 2) ${E.space.gutter}px calc(12px + env(safe-area-inset-bottom, 0px) / 2)` }}>
           <WriteBlock
-            label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
+            label={composeMinimized ? "Continue writing" : tab === "private" ? "Write in your journal" : "Write a letter"}
             onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }}
             // Alert while a letter waits to be sent (Alborz's notes, round 5).
             style={{ width: "100%", ...(composeMinimized ? { background: E.color.alert } : {}) }}
@@ -1575,14 +1572,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             ref={composeFormRef}
             autoPrompt={composeAuto}
             range={composeAuto ? (jump?.from ?? null) : null}
-            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
+            editorial={editorial ? { context: privateOnly || tab === "private" ? "Journal" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
             bodyPlaceholder={composeStrip?.placeholder}
             mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}
             privateOnly={privateOnly}
             defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
-            mobileHeaderContext={privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room")}
+            mobileHeaderContext={privateOnly || tab === "private" ? "Journal" : (groupName ?? "Your room")}
+            privateSubmitLabel="Save to journal"
             hideTopRightClose
             // A progress advance made inside the composer refetches the room
             // (signals, hidden counts) — same as the room picker's path.

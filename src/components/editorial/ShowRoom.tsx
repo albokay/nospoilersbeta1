@@ -35,7 +35,7 @@ import { UnderlineWord } from "./Chrome";
 
 export type RoomTabKey = "friend" | "reference" | "private";
 export const TAB_COLOUR: Record<RoomTabKey, string> = { friend: E.color.personal, reference: E.color.accent, private: E.color.draft };
-export const TAB_LABEL: Record<RoomTabKey, string> = { friend: "Friend room", reference: "Show guide", private: "Drafts" };
+export const TAB_LABEL: Record<RoomTabKey, string> = { friend: "Friend room", reference: "Show guide", private: "Journal" };
 
 /** The CSS variables the classic room's inner pieces read (the opened
  *  letter, its responses, the edit form), redefined for ink on cream. */
@@ -315,7 +315,7 @@ export function EpisodeRow({ n, title, state, children }: { n: number; title: st
   );
 }
 
-/** A draft's row: the Lora title, "Draft · S1 E3 · edited yesterday", the first line. */
+/** A journal entry's row: the Lora title, "Journal · S1 E3 · edited yesterday", the first line. */
 export function DraftRow({ title, meta, line, onClick }: { title: string | null; meta: string; line?: string | null; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void }) {
   return (
     <button type="button" onClick={onClick} style={{ display: "block", width: "100%", padding: "14px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, textAlign: "left", cursor: "pointer", color: E.color.ink, WebkitTapHighlightColor: "transparent" }}>

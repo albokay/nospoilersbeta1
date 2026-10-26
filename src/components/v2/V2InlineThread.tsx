@@ -114,6 +114,10 @@ export type V2InlineThreadProps = {
    *  highlights still render. Forwarded to RepliesList (reply affordances).
    *  Default false — desktop rendering unchanged. */
   mobileIdiom?: boolean;
+  /** A journal entry (the room's Journal tab, 2026-10-26): the retag
+   *  warning speaks of the entry and the friends it may later be sent to,
+   *  not of readers who lose it. */
+  journalEntry?: boolean;
 };
 
 export default function V2InlineThread({
@@ -139,6 +143,7 @@ export default function V2InlineThread({
   onNotesOpened,
   onReplyAdded,
   mobileIdiom = false,
+  journalEntry = false,
 }: V2InlineThreadProps) {
   const editorialScope = useEditorialScope();
   const { profile } = useAuth();
@@ -805,8 +810,10 @@ export default function V2InlineThread({
           {showRetagWarning && editorialScope && (
             <Confirm
               desktop={!mobileIdiom}
-              title="Heads up — this letter will be retagged"
-              note={`Your progress has moved to S${String(editTagS).padStart(2, "0")} E${String(editTagE).padStart(2, "0")}. Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it.`}
+              title={journalEntry ? "Heads up — this entry will be retagged" : "Heads up — this letter will be retagged"}
+              note={journalEntry
+                ? `Your progress has moved to S${String(editTagS).padStart(2, "0")} E${String(editTagE).padStart(2, "0")}. Saving will stamp this entry at S${String(editTagS).padStart(2, "0")} E${String(editTagE).padStart(2, "0")}, so when you send it, your friends read it from there.`
+                : `Your progress has moved to S${String(editTagS).padStart(2, "0")} E${String(editTagE).padStart(2, "0")}. Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it.`}
               confirmLabel={editSubmitting ? "Saving…" : "Save & retag"}
               cancelLabel="Go back"
               onConfirm={handleSaveEdit}
@@ -821,12 +828,14 @@ export default function V2InlineThread({
               cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
             >
               <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>
-                Heads up — this post will be retagged
+                {journalEntry ? "Heads up — this entry will be retagged" : "Heads up — this post will be retagged"}
               </div>
               <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
                 Your progress has moved to{" "}
                 <strong>S{String(editTagS).padStart(2, "0")} E{String(editTagE).padStart(2, "0")}</strong>.
-                {" "}Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it.
+                {journalEntry
+                  ? " Saving will stamp this entry at your current progress, so when you send it, your friends read it from there."
+                  : " Saving will retag this letter to your current progress — readers below that point who could see it before will no longer see it."}
               </div>
               <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
                 <button

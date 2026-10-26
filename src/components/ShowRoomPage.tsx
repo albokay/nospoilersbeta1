@@ -1300,7 +1300,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
               {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
                   author-only space; sharing is manual copy/paste, no convert. */}
-              <RoomTab label="drafts" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+              <RoomTab label="journal" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
             </div>
             <div style={{ flex: "0 0 300px" }} aria-hidden />
           </div>
@@ -1348,7 +1348,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               //    on the band above. ──
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 {tab !== "reference" ? (
-                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
+                  <WriteBlock label={tab === "private" ? "Write in your journal" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
                 ) : <span />}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
                   const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
@@ -1486,9 +1486,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
             )}
             <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
-                {editorial && (
-                  <SectionHead style={{ marginTop: 32 }} right={<span style={{ color: E.color.inkMuted }}>{privateFeedEntries.length}</span>}>Your drafts</SectionHead>
-                )}
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
                     editorial={editorial}
@@ -1506,14 +1503,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   // The live site's words (round 3): above the list when it's empty, below it once there's writing.
                   <div style={{ marginTop: privateFeedEntries.length ? 32 : 18, border: `1px dashed ${E.color.inkFaint}`, padding: "18px 20px 16px" }}>
                     <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
-                    <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But this drafts space is just for you &mdash; no one will ever see what you write here.</p>
-                    <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+                    <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But your journal is just for you &mdash; no one will ever see what you write here.</p>
+                    <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
                   </div>
                 ) : (
                 <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
-                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But this drafts space is just for you — no one will ever see what you write here.</p>
-                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Draft freely or keep a private journal; sometimes we do our best thinking when we write for ourselves. When something&rsquo;s ready for your friends, copy and paste it into a letter.</p>
+                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 15, lineHeight: 1.5, color: C.cream, margin: "0 0 10px" }}>But your journal is just for you — no one will ever see what you write here.</p>
+                  <p style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400, fontSize: 14, lineHeight: 1.5, color: C.cream, opacity: 0.85, margin: 0 }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
                 </div>
                 )}
             </div>
@@ -1590,12 +1587,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               ref={composeFormRef}
               autoPrompt={composeAuto}
               range={composeAuto ? (jump?.from ?? null) : null}
-              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
+              editorial={editorial ? { context: privateOnly || tab === "private" ? "Journal" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
               bodyPlaceholder={composeStrip?.placeholder}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}
-              privateSubmitLabel="Save draft"
+              privateSubmitLabel="Save to journal"
               // Default the destination to match the tab you wrote from:
               // friend tab → this room, private tab → private.
               defaultDestination={privateOnly ? undefined : (tab === "private" ? "private" : roomId)}
