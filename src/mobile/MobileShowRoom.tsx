@@ -504,7 +504,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       const entries: V2RoomFeedEntry[] = gr.threads.map((t: Thread) => ({
         threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
         authorId: u2id[t.author] ?? "", authorUsername: t.author,
-        isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited,
+        isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
         isDeparted: departed.has(t.author), isDeleted: t.isDeleted ?? false,
         updatedAt: gr.sharedAt?.[t.id] || t.updatedAt,
         replyCount: (gr.replyCounts[t.id] ?? 0) + (gr.aheadCounts?.[t.id] ?? 0),
@@ -519,7 +519,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         authorId: u2id[t.author] ?? "", authorUsername: t.author,
         isDeparted: departed.has(t.author), isDeleted: false,
         updatedAt: gr.sharedAt?.[t.id] || t.updatedAt,
-        replyCount: 0, thread: t, gatedStub: true,
+        replyCount: 0, thread: t, gatedStub: true, fromS: t.fromS, fromE: t.fromE,
       }));
 
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
@@ -1139,7 +1139,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
     threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
     authorId: user?.id ?? "", authorUsername: t.author,
-    isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited,
+    isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
     isDeparted: false, isDeleted: t.isDeleted ?? false,
     updatedAt: t.updatedAt, replyCount: 0, thread: t,
   }));
