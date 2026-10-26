@@ -38,6 +38,7 @@ import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
 import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
+import { jumpRange, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "../components/NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -673,6 +674,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
     setPendingRating(null);
+    // Letters after a binge (2026-10-25): a move of 2+ from a real position
+    // is a jump; the compose that follows stamps its letter with the range.
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
     upsertEpisodeRating({ userId: user.id, showId: show.id, season: target.s, episode: target.e, rating })
       .catch((e) => console.warn("rating upsert failed", e));
     try {
@@ -681,6 +685,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setJumpFrom(from);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -698,11 +703,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
     setPendingRating(null);
+    // Letters after a binge (2026-10-25): a move of 2+ from a real position
+    // is a jump; the compose that follows stamps its letter with the range.
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
     try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
     catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setJumpFrom(from);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -965,6 +974,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // the advance; cleared by the Write button and when the page closes. The
   // banner is derived at render time so it sees the reloaded members.
   const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
+  // The jump the auto-compose follows (letters after a binge, 2026-10-25):
+  // set at the advance, cleared by the Write button like the finale.
+  const [jumpFrom, setJumpFrom] = useState<LetterRange | null>(null);
   const isShowEnd = (t: { s: number; e: number }): boolean => {
     const seasons = show?.seasons ?? [];
     const total = seasons.reduce((n, x) => n + (x || 0), 0);
@@ -1355,7 +1367,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               /* S pill (Alborz 2026-09-16): the M pill read too thick
                  inside the 60px band — this matches the retired canon
                  pill's weight. */
-              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             ) : tab === "friend" && show && progressForShow ? (
               <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
@@ -1380,7 +1392,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               {!privateOnly && roomId && mapMembers.length > 0 && (
                 <button style={mapBtn} onClick={() => setMapSheetOpen(true)}><LayoutGrid size={16} /> Map</button>
               )}
-              <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             </div>
           )}
         </div>
@@ -1494,7 +1506,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `calc(12px + env(safe-area-inset-bottom, 0px) / 2) ${E.space.gutter}px calc(12px + env(safe-area-inset-bottom, 0px) / 2)` }}>
           <WriteBlock
             label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
-            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}
+            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}
             // Alert while a letter waits to be sent (Alborz's notes, round 5).
             style={{ width: "100%", ...(composeMinimized ? { background: E.color.alert } : {}) }}
           />
@@ -1524,6 +1536,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <ComposeForm
             ref={composeFormRef}
             autoPrompt={composeAuto}
+            range={composeAuto ? jumpFrom : null}
             editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), banner: finaleBanner } : undefined}
             bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
             mobileIdiom

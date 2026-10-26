@@ -49,6 +49,7 @@ import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
 import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "./NudgeSheet";
+import { jumpRange, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "./NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import PollSticky from "./PollSticky";
@@ -601,6 +602,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
     setPendingRating(null);
+    // Letters after a binge (2026-10-25): a move of 2+ from a real position
+    // is a jump; the compose that follows stamps its letter with the range.
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
     upsertEpisodeRating({ userId: user.id, showId: show.id, season: target.s, episode: target.e, rating })
       .catch((e) => console.warn("rating upsert failed", e));
     try {
@@ -609,6 +613,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setJumpFrom(from);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -627,11 +632,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
     setPendingRating(null);
+    // Letters after a binge (2026-10-25): a move of 2+ from a real position
+    // is a jump; the compose that follows stamps its letter with the range.
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
     try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
     catch (e) { console.warn("progress write failed", e); }
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setJumpFrom(from);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -958,6 +967,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // the advance; cleared by the Write button and when the page closes. The
   // banner is derived at render time so it sees the reloaded members.
   const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
+  // The jump the auto-compose follows (letters after a binge, 2026-10-25):
+  // set at the advance, cleared by the Write button like the finale.
+  const [jumpFrom, setJumpFrom] = useState<LetterRange | null>(null);
   const isShowEnd = (t: { s: number; e: number }): boolean => {
     const seasons = show?.seasons ?? [];
     const total = seasons.reduce((n, x) => n + (x || 0), 0);
@@ -1298,7 +1310,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               //    on the band above. ──
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 {tab !== "reference" ? (
-                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
+                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
                 ) : <span />}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
                   const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
@@ -1326,7 +1338,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
                 )}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
@@ -1539,6 +1551,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <ComposeForm
               ref={composeFormRef}
               autoPrompt={composeAuto}
+              range={composeAuto ? jumpFrom : null}
               editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, banner: finaleBanner } : undefined}
               bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
               showId={show?.id}

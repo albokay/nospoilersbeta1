@@ -262,7 +262,7 @@ export const ENTRY_TITLE: React.CSSProperties = { ...E.type.letterTitle22, margi
 export const ENTRY_PREVIEW: React.CSSProperties = { ...E.type.letterBody15, lineHeight: 1.6 };
 
 /** A sealed letter: FROM · SEALED UNTIL, one dim line, the lock on the stamp. */
-export function SealedEntry({ from, until, line, stamp }: { from: string; until: string; line: string; stamp: React.ReactNode }) {
+export function SealedEntry({ from, until, line, stamp }: { from: string; until: string; line: React.ReactNode; stamp: React.ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink }}>
       <div style={{ flex: 1, minWidth: 0 }}>

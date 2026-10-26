@@ -142,35 +142,48 @@ function Drawing({ spec, label, initial, ink, lw }: { spec: StampSpec; label: st
   const hasOrn = spec.ornament !== 5 && !(spec.ornament === 4 && !initial);
   const orn = hasOrn ? spec.ornament : 5;
   const line = { fill: "none", stroke: ink, strokeWidth: lw };
+  // A "\n" stacks the tag on two lines — the Sidebar letters' "What /
+  // next?" and, since 2026-10-25, the RANGE stamp of a letter written after
+  // a binge ("S1" over "E4-7"; across a season "S1 E20 -" over "S2 E3"). A
+  // long line ("S1 E20 -") takes a smaller size so it stays inside the frame.
   const stacked = label.includes("\n") ? label.split("\n", 2) : null;
+  const longLine = !!stacked && Math.max(stacked[0].length, stacked[1].length) >= 7;
+  const stackSize = longLine ? 12 : 14;
   let body: React.ReactNode = null, tag: React.ReactNode = null, ornEl: React.ReactNode = null;
   if (f.kind === "scallop") {
     body = <>{<path d={P_SCALLOP} {...line} />}{f.box && <rect x={9} y={9} width={70} height={46} {...line} />}</>;
     tag = stacked
-      ? <><Tag x={W / 2} y={H / 2 - 9} text={stacked[0]} ink={ink} size={14} /><Tag x={W / 2} y={H / 2 + 9} text={stacked[1]} ink={ink} size={14} /></>
+      ? <><Tag x={W / 2} y={H / 2 - 9} text={stacked[0]} ink={ink} size={stackSize} /><Tag x={W / 2} y={H / 2 + 9} text={stacked[1]} ink={ink} size={stackSize} /></>
       : <Tag x={W / 2 + (hasOrn ? 8 : 0)} y={H / 2 + (hasOrn ? 4 : 0)} text={label} ink={ink} size={17} />;
     ornEl = <Ornament kind={orn} cx={19} cy={17} s={0.9} ink={ink} lw={lw} initial={initial} />;
   } else if (f.kind === "frame") {
     body = <>{<path d={P_FRAME} {...line} />}{f.box && <rect x={11} y={11} width={70} height={46} {...line} />}</>;
     tag = stacked
-      ? <><Tag x={W / 2} y={H / 2 - 9} text={stacked[0]} ink={ink} size={14} /><Tag x={W / 2} y={H / 2 + 9} text={stacked[1]} ink={ink} size={14} /></>
+      ? <><Tag x={W / 2} y={H / 2 - 9} text={stacked[0]} ink={ink} size={stackSize} /><Tag x={W / 2} y={H / 2 + 9} text={stacked[1]} ink={ink} size={stackSize} /></>
       : <Tag x={W / 2 + (hasOrn ? 8 : 0)} y={H / 2 + (hasOrn ? 4 : 0)} text={label} ink={ink} size={16} />;
     ornEl = <Ornament kind={orn} cx={23} cy={23} s={0.85} ink={ink} lw={lw} initial={initial} />;
   } else if (f.kind === "round") {
     body = <><circle cx={36} cy={36} r={34} {...line} /><circle cx={36} cy={36} r={27} fill="none" stroke={ink} strokeOpacity={0.5} strokeWidth={lw * 0.75} /></>;
-    tag = <Tag x={36} y={hasOrn ? 42 : 36} text={label} ink={ink} size={15} />;
-    ornEl = <Ornament kind={orn} cx={36} cy={22} s={0.75} ink={ink} lw={lw} initial={initial} />;
+    // Stacked: the ornament rides higher and smaller so two lines fit the disc.
+    tag = stacked
+      ? <><Tag x={36} y={hasOrn ? 33 : 29} text={stacked[0]} ink={ink} size={longLine ? 11 : 13} /><Tag x={36} y={hasOrn ? 47 : 44} text={stacked[1]} ink={ink} size={longLine ? 11 : 13} /></>
+      : <Tag x={36} y={hasOrn ? 42 : 36} text={label} ink={ink} size={15} />;
+    ornEl = <Ornament kind={orn} cx={36} cy={stacked ? 18 : 22} s={stacked ? 0.6 : 0.75} ink={ink} lw={lw} initial={initial} />;
   } else if (f.kind === "tall") {
-    const [a, b] = label.includes(" ") ? label.split(" ", 2) : [label, ""];
+    const [a, b] = stacked ? stacked : label.includes(" ") ? label.split(" ", 2) : [label, ""];
+    const tallSize = (t: string) => (t.length >= 7 ? 11 : t.length >= 5 ? 14 : 17);
     body = <path d={P_TALL} {...line} />;
     tag = b
-      ? <><Tag x={33} y={hasOrn ? 46 : 33} text={a} ink={ink} size={17} /><Tag x={33} y={hasOrn ? 68 : 58} text={b} ink={ink} size={17} /></>
+      ? <><Tag x={33} y={hasOrn ? 46 : 33} text={a} ink={ink} size={tallSize(a)} /><Tag x={33} y={hasOrn ? 68 : 58} text={b} ink={ink} size={tallSize(b)} /></>
       : <Tag x={33} y={45} text={a} ink={ink} size={17} />;
     ornEl = <Ornament kind={orn} cx={33} cy={22} s={0.85} ink={ink} lw={lw} initial={initial} />;
   } else {
     const ys = f.lines === 3 ? [44, 54, 64] : [50];
     body = <g {...line} strokeLinecap="round">{ys.map((y) => <path key={y} d={baseWave(y)} />)}</g>;
-    tag = <Tag x={hasOrn ? 60 : 52} y={28} text={label} ink={ink} size={19} />;
+    // Stacked: two lines above the waves (they begin at 44).
+    tag = stacked
+      ? <><Tag x={hasOrn ? 60 : 52} y={18} text={stacked[0]} ink={ink} size={stackSize} /><Tag x={hasOrn ? 60 : 52} y={34} text={stacked[1]} ink={ink} size={stackSize} /></>
+      : <Tag x={hasOrn ? 60 : 52} y={28} text={label} ink={ink} size={19} />;
     ornEl = <Ornament kind={orn} cx={18} cy={24} s={0.9} ink={ink} lw={lw} initial={initial} />;
   }
   return <>{body}{ornEl}<Cancel kind={spec.cancel} W={W} H={H} ink={ink} lw={lw} />{tag}</>;

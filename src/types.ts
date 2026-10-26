@@ -11,6 +11,11 @@ export type Thread = {
   // season/episode above is the filter tag (= highest at time of writing).
   rewatchS?: number;
   rewatchE?: number;
+  // Letters after a binge (2026-10-25): the first new episode of the stretch
+  // this letter was written after (a jump of 2+ from a real position). The
+  // stamp reads the range; season/episode above stay the seal. Display only.
+  fromS?: number;
+  fromE?: number;
   isMoved?: boolean;      // true = entry was moved to public; stub shown in friend room
   sourceThreadId?: string; // if this IS the public clone, points to the friend-room original
 };

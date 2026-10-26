@@ -3,6 +3,7 @@
  * All reads are public (no auth required).
  */
 import { supabase } from "./supabaseClient";
+import { fetchAskNewGroups } from "./groupAsks";
 import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation, PeopleGroup, PeopleGroupMember, GroupShowVote } from "../types";
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
@@ -162,6 +163,8 @@ function rowToThread(row: any): Thread {
     isRewatch:      row.is_rewatch ?? false,
     rewatchS:       row.rewatch_season ?? undefined,
     rewatchE:       row.rewatch_episode ?? undefined,
+    fromS:          row.from_season ?? undefined,
+    fromE:          row.from_episode ?? undefined,
     isMoved:        row.is_moved ?? false,
     sourceThreadId: row.source_thread_id ?? undefined,
   };
@@ -229,6 +232,11 @@ export async function insertThread(data: {
   // above is the filter tag (= author's highest at time of writing).
   rewatchSeason?: number;
   rewatchEpisode?: number;
+  // Letters after a binge (2026-10-25): the first new episode of the jump
+  // this letter follows. Sent only when set, so a plain letter never
+  // names the columns (the 20261025_letter_range paste adds them).
+  fromSeason?: number;
+  fromEpisode?: number;
 }): Promise<Thread> {
   await checkRateLimit('create_thread', 5, 60);
   validateLength("Title", data.title, 1, 200);
@@ -242,6 +250,7 @@ export async function insertThread(data: {
     is_rewatch: data.isRewatch ?? false,
     rewatch_season: data.rewatchSeason ?? null,
     rewatch_episode: data.rewatchEpisode ?? null,
+    ...(data.fromSeason != null && data.fromEpisode != null ? { from_season: data.fromSeason, from_episode: data.fromEpisode } : {}),
   };
   const { data: inserted, error } = await supabase
     .from("threads").insert(row).select().single();
@@ -3515,18 +3524,33 @@ export type GroupChatActivity = {
    *  chat tab's count). undefined until 20260919_group_chat_unread_count.sql
    *  is applied — callers fall back to the plain dot. */
   unreadCount?: number;
+  /** An open "Thoughts on…" ask the viewer hasn't answered (2026-10-25):
+   *  lights the group's chat dot everywhere a new message would. */
+  askNew?: boolean;
 };
 
 /** Per people-group chat new-message state for the caller (own msgs excluded). */
 export async function fetchGroupChatActivity(userId: string): Promise<GroupChatActivity[]> {
   const { data, error } = await supabase.rpc("get_group_chat_activity", { p_user_id: userId });
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({
+  const list: GroupChatActivity[] = (data ?? []).map((r: any) => ({
     groupId: r.group_id,
     chatLastSeenAt: r.chat_last_seen_at ? new Date(r.chat_last_seen_at).getTime() : null,
     latestMessageAt: r.latest_message_at ? new Date(r.latest_message_at).getTime() : null,
     unreadCount: r.unread_count == null ? undefined : Number(r.unread_count),
   }));
+  // An open "Thoughts on…" ask you haven't answered lights the group like a
+  // new message (Alborz 10-25). A group with no messages yet has no row from
+  // the RPC, so one is added for it.
+  try {
+    const lit = await fetchAskNewGroups(userId, new Map(list.map((a) => [a.groupId, a.chatLastSeenAt])));
+    for (const gid of lit) {
+      const row = list.find((a) => a.groupId === gid);
+      if (row) row.askNew = true;
+      else list.push({ groupId: gid, chatLastSeenAt: null, latestMessageAt: null, askNew: true });
+    }
+  } catch { /* the dots just don't know about asks this time */ }
+  return list;
 }
 
 /** The chat tab's badge text: 1–9 as-is, then "9+" (Alborz 2026-09-19). */
@@ -3535,7 +3559,8 @@ export function chatUnreadLabel(n: number): string {
 }
 
 /** Whether a group's chat should show a "new messages" dot. */
-export function chatHasNewActivity(a: { chatLastSeenAt: number | null; latestMessageAt: number | null }): boolean {
+export function chatHasNewActivity(a: { chatLastSeenAt: number | null; latestMessageAt: number | null; askNew?: boolean }): boolean {
+  if (a.askNew) return true;
   if (a.latestMessageAt == null) return false;
   return a.chatLastSeenAt == null || a.latestMessageAt > a.chatLastSeenAt;
 }

@@ -20,6 +20,7 @@ import type { PromptEntry } from "../../lib/promptData";
 import { getPromptSuggestion } from "../../lib/prompts";
 import PromptCard from "../PromptCard";
 import Stamp, { stampSpecFor } from "../Stamp";
+import { stampLabelFor, type LetterRange } from "../../lib/letterRange";
 import LoadingDots from "../LoadingDots";
 import { Sparkles, X, ArrowRight } from "lucide-react";
 import { CANON } from "../../styles/canon";
@@ -109,6 +110,10 @@ type ComposeFormProps = {
    *  your friends':" instead of "capture your thoughts on:". The write
    *  button's manual open keeps the standard copy. */
   autoPrompt?: boolean;
+  /** Letters after a binge (2026-10-25): the first new episode of the jump
+   *  this compose follows (two or more past a real position). The stamp
+   *  reads the range and the letter remembers it; null for a plain letter. */
+  range?: LetterRange | null;
   /** Mobile rebuild (/m) idiom: the paper sheds its blue bounding box and
    *  bleeds edge-to-edge, and the action buttons render in-flow directly
    *  under the paper instead of the sticky bottom-right footer (which
@@ -208,7 +213,7 @@ export type ComposeFormHandle = {
 };
 
 const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function ComposeForm(
-  { showId, fromRating = false, autoPrompt = false, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext, onProgressPersisted, editorial },
+  { showId, fromRating = false, autoPrompt = false, range = null, onCancel, onSubmitted, hideTopRightClose = false, restrictGroupId, privateOnly = false, defaultDestination, privateSubmitLabel = "Save privately", externalSubmit, headingOverride, promptButton, promptPoolTag, bodyPlaceholder, initialTitle, hideCancel = false, mobileIdiom = false, mobileHeaderContext, onProgressPersisted, editorial },
   ref,
 ) {
   const { user, profile, loading: authLoading } = useAuth();
@@ -537,6 +542,10 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
         isRewatch: progress.isRewatching ?? false,
         rewatchSeason: progress.isRewatching ? (progress.rewatchS ?? progress.s) : undefined,
         rewatchEpisode: progress.isRewatching ? (progress.rewatchE ?? progress.e) : undefined,
+        // The range of a letter written after a binge (never on a rewatch —
+        // the stamp wears the rewatch tag then).
+        fromSeason: range && !progress.isRewatching ? range.s : undefined,
+        fromEpisode: range && !progress.isRewatching ? range.e : undefined,
         isPublic: destination === "public",
       };
       const t = await insertThread(threadData);
@@ -617,7 +626,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   // with the modal — every send, both composes, no animation. A rewatch
   // letter's stamp wears the rewatch tag, like its ticket will.
   const isRewatchTag = !!progress.isRewatching && progress.rewatchS != null && progress.rewatchE != null;
-  const stampLabel = isRewatchTag ? `S${progress.rewatchS} E${progress.rewatchE}` : `S${tag.s} E${tag.e}`;
+  const stampLabel = isRewatchTag ? `S${progress.rewatchS} E${progress.rewatchE}` : stampLabelFor(tag.s, tag.e, range);
 
   // ── The editorial letter (checkpoint 6) ──────────────────────────────
   // The same state and handlers; only the drawing changes. The band's tag

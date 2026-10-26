@@ -19,6 +19,7 @@ import { EditorialScope } from "../../lib/skin";
 import { effectiveProgress } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
 import Stamp, { stampSpecFor, stampBox } from "../Stamp";
+import { stampLabelFor, rangeCount, inARow } from "../../lib/letterRange";
 import LikeBadge from "../LikeBadge";
 import Username from "../Username";
 import Tooltip from "../Tooltip";
@@ -114,6 +115,10 @@ export type V2RoomFeedEntry = {
   isRewatch?: boolean;
   rewatchS?: number;
   rewatchE?: number;
+  /** Letters after a binge (2026-10-25): the first new episode of the jump
+   *  this letter was written after — the stamp reads the range. */
+  fromS?: number;
+  fromE?: number;
   isEdited?: boolean;
   /** Author has departed this room. Adds the inline "has left the room" tag. */
   isDeparted?: boolean;
@@ -891,16 +896,21 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             ? linearIndex(entry.s, entry.e, seasons) - linearIndex(viewerProgress?.s ?? 0, viewerProgress?.e ?? 0, seasons)
             : null;
           const sv = stampSpecFor(entry.authorId || entry.authorUsername);
-          const line = aheadBy != null && aheadBy > 0
-            ? `A letter to ${gatedStubAudience} from ${aheadBy} episode${aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.`
-            : `A letter to ${gatedStubAudience} from S${entry.s} E${entry.e}. It opens when you catch up.`;
+          const from = entry.fromS != null && entry.fromE != null ? { s: entry.fromS, e: entry.fromE } : null;
+          // A letter written after a binge names the stretch (Alborz 2026-10-25;
+          // "four in a row" in italics) and the episode it opens at.
+          const line: React.ReactNode = from && seasons
+            ? <>{dn(entry.authorUsername)} wrote this after watching <em>{inARow(rangeCount(from, { s: entry.s, e: entry.e }, seasons))}</em>. It opens at S{entry.s} E{entry.e}.</>
+            : aheadBy != null && aheadBy > 0
+              ? `A letter to ${gatedStubAudience} from ${aheadBy} episode${aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.`
+              : `A letter to ${gatedStubAudience} from S${entry.s} E${entry.e}. It opens when you catch up.`;
           return (
             <div key={entry.threadId} ref={(el) => { ticketRefs.current[entry.threadId] = el; }} data-thread-id={entry.threadId} style={{ position: "relative", scrollMarginTop: 72 }}>
               <SealedEntry
                 from={dn(entry.authorUsername)}
                 until={`S${entry.s} E${entry.e}`}
                 line={line}
-                stamp={<Stamp spec={sv} label={`S${entry.s} E${entry.e}`} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={mobileIdiom ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
+                stamp={<Stamp spec={sv} label={stampLabelFor(entry.s, entry.e, from)} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={mobileIdiom ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
               />
             </div>
           );
@@ -932,7 +942,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 return (
                   <div style={{ ...D.gatedStub(24), display: "block", position: "relative", background: "rgba(254,248,234,0.2)", padding: mobileIdiom ? "16px 16px" : "16px 20px", cursor: "default" }}>
                     <div style={{ position: "absolute", top: 14, right: mobileIdiom ? 14 : 18 }}>
-                      <Stamp spec={sv} label={`S${entry.s} E${entry.e}`} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={sc} sealed />
+                      <Stamp spec={sv} label={stampLabelFor(entry.s, entry.e, entry.fromS != null && entry.fromE != null ? { s: entry.fromS, e: entry.fromE } : null)} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={sc} sealed />
                     </div>
                     <div style={{ paddingRight: Math.round(sb.w * sc) + 30, minHeight: Math.round(sb.h * sc), boxSizing: "border-box" }}>
                       <div className="muted" style={{ fontSize: 13, lineHeight: 1.45, color: CANON.cream, display: "flex", alignItems: "center", gap: 6 }}>
@@ -991,7 +1001,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         const isRewatchTag = !isSb && !!entry.isRewatch && entry.rewatchS != null && entry.rewatchE != null;
         const stampLabel = isSb
           ? (demoMode && entry.isInstructional ? (entry.e > 0 ? `Episode\n${entry.e}` : "The\ntour") : sidebarStampLabel(entry.sidebarKind))
-          : isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : `S${entry.s} E${entry.e}`;
+          : isRewatchTag ? `S${entry.rewatchS} E${entry.rewatchE}` : stampLabelFor(entry.s, entry.e, entry.fromS != null && entry.fromE != null ? { s: entry.fromS, e: entry.fromE } : null);
         const stampEl = entry.isDeleted ? null : <Stamp spec={stampSpec} label={stampLabel} initial={stampInitial} scale={stampScale} rewatch={isRewatchTag} ink={sbClosed ? CANON.friend : undefined} />;
         const stamp = stampEl && isRewatchTag ? <Tooltip text={REWATCH_TOOLTIP} direction="below" portal>{stampEl}</Tooltip> : stampEl;
         const stampReserve = stampEl ? Math.round(stampSize.w * stampScale) + 12 : 0;
