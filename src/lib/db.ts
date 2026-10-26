@@ -3748,6 +3748,40 @@ export async function addThreadToGroup(threadId: string, groupId: string, opts?:
 }
 export type JournalKind = "sent" | "handover";
 
+/** The viewer's journal for a show (2026-10-26): their entries with no room
+ *  link and not public, newest edit first as fetchUserThreads orders them. */
+export async function fetchJournalEntries(userId: string, showId: string): Promise<Thread[]> {
+  const mine = await fetchUserThreads(userId, showId);
+  return mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
+}
+
+/** Which journal entries already have a handed-over copy in this room
+ *  (the copies' `source_thread_id`). Empty when the viewer can't see the
+ *  room (not a member) — they haven't handed anything to it then. */
+export async function fetchHandedOverSourceIds(roomId: string, userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("group_threads")
+    .select("journal_kind, threads!inner(source_thread_id, author_id)")
+    .eq("group_id", roomId)
+    .eq("journal_kind", "handover");
+  if (error || !data) return new Set();
+  const out = new Set<string>();
+  for (const row of data as any[]) {
+    const t = row.threads;
+    if (t?.author_id === userId && t.source_thread_id) out.add(t.source_thread_id);
+  }
+  return out;
+}
+
+/** Hand the picked journal entries to a room: copies in one transaction,
+ *  the caller joined to the room. Returns how many copies were made. */
+export async function handOverJournal(roomId: string, threadIds: string[]): Promise<number> {
+  const { data, error } = await supabase.rpc("hand_over_journal", { p_room_id: roomId, p_thread_ids: threadIds });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "hand_over_journal failed");
+  return Number(data.count ?? 0);
+}
+
 /** Remove a thread from a friend group (leaves tombstone in original thread). */
 export async function removeThreadFromGroup(threadId: string, groupId: string): Promise<void> {
   const { error } = await supabase

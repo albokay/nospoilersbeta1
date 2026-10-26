@@ -105,7 +105,10 @@ import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import { bootstrapGroupWithLetter, type FirstLetter } from "../lib/firstLetterBootstrap";
 import { groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster, type TVmazeShow } from "../lib/tvmaze";
-import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
+import type { ProgressEntry, PeopleGroup, PeopleGroupMember, Thread } from "../types";
+import { fetchJournalEntries, fetchHandedOverSourceIds, handOverJournal } from "../lib/db";
+import { journalDate, journalDateLabel, journalPoints, sortJournal } from "../lib/journal";
+import JournalPicker from "./editorial/JournalPicker";
 import SidebarLogo from "./SidebarLogo";
 import LoadingDots from "./LoadingDots";
 import { GhostCluster, GhostShowPill } from "./DashboardGhosts";
@@ -377,6 +380,30 @@ export default function DashboardPage() {
   // CLOSES the modal so the thumbnail is seen swapping out (the show is then
   // on the Proposed shelf, where a click gives the full modal as usual).
   const [clicked, setClicked] = useState<{ showId: string; name: string; mode: "solo" | "vote" | "watchq"; voteToggle?: boolean; fromBrowse?: boolean } | null>(null);
+  // The journal handover (2026-10-26): the viewer's journal for the sheet's
+  // show, minus entries already handed to its room; the picker; the call.
+  const [journalFor, setJournalFor] = useState<{ showId: string; entries: Thread[] } | null>(null);
+  const [journalPickOpen, setJournalPickOpen] = useState(false);
+  const [journalPickError, setJournalPickError] = useState<string | null>(null);
+  const [handingOver, setHandingOver] = useState(false);
+  useEffect(() => {
+    const showId = clicked?.showId;
+    if (!editorial || !user || !showId) { setJournalFor(null); setJournalPickOpen(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const roomId = groupShows.find((s) => s.showId === showId)?.roomId ?? null;
+        const [entries, handed] = await Promise.all([
+          fetchJournalEntries(user.id, showId),
+          roomId ? fetchHandedOverSourceIds(roomId, user.id) : Promise.resolve(new Set<string>()),
+        ]);
+        if (cancelled) return;
+        setJournalFor({ showId, entries: sortJournal(entries.filter((t) => !handed.has(t.id))) });
+      } catch { if (!cancelled) setJournalFor(null); }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clicked?.showId, editorial, user?.id]);
   const [declaredProgress, setDeclaredProgress] = useState<{ s: number; e: number }>({ s: 0, e: 0 });
 
   // CP5b: pending invites (rail "*you're invited"), group options (gear).
@@ -1652,6 +1679,25 @@ export default function DashboardPage() {
     await refreshGroup(activeGroupId);
   }
 
+  async function doHandOverJournal(showId: string, threadIds: string[]) {
+    if (!user || !activeGroupId || handingOver) return;
+    setHandingOver(true); setJournalPickError(null);
+    try {
+      // The room exists from the first yes; the routine copies the picked
+      // entries into it and joins you (vote + membership, pass cleared).
+      const { roomId } = await startShowRoom(activeGroupId, showId);
+      await handOverJournal(roomId, threadIds);
+      if (!progress[showId]) await ensureProgressRow(user.id, showId);
+      setJournalPickOpen(false);
+      setClicked(null);
+      navigate(`/show-room/${roomId}`, { state: { roomShowId: showId, roomParentGroupId: activeGroupId } });
+    } catch (e: any) {
+      console.error("[dashboard] journal handover failed", e);
+      setJournalPickError(e?.message ?? "Couldn\u2019t hand it over just now.");
+    } finally {
+      setHandingOver(false);
+    }
+  }
   async function goToRoom(showId: string) {
     if (!activeGroupId) return;
     try {
@@ -3055,6 +3101,18 @@ export default function DashboardPage() {
 
       {/* §9 click-model popover (group context). Centered yellow card; pixel-
           anchoring to the clicked pill is a later polish. */}
+      {journalPickOpen && clicked && journalFor?.showId === clicked.showId && (
+        <JournalPicker
+          entries={journalFor.entries}
+          showName={clicked.name}
+          groupName={(editorialGroup ? groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id]) : "your friends")}
+          busy={handingOver}
+          error={journalPickError}
+          desktop
+          onConfirm={(ids) => { void doHandOverJournal(clicked.showId, ids); }}
+          onClose={() => setJournalPickOpen(false)}
+        />
+      )}
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
         // Opted-in = YOUR yes-vote in THIS group (2026-07-06 group-scoped
@@ -3117,6 +3175,22 @@ export default function DashboardPage() {
               onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
             } : null,
             trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+            journal: (() => {
+              // The journal handover's panel (2026-10-26): a proposal sheet,
+              // a show a FRIEND pitched, the viewer not in its room, and
+              // journal entries for it that aren't in the room yet.
+              if (!withToggle || !gs || gs.inRoom || !user) return null;
+              const pitcher = freshPitches.pitcherOf.get(id);
+              if (!pitcher || pitcher === user.id) return null;
+              const j = journalFor?.showId === id ? journalFor.entries : [];
+              if (!j.length) return null;
+              const d = journalDate(journalPoints(j), showsById[id]);
+              return {
+                line: `Your journal \u00b7 ${j.length} ${j.length === 1 ? "entry" : "entries"}${d ? ` \u00b7 ${journalDateLabel(d).toLowerCase()}` : ""}`,
+                showName: clicked.name, groupName: (editorialGroup ? groupGenericName(editorialGroup.group, groupNumberById[editorialGroup.group.id]) : "your friends"),
+                onHandOver: () => { setJournalPickError(null); setJournalPickOpen(true); },
+              };
+            })(),
           };
           return (
             <EditorialDialog onClose={() => setClicked(null)} label={clicked.name}>

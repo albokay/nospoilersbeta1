@@ -28,6 +28,7 @@ import { linearIndex } from "../../lib/groupPills";
 import { D } from "../dashboardChrome";
 import { parsePromptTokens } from "../../lib/promptTokens";
 import V2InlineThread, { type JournalSendTarget } from "./V2InlineThread";
+import { journalDate, journalFromTag } from "../../lib/journal";
 import type { PendingReference } from "../ResponseComposer";
 import Modal from "../Modal";
 import {
@@ -887,6 +888,25 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     setPendingCollapseTarget(null);
   }, []);
 
+  // A handed-over journal's date per author (2026-10-26): the latest copy
+  // sits at the show's end → "finished spring 2024", else "last written …".
+  const journalTagByAuthor = useMemo(() => {
+    const pts = new Map<string, { s: number; e: number; at: number }[]>();
+    for (const en of entries) {
+      if (en.journalKind !== "handover") continue;
+      const list = pts.get(en.authorUsername) ?? [];
+      list.push({ s: en.s, e: en.e, at: en.writtenAt ?? en.updatedAt });
+      pts.set(en.authorUsername, list);
+    }
+    const out = new Map<string, string>();
+    for (const [author, list] of pts) {
+      const d = journalDate(list, { seasons });
+      if (d) out.set(author, journalFromTag(dn(author), d));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, seasons, displayNames]);
+
   return (
     <EditorialScope.Provider value={editorial}>
     <div style={editorial ? FEED_VARS : undefined}>
@@ -916,7 +936,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           return (
             <div key={entry.threadId} ref={(el) => { ticketRefs.current[entry.threadId] = el; }} data-thread-id={entry.threadId} style={{ position: "relative", scrollMarginTop: 72 }}>
               <SealedEntry
-                from={dn(entry.authorUsername)}
+                from={(entry.journalKind === "handover" && journalTagByAuthor.get(entry.authorUsername)) || dn(entry.authorUsername)}
                 until={`S${entry.s} E${entry.e}`}
                 line={line}
                 stamp={<Stamp spec={sv} label={stampLabelFor(entry.s, entry.e, from)} initial={dn(entry.authorUsername).trim().charAt(0).toUpperCase()} scale={mobileIdiom ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
@@ -1164,7 +1184,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           onClick={canOpenProfile ? (ev) => { ev.stopPropagation(); onClickProfile!(entry.authorUsername); } : undefined}
                           style={canOpenProfile ? { cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 } : undefined}
                         >{authorName}</span>
-                        {demoMode ? null : <>{" · "}{timeAgo(entry.updatedAt)}</>}
+                        {entry.journalKind === "handover" && journalTagByAuthor.get(entry.authorUsername)
+                          // "From: Yalborz's journal · finished spring 2024" — the
+                          // handed-over copy's tag in place of the time (his board).
+                          ? journalTagByAuthor.get(entry.authorUsername)!.slice(authorName.length)
+                          : demoMode ? null : <>{" · "}{timeAgo(entry.updatedAt)}</>}
                         {entry.isDeparted ? " · has left the room" : ""}
                         {!entry.isDeleted && entry.isEdited ? " · edited" : ""}
                       </span>

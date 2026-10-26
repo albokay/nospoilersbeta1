@@ -408,7 +408,24 @@ export type StanceView = {
   progress: { title: string | null; note: string | null; show: { seasons?: number[] } | null | undefined; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void } | null;
   actions: { readLine: string | null; enterLabel: string; onEnter: () => void; joinNote: string | null; onJustConfirm: (() => void) | null } | null;
   trailer: { showId: string; tvmazeId?: string | null } | null;
+  /** The journal handover's panel (2026-10-26): shown under the answers
+   *  while the viewer has journal entries for the pitched show that aren't
+   *  in the room yet. `line` = "Your journal · 9 entries · finished spring
+   *  2024"; `groupName` fills his copy; the block opens the picker. */
+  journal?: { line: string; showName: string; groupName: string; onHandOver: () => void } | null;
 };
+
+/** The handover panel: the grey band, his headline and body, the ink block. */
+export function JournalPanel({ journal, inset, buttonLabel = "Hand over my journal →", bodyText }: { journal: NonNullable<StanceView["journal"]>; inset: number; buttonLabel?: string; bodyText?: string }) {
+  return (
+    <div style={{ margin: `28px -${inset}px 0`, padding: `22px ${inset}px 24px`, background: E.color.draft, textAlign: "left" }}>
+      <div style={E.type.label11}>{journal.line}</div>
+      <div style={{ ...E.type.letterTitle22, lineHeight: 1.25, marginTop: 12, textWrap: "balance" } as React.CSSProperties}>You’ve already written about {journal.showName}. Your journal can become your friends’ guide.</div>
+      <div style={{ ...E.type.body15, lineHeight: 1.5, marginTop: 10, textWrap: "pretty" } as React.CSSProperties}>{bodyText ?? `Hand it to ${journal.groupName}. Your writing will unseal just like regular letters as they watch, and you’ll join the room to read their reactions.`}</div>
+      <button type="button" onClick={journal.onHandOver} style={{ ...E.type.button16, marginTop: 18, width: "100%", height: 56, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" }}>{buttonLabel}</button>
+    </div>
+  );
+}
 
 /** `foot` (round 5): the host's bottom inset as a CSS length — the trailer's
  *  yellow runs through it to the sheet's or dialog's bottom edge. */
@@ -425,6 +442,7 @@ export function StanceSurface({ view, inset, foot }: { view: StanceView; inset: 
       ) : (
         <AnswerRow options={[{ value: true, label: "Yes" }, { value: false, label: "No" }]} value={view.answer.value} onChange={view.answer.onChange} />
       ))}
+      {view.journal && <JournalPanel journal={view.journal} inset={inset} />}
       {view.progress && (
         <div style={{ margin: `24px -${inset}px 0`, padding: `16px ${inset}px 18px`, background: E.color.personal }}>
           {view.progress.title && <div style={E.type.label11}>{view.progress.title}</div>}

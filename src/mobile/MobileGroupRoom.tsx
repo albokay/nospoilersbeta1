@@ -81,7 +81,10 @@ import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow, useBlockHeight } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
-import type { ProgressEntry, PeopleGroup, PeopleGroupMember } from "../types";
+import type { ProgressEntry, PeopleGroup, PeopleGroupMember, Thread } from "../types";
+import { fetchJournalEntries, fetchHandedOverSourceIds, handOverJournal } from "../lib/db";
+import { journalDate, journalDateLabel, journalPoints, sortJournal } from "../lib/journal";
+import JournalPicker from "../components/editorial/JournalPicker";
 
 /**
  * MobileGroupRoom (CP4) — the group room, where the social layer lives.
@@ -244,6 +247,30 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // in Lora 46 with the members under it. The shelves stay classic until
   // checkpoint 3.
   const editorial = useEditorial();
+  // The journal handover (2026-10-26): the viewer's journal for the sheet's
+  // show, minus entries already handed to its room; the picker; the call.
+  const [journalFor, setJournalFor] = useState<{ showId: string; entries: Thread[] } | null>(null);
+  const [journalPickOpen, setJournalPickOpen] = useState(false);
+  const [journalPickError, setJournalPickError] = useState<string | null>(null);
+  const [handingOver, setHandingOver] = useState(false);
+  useEffect(() => {
+    const showId = clicked?.showId;
+    if (!editorial || !user || !showId) { setJournalFor(null); setJournalPickOpen(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const roomId = groupShows.find((s) => s.showId === showId)?.roomId ?? null;
+        const [entries, handed] = await Promise.all([
+          fetchJournalEntries(user.id, showId),
+          roomId ? fetchHandedOverSourceIds(roomId, user.id) : Promise.resolve(new Set<string>()),
+        ]);
+        if (cancelled) return;
+        setJournalFor({ showId, entries: sortJournal(entries.filter((t) => !handed.has(t.id))) });
+      } catch { if (!cancelled) setJournalFor(null); }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clicked?.showId, editorial, user?.id]);
   // The first editorial visit slides the top row open and back once (the
   // bible's hint for the swipe drawer); stamped per account.
   const [swipeHint, setSwipeHint] = useState(false);
@@ -950,6 +977,25 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     }
   }
 
+  async function doHandOverJournal(showId: string, threadIds: string[]) {
+    if (!user || !groupId || handingOver) return;
+    setHandingOver(true); setJournalPickError(null);
+    try {
+      // The room exists from the first yes; the routine copies the picked
+      // entries into it and joins you (vote + membership, pass cleared).
+      const { roomId } = await startShowRoom(groupId, showId);
+      await handOverJournal(roomId, threadIds);
+      if (!progress[showId]) await ensureProgressRow(user.id, showId);
+      setJournalPickOpen(false);
+      setClicked(null);
+      navigate(`/m/show-room/${roomId}`, { state: { roomShowId: showId, roomParentGroupId: groupId } });
+    } catch (e: any) {
+      console.error("[m-group] journal handover failed", e);
+      setJournalPickError(e?.message ?? "Couldn\u2019t hand it over just now.");
+    } finally {
+      setHandingOver(false);
+    }
+  }
   async function goToRoom(showId: string) {
     try {
       const { roomId } = await startShowRoom(groupId, showId);
@@ -1478,6 +1524,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       )}
 
       {/* ── Click-model sheet (full-screen; desktop's yellow modal + trailer) ── */}
+      {journalPickOpen && clicked && journalFor?.showId === clicked.showId && (
+        <JournalPicker
+          entries={journalFor.entries}
+          showName={clicked.name}
+          groupName={groupName}
+          busy={handingOver}
+          error={journalPickError}
+          
+          onConfirm={(ids) => { void doHandOverJournal(clicked.showId, ids); }}
+          onClose={() => setJournalPickOpen(false)}
+        />
+      )}
       {clicked && (() => {
         const gs = groupShows.find((s) => s.showId === clicked.showId);
         // Opted-in = YOUR yes-vote in THIS group (2026-07-06, desktop parity):
@@ -1535,6 +1593,22 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
             } : null,
             trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+            journal: (() => {
+              // The journal handover's panel (2026-10-26): a proposal sheet,
+              // a show a FRIEND pitched, the viewer not in its room, and
+              // journal entries for it that aren't in the room yet.
+              if (!withToggle || !gs || gs.inRoom || !user) return null;
+              const pitcher = freshPitches.pitcherOf.get(id);
+              if (!pitcher || pitcher === user.id) return null;
+              const j = journalFor?.showId === id ? journalFor.entries : [];
+              if (!j.length) return null;
+              const d = journalDate(journalPoints(j), showsById[id]);
+              return {
+                line: `Your journal \u00b7 ${j.length} ${j.length === 1 ? "entry" : "entries"}${d ? ` \u00b7 ${journalDateLabel(d).toLowerCase()}` : ""}`,
+                showName: clicked.name, groupName: groupName,
+                onHandOver: () => { setJournalPickError(null); setJournalPickOpen(true); },
+              };
+            })(),
           };
           return (
             <EditorialSheet onClose={() => setClicked(null)} top={E.measure.phone.titleTop}>
