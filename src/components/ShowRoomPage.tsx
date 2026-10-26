@@ -13,7 +13,7 @@ import { type SidebarLetterKind } from "../lib/sidebarLetters";
  * dashboard private-only standalone, the in-room progress picker, notification
  * dots, polls/SIKW/highlights stickies.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronDown, Minus, Settings, SquarePen, UserPen, X } from "lucide-react";
@@ -26,7 +26,7 @@ import {
   fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
-import { effectiveProgress } from "../lib/utils";
+import { effectiveProgress, isSeasonEnd } from "../lib/utils";
 import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
@@ -48,8 +48,8 @@ import TSPDemoModal from "./TSPDemoModal";
 import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
-import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "./NudgeSheet";
-import { jumpRange, type LetterRange } from "../lib/letterRange";
+import NudgeSheet, { joinNudgeNames, finaleBannerTitle, seasonEndBannerTitle, type NudgeRecipient } from "./NudgeSheet";
+import { jumpRange, rangeCount, inARow, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "./NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import PollSticky from "./PollSticky";
@@ -613,7 +613,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
-    setJumpFrom(from);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -640,7 +641,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
-    setJumpFrom(from);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -967,20 +969,28 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // the advance; cleared by the Write button and when the page closes. The
   // banner is derived at render time so it sees the reloaded members.
   const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
-  // The jump the auto-compose follows (letters after a binge, 2026-10-25):
-  // set at the advance, cleared by the Write button like the finale.
-  const [jumpFrom, setJumpFrom] = useState<LetterRange | null>(null);
+  // A season's last episode (letters after a binge, CP2, 2026-10-25) and the
+  // jump the auto-compose follows: set at the advance like the finale,
+  // cleared wherever the Write button clears it.
+  const [seasonEndAt, setSeasonEndAt] = useState<{ s: number; e: number } | null>(null);
+  const [jump, setJump] = useState<{ from: LetterRange; to: { s: number; e: number } } | null>(null);
   const isShowEnd = (t: { s: number; e: number }): boolean => {
     const seasons = show?.seasons ?? [];
     const total = seasons.reduce((n, x) => n + (x || 0), 0);
     return total > 0 && linearIndex(t.s, t.e, seasons) >= total;
   };
-  const finaleBanner = useMemo(() => {
-    if (!finaleAt || !composeAuto) return undefined;
+  // The compose's yellow strip UNDER the heading band (Alborz 2026-10-25,
+  // moving the finale banner there too): the show's end first, then a
+  // season's end (both only when someone is 3+ behind), then the jump
+  // ("You watched four in a row."). The stamp keeps the range whichever shows.
+  const composeStrip = useMemo(() => {
+    if (!composeAuto) return undefined;
     const behind = mapMembers.map((m) => nudgeRecipientFor(m)).filter((r): r is NudgeRecipient => !!r).sort((a, b) => a.behind - b.behind);
-    const title = finaleBannerTitle(behind);
-    return title ? { title } : undefined;
-  }, [finaleAt, composeAuto, mapMembers, nudgeRecipientFor]);
+    if (finaleAt) { const title = finaleBannerTitle(behind); if (title) return { title: title as ReactNode, placeholder: "What made you surge ahead?" as string | undefined }; }
+    if (seasonEndAt) { const title = seasonEndBannerTitle(seasonEndAt.s, behind); if (title) return { title: title as ReactNode, placeholder: undefined }; }
+    if (jump && show?.seasons?.length) return { title: <>You watched <em>{inARow(rangeCount(jump.from, jump.to, show.seasons))}</em>.</> as ReactNode, placeholder: "What kept you going?" as string | undefined };
+    return undefined;
+  }, [composeAuto, finaleAt, seasonEndAt, jump, mapMembers, nudgeRecipientFor, show?.seasons]);
 
   const handleCellClick = useCallback((threadId: string) => {
     feedRef.current?.scrollToEntry(threadId);
@@ -1310,7 +1320,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               //    on the band above. ──
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 {tab !== "reference" ? (
-                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
+                  <WriteBlock label={tab === "private" ? "Draft a letter" : "Write a letter"} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }} style={{ width: 240 }} />
                 ) : <span />}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (() => {
                   const fm = userFilter ? mapMembers.find((m) => m.userId === userFilter) : null;
@@ -1338,7 +1348,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {/* No write on the reference tab (Alborz 2026-09-05) — it's a
                     lookup surface; the dial stays. */}
                 {tab !== "reference" && (
-                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+                  <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
                 )}
                 {tab === "friend" && !privateOnly && feedEntries.length > 0 && (
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
@@ -1551,9 +1561,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <ComposeForm
               ref={composeFormRef}
               autoPrompt={composeAuto}
-              range={composeAuto ? jumpFrom : null}
-              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, banner: finaleBanner } : undefined}
-              bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
+              range={composeAuto ? (jump?.from ?? null) : null}
+              editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), desktop: true, strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
+              bodyPlaceholder={composeStrip?.placeholder}
               showId={show?.id}
               restrictGroupId={privateOnly ? undefined : roomId}
               privateOnly={privateOnly}

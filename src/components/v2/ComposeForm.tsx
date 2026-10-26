@@ -198,7 +198,11 @@ type ComposeFormProps = {
    *  "Tell your friend why you're excited about {show}:" line with the
    *  S0 E0 stamp raised beside it, and the one line under; no context, no
    *  minimize. */
-  editorial?: { context?: string; onMinimize?: () => void; desktop?: boolean; banner?: { step?: number; title: React.ReactNode; sub?: string } };
+  editorial?: { context?: string; onMinimize?: () => void; desktop?: boolean; banner?: { step?: number; title: React.ReactNode; sub?: string };
+    /** A yellow strip UNDER the regular heading band (Alborz 2026-10-25): the
+     *  room's finale, season-end and after-a-jump lines. The band keeps the
+     *  show, the eyebrow and the stamp; `banner` (the onboarding) is unchanged. */
+    strip?: { title: React.ReactNode } };
 };
 
 /** Imperative handle exposed via forwardRef so a parent (e.g. ComposeModal)
@@ -706,6 +710,11 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               {stampEl(0.95, E.color.cream)}
             </div>
           </div>
+        )}
+        {editorial.strip && !editorial.banner && (
+          desk
+            ? <div style={{ background: E.color.accent, padding: "18px 0" }}><div style={{ width: E.measure.desktop.letters, maxWidth: "calc(100% - 48px)", margin: "0 auto", fontFamily: E.font.display, fontWeight: 700, fontSize: 24, lineHeight: 1.25 }}>{editorial.strip.title}</div></div>
+            : <div style={{ background: E.color.accent, padding: `16px ${E.space.gutter}px`, fontFamily: E.font.display, fontWeight: 700, fontSize: 20, lineHeight: 1.25 }}>{editorial.strip.title}</div>
         )}
         <main style={column}>
           {progress.isRewatching && (

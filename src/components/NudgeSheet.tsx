@@ -160,3 +160,24 @@ export function finaleBannerTitle(behind: NudgeRecipient[]): string | null {
   }
   return `You’ve finished at least ${eps(Math.min(...behind.map((r) => r.behind)))} ahead of everyone else.`;
 }
+
+/** The season-end letter's banner (letters after a binge, CP2, 2026-10-25):
+ *  the finale banner's forms for a season's last episode. Null when nobody
+ *  is 3+ behind. */
+export function seasonEndBannerTitle(season: number, behind: NudgeRecipient[]): string | null {
+  if (!behind.length) return null;
+  const eps = (n: number) => `${n} episode${n === 1 ? "" : "s"}`;
+  const lead = `You’ve finished season ${season}`;
+  if (behind.every((r) => !r.started)) {
+    const names = joinNudgeNames(behind.map((r) => r.name));
+    return `${lead}. ${names} ${behind.length === 1 ? "hasn’t" : "haven’t"} started yet.`;
+  }
+  if (behind.length === 1) return `${lead}, ${eps(behind[0].behind)} ahead of ${behind[0].name}.`;
+  if (behind.length === 2) {
+    const [a, b] = behind;
+    return a.behind === b.behind
+      ? `${lead}, ${eps(a.behind)} ahead of ${a.name} and ${b.name}.`
+      : `${lead}, ${eps(a.behind)} ahead of ${a.name}, ${b.behind} ahead of ${b.name}.`;
+  }
+  return `${lead}, at least ${eps(Math.min(...behind.map((r) => r.behind)))} ahead of everyone else.`;
+}

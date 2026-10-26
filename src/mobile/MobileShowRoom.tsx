@@ -1,6 +1,6 @@
 import { loadSeenNoteIds } from "../lib/noteSeen";
 import { type SidebarLetterKind } from "../lib/sidebarLetters";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronDown, LayoutGrid, Minus, Settings, SquarePen, X } from "lucide-react";
@@ -28,7 +28,7 @@ import { MapLegend } from "../components/editorial/MapNotes";
 import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
 import AccountModal from "../components/AccountModal";
-import { effectiveProgress } from "../lib/utils";
+import { effectiveProgress, isSeasonEnd } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
 import SidebarLetter from "../components/SidebarLetter";
@@ -37,8 +37,8 @@ import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
-import NudgeSheet, { joinNudgeNames, finaleBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
-import { jumpRange, type LetterRange } from "../lib/letterRange";
+import NudgeSheet, { joinNudgeNames, finaleBannerTitle, seasonEndBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
+import { jumpRange, rangeCount, inARow, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "../components/NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -685,7 +685,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
-    setJumpFrom(from);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -711,7 +712,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     await load();
     setComposeAuto(!privateOnly);
     setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
-    setJumpFrom(from);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
     setComposeOpen(true);
     setComposeMinimized(false);
   }
@@ -974,20 +976,28 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // the advance; cleared by the Write button and when the page closes. The
   // banner is derived at render time so it sees the reloaded members.
   const [finaleAt, setFinaleAt] = useState<{ s: number; e: number } | null>(null);
-  // The jump the auto-compose follows (letters after a binge, 2026-10-25):
-  // set at the advance, cleared by the Write button like the finale.
-  const [jumpFrom, setJumpFrom] = useState<LetterRange | null>(null);
+  // A season's last episode (letters after a binge, CP2, 2026-10-25) and the
+  // jump the auto-compose follows: set at the advance like the finale,
+  // cleared wherever the Write button clears it.
+  const [seasonEndAt, setSeasonEndAt] = useState<{ s: number; e: number } | null>(null);
+  const [jump, setJump] = useState<{ from: LetterRange; to: { s: number; e: number } } | null>(null);
   const isShowEnd = (t: { s: number; e: number }): boolean => {
     const seasons = show?.seasons ?? [];
     const total = seasons.reduce((n, x) => n + (x || 0), 0);
     return total > 0 && linearIndex(t.s, t.e, seasons) >= total;
   };
-  const finaleBanner = useMemo(() => {
-    if (!finaleAt || !composeAuto) return undefined;
+  // The compose's yellow strip UNDER the heading band (Alborz 2026-10-25,
+  // moving the finale banner there too): the show's end first, then a
+  // season's end (both only when someone is 3+ behind), then the jump
+  // ("You watched four in a row."). The stamp keeps the range whichever shows.
+  const composeStrip = useMemo(() => {
+    if (!composeAuto) return undefined;
     const behind = mapMembers.map((m) => nudgeRecipientFor(m)).filter((r): r is NudgeRecipient => !!r).sort((a, b) => a.behind - b.behind);
-    const title = finaleBannerTitle(behind);
-    return title ? { title } : undefined;
-  }, [finaleAt, composeAuto, mapMembers, nudgeRecipientFor]);
+    if (finaleAt) { const title = finaleBannerTitle(behind); if (title) return { title: title as ReactNode, placeholder: "What made you surge ahead?" as string | undefined }; }
+    if (seasonEndAt) { const title = seasonEndBannerTitle(seasonEndAt.s, behind); if (title) return { title: title as ReactNode, placeholder: undefined }; }
+    if (jump && show?.seasons?.length) return { title: <>You watched <em>{inARow(rangeCount(jump.from, jump.to, show.seasons))}</em>.</> as ReactNode, placeholder: "What kept you going?" as string | undefined };
+    return undefined;
+  }, [composeAuto, finaleAt, seasonEndAt, jump, mapMembers, nudgeRecipientFor, show?.seasons]);
 
   // The notes on a letter actually opened (the paper / the sheet): stamp
   // now + your progress, so the blue clears and a later unseal reads as new.
@@ -1367,7 +1377,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               /* S pill (Alborz 2026-09-16): the M pill read too thick
                  inside the 60px band — this matches the retired canon
                  pill's weight. */
-              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtnInline} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             ) : tab === "friend" && show && progressForShow ? (
               <div className="m-progress-cell" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>
                 <OneSelectProgress
@@ -1392,7 +1402,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               {!privateOnly && roomId && mapMembers.length > 0 && (
                 <button style={mapBtn} onClick={() => setMapSheetOpen(true)}><LayoutGrid size={16} /> Map</button>
               )}
-              <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
+              <button style={writeBtn} onClick={() => { setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }}><SquarePen size={16} /> Write</button>
             </div>
           )}
         </div>
@@ -1506,7 +1516,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20, background: E.color.cream, padding: `calc(12px + env(safe-area-inset-bottom, 0px) / 2) ${E.space.gutter}px calc(12px + env(safe-area-inset-bottom, 0px) / 2)` }}>
           <WriteBlock
             label={composeMinimized ? "Continue writing" : tab === "private" ? "Draft a letter" : "Write a letter"}
-            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setJumpFrom(null); setComposeOpen(true); setComposeMinimized(false); }}
+            onClick={() => { if (composeMinimized) { setComposeMinimized(false); return; } setComposeAuto(false); setFinaleAt(null); setSeasonEndAt(null); setJump(null); setComposeOpen(true); setComposeMinimized(false); }}
             // Alert while a letter waits to be sent (Alborz's notes, round 5).
             style={{ width: "100%", ...(composeMinimized ? { background: E.color.alert } : {}) }}
           />
@@ -1536,9 +1546,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <ComposeForm
             ref={composeFormRef}
             autoPrompt={composeAuto}
-            range={composeAuto ? jumpFrom : null}
-            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), banner: finaleBanner } : undefined}
-            bodyPlaceholder={finaleBanner ? "What made you surge ahead?" : undefined}
+            range={composeAuto ? (jump?.from ?? null) : null}
+            editorial={editorial ? { context: privateOnly || tab === "private" ? "Draft" : (groupName ?? "Your room"), onMinimize: () => setComposeMinimized(true), strip: composeStrip ? { title: composeStrip.title } : undefined } : undefined}
+            bodyPlaceholder={composeStrip?.placeholder}
             mobileIdiom
             showId={show?.id}
             restrictGroupId={privateOnly ? undefined : roomId}
