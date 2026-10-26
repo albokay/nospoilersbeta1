@@ -115,6 +115,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // when the group has a custom name (the line reads "with {name}") or no
   // one else is in the room yet.
   const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
+  const [journalFriendNames, setJournalFriendNames] = useState<string[]>([]);
   // Email-digest subscription for THIS room + viewer. Lazy — fetched only when
   // the gear modal opens (no extra room-load egress). null = loading/unknown.
   // digestOptOut=true → unsubscribed. Backed by get/set_room_digest_opt_out.
@@ -410,6 +411,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
       let derivedGroupName: string | null = null;
       let derivedPeople: { username: string; label: string }[] | null = null;
+      // The journal's Send confirm names the room's other current members
+      // (2026-10-26), whatever the group is called.
+      const friendNames = roomMapData
+        .filter((m) => !m.isDeparted && m.userId !== user.id)
+        .map((m) => cn[m.userId] ?? m.displayName ?? m.username ?? "")
+        .filter(Boolean);
       if (pg) {
         if (pg.name) derivedGroupName = pg.name;
         else {
@@ -434,6 +441,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
         isDeparted: departed.has(t.author), isDeleted: t.isDeleted ?? false,
         updatedAt: gr.sharedAt?.[t.id] || t.updatedAt,
+        journalKind: gr.journalKind?.[t.id], writtenAt: t.writtenAt,
         replyCount: (gr.replyCounts[t.id] ?? 0) + (gr.aheadCounts?.[t.id] ?? 0),
         thread: t,
         sidebarKind: sbKinds[t.id] ?? null,
@@ -482,6 +490,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
       setGroupPeople(derivedPeople);
+      setJournalFriendNames(friendNames);
       setProgressForShow(progress);
       setFeedEntries([...entries, ...gatedStubs]);
       setMapMembers(members);
@@ -1490,6 +1499,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <V2RoomFeed
                     editorial={editorial}
                     editorialDrafts={editorial}
+                    journalSend={!privateOnly && roomId ? { roomId, groupName: groupName ?? "your friends", friendNames: journalFriendNames, onSent: () => { void load(); setTab("friend"); } } : undefined}
                     displayNames={displayNames}
                     entries={privateFeedEntries}
                     responsesOff={!privateOnly && lettersOnly !== false}

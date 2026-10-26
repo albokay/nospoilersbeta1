@@ -27,7 +27,7 @@ import { timeAgo } from "../../lib/utils";
 import { linearIndex } from "../../lib/groupPills";
 import { D } from "../dashboardChrome";
 import { parsePromptTokens } from "../../lib/promptTokens";
-import V2InlineThread from "./V2InlineThread";
+import V2InlineThread, { type JournalSendTarget } from "./V2InlineThread";
 import type { PendingReference } from "../ResponseComposer";
 import Modal from "../Modal";
 import {
@@ -119,6 +119,11 @@ export type V2RoomFeedEntry = {
    *  this letter was written after — the stamp reads the range. */
   fromS?: number;
   fromE?: number;
+  /** Journal arc (2026-10-26): "sent" = the author sent this entry from
+   *  their journal (the opened letter says so); "handover" = a copy from a
+   *  handed-over journal, dated by `writtenAt` on its FROM line. */
+  journalKind?: "sent" | "handover";
+  writtenAt?: number;
   isEdited?: boolean;
   /** Author has departed this room. Adds the inline "has left the room" tag. */
   isDeparted?: boolean;
@@ -294,6 +299,9 @@ export type V2RoomFeedProps = {
    *  the drafts lane's rows. Same data, same thread inside. */
   editorial?: boolean;
   editorialDrafts?: boolean;
+  /** The room's Journal tab (2026-10-26): an opened entry offers
+   *  "Send to {group} →"; the room reloads and moves to the friend tab. */
+  journalSend?: JournalSendTarget;
   /** Notes inside each letter (notes arc, 2026-10-07): threadId → how many
       notes sit on that letter's body, all of them and the readable ones. A
       closed letter shows the count beside the chevron like its response
@@ -413,6 +421,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
     responsesOff = false,
     editorial = false,
     editorialDrafts = false,
+    journalSend,
     noteCounts,
     onNotesOpened,
     onReplyAdded,
@@ -1044,6 +1053,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
                       journalEntry={editorialDrafts}
+                      journalSend={editorialDrafts ? journalSend : undefined}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}
@@ -1171,6 +1181,10 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>
                     ))}
                   </div>
+                )}
+                {isExpanded && !entry.isDeleted && entry.journalKind === "sent" && (
+                  // A quiet line under the opened letter (his words, 2026-10-26).
+                  <div style={{ marginTop: 12, fontFamily: '"Lora", Georgia, serif', fontStyle: "italic", fontSize: 14, lineHeight: 1.5, color: editorial ? E.color.inkMuted : "inherit", opacity: editorial ? 1 : 0.7 }}>{authorName} sent this from their journal.</div>
                 )}
                 {foot}
               </EntryShell>
@@ -1402,6 +1416,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       groupId={groupId}
                       mobileIdiom={mobileIdiom}
                       journalEntry={editorialDrafts}
+                      journalSend={editorialDrafts ? journalSend : undefined}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}

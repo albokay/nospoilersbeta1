@@ -33,7 +33,9 @@ import {
   deleteHighlight as dbDeleteHighlight,
   type CitationEntry,
   type Highlight,
+  addThreadToGroup,
 } from "../../lib/db";
+import { joinNames } from "../../lib/groupNames";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry, Thread } from "../../types";
 
@@ -118,6 +120,17 @@ export type V2InlineThreadProps = {
    *  warning speaks of the entry and the friends it may later be sent to,
    *  not of readers who lose it. */
   journalEntry?: boolean;
+  /** With `journalEntry`, the room to send the entry to (2026-10-26): the
+   *  "Send to {group} →" block. Absent in the dashboard's private room. */
+  journalSend?: JournalSendTarget;
+};
+export type JournalSendTarget = {
+  roomId: string;
+  groupName: string;
+  /** The room's other current members, as the viewer names them. */
+  friendNames: string[];
+  /** After the send lands (the room reloads and shows the friend tab). */
+  onSent: () => void;
 };
 
 export default function V2InlineThread({
@@ -144,6 +157,7 @@ export default function V2InlineThread({
   onReplyAdded,
   mobileIdiom = false,
   journalEntry = false,
+  journalSend,
 }: V2InlineThreadProps) {
   const editorialScope = useEditorialScope();
   const { profile } = useAuth();
@@ -586,6 +600,29 @@ export default function V2InlineThread({
   // ── Delete flow ─────────────────────────────────────────────────────────
   const openDelete = () => setShowDeleteModal(true);
   const cancelDelete = () => setShowDeleteModal(false);
+  // Send a journal entry to the room (2026-10-26): the group_threads link
+  // with journal_kind "sent" — it leaves the journal and becomes a letter
+  // stamped where it was written. The confirm names who reads it when.
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const handleSend = async () => {
+    if (!journalSend || sending) return;
+    setSending(true); setSendError(null);
+    try {
+      await addThreadToGroup(thread.id, journalSend.roomId, { journalKind: "sent" });
+      setSendOpen(false);
+      journalSend.onSent();
+    } catch (err: any) {
+      setSendError(err?.message ?? "Couldn't send it just now.");
+    } finally {
+      setSending(false);
+    }
+  };
+  const sendNote = journalSend
+    ? `It leaves your journal and becomes a letter stamped S${thread.season} E${thread.episode}. ${journalSend.friendNames.length ? `${joinNames(journalSend.friendNames)} ${journalSend.friendNames.length === 1 ? "reads" : "read"}` : "Your friends read"} it once they reach that episode.`
+    : "";
+
   const handleDelete = async () => {
     setDeleteSubmitting(true);
     try {
@@ -807,6 +844,47 @@ export default function V2InlineThread({
               blend into the sky room background like the old inline banner did.
               Logic unchanged: first Save sets showRetagWarning → this modal →
               "Save & retag" re-calls handleSaveEdit, which bumps the tag. */}
+          {sendOpen && journalSend && editorialScope && (
+            <Confirm
+              desktop={!mobileIdiom}
+              title={`Send to ${journalSend.groupName}?`}
+              note={sendError ? <>{sendNote}<br /><span style={{ color: E.color.alert }}>{sendError}</span></> : sendNote}
+              confirmLabel={sending ? "Sending…" : "Send letter"}
+              cancelLabel="Cancel"
+              onConfirm={handleSend}
+              onCancel={() => { if (!sending) setSendOpen(false); }}
+              busy={sending}
+            />
+          )}
+          {sendOpen && journalSend && !editorialScope && (
+            <Modal
+              onClose={() => { if (!sending) setSendOpen(false); }}
+              width="min(420px, 90vw)"
+              cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
+            >
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>Send to {journalSend.groupName}?</div>
+              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
+                {sendNote}
+                {sendError && <div style={{ color: CANON.alert, marginTop: 8 }}>{sendError}</div>}
+              </div>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                <button
+                  onClick={() => setSendOpen(false)}
+                  disabled={sending}
+                  style={{ border: "2px solid var(--canon-dark,#1a3a4a)", background: "transparent", color: CANON.dark, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "9px 22px", borderRadius: 65, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSend}
+                  disabled={sending}
+                  style={{ border: "none", background: CANON.identity, color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
+                >
+                  {sending ? "Sending…" : "Send letter"}
+                </button>
+              </div>
+            </Modal>
+          )}
           {showRetagWarning && editorialScope && (
             <Confirm
               desktop={!mobileIdiom}
@@ -930,6 +1008,17 @@ export default function V2InlineThread({
       )}
       {!isTombstone && !editing && !pickMode && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: editorialScope ? 18 : 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
+          {isOwn && journalEntry && journalSend && (
+            // The action at the row's left; the acts keep the right.
+            <button
+              type="button"
+              className={editorialScope ? undefined : "btn sb-edit-business"}
+              onClick={() => { setSendError(null); setSendOpen(true); }}
+              style={editorialScope ? { ...INK_BLOCK_M, marginRight: "auto" } : { ...sPillGeom, marginRight: "auto" }}
+            >
+              Send to {journalSend.groupName} →
+            </button>
+          )}
           {isOwn && (
             <>
               {replyCount > 0 || hasNote ? (

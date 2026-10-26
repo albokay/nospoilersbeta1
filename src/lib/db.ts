@@ -167,6 +167,7 @@ function rowToThread(row: any): Thread {
     fromE:          row.from_episode ?? undefined,
     isMoved:        row.is_moved ?? false,
     sourceThreadId: row.source_thread_id ?? undefined,
+    writtenAt:      row.written_at ? new Date(row.written_at).getTime() : undefined,
   };
 }
 
@@ -3736,13 +3737,16 @@ export async function fetchThreadPublicViewState(showId: string): Promise<Record
   return out;
 }
 
-/** Share a thread to a friend group (creates group_threads row). */
-export async function addThreadToGroup(threadId: string, groupId: string): Promise<void> {
+/** Share a thread to a friend group (creates group_threads row).
+ *  `journalKind` (2026-10-26): "sent" = a journal entry sent to the room
+ *  (it leaves the journal); "handover" = a copy from a handed-over journal. */
+export async function addThreadToGroup(threadId: string, groupId: string, opts?: { journalKind?: JournalKind }): Promise<void> {
   const { error } = await supabase
     .from("group_threads")
-    .insert({ group_id: groupId, thread_id: threadId });
+    .insert({ group_id: groupId, thread_id: threadId, ...(opts?.journalKind ? { journal_kind: opts.journalKind } : {}) });
   if (error) throw error;
 }
+export type JournalKind = "sent" | "handover";
 
 /** Remove a thread from a friend group (leaves tombstone in original thread). */
 export async function removeThreadFromGroup(threadId: string, groupId: string): Promise<void> {
@@ -3825,6 +3829,8 @@ export async function fetchGroupThreads(
    * converted into the room, this is the conversion moment.
    */
   sharedAt: Record<string, number>;
+  /** How a letter came from a journal, when it did (2026-10-26). */
+  journalKind: Record<string, JournalKind>;
   /**
    * Entries ABOVE the viewer's progress (spoiler-gated, excluded from
    * `threads`), surfaced so the room can render a one-line placeholder per
@@ -3841,7 +3847,7 @@ export async function fetchGroupThreads(
   // visible reply" timestamp can be computed alongside the count.
   const { data, error } = await supabase
     .from("group_threads")
-    .select("shared_at, threads(*, replies!thread_id(id, group_id, author_id, season, episode, is_deleted, referenced_reply_id, created_at))")
+    .select("shared_at, journal_kind, threads(*, replies!thread_id(id, group_id, author_id, season, episode, is_deleted, referenced_reply_id, created_at))")
     .eq("group_id", groupId)
     .order("shared_at", { ascending: false });
   if (error) throw error;
@@ -3855,9 +3861,11 @@ export async function fetchGroupThreads(
   const latestHiddenReplyAt: Record<string, number> = {};
   const aheadCounts: Record<string, number> = {};
   const sharedAt: Record<string, number> = {};
+  const journalKind: Record<string, JournalKind> = {};
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
+    if ((row as any).journal_kind === "sent" || (row as any).journal_kind === "handover") journalKind[t.id] = (row as any).journal_kind;
     // Count only replies that are chain-visible at the viewer's progress:
     // scoped to this group, not deleted, self passes progress check, AND
     // every ancestor via referenced_reply_id also passes. An orphan reply
@@ -3959,7 +3967,7 @@ export async function fetchGroupThreads(
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;
   }
-  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, deepestVisibleReply, aheadCounts, sharedAt, gatedThreads };
+  return { threads, replyCounts, latestVisibleReplyAt, hiddenCounts, latestHiddenReplyAt, deepestVisibleReply, aheadCounts, sharedAt, gatedThreads, journalKind };
 }
 
 /** CP5 (2026-07-06): leave ONE show room in ONE group — never global. The

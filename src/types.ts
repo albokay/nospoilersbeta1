@@ -18,6 +18,9 @@ export type Thread = {
   fromE?: number;
   isMoved?: boolean;      // true = entry was moved to public; stub shown in friend room
   sourceThreadId?: string; // if this IS the public clone, points to the friend-room original
+  /** A letter copied from a journal (handover, 2026-10-26): when the entry
+   *  was originally written — the room's FROM line dates it. */
+  writtenAt?: number;
 };
 
 // ── Friend groups ─────────────────────────────────────────────────────────────
