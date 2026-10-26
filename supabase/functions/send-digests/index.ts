@@ -148,7 +148,13 @@ async function sendResendEmail(
 // authorName is the recipient's display name for the author: their given
 // (contact) name if set, else "@handle", else a graceful fallback. Already
 // formatted — no @ is added downstream.
-type DigestEntry = { threadId: string; title: string; authorName: string };
+// Letters after a binge (Alborz 2026-10-25): a letter written after a jump of
+// two or more carries `inARow` ("four in a row") and its `range` ("S1 E4-7";
+// across a season "S1 E20 - S2 E3") — the room's line reads "{name} left a
+// new letter after watching four in a row:" and the title carries the range.
+type DigestEntry = { threadId: string; title: string; authorName: string; inARow?: string | null; range?: string | null };
+const IN_A_ROW_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const inARow = (n: number): string => `${n <= 9 ? IN_A_ROW_WORDS[n] : String(n)} in a row`;
 // Responses (Alborz 2026-09-22): friends' replies on threads the recipient is
 // PART OF (wrote, or responded in) — the same scope as the in-app green
 // signal. ownerName is null when the entry is the recipient's own ("your
@@ -312,6 +318,10 @@ function buildDigestHtml(
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
+      // One new letter written after a binge: the intro names it ("… left a
+      // new letter after watching four in a row:"); with several letters the
+      // phrase moves beside each ranged title instead.
+      const soloBinge = r.entries.length === 1 && r.entries[0].inARow ? r.entries[0].inARow : null;
       const verb = r.entries.length === 1 ? "left a new letter" : "left new letters";
       const items = r.entries
         .map((e) => {
@@ -323,11 +333,14 @@ function buildDigestHtml(
           const byline = multiAuthor
             ? ` <span style="color:rgba(26,44,58,0.6)">by ${escapeHtml(e.authorName)}</span>`
             : "";
-          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-style:italic;font-weight:600">&ldquo;${escapeHtml(e.title)}&rdquo;</a>${byline}</p>`;
+          const stretch = e.inARow && e.range
+            ? ` <span style="color:rgba(26,44,58,0.6)">${soloBinge ? "" : `after watching <em>${escapeHtml(e.inARow)}</em> · `}${escapeHtml(e.range)}</span>`
+            : "";
+          return `<p style="${ITEM_P}">&mdash; <a href="${url}" style="color:#1a2c3a;font-style:italic;font-weight:600">&ldquo;${escapeHtml(e.title)}&rdquo;</a>${byline}${stretch}</p>`;
         })
         .join("");
       const intro = r.entries.length
-        ? `<p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}:</p>`
+        ? `<p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}${soloBinge ? ` after watching <em>${escapeHtml(soloBinge)}</em>` : ""}:</p>`
         : "";
       const responses = r.responses
         .map((x) => {
@@ -509,12 +522,14 @@ function buildDigestText(
   const sections = rooms
     .map((r) => {
       const multiAuthor = r.authorNames.length > 1;
-      const verb = r.entries.length === 1 ? "left a new letter" : "left new letters";
+      const soloBinge = r.entries.length === 1 && r.entries[0].inARow ? r.entries[0].inARow : null;
+      const verb = r.entries.length === 1 ? `left a new letter${soloBinge ? ` after watching ${soloBinge}` : ""}` : "left new letters";
       const items = r.entries
         .map((e) => {
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(e.threadId)}`;
           const byline = multiAuthor ? ` by ${e.authorName}` : "";
-          return `  - "${e.title}"${byline} — ${url}`;
+          const stretch = e.inARow && e.range ? ` (${soloBinge ? "" : `after watching ${e.inARow}, `}${e.range})` : "";
+          return `  - "${e.title}"${byline}${stretch} — ${url}`;
         })
         .join("\n");
       const responses = r.responses
@@ -992,7 +1007,7 @@ serve(async (req) => {
   //    a digest on their own.)
   const { data: links, error: linkErr } = await admin
     .from("group_threads")
-    .select("group_id, thread_id, shared_at, threads(id, author_id, title, season, episode, is_deleted, is_public)")
+    .select("group_id, thread_id, shared_at, threads(id, author_id, title, season, episode, is_deleted, is_public, from_season, from_episode)")
     .gte("shared_at", since);
   if (linkErr) return json({ error: "links_query_failed", detail: linkErr.message }, 500);
 
@@ -1189,9 +1204,13 @@ serve(async (req) => {
     ...answers.map((a) => a.showId),
   ])].filter(Boolean);
   const showNameById = new Map<string, string>();
+  const showSeasonsById = new Map<string, number[]>();
   if (showIds.length) {
-    const { data: showRows } = await admin.from("shows").select("id, name").in("id", showIds);
-    for (const srow of showRows ?? []) if (srow.name) showNameById.set(srow.id, String(srow.name));
+    const { data: showRows } = await admin.from("shows").select("id, name, seasons").in("id", showIds);
+    for (const srow of showRows ?? []) {
+      if (srow.name) showNameById.set(srow.id, String(srow.name));
+      if (Array.isArray(srow.seasons)) showSeasonsById.set(srow.id, srow.seasons as number[]);
+    }
   }
 
   // 4. Members of those rooms (current members only — leavers are removed).
@@ -1307,6 +1326,10 @@ serve(async (req) => {
         title: (t.title && String(t.title).trim()) || "(untitled)",
         authorId: t.author_id,
         sharedAt: link.shared_at,
+        // Letters after a binge (2026-10-25): the stretch this letter was written after.
+        s: t.season, e: t.episode,
+        fromS: t.from_season ?? null, fromE: t.from_episode ?? null,
+        seasons: showSeasonsById.get(g.show_id) ?? [],
       });
     }
   }
@@ -1551,11 +1574,17 @@ serve(async (req) => {
         const entries: DigestEntry[] = r.entries
           .filter((e: any) => e.authorId !== SIDEBAR_USER_ID) // Sidebar's letters get their own lines (below)
           .sort((a: any, b: any) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
-          .map((e: any) => ({
-            threadId: e.threadId,
-            title: e.title,
-            authorName: authorName(e.authorId),
-          }));
+          .map((e: any) => {
+            const ranged = e.fromS != null && e.fromE != null && Array.isArray(e.seasons) && e.seasons.length > 0;
+            const count = ranged ? linearIndex(e.s, e.e, e.seasons) - linearIndex(e.fromS, e.fromE, e.seasons) + 1 : 0;
+            return {
+              threadId: e.threadId,
+              title: e.title,
+              authorName: authorName(e.authorId),
+              inARow: ranged && count >= 2 ? inARow(count) : null,
+              range: ranged && count >= 2 ? (e.fromS === e.s ? `S${e.s} E${e.fromE}-${e.e}` : `S${e.fromS} E${e.fromE} - S${e.s} E${e.e}`) : null,
+            };
+          });
         const authorNames = [...new Set(entries.map((e) => e.authorName))];
         // Responses grouped per thread, responders in arrival order.
         const byThread = new Map<string, DigestResponse>();
