@@ -233,7 +233,7 @@ export type V2RoomMapProps = {
   mobile?: boolean;
   /** The editorial skin (checkpoint 5, 2026-10-12; the bible's MapCell): the
    *  same map in ink on cream — the YOU column `identity`, friends `friend`,
-   *  spines in the column's colour, a sealed cell `alert` with its ?, the
+   *  spines in the column's colour, a sealed cell a plain `alert` fill (no ?), the
    *  never-opened letter doubled in `identity`, friends dimmed while you
    *  rate (the "You are here" rule after your row went 2026-10-13 — the map
    *  already says where everyone is); the phone's header as the word "you"
@@ -1848,13 +1848,15 @@ export default function V2RoomMap({
                             ...newOutlineOverride,
                           }}
                         >
-                          {aboveViewer && entry && !rating ? (
+                          {aboveViewer && entry && !rating && !editorial ? (
                             // Hidden-writing marker (Alborz 2026-08-01): a
                             // Sky "?" inside the flat greyblue cell says
                             // "there's writing here you can't read yet."
                             // UNRATED cells only — a rating keeps its star
                             // (Alborz's adjustment; ratings aren't spoilers,
                             // so the star is the more informative mark).
+                            // Classic look only: the editorial cell's red
+                            // fill already says sealed (Alborz 2026-10-26).
                             <span aria-hidden style={{ fontFamily: '"Inter", sans-serif', fontWeight: 800, fontSize: 16, lineHeight: 1, color: mobile || editorial ? CANON.cream : CANON.friend, userSelect: "none" }}>?</span>
                           ) : isReached && rating && (
                             // Pass the CONTENT area size, not the cell's

@@ -11,7 +11,7 @@ function LegendCell({ kind }: { kind: "yours" | "friends" | "sealed" | "stars" }
   const base: React.CSSProperties = { width: 16, height: 16, borderRadius: "50%", boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
   if (kind === "yours") return <span aria-hidden="true" style={{ ...base, border: `2px solid ${E.color.identity}` }} />;
   if (kind === "friends") return <span aria-hidden="true" style={{ ...base, border: `2px solid ${E.color.friend}` }} />;
-  if (kind === "sealed") return <span aria-hidden="true" style={{ ...base, background: E.color.alert, color: E.color.cream, fontFamily: E.font.interface, fontWeight: 800, fontSize: 10, lineHeight: 1 }}>?</span>;
+  if (kind === "sealed") return <span aria-hidden="true" style={{ ...base, background: E.color.alert }} />;
   return (
     <span aria-hidden="true" style={{ ...base, background: E.color.identity }}>
       <svg viewBox="0 0 100 100" width={11} height={11} style={{ display: "block" }}><path d="M50 8 L61 36 L92 38 L68 57 L76 88 L50 71 L24 88 L32 57 L8 38 L39 36 Z" fill={E.color.cream} /></svg>
