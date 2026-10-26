@@ -38,7 +38,7 @@ import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
 import NudgeSheet, { joinNudgeNames, finaleBannerTitle, seasonEndBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
-import { jumpRange, rangeCount, inARow, type LetterRange } from "../lib/letterRange";
+import { jumpRange, rangeCount, inARow, stretchEpisodes, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "../components/NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import ComposeForm, { type ComposeFormHandle } from "../components/v2/ComposeForm";
@@ -216,6 +216,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // Progress picker → rating capture (forward picks only).
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
+  // Letters after a binge, CP3 (2026-10-25): the episodes a forward pick
+  // jumped over plus the landing one, for the rate-the-stretch step.
+  const [pendingStretch, setPendingStretch] = useState<{ s: number; e: number }[] | null>(null);
   // The automatic post-rating composition (Alborz 2026-09-13, restored) —
   // desktop parity; the write button's manual open clears the flag.
   const [composeAuto, setComposeAuto] = useState(false);
@@ -668,7 +671,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   }
 
   // ── Progress → rating capture (forward) / plain confirm (backward) ────────
-  function onForwardPick(val: { s: number; e: number }) { setPendingRating(val); }
+  function onForwardPick(val: { s: number; e: number }) {
+    setPendingRating(val);
+    const from = jumpRange(progressForShow, val, show?.seasons);
+    setPendingStretch(from ? stretchEpisodes(from, val, show?.seasons) : null);
+  }
 
   async function commitRating(rating: number) {
     if (!user || !show || !pendingRating) return;
@@ -700,6 +707,27 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   // Composition still follows a skipped rating — the flow is progress →
   // rating → write, rated or not (Alborz 2026-09-13).
+  // Rate the stretch (CP3): every tapped rating lands, then the advance and
+  // the compose as after a single rating. An empty list is a skip.
+  async function commitStretch(ratings: { s: number; e: number; rating: number }[]) {
+    if (!user || !show || !pendingRating) return;
+    const target = pendingRating;
+    setPendingRating(null);
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
+    await Promise.all(ratings.map((r) =>
+      upsertEpisodeRating({ userId: user.id, showId: show.id, season: r.s, episode: r.e, rating: r.rating }).catch((e) => console.warn("rating upsert failed", e)),
+    ));
+    try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
+    catch (e) { console.warn("progress write failed", e); }
+    await load();
+    setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
+    setComposeOpen(true);
+    setComposeMinimized(false);
+  }
+
   async function skipRating() {
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
@@ -1676,6 +1704,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           onCommit={commitRating}
           onCancel={() => setPendingRating(null)}
           onSkip={skipRating}
+          stretch={pendingStretch && pendingStretch.length <= 6 ? { episodes: pendingStretch } : undefined}
+          stretchNote={pendingStretch && pendingStretch.length > 6 ? `You watched ${inARow(pendingStretch.length)}. Rate the others from the show guide whenever you like.` : undefined}
+          onCommitMany={commitStretch}
         />
       )}
 

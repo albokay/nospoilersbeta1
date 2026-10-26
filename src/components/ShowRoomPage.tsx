@@ -49,7 +49,7 @@ import TrailerPoster from "./TrailerPoster";
 import SidebarLetter from "./SidebarLetter";
 import LoadingDots from "./LoadingDots";
 import NudgeSheet, { joinNudgeNames, finaleBannerTitle, seasonEndBannerTitle, type NudgeRecipient } from "./NudgeSheet";
-import { jumpRange, rangeCount, inARow, type LetterRange } from "../lib/letterRange";
+import { jumpRange, rangeCount, inARow, stretchEpisodes, type LetterRange } from "../lib/letterRange";
 import NudgeAnswerSheet, { NudgeReplySheet } from "./NudgeAnswerSheet";
 import { fetchPendingNudges, type PendingNudge } from "../lib/db";
 import PollSticky from "./PollSticky";
@@ -196,6 +196,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
   // CP4b: progress picker + rating capture.
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
+  // Letters after a binge, CP3 (2026-10-25): the episodes a forward pick
+  // jumped over plus the landing one, for the rate-the-stretch step.
+  const [pendingStretch, setPendingStretch] = useState<{ s: number; e: number }[] | null>(null);
   // The automatic post-rating composition (Alborz 2026-09-13, restored):
   // progress update → rating modal → compose opens with the "immediate
   // thoughts" eyebrow. The write button's manual open keeps the standard
@@ -596,7 +599,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // ── CP4b: progress picker → rating-capture (forward) / confirm (backward) ──
   // Forward pick → rate the episode you finished, then advance + refetch
   // (the feed re-filters to the newly-visible episodes).
-  function onForwardPick(val: { s: number; e: number }) { setPendingRating(val); }
+  function onForwardPick(val: { s: number; e: number }) {
+    setPendingRating(val);
+    const from = jumpRange(progressForShow, val, show?.seasons);
+    setPendingStretch(from ? stretchEpisodes(from, val, show?.seasons) : null);
+  }
 
   async function commitRating(rating: number) {
     if (!user || !show || !pendingRating) return;
@@ -629,6 +636,27 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // "skip rating": commit the progress advance for the pending episode but
   // don't write a rating. Composition still follows — the flow is progress
   // → rating → write, rated or not (Alborz 2026-09-13).
+  // Rate the stretch (CP3): every tapped rating lands, then the advance and
+  // the compose as after a single rating. An empty list is a skip.
+  async function commitStretch(ratings: { s: number; e: number; rating: number }[]) {
+    if (!user || !show || !pendingRating) return;
+    const target = pendingRating;
+    setPendingRating(null);
+    const from = privateOnly ? null : jumpRange(progressForShow, target, show.seasons);
+    await Promise.all(ratings.map((r) =>
+      upsertEpisodeRating({ userId: user.id, showId: show.id, season: r.s, episode: r.e, rating: r.rating }).catch((e) => console.warn("rating upsert failed", e)),
+    ));
+    try { await persistProgressUpdate(user.id, show.id, progressForShow ?? undefined, target); }
+    catch (e) { console.warn("progress write failed", e); }
+    await load();
+    setComposeAuto(!privateOnly);
+    setFinaleAt(!privateOnly && isShowEnd(target) ? target : null);
+    setSeasonEndAt(!privateOnly && !isShowEnd(target) && isSeasonEnd(target.s, target.e, show) ? target : null);
+    setJump(from ? { from, to: target } : null);
+    setComposeOpen(true);
+    setComposeMinimized(false);
+  }
+
   async function skipRating() {
     if (!user || !show || !pendingRating) return;
     const target = pendingRating;
@@ -1611,6 +1639,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           onCommit={commitRating}
           onCancel={() => setPendingRating(null)}
           onSkip={skipRating}
+          stretch={pendingStretch && pendingStretch.length <= 6 ? { episodes: pendingStretch } : undefined}
+          stretchNote={pendingStretch && pendingStretch.length > 6 ? `You watched ${inARow(pendingStretch.length)}. Rate the others from the show guide whenever you like.` : undefined}
+          onCommitMany={commitStretch}
         />
       )}
 

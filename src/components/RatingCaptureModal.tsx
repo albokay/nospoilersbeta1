@@ -8,6 +8,7 @@ import { E } from "../styles/editorial";
 import { EditorialDialog } from "./editorial/GroupRoom";
 import { BottomSheet } from "./editorial/Overlays";
 import { UnderlineWord } from "./editorial/Chrome";
+import { inARow } from "../lib/letterRange";
 
 // Rating capture modal — replaces the OneSelectProgress confirm modal on
 // forward progress advancement in V2/V3 surfaces only. Spec:
@@ -63,6 +64,9 @@ export default function RatingCaptureModal({
   onSkip,
   mobile = false,
   showName,
+  stretch,
+  onCommitMany,
+  stretchNote,
 }: {
   season: number;
   episode: number;
@@ -75,11 +79,25 @@ export default function RatingCaptureModal({
   mobile?: boolean;
   /** Caption context for the mobile sheet ("{show} · season {s}"). */
   showName?: string;
+  /** Letters after a binge, CP3 (2026-10-25): after a jump of two to six
+   *  episodes, every episode of the stretch gets a row of the guide's seven
+   *  circles (the order watched, the landing episode last); nothing is
+   *  required — Skip covers them all, Done saves whatever was tapped
+   *  through `onCommitMany`. Editorial only; the classic look keeps the
+   *  single-episode step. */
+  stretch?: { episodes: { s: number; e: number }[] };
+  onCommitMany?: (ratings: { s: number; e: number; rating: number }[]) => void;
+  /** Past six episodes: the single step for the landing episode plus this
+   *  line ("You watched fourteen in a row. Rate the others from the show
+   *  guide whenever you like."). */
+  stretchNote?: string;
 }) {
   // null until the user taps a rating. Once set, the other pills go
   // label-empty and all controls are disabled to prevent a second tap
   // during the 150ms commit window.
   const [selected, setSelected] = useState<number | null>(null);
+  // The stretch's taps, by "s-e" (0 = the empty ring, no rating).
+  const [picks, setPicks] = useState<Record<string, number>>({});
   const editorial = useEditorial();
 
   function pick(rating: number) {
@@ -95,6 +113,57 @@ export default function RatingCaptureModal({
   // (the star face in its sky disc, the words), a tap commits; Cancel as a
   // frame and Skip underlined in alert. The dialog on desktop, the sheet on
   // the phone. Same commit, same skip.
+  if (editorial && stretch && onCommitMany && stretch.episodes.length >= 2) {
+    const eps = stretch.episodes;
+    const first = eps[0], last = eps[eps.length - 1];
+    const sameSeason = eps.every((x) => x.s === first.s);
+    const heading = sameSeason ? `How were episodes ${first.e} to ${last.e}?` : `How were S${first.s} E${first.e} to S${last.s} E${last.e}?`;
+    const sub = `${showName ? `${showName} · ` : ""}${sameSeason ? `season ${first.s} · ` : ""}${inARow(eps.length)}`;
+    const keyOf = (x: { s: number; e: number }) => `${x.s}-${x.e}`;
+    // The guide's picker circle (ShowReference): a 2px identity ring, filled when chosen.
+    const circle = (on: boolean): React.CSSProperties => ({
+      width: 36, height: 36, borderRadius: "50%", border: `2px solid ${E.color.identity}`, background: on ? E.color.identity : "transparent",
+      padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box",
+    });
+    const done = () => onCommitMany(eps.filter((x) => (picks[keyOf(x)] ?? 0) > 0).map((x) => ({ s: x.s, e: x.e, rating: picks[keyOf(x)] })));
+    const body = (
+      <>
+        <div style={E.type.letterTitle22}>{heading}</div>
+        <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 6 }}>{sub}</div>
+        <div style={{ marginTop: 8 }}>
+          {eps.map((x, i) => {
+            const r = picks[keyOf(x)] ?? 0;
+            return (
+              <div key={keyOf(x)} style={{ padding: "12px 0 14px", borderBottom: i < eps.length - 1 ? `1px solid ${E.color.hairline}` : "none" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                  <span style={E.type.label11}>{sameSeason ? `E${x.e}` : `S${x.s} E${x.e}`}</span>
+                  <span style={{ ...E.type.label10, color: E.color.ink, whiteSpace: "nowrap", minHeight: 12 }}>{r ? RATING_LABELS[r] : ""}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  {[0, 1, 2, 3, 4, 5, 6].map((n) => {
+                    const on = r === n;
+                    return (
+                      <button key={n} type="button" aria-pressed={on} aria-label={n ? RATING_LABELS[n] : "No rating"} title={n ? RATING_LABELS[n] : "No rating"} onClick={() => setPicks((p) => ({ ...p, [keyOf(x)]: n }))} style={circle(on)}>
+                        {n > 0 && <StarFace rating={n} size={28} color={on ? E.color.cream : E.color.identity} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 18 }}>
+          {onSkip ? <UnderlineWord onClick={onSkip} style={{ color: E.color.alert }}>Skip the ratings</UnderlineWord> : <span />}
+          <button type="button" onClick={done} style={{ ...E.type.button16, height: 48, padding: "0 22px", border: 0, background: E.color.ink, color: E.color.cream, cursor: "pointer", boxSizing: "border-box" }}>Done →</button>
+        </div>
+      </>
+    );
+    return mobile
+      ? <BottomSheet onClose={onCancel} zIndex={1200} label="Rate the episodes">{body}</BottomSheet>
+      : <EditorialDialog onClose={onCancel} width={480} label="Rate the episodes" align="left">{body}</EditorialDialog>;
+  }
+
   if (editorial) {
     const body = (
       <>
@@ -111,6 +180,7 @@ export default function RatingCaptureModal({
             );
           })}
         </div>
+        {stretchNote && <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 16 }}>{stretchNote}</div>}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22 }}>
           {onSkip ? <UnderlineWord onClick={onSkip} style={{ color: E.color.alert }}>Skip the rating</UnderlineWord> : <span />}
           <button type="button" onClick={onCancel} disabled={locked} style={{ ...E.type.button16, height: 48, padding: "0 22px", border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Cancel</button>

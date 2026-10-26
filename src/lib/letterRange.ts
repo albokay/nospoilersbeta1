@@ -54,3 +54,18 @@ const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "e
 export function inARow(count: number): string {
   return `${count <= 9 ? WORDS[count] : String(count)} in a row`;
 }
+
+/** Every episode of the stretch, first new one to the landing one, in the
+ *  order watched — the rows of the rate-the-stretch step. */
+export function stretchEpisodes(from: LetterRange, to: { s: number; e: number }, seasons: number[] | undefined): { s: number; e: number }[] {
+  const out: { s: number; e: number }[] = [];
+  if (!seasons?.length) return out;
+  let s = from.s, e = from.e;
+  for (let guard = 0; guard < 1000; guard++) {
+    out.push({ s, e });
+    if (s === to.s && e === to.e) break;
+    if (e < (seasons[s - 1] ?? 0)) e++; else { s++; e = 1; }
+    if (s > seasons.length) break;
+  }
+  return out;
+}
