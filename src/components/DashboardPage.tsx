@@ -1839,7 +1839,7 @@ export default function DashboardPage() {
     loadChat(chatGroupId);
     // Opening the chat clears its new-message dot (server stamp + optimistic).
     markGroupChatSeen(chatGroupId).catch(() => { /* tolerate */ });
-    setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now(), unreadCount: a.unreadCount == null ? undefined : 0 } : a)));
+    setChatActivity((prev) => prev.map((a) => (a.groupId === chatGroupId ? { ...a, chatLastSeenAt: Date.now(), unreadCount: a.unreadCount == null ? undefined : 0, askNew: false } : a)));
     return () => { cancelled = true; if (channel) supabase.removeChannel(channel); };
   }, [chatGroupId, loadChat, railGroups, contactNames]);
 

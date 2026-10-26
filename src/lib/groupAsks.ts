@@ -126,3 +126,31 @@ export async function fetchAskSignal(groupId: string, userId: string, chatLastSe
     dot: seenAt != null && now - seenAt >= THREE_DAYS,
   };
 }
+
+/** The dashboards' group dots (Alborz 10-25): an open ask you haven't
+ *  answered lights a group the way a new message does — when it landed since
+ *  you last opened the chat, or once you saw it three days ago and still
+ *  haven't answered. Returns the group ids that light. One pass for every
+ *  group you're in (the row policies scope the reads). */
+export async function fetchAskNewGroups(userId: string, chatLastSeenByGroup: Map<string, number | null>, now = Date.now()): Promise<Set<string>> {
+  const out = new Set<string>();
+  const { data: asks, error } = await supabase.from("group_asks").select("id, group_id, created_at").is("closed_at", null);
+  if (error || !asks?.length) return out;
+  const ids = asks.map((a: any) => a.id as string);
+  const [mine, views] = await Promise.all([
+    supabase.from("ask_takes").select("ask_id").in("ask_id", ids).eq("user_id", userId),
+    supabase.from("ask_views").select("ask_id, seen_at").in("ask_id", ids).eq("user_id", userId),
+  ]);
+  const answered = new Set((mine.data ?? []).map((r: any) => r.ask_id as string));
+  const seenAt = new Map((views.data ?? []).map((r: any) => [r.ask_id as string, new Date(r.seen_at).getTime()]));
+  for (const a of asks as any[]) {
+    if (answered.has(a.id)) continue;
+    const createdAt = new Date(a.created_at).getTime();
+    const lastSeen = chatLastSeenByGroup.get(a.group_id) ?? null;
+    const countsNew = lastSeen == null || createdAt > lastSeen;
+    const seen = seenAt.get(a.id);
+    const dot = seen != null && now - seen >= THREE_DAYS;
+    if (countsNew || dot) out.add(a.group_id);
+  }
+  return out;
+}

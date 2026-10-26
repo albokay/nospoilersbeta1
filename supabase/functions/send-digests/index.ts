@@ -196,6 +196,11 @@ type NudgePromptDigest = { groupId: string; roomName: string; behindId: string; 
 // friend): "Priya reached S1 E5. Your letter 'The break room' is open for
 // them now." It can carry a digest on its own.
 type ReachedDigest = { groupId: string; roomName: string; behindId: string; behindName: string; s: number; e: number; letters: { threadId: string; title: string }[] };
+// A "Thoughts on…" ask that landed in one of the recipient's group chats
+// today and they haven't answered (Alborz 10-25, CP3). His copy: "Tell your
+// {group} friends about {prompt}." — answeredNames are the friends already
+// in, through the recipient's eyes.
+type AskDigest = { groupId: string; groupLabel: string; prompt: string; answeredNames: string[] };
 const reachedLine = (r: ReachedDigest, q: (t: string) => string): string => {
   const titles = r.letters.map((l) => q(l.title));
   const list = titles.length === 1 ? titles[0] : titles.length === 2 ? `${titles[0]} and ${titles[1]}` : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
@@ -212,6 +217,19 @@ const promptLine = (p: NudgePromptDigest, bold: (s: string) => string): string =
     : `${bold(`${p.behindName} hasn’t started ${p.roomName} yet.`)} You’re ${p.viewerEpisodes} episode${p.viewerEpisodes === 1 ? "" : "s"} in. A word from you might get them going.`;
 const promptSubject = (p: NudgePromptDigest): string =>
   p.started ? `${p.behindName}’s ${numberWord(p.gap)} episodes behind you on ${p.roomName}` : `${p.behindName} hasn’t started ${p.roomName} yet`;
+/** "Tell your Sunday Crew friends about a show you defend…" (his copy). */
+function askLine(a: AskDigest): string {
+  return `Tell your ${a.groupLabel} friends about ${a.prompt}.`;
+}
+/** "One line is plenty. Priya's already in; her take opens once yours is." */
+function askSub(a: AskDigest): string {
+  if (!a.answeredNames.length) return "One line is plenty.";
+  const names = formatNames(a.answeredNames);
+  return a.answeredNames.length === 1
+    ? `One line is plenty. ${names}'s already in; their take opens once yours is.`
+    : `One line is plenty. ${names} are already in; their takes open once yours is.`;
+}
+
 function linearIndex(s: number, e: number, seasons: number[]): number {
   if (s <= 0) return 0;
   let idx = 0;
@@ -233,8 +251,23 @@ function buildDigestHtml(
   answers: AnswerDigest[] = [],
   prompts: NudgePromptDigest[] = [],
   reached: ReachedDigest[] = [],
+  asks: AskDigest[] = [],
 ): string {
   const hasFriendContent = rooms.length > 0 || proposals.length > 0 || chats.length > 0 || deckNames.length > 0 || answers.length > 0 || reached.length > 0;
+  // "Thoughts on…" asks (CP3): a framed block each, the link opens the
+  // group's chat with the card at the top.
+  const askSections = asks
+    .map((a) => {
+      const url = `${baseUrl}/dashboard?g=${encodeURIComponent(a.groupId)}&chat=1`;
+      return `
+  <div style="margin:0 0 28px;padding:18px 20px;border:1px solid #1a2c3a">
+    <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:rgba(26,44,58,0.6)">${escapeHtml(a.groupLabel)} &middot; from Sidebar</p>
+    <p style="margin:0;font-size:18px;color:#1a2c3a;line-height:1.4;font-family:Georgia,'Times New Roman',serif">${escapeHtml(askLine(a))}</p>
+    <p style="margin:10px 0 0;font-size:14px;color:rgba(26,44,58,0.75);line-height:1.5">${escapeHtml(askSub(a))}</p>
+    <a href="${url}" style="display:inline-block;margin-top:14px;color:#355eb8;font-weight:700;font-size:15px">Your take &rarr;</a>
+  </div>`;
+    })
+    .join("");
   // "Reached your letter" (CP4): one linked line per friend, in the room's
   // section (or under the room's heading when nothing else is new there).
   const reachedLineHtml = (r: ReachedDigest): string => {
@@ -372,8 +405,11 @@ function buildDigestHtml(
   ${sidebarBlock}${hasFriendContent ? `
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     What your friends wrote today.
+  </h1>` : asks.length ? `
+  <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
+    A question for your group.
   </h1>` : ""}
-  ${sections}${promptSections}${proposalSections}${answerSections}${chatSections}${deckNames.length ? `
+  ${askSections}${sections}${promptSections}${proposalSections}${answerSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     To stop getting emails about your friend rooms, open a room and click the ⚙️ next to its name, then choose &ldquo;unsubscribe.&rdquo;
@@ -388,11 +424,11 @@ function buildDigestHtml(
 // the classic bulk-mail fingerprint Gmail files under Promotions. Names the
 // most specific item by rank — entries → responses → chat → proposals → deck —
 // and admits the rest with ", and more". The h1 stays the stable frame.
-function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = [], answers: AnswerDigest[] = [], prompts: NudgePromptDigest[] = [], reached: ReachedDigest[] = []): string {
+function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: ProposalDigest[], deckNames: string[], sidebarLetters: SidebarLetterDigest[] = [], answers: AnswerDigest[] = [], prompts: NudgePromptDigest[] = [], reached: ReachedDigest[] = [], asks: AskDigest[] = []): string {
   const entryRooms = rooms.filter((r) => r.entries.length > 0);
   const respRooms = rooms.filter((r) => r.responses.length > 0);
   const noteRooms = rooms.filter((r) => (r.notes ?? []).length > 0);
-  const kinds = [entryRooms.length > 0, respRooms.length > 0, noteRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0, answers.length > 0, prompts.length > 0, reached.length > 0].filter(Boolean).length;
+  const kinds = [entryRooms.length > 0, respRooms.length > 0, noteRooms.length > 0, chats.length > 0, proposals.length > 0, deckNames.length > 0, sidebarLetters.length > 0, answers.length > 0, prompts.length > 0, reached.length > 0, asks.length > 0].filter(Boolean).length;
   let lead = "What your friends wrote today";
   if (entryRooms.length) {
     const authors = [...new Set(entryRooms.flatMap((r) => r.authorNames))];
@@ -435,6 +471,9 @@ function buildSubject(rooms: RoomDigest[], chats: ChatDigest[], proposals: Propo
   } else if (prompts.length) {
     // The prompt to nudge (CP3) can be the whole email: name the friend.
     lead = prompts.length === 1 ? promptSubject(prompts[0]) : `${prompts.length} friends have fallen behind you`;
+  } else if (asks.length) {
+    // A "Thoughts on…" ask (CP3) can be the whole email: the prompt is the subject.
+    lead = asks.length === 1 ? `Thoughts on ${asks[0].prompt}` : `A question for ${asks.length} of your groups`;
   } else if (sidebarLetters.length) {
     // Only a letter from Sidebar (2026-09-30): name the room, not "Sidebar wrote".
     const roomNames = [...new Set(sidebarLetters.map((l) => l.roomName))];
@@ -456,7 +495,11 @@ function buildDigestText(
   answers: AnswerDigest[] = [],
   prompts: NudgePromptDigest[] = [],
   reached: ReachedDigest[] = [],
+  asks: AskDigest[] = [],
 ): string {
+  const askLines = asks
+    .map((a) => `${a.groupLabel} · from Sidebar\n${askLine(a)}\n${askSub(a)}\nYour take: ${baseUrl}/dashboard?g=${encodeURIComponent(a.groupId)}&chat=1`)
+    .join("\n\n");
   const reachedLines = reached
     .map((r) => `${r.roomName}\n${reachedLine(r, (t) => `"${t}"`)} — ${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(r.letters[0].threadId)}`)
     .join("\n\n");
@@ -506,11 +549,11 @@ function buildDigestText(
   const answerLines = answers
     .map((a) => `${a.lines.length === 1 ? a.lines[0].text : `${a.lines.length} answers to your pitches in ${a.groupLabel}.`} — ${baseUrl}/dashboard?g=${encodeURIComponent(a.groupId)}${a.lines.length === 1 ? "" : `\n${a.lines.map((l) => `  - ${l.text}`).join("\n")}`}`)
     .join("\n\n");
-  const blocks = [sections, reachedLines, promptLines, proposalLines, answerLines, chatLines].filter(Boolean).join("\n\n");
+  const blocks = [askLines, sections, reachedLines, promptLines, proposalLines, answerLines, chatLines].filter(Boolean).join("\n\n");
   const sidebarLines = sidebarLetters
     .map((l) => `${l.title} — ${baseUrl}/show-room/${encodeURIComponent(l.groupId)}?entry=${encodeURIComponent(l.threadId)}`)
     .join("\n");
-  const friendBlock = blocks || deckLine ? `What your friends wrote today.\n\n${blocks}${deckLine}\n\n` : "";
+  const friendBlock = blocks || deckLine ? `${rooms.length || proposals.length || chats.length || deckNames.length || answers.length || reached.length ? "What your friends wrote today." : "A question for your group."}\n\n${blocks}${deckLine}\n\n` : "";
   return `${greetName ? `Hi ${greetName},\n\n` : ""}${sidebarLines ? `${sidebarLines}\n\n` : ""}${friendBlock}To stop getting emails about your friend rooms, open a room and click the gear icon next to its name, then choose "unsubscribe."`;
 }
 
@@ -697,6 +740,49 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
 // fresh prompt. Both ahead friends get prompted (his call). Not a dry run:
 // the memory is written. Returns Map<aheadId, prompts[]> (names resolved
 // per recipient later).
+// "Thoughts on…" asks (CP3, 2026-10-25): every ask that landed in the window
+// — the instant first ask on a new room, or tonight's planting — goes to each
+// current member who has no take on it, through the one daily email, once
+// (the window is the memory). Seen-gated like chat: a member who opened the
+// chat since it landed has seen the card. Returns per recipient, with the
+// group ids (for labels) and the answerers' ids (for names) to resolve.
+async function computeAskDigests(admin: any, since: string, onlyUserId: string | null): Promise<{ byUser: Map<string, { groupId: string; prompt: string; answeredIds: string[] }[]>; groupIds: string[]; identityIds: string[] }> {
+  const byUser = new Map<string, { groupId: string; prompt: string; answeredIds: string[] }[]>();
+  const { data: askRows } = await admin
+    .from("group_asks")
+    .select("id, group_id, prompt, created_at")
+    .gte("created_at", since)
+    .is("closed_at", null);
+  const asks = (askRows ?? []) as any[];
+  if (!asks.length) return { byUser, groupIds: [], identityIds: [] };
+  const groupIds = [...new Set(asks.map((a) => a.group_id as string))];
+  const [{ data: mRows }, { data: tRows }] = await Promise.all([
+    admin.from("people_group_members").select("group_id, user_id, chat_last_seen_at, migration_dormant").in("group_id", groupIds),
+    admin.from("ask_takes").select("ask_id, user_id").in("ask_id", asks.map((a) => a.id)),
+  ]);
+  const membersByGroup = new Map<string, any[]>();
+  for (const m of (mRows ?? []) as any[]) {
+    if (m.migration_dormant) continue;
+    if (!membersByGroup.has(m.group_id)) membersByGroup.set(m.group_id, []);
+    membersByGroup.get(m.group_id)!.push(m);
+  }
+  const takersByAsk = new Map<string, string[]>();
+  for (const t of (tRows ?? []) as any[]) takersByAsk.set(t.ask_id, [...(takersByAsk.get(t.ask_id) ?? []), t.user_id]);
+  const identity = new Set<string>();
+  for (const a of asks) {
+    const takers = takersByAsk.get(a.id) ?? [];
+    for (const m of membersByGroup.get(a.group_id) ?? []) {
+      if (takers.includes(m.user_id)) continue;                     // already in
+      if (onlyUserId && m.user_id !== onlyUserId) continue;
+      if (seenBefore(m.chat_last_seen_at, a.created_at)) continue;  // opened the chat since — saw the card
+      if (!byUser.has(m.user_id)) byUser.set(m.user_id, []);
+      byUser.get(m.user_id)!.push({ groupId: a.group_id, prompt: a.prompt, answeredIds: takers });
+      for (const t of takers) identity.add(t);
+    }
+  }
+  return { byUser, groupIds, identityIds: [...identity] };
+}
+
 async function computeNudgePrompts(admin: any, dryRun: boolean, onlyUserId: string | null): Promise<Map<string, NudgePromptDigest[]>> {
   const out = new Map<string, NudgePromptDigest[]>();
   const nowMs = Date.now();
@@ -884,6 +970,17 @@ serve(async (req) => {
   const planted = dryRun
     ? { whatsNext: 0, returning: 0, dryRun: true }
     : await plantSidebarLetters(admin).catch((e) => { console.error("[sidebar-letters] planting failed", e); return { whatsNext: 0, returning: 0, error: String(e) }; });
+
+  // "Thoughts on…" asks (CP3, 2026-10-25): plant tonight's asks FIRST so they
+  // land inside the window and ride tonight's email (14 days after everyone
+  // answered the last one, 28 after it landed, held while the chat was busy;
+  // groups with a room and no ask yet get their first). Never on a dry run.
+  let asksPlanted = 0;
+  if (!dryRun) {
+    const { data: n, error: pe } = await admin.rpc("plant_group_asks");
+    if (pe) console.error("[asks] planting failed", pe); else asksPlanted = Number(n ?? 0);
+  }
+  const askDigestsRaw = await computeAskDigests(admin, since, onlyUserId).catch((e) => { console.warn("asks skipped:", e); return { byUser: new Map<string, { groupId: string; prompt: string; answeredIds: string[] }[]>(), groupIds: [] as string[], identityIds: [] as string[] }; });
 
   // 1. Friend-room entries that ARRIVED in a room in the last 24h, keyed on
   //    group_threads.shared_at (when the entry was linked into the room) — NOT
@@ -1119,6 +1216,7 @@ serve(async (req) => {
     ...recentChats.map((c) => c.group_id),
     ...proposals.map((p) => p.groupId),
     ...answers.map((a) => a.groupId),
+    ...askDigestsRaw.groupIds,
   ])];
   const pgNameById = new Map<string, string | null>();
   const pgMembersByGroup = new Map<string, string[]>();
@@ -1150,6 +1248,7 @@ serve(async (req) => {
     ...[...pgMembersByGroup.values()].flat(),
     ...[...promptsByUser.values()].flat().map((p) => p.behindId),
     ...[...reachedByUser.values()].flat().map((r) => r.behindId),
+    ...askDigestsRaw.identityIds,
   ])];
   const usernameById = new Map<string, string>();
   const firstNameById = new Map<string, string>();
@@ -1343,8 +1442,8 @@ serve(async (req) => {
     perUserAnswers.get(a.pitcherId)!.push(a);
   }
 
-  const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys(), ...perUserAnswers.keys(), ...promptsByUser.keys(), ...reachedByUser.keys()])];
-  if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new", planted });
+  const recipientIds = [...new Set([...perUser.keys(), ...perUserChat.keys(), ...perUserProps.keys(), ...perUserAnswers.keys(), ...promptsByUser.keys(), ...reachedByUser.keys(), ...askDigestsRaw.byUser.keys()])];
+  if (recipientIds.length === 0) return json({ ok: true, sent: 0, reason: "nothing visible/new", planted, asksPlanted });
   // Greeting (Alborz 2026-09-22): the recipient's own first name opens the
   // email — a personal first line is one of the signals that keeps a
   // notification out of Gmail's Promotions tab. Fetched for all recipients
@@ -1549,6 +1648,10 @@ serve(async (req) => {
     // The prompts to nudge (CP3), the behind friend named the recipient's way.
     const nudgePrompts: NudgePromptDigest[] = (promptsByUser.get(userId) ?? []).map((p) => ({ ...p, behindName: authorName(p.behindId) }));
     const reachedLetters: ReachedDigest[] = (reachedByUser.get(userId) ?? []).map((r) => ({ ...r, behindName: authorName(r.behindId) }));
+    const askDigests: AskDigest[] = (askDigestsRaw.byUser.get(userId) ?? []).map((a) => ({
+      groupId: a.groupId, groupLabel: groupLabel(a.groupId), prompt: a.prompt,
+      answeredNames: a.answeredIds.filter((id) => !seedAuthors.has(id)).map((id) => authorName(id)),
+    }));
     if (dryRun) {
       report.push({
         userId, email,
@@ -1563,6 +1666,7 @@ serve(async (req) => {
         deckNames: deckNames.length,
         nudgePrompts: nudgePrompts.map((p) => ({ room: p.roomName, behind: p.behindName, gap: p.gap, started: p.started })),
         reached: reachedLetters.map((r) => ({ room: r.roomName, behind: r.behindName, at: `S${r.s} E${r.e}`, letters: r.letters.length })),
+        asks: askDigests.map((a) => ({ group: a.groupLabel, prompt: a.prompt, in: a.answeredNames })),
         dryRun: true,
       });
       continue;
@@ -1570,13 +1674,13 @@ serve(async (req) => {
     const ok = await sendResendEmail(
       resendKey,
       email,
-      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames, sidebarLetters, answerDigests, nudgePrompts, reachedLetters),
-      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests, nudgePrompts, reachedLetters),
-      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests, nudgePrompts, reachedLetters),
+      buildSubject(roomDigests, chatDigests, proposalDigests, deckNames, sidebarLetters, answerDigests, nudgePrompts, reachedLetters, askDigests),
+      buildDigestHtml(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests, nudgePrompts, reachedLetters, askDigests),
+      buildDigestText(roomDigests, baseUrl, deckNames, proposalDigests, chatDigests, greetName, sidebarLetters, answerDigests, nudgePrompts, reachedLetters, askDigests),
     );
     if (ok) sent++;
-    report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, answers: answerDigests.length, chats: chatDigests.length, nudgePrompts: nudgePrompts.length, reached: reachedLetters.length, sent: ok });
+    report.push({ userId, email, rooms: roomDigests.length, proposals: proposalDigests.length, answers: answerDigests.length, chats: chatDigests.length, nudgePrompts: nudgePrompts.length, reached: reachedLetters.length, asks: askDigests.length, sent: ok });
   }
 
-  return json({ ok: true, dryRun, candidates: recipientIds.length, sent, planted, report });
+  return json({ ok: true, dryRun, candidates: recipientIds.length, sent, planted, asksPlanted, report });
 });
