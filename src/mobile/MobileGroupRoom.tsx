@@ -71,6 +71,7 @@ import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
+import { fetchAskSignal } from "../lib/groupAsks";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
@@ -358,12 +359,21 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         .then((rv) => { if (!cancelled) setRoomVis(rv); })
         .catch(() => {});
       fetchGroupChatActivity(user.id)
-        .then((ca) => {
+        .then(async (ca) => {
           if (cancelled) return;
           const mine = ca.find((a) => a.groupId === groupId);
           const isNew = !!mine && chatHasNewActivity(mine);
           setChatNew(isNew);
           setChatUnread(isNew ? mine?.unreadCount : (mine?.unreadCount == null ? undefined : 0));
+          // The open "Thoughts on…" ask (2026-10-25): unanswered, one more
+          // new thing on the chat corner; seen three days and still
+          // unanswered, the dot comes back.
+          try {
+            const sig = await fetchAskSignal(groupId, user.id, mine?.chatLastSeenAt ?? null);
+            if (cancelled) return;
+            if (sig.countsNew) { setChatNew(true); setChatUnread((n) => (n ?? 0) + 1); }
+            else if (sig.dot) setChatNew(true);
+          } catch { /* tolerate */ }
         })
         .catch(() => {});
     })();

@@ -127,6 +127,8 @@ import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
 import { Drawer, Confirm, FinishedTiles, FinishedHead, ChatMessages, ChatComposer, type ChatRow } from "./editorial/Overlays";
+import AskCard from "./AskCard";
+import { fetchAskSignal, type AskSignal } from "../lib/groupAsks";
 import DeckWave from "./deck/DeckWave";
 import YoureInCard from "./deck/YoureInCard";
 import DeckGridCard from "./deck/DeckGridCard";
@@ -1128,6 +1130,21 @@ export default function DashboardPage() {
     for (const a of chatActivity) m.set(a.groupId, chatHasNewActivity(a));
     return m;
   }, [chatActivity]);
+  // The open "Thoughts on…" ask (2026-10-25): unanswered, it counts as one
+  // new thing on the chat corner; seen three days and still unanswered, the
+  // dot comes back. Re-read when the chat's seen stamp moves.
+  const [askSignal, setAskSignal] = useState<(AskSignal & { groupId: string }) | null>(null);
+  const activeChatLastSeenAt = activeGroupId ? (chatActivity.find((a) => a.groupId === activeGroupId)?.chatLastSeenAt ?? null) : null;
+  useEffect(() => {
+    if (!user || !activeGroupId || !editorial) { setAskSignal(null); return; }
+    let cancelled = false;
+    const gid = activeGroupId;
+    fetchAskSignal(gid, user.id, activeChatLastSeenAt)
+      .then((sig) => { if (!cancelled) setAskSignal({ ...sig, groupId: gid }); })
+      .catch(() => { if (!cancelled) setAskSignal(null); });
+    return () => { cancelled = true; };
+  }, [user, activeGroupId, activeChatLastSeenAt, editorial, chatGroupId]);
+  const askNew = !!askSignal && askSignal.groupId === activeGroupId && !chatGroupId ? askSignal : null;
   // Unread COUNT for the chat tab's own badge (Alborz 2026-09-19) — only
   // there: the cluster/rail dots roll up other new writing too, so they stay
   // dots. undefined until the 09-19 RPC is applied → the tab keeps its dot.
@@ -2092,8 +2109,8 @@ export default function DashboardPage() {
         <ChatCorner
           desktop
           anchor="chat-tab"
-          isNew={!!activeGroupId && !!chatNewByGroup.get(activeGroupId)}
-          countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) > 0 ? chatUnreadLabel(chatUnreadByGroup.get(activeGroupId)!) : null}
+          isNew={!!activeGroupId && (!!chatNewByGroup.get(activeGroupId) || !!(askNew && (askNew.countsNew || askNew.dot)))}
+          countLabel={activeGroupId && (chatUnreadByGroup.get(activeGroupId) ?? 0) + (askNew?.countsNew ? 1 : 0) > 0 ? chatUnreadLabel((chatUnreadByGroup.get(activeGroupId) ?? 0) + (askNew?.countsNew ? 1 : 0)) : null}
           onClick={() => activeGroupId && setChatGroupId(activeGroupId)}
           style={{ top: mastH - E.measure.desktop.corner }}
         />
@@ -3393,6 +3410,8 @@ export default function DashboardPage() {
               bodyStyle={{ padding: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}
               foot={<ChatComposer value={chatInput} onChange={setChatInput} onSend={sendChat} />}
             >
+              {/* The "Thoughts on…" card from Sidebar, pinned under the head (2026-10-25). */}
+              <AskCard groupId={chatGroupId} userId={selfUserId} members={cg?.members ?? []} contactNames={contactNames} />
               <ChatMessages rows={rows} bodyRef={chatBodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
             </Drawer>
           );

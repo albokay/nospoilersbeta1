@@ -22,6 +22,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab } from "../components/editorial/Chrome";
 import { ChatMessages, ChatComposer, type ChatRow } from "../components/editorial/Overlays";
+import AskCard from "../components/AskCard";
 
 /**
  * MobileGroupChat (CP5) — the chat side of the group room's shows↔chat
@@ -192,6 +193,8 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           <div style={{ ...E.type.letterTitle22, fontSize: 26 }}>{group ? groupGenericName(group, viewerNumber) : "Group"} chat</div>
           <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 8 }}>with {connected} &middot; not spoiler-gated</div>
         </div>
+        {/* The "Thoughts on…" card from Sidebar, pinned under the head (2026-10-25). */}
+        <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} />
         <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
         <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
       </div>
