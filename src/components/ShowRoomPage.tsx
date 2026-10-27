@@ -62,6 +62,12 @@ import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, typ
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
 import { MapLegend } from "./editorial/MapNotes";
+import { UNDERLINE_WORD } from "./editorial/MapNotes";
+import { fetchGroupShowVotes, handOverJournal } from "../lib/db";
+import { journalDate, journalDateLabel, journalPoints, sortJournal, writtenPhrase, journalCardKey } from "../lib/journal";
+import { JournalPanel } from "./editorial/GroupRoom";
+import JournalPicker from "./editorial/JournalPicker";
+import JournalCard from "./editorial/JournalCard";
 import { Frame } from "./editorial/Onboarding";
 import { CANON } from "../styles/canon";
 
@@ -144,6 +150,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }
   const [progressForShow, setProgressForShow] = useState<ProgressEntry | null>(null);
   const [feedEntries, setFeedEntries] = useState<V2RoomFeedEntry[]>([]);
+  // The journal arc inside the room (2026-10-26): who pitched the show, the
+  // hand-over shelf + picker, the one-time cards closed this session.
+  const [pitcherId, setPitcherId] = useState<string | null>(null);
+  const [handOverOpen, setHandOverOpen] = useState(false);
+  const [journalPickOpen, setJournalPickOpen] = useState(false);
+  const [journalPickError, setJournalPickError] = useState<string | null>(null);
+  const [handingOver, setHandingOver] = useState(false);
+  const [closedJournalCards, setClosedJournalCards] = useState<Set<string>>(() => new Set());
+
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   // The unlock line (2026-09-25): what the last progress move opened. See
   // load() for the detection; UnlockLine for the copy.
@@ -384,7 +399,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         const eff = effectiveProgress(pm[showId] ?? null);
         return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
       });
-      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
         parentGid ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
         fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
@@ -392,6 +407,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         grP,
         // Letters from Sidebar (2026-09-28): which planted letter is which.
         fetchSidebarLetters(roomId).catch(() => ({} as Record<string, SidebarLetterKind>)),
+        // The journal arc (2026-10-26): the group's yes-votes name the pitcher.
+        parentGid ? fetchGroupShowVotes(parentGid).catch(() => []) : Promise.resolve([]),
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
@@ -493,6 +510,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setJournalFriendNames(friendNames);
       setProgressForShow(progress);
       setFeedEntries([...entries, ...gatedStubs]);
+      // The pitcher = the earliest yes on this show in the group (2026-10-26).
+      let earliest: { userId: string; at: number } | null = null;
+      for (const v of showVotes as { userId: string; showId: string; createdAt: number }[]) {
+        if (v.showId !== showId) continue;
+        if (!earliest || v.createdAt < earliest.at) earliest = { userId: v.userId, at: v.createdAt };
+      }
+      setPitcherId(earliest?.userId ?? null);
       setMapMembers(members);
       setPrivateEntries(priv);
       // Per-thread freshness data driving the map notification signals.
@@ -1068,6 +1092,59 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     for (const mm of mapMembers) if (mm.username) m[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
     return m;
   }, [mapMembers, roomContactNames]);
+  // ── The journal arc inside the room (2026-10-26) ──
+  // Who pitched = the earliest yes on this show in the parent group; the
+  // hand-over link shows only in a room a FRIEND pitched, while you have
+  // journal entries for the show and haven't handed any over yet.
+  const myHandoverCopies = useMemo(() => feedEntries.filter((e) => e.journalKind === "handover" && !!user && e.authorId === user.id), [feedEntries, user]);
+  const journalToHand = useMemo(() => {
+    const handed = new Set(myHandoverCopies.map((e) => e.thread.sourceThreadId).filter(Boolean) as string[]);
+    return sortJournal(privateEntries.filter((t) => !handed.has(t.id)));
+  }, [privateEntries, myHandoverCopies]);
+  const showHandOverLink = editorial && !privateOnly && !!roomId && !!user && !!pitcherId && pitcherId !== user.id && myHandoverCopies.length === 0 && journalToHand.length > 0;
+  // Friends' handed-over journals: one one-time card each (closed per device).
+  const journalCards = useMemo(() => {
+    if (!user || !editorial || !roomId) return [];
+    const by = new Map<string, { authorId: string; username: string; pts: { s: number; e: number; at: number }[] }>();
+    for (const e of feedEntries) {
+      if (e.journalKind !== "handover" || !e.authorId || e.authorId === user.id) continue;
+      const cur = by.get(e.authorId) ?? { authorId: e.authorId, username: e.authorUsername, pts: [] };
+      cur.pts.push({ s: e.s, e: e.e, at: e.writtenAt ?? e.updatedAt });
+      by.set(e.authorId, cur);
+    }
+    const out: { key: string; authorId: string; name: string; dateLabel: string; count: number; from: { s: number; e: number }; to: { s: number; e: number }; written: string }[] = [];
+    for (const c of by.values()) {
+      const key = journalCardKey(user.id, roomId, c.authorId);
+      if (closedJournalCards.has(key)) continue;
+      let closed = false;
+      try { closed = !!localStorage.getItem(key); } catch { /* tolerate */ }
+      if (closed) continue;
+      const d = journalDate(c.pts, show);
+      if (!d) continue;
+      const sorted = [...c.pts].sort((a, b) => a.s - b.s || a.e - b.e);
+      out.push({ key, authorId: c.authorId, name: displayNames[c.username] ?? c.username, dateLabel: journalDateLabel(d), count: c.pts.length, from: { s: sorted[0].s, e: sorted[0].e }, to: { s: sorted[sorted.length - 1].s, e: sorted[sorted.length - 1].e }, written: writtenPhrase(d.latestAt) });
+    }
+    return out;
+  }, [feedEntries, user, editorial, roomId, show, displayNames, closedJournalCards]);
+  const closeJournalCard = (key: string) => {
+    try { localStorage.setItem(key, "1"); } catch { /* tolerate */ }
+    setClosedJournalCards((prev) => new Set(prev).add(key));
+  };
+  async function doHandOverFromRoom(threadIds: string[]) {
+    if (!roomId || handingOver) return;
+    setHandingOver(true); setJournalPickError(null);
+    try {
+      await handOverJournal(roomId, threadIds);
+      setJournalPickOpen(false); setHandOverOpen(false);
+      await load();
+      setTab("friend");
+    } catch (e: any) {
+      console.error("[room] journal handover failed", e);
+      setJournalPickError(e?.message ?? "Couldn\u2019t hand it over just now.");
+    } finally {
+      setHandingOver(false);
+    }
+  }
 
   // The guide is there from day one (Alborz 2026-10-13: the trailer and the
   // pilot's cast before the first episode; it used to wait for S1E1) as
@@ -1449,6 +1526,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {user && letterOpen === true && (
                 <SidebarLetter idiom="desktop" userId={user.id} firstName={profile?.display_name || profile?.username || "friend"} open onDismiss={closeLetter} editorial={editorial} />
               )}
+              {journalCards.map((c) => (
+                <JournalCard key={c.key} desktop name={c.name} dateLabel={c.dateLabel} count={c.count} from={c.from} to={c.to} written={c.written} onClose={() => closeJournalCard(c.key)} style={{ marginTop: 20 }} />
+              ))}
+
               {unlockNote && <UnlockLine note={unlockNote} nameOf={(u) => displayNames[u] ?? u} editorial={editorial} />}
               {feedEntries.length === 0 ? (
                 <div style={{ maxWidth: 420 }}>
@@ -1495,6 +1576,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             </div>
             )}
             <div className="drafts-lane" style={{ display: tab === "private" ? undefined : "none" }}>
+                {showHandOverLink && (
+                  // Entered without handing over? A small underlined ask at the top of
+                  // the journal (his call, 2026-10-26); it goes once you've handed over.
+                  <div style={{ marginTop: 18, paddingBottom: 4 }}>
+                    <button type="button" onClick={() => { setJournalPickError(null); setHandOverOpen(true); }} style={UNDERLINE_WORD}>Hand your journal to {groupName ?? "your friends"}?</button>
+                  </div>
+                )}
                 {privateFeedEntries.length > 0 && (
                   <V2RoomFeed
                     editorial={editorial}
@@ -1580,6 +1668,28 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       </div>
 
       {/* ── Compose: the existing ComposeForm, constrained to this room + private ── */}
+      {handOverOpen && editorial && roomId && (
+        <EditorialDialog onClose={() => setHandOverOpen(false)} label={show?.name ?? "Your journal"}>
+          <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 26, textAlign: "center" }}>{show?.name}</div>
+          <JournalPanel inset={32} bodyText={`Hand it to ${groupName ?? "your friends"}. Your writing will unseal just like regular letters as they watch.`} journal={{
+            line: (() => { const d = journalDate(journalPoints(journalToHand), show); return `Your journal \u00b7 ${journalToHand.length} ${journalToHand.length === 1 ? "entry" : "entries"}${d ? ` \u00b7 ${journalDateLabel(d).toLowerCase()}` : ""}`; })(),
+            showName: show?.name ?? "this show", groupName: groupName ?? "your friends",
+            onHandOver: () => { setJournalPickError(null); setJournalPickOpen(true); },
+          }} />
+        </EditorialDialog>
+      )}
+      {journalPickOpen && editorial && roomId && (
+        <JournalPicker
+          entries={journalToHand}
+          showName={show?.name ?? "this show"}
+          groupName={groupName ?? "your friends"}
+          busy={handingOver}
+          error={journalPickError}
+          desktop
+          onConfirm={(ids) => { void doHandOverFromRoom(ids); }}
+          onClose={() => setJournalPickOpen(false)}
+        />
+      )}
       {composeOpen && createPortal(
         <>
         {/* The editorial skin (checkpoint 6): the letter is a full-window

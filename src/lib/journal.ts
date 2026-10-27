@@ -71,3 +71,8 @@ export function journalPoints(threads: Thread[]): { s: number; e: number; at: nu
 export function sortJournal(threads: Thread[]): Thread[] {
   return [...threads].sort((a, b) => a.season - b.season || a.episode - b.episode || a.createdAt - b.createdAt);
 }
+
+/** The one-time card's per-device close (like the letter from Sidebar). */
+export function journalCardKey(viewerId: string, roomId: string, authorId: string): string {
+  return `ns_journal_card_${viewerId}_${roomId}_${authorId}`;
+}
