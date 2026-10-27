@@ -12,7 +12,7 @@
  *                   options slides left over an accent drawer with the pen
  *                   and a full swipe opens them; a 4px accent edge at the
  *                   row's end is the drawer showing through. On desktop the
- *                   pen appears on hover and opens the same options.
+ *                   pen (always there, grey; alert on its own hover) opens the same options.
  *   AnswerRow       the three (or two) answers on one connected hairline
  *                   row; the chosen one filled accent and ringed accent.
  *   NumbersPicker   WATCHED · the season with its dropdown · the numbers
@@ -207,7 +207,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   end?: React.ReactNode;
   onOpen: () => void;
   /** The row's options (the leave / clear sheet). With one, the phone row
-   *  swipes and the desktop row grows a pen on hover. */
+   *  swipes and the desktop row carries a pen. */
   onOptions?: () => void;
   optionsLabel?: string;
   desktop?: boolean;
@@ -261,7 +261,7 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
             onClick={(e) => { e.stopPropagation(); onOptions(); }}
             style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
           >
-            <SquarePen size={16} strokeWidth={1.5} color={E.color.ink} aria-hidden="true" />
+            <SquarePen size={16} strokeWidth={1.5} color="currentColor" aria-hidden="true" />
           </span>
         )}
         {end}
@@ -300,9 +300,11 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
   );
 }
 
-/** The hover rule for the desktop rows' pens. Mount once per page. */
+/** The desktop rows' pens (Alborz 2026-10-27): always there in the grip's
+ *  grey; the ROW's hover leaves them alone (the row and the pen are two
+ *  acts); the pen's own hover turns it alert. Mount once per page. */
 export function RowHoverStyle() {
-  return <style>{`.e-row .e-pen{opacity:0}.e-row:hover .e-pen{opacity:1}`}</style>;
+  return <style>{`.e-row .e-pen{color:${E.color.inkFaint}}.e-row .e-pen:hover{color:${E.color.alert}}`}</style>;
 }
 
 export function AnswerRow<T extends string | boolean>({ options, value, onChange, label = "Your answer" }: {

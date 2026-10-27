@@ -153,7 +153,7 @@ type GripHandlers = { onPointerDown: (e: React.PointerEvent<HTMLElement>) => voi
 
 /** One group's row (Alborz's notes, round 5): on the phone it swipes left
  *  over a friend-blue pane to the group's settings (a cream pen); on desktop
- *  a pen appears on hover. The grip at the row's end drags it up or down
+ *  a pen sits in the grip's grey (alert on its own hover). The grip at the row's end drags it up or down
  *  the list (the faintest ink over cream). */
 function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }: {
   desktop: boolean;
@@ -185,7 +185,7 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
         {children}
         {onOptions && (
           <span className="e-pen" role="button" aria-label="Group settings" title="Group settings" onClick={(e) => { e.stopPropagation(); onOptions(e.currentTarget.getBoundingClientRect()); }} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
-            <SquarePen size={16} strokeWidth={1.5} color={E.color.ink} aria-hidden="true" />
+            <SquarePen size={16} strokeWidth={1.5} color="currentColor" aria-hidden="true" />
           </span>
         )}
         {gripEl}
@@ -240,9 +240,9 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   onInvite: (inv: PendingGroupInvite) => void;
   onNewGroup: () => void;
   hideNewGroup?: boolean;
-  /** Desktop: a pen on hover instead of the swipe; the grip drags with the mouse. */
+  /** Desktop: a pen in the row instead of the swipe; the grip drags with the mouse. */
   desktop?: boolean;
-  /** The group's settings (round 5): the phone row's swipe, the desktop row's hover pen (with the pen's rect). */
+  /** The group's settings (round 5): the phone row's swipe, the desktop row's pen (with the pen's rect). */
   onOptions?: (groupId: string, rect?: DOMRect) => void;
   /** Your own order (round 5): every group's id in the dragged order, to save. */
   onReorder?: (groupIds: string[]) => void;

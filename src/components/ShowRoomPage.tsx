@@ -1359,7 +1359,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           <>
             <EditorialColumn wide style={{ marginTop: E.measure.desktop.tabsGap }}>
               <FolderTabs
-                openLeft
                 width={E.measure.desktop.letters}
                 tabs={[...(!privateOnly ? ["friend"] : []), ...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]}
                 active={tab}
