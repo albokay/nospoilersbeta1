@@ -101,3 +101,16 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
     </div>
   );
 }
+
+/** The journal's note on the letter from Sidebar's paper (Alborz 2026-10-26):
+ *  the room letter's card, his explainer exactly as it reads — no FROM line,
+ *  no stamp, no "?" and no button — at the foot of the journal, always there. */
+export function JournalLetter({ style }: { mobile?: boolean; style?: React.CSSProperties }) {
+  return (
+    <SidebarPaper tone="alert" style={style}>
+      <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
+      <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But your journal is just for you &mdash; no one will ever see what you write here.</p>
+      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
+    </SidebarPaper>
+  );
+}

@@ -37,7 +37,7 @@ import AccountModal from "../components/AccountModal";
 import { effectiveProgress, isSeasonEnd } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
-import SidebarLetter from "../components/SidebarLetter";
+import SidebarLetter, { JournalLetter } from "../components/SidebarLetter";
 import { roomLetterKey } from "../lib/tipsContent";
 import LoadingDots from "../components/LoadingDots";
 import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
@@ -1615,12 +1615,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               />
             )}
             {editorial ? (
-              // The live site's words (round 3): above the list when it's empty, below it once there's writing.
-              <div style={{ marginTop: privateFeedEntries.length ? 32 : 18, border: `1px dashed ${E.color.inkFaint}`, padding: "18px 18px 16px" }}>
-                <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
-                <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But your journal is just for you &mdash; no one will ever see what you write here.</p>
-                <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
-              </div>
+              // The journal's note as a letter from Sidebar (his ask, 2026-10-26), at the foot of the list.
+              <JournalLetter mobile style={{ marginTop: privateFeedEntries.length ? 32 : 18 }} />
             ) : (
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>

@@ -257,7 +257,7 @@ export default function AskCard({ groupId, userId, members, contactNames, fullPa
             </>
           )}
           {state && mine && (
-            <div style={{ ...MONO, letterSpacing: "0.06em", marginTop: 10 }}>{allIn ? "Everyone’s in." : `${inCount} of ${total} in.`}</div>
+            <div style={{ ...MONO, letterSpacing: "0.06em", marginTop: 10 }}>{allIn ? "Everyone’s in." : `${inCount} of ${total} answered.`}</div>
           )}
         </div>
   );
