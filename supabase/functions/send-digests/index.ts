@@ -222,9 +222,11 @@ const NUDGE_PROMPT_HOLD_DAYS = 2;
 const NUDGE_PROMPT_QUIET_DAYS = 7;
 const SMALL_NUMBERS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 const numberWord = (n: number): string => (n >= 0 && n < SMALL_NUMBERS.length ? SMALL_NUMBERS[n] : String(n));
-const promptLine = (p: NudgePromptDigest, bold: (s: string) => string): string =>
+// `withShow` (Alborz 2026-10-27): the nudge ALONE reads as a letter under the
+// greeting — no room heading, no box — so the sentence names the show itself.
+const promptLine = (p: NudgePromptDigest, bold: (s: string) => string, withShow = false): string =>
   p.started
-    ? `${bold(`${p.behindName}’s at S${p.behindS} E${p.behindE}`)}, ${numberWord(p.gap)} episodes behind you, and has been for a few days. A word from you might bring them back.`
+    ? `${bold(`${p.behindName}’s at S${p.behindS} E${p.behindE}`)}${withShow ? ` on ${p.roomName}` : ""}, ${numberWord(p.gap)} episodes behind you, and has been for a few days. A word from you might bring them back.`
     : `${bold(`${p.behindName} hasn’t started ${p.roomName} yet.`)} You’re ${p.viewerEpisodes} episode${p.viewerEpisodes === 1 ? "" : "s"} in. A word from you might get them going.`;
 const promptSubject = (p: NudgePromptDigest): string =>
   p.started ? `${p.behindName}’s ${numberWord(p.gap)} episodes behind you on ${p.roomName}` : `${p.behindName} hasn’t started ${p.roomName} yet`;
@@ -301,7 +303,15 @@ function buildDigestHtml(
   for (const p of prompts) promptsByRoom.set(p.groupId, [...(promptsByRoom.get(p.groupId) ?? []), p]);
   const roomsWithSections = new Set(rooms.map((r) => r.groupId));
   // Rooms with only a prompt and/or a reached line tonight get a heading of their own.
-  const extraRoomIds = [...new Set([...promptsByRoom.keys(), ...reachedByRoom.keys()])].filter((gid) => !roomsWithSections.has(gid));
+  // One nudge and nothing else (Alborz 2026-10-27): a letter, not a section —
+  // the greeting, the sentence naming the show, the button.
+  const nudgeAlone = prompts.length === 1 && reached.length === 0 && !hasFriendContent && asks.length === 0 && sidebarLetters.length === 0 ? prompts[0] : null;
+  const extraRoomIds = nudgeAlone ? [] : [...new Set([...promptsByRoom.keys(), ...reachedByRoom.keys()])].filter((gid) => !roomsWithSections.has(gid));
+  const nudgeLetter = nudgeAlone
+    ? `
+  <p style="margin:0 0 18px;font-size:15px;color:#1a2c3a;line-height:1.55">${promptLine(nudgeAlone, (t) => `<strong>${escapeHtml(t)}</strong>`, true)}</p>
+  <a href="${baseUrl}/show-room/${encodeURIComponent(nudgeAlone.groupId)}?nudge=${encodeURIComponent(nudgeAlone.behindId)}" style="display:inline-block;margin:0 0 28px;background:#dea838;color:#fef8ea;text-decoration:none;padding:10px 22px;font-size:14px;font-weight:700">Nudge ${escapeHtml(nudgeAlone.behindName)} →</a>`
+    : "";
   const promptSections = extraRoomIds
     .map((gid) => {
       const ps = promptsByRoom.get(gid) ?? []; const rs = reachedByRoom.get(gid) ?? [];
@@ -431,7 +441,7 @@ function buildDigestHtml(
   <h1 style="margin:0 0 28px;font-size:22px;color:#1a2c3a;font-weight:800;line-height:1.35">
     A question for your group.
   </h1>` : ""}
-  ${askSections}${sections}${promptSections}${proposalSections}${answerSections}${chatSections}${deckNames.length ? `
+  ${nudgeLetter}${askSections}${sections}${promptSections}${proposalSections}${answerSections}${chatSections}${deckNames.length ? `
   <p style="margin:0 0 28px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(deckNames))} answered more &ldquo;How We Watch TV&rdquo; questions.</p>` : ""}
   <p style="margin:32px 0 0;font-size:12px;color:rgba(26,44,58,0.6);line-height:1.6">
     To stop getting emails about your friend rooms, open a room and click the ⚙️ next to its name, then choose &ldquo;unsubscribe.&rdquo;
@@ -525,8 +535,10 @@ function buildDigestText(
   const reachedLines = reached
     .map((r) => `${r.roomName}\n${reachedLine(r, (t) => `"${t}"`)} — ${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(r.letters[0].threadId)}`)
     .join("\n\n");
+  // The nudge alone (2026-10-27): the sentence names the show; no room line.
+  const textNudgeAlone = prompts.length === 1 && reached.length === 0 && rooms.length === 0 && proposals.length === 0 && chats.length === 0 && deckNames.length === 0 && answers.length === 0 && asks.length === 0 && sidebarLetters.length === 0;
   const promptLines = prompts
-    .map((p) => `${p.roomName}\n${promptLine(p, (t) => t)}\nNudge ${p.behindName}: ${baseUrl}/show-room/${encodeURIComponent(p.groupId)}?nudge=${encodeURIComponent(p.behindId)}`)
+    .map((p) => `${textNudgeAlone ? "" : `${p.roomName}\n`}${promptLine(p, (t) => t, textNudgeAlone)}\nNudge ${p.behindName}: ${baseUrl}/show-room/${encodeURIComponent(p.groupId)}?nudge=${encodeURIComponent(p.behindId)}`)
     .join("\n\n");
   const sections = rooms
     .map((r) => {
