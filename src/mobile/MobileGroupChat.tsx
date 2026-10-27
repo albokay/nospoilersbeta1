@@ -193,8 +193,9 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           <div style={{ ...E.type.letterTitle22, fontSize: 26 }}>{group ? groupGenericName(group, viewerNumber) : "Group"} chat</div>
           <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 8 }}>with {connected} &middot; not spoiler-gated</div>
         </div>
-        {/* The "Thoughts on…" card from Sidebar, pinned under the head (2026-10-25). */}
-        <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} />
+        {/* The "Thoughts on…" strip from Sidebar under the head; open, the card is a
+            full-screen page over the chat (his pick, 2026-10-26). */}
+        <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} fullPage />
         <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
         <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
       </div>

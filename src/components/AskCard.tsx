@@ -14,10 +14,16 @@
  * (red lock) until yours is in — the row policy enforces that; the card
  * only draws it. "Your take" is one line, sent from the card, once. A new
  * ask replaces the old one in the pin; ‹ › page back through earlier asks.
+ *
+ * `fullPage` (the phone, Alborz 2026-10-26): the open card is a FULL-SCREEN
+ * page over the chat — the strip stays in the chat's stack, the back corner
+ * returns to it — so the messages and the field never get squeezed under
+ * an open card.
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import { E } from "../styles/editorial";
+import { CornerTab } from "./editorial/Chrome";
 import { supabase } from "../lib/supabaseClient";
 import { personDisplayName } from "../lib/groupNames";
 import type { PeopleGroupMember } from "../types";
@@ -34,11 +40,13 @@ function askDate(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function AskCard({ groupId, userId, members, contactNames }: {
+export default function AskCard({ groupId, userId, members, contactNames, fullPage = false }: {
   groupId: string;
   userId: string;
   members: Member[];
   contactNames: Record<string, string>;
+  /** The phone: the open card covers the chat as a page. */
+  fullPage?: boolean;
 }) {
   const [asks, setAsks] = useState<GroupAsk[] | null>(null);
   const [index, setIndex] = useState(0);                      // 0 = the newest ask
@@ -157,8 +165,7 @@ export default function AskCard({ groupId, userId, members, contactNames }: {
   const opener = <><em>Thoughts on</em> {current.prompt}.</>;
 
   // ── Folded: the one-line strip ────────────────────────────────────────
-  if (!open) {
-    return (
+  const strip = (
       <button
         type="button" aria-expanded={false} aria-label="Open the Thoughts on card"
         onClick={() => { setOpen(true); setIndex(0); markAskOpened(asks[0].id, userId).catch(() => { /* tolerate */ }); }}
@@ -168,8 +175,8 @@ export default function AskCard({ groupId, userId, members, contactNames }: {
         <span style={{ flex: 1, minWidth: 0, fontFamily: E.font.display, fontSize: 15, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}><em>Thoughts on</em> {asks[0].prompt}.</span>
         <span aria-hidden="true" style={{ fontSize: 9, color: E.color.inkMuted, flexShrink: 0 }}>▼</span>
       </button>
-    );
-  }
+  );
+  if (!open) return strip;
 
   // ── Open: the card ────────────────────────────────────────────────────
   const answered = state?.answerers ?? [];
@@ -190,11 +197,8 @@ export default function AskCard({ groupId, userId, members, contactNames }: {
   const nameCell: React.CSSProperties = { ...MONO, width: 56, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
   const arrow: React.CSSProperties = { width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink, fontSize: 18, lineHeight: 1 };
 
-  return (
-    <div style={{ flexShrink: 0, padding: `18px ${G}px 24px`, borderBottom: `1px solid ${E.color.hairline}` }}>
-      <div style={{ position: "relative" }}>
-        <div aria-hidden="true" style={{ position: "absolute", left: 6, top: 6, right: -6, bottom: -6, background: E.color.friend }} />
-        <div style={{ position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, padding: "14px 18px 16px" }}>
+  const inner = (
+        <div style={fullPage ? undefined : { position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, padding: "14px 18px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {asks.length > 1 && (
               <button type="button" aria-label="Earlier ask" disabled={index >= asks.length - 1} onClick={() => page(index + 1)} style={{ ...arrow, marginLeft: -6, color: index >= asks.length - 1 ? "rgba(26,58,74,0.3)" : E.color.ink }}>‹</button>
@@ -203,9 +207,9 @@ export default function AskCard({ groupId, userId, members, contactNames }: {
             {asks.length > 1 && (
               <button type="button" aria-label="Later ask" disabled={index === 0} onClick={() => page(index - 1)} style={{ ...arrow, color: index === 0 ? "rgba(26,58,74,0.3)" : E.color.ink }}>›</button>
             )}
-            <button type="button" aria-label="Close" title="Close" onClick={() => { setOpen(false); setIndex(0); }} style={{ ...arrow, width: 28, height: 28, fontSize: 20, margin: "-4px -8px 0 0" }}>×</button>
+            {!fullPage && <button type="button" aria-label="Close" title="Close" onClick={() => { setOpen(false); setIndex(0); }} style={{ ...arrow, width: 28, height: 28, fontSize: 20, margin: "-4px -8px 0 0" }}>×</button>}
           </div>
-          <div style={{ marginTop: 6, fontFamily: E.font.display, fontSize: 22, lineHeight: 1.25, color: E.color.ink, maxWidth: 300 }}>{opener}</div>
+          <div style={{ marginTop: 6, fontFamily: E.font.display, fontSize: fullPage ? 26 : 22, lineHeight: 1.25, color: E.color.ink, maxWidth: 300 }}>{opener}</div>
 
           <div style={{ marginTop: 14, borderTop: `1px solid ${E.color.hairline}` }}>
             {!state && <div style={{ ...MONO, height: 40, display: "flex", alignItems: "center" }}>…</div>}
@@ -256,6 +260,26 @@ export default function AskCard({ groupId, userId, members, contactNames }: {
             <div style={{ ...MONO, letterSpacing: "0.06em", marginTop: 10 }}>{allIn ? "Everyone’s in." : `${inCount} of ${total} in.`}</div>
           )}
         </div>
+  );
+
+  if (fullPage) {
+    // The phone: the strip holds its place in the chat; the card is a page
+    // over it, the back corner folds it (his pick B, 2026-10-26).
+    return (
+      <>
+        {strip}
+        <div role="dialog" aria-label="Thoughts on" style={{ position: "fixed", inset: 0, zIndex: 1200, background: E.color.cream, color: E.color.ink, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+          <CornerTab kind="back" label="Back to the chat" onClick={() => { setOpen(false); setIndex(0); }} />
+          <div style={{ padding: `${E.safe.plus(E.measure.phone.titleTop)} ${G}px calc(40px + env(safe-area-inset-bottom, 0px))` }}>{inner}</div>
+        </div>
+      </>
+    );
+  }
+  return (
+    <div style={{ flexShrink: 0, padding: `18px ${G}px 24px`, borderBottom: `1px solid ${E.color.hairline}` }}>
+      <div style={{ position: "relative" }}>
+        <div aria-hidden="true" style={{ position: "absolute", left: 6, top: 6, right: -6, bottom: -6, background: E.color.friend }} />
+        {inner}
       </div>
     </div>
   );
