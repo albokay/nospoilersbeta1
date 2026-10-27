@@ -169,7 +169,12 @@ type DigestResponse = { threadId: string; title: string; ownerName: string | nul
 type DigestNote = { threadId: string; title: string; ownerName: string | null; onResponse: boolean; noterNames: string[] };
 const noteWhere = (x: DigestNote, possessive: (owner: string) => string): string =>
   x.onResponse ? "your response in" : (x.ownerName === null ? "your letter" : `${possessive(x.ownerName)} letter`);
-type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[]; notes: DigestNote[] };
+// A handed-over journal (2026-10-26): "{name} opened their journal to you —
+// 8 entries, each unseals as you catch up." — one line per writer, counting
+// every copy handed over (sealed ones too); the copies themselves aren't listed.
+type DigestJournal = { authorName: string; count: number };
+type RoomDigest = { groupId: string; roomName: string; entries: DigestEntry[]; authorNames: string[]; responses: DigestResponse[]; notes: DigestNote[]; journals: DigestJournal[] };
+const journalLine = (j: DigestJournal): string => `${j.authorName} opened their journal to you \u2014 ${j.count} ${j.count === 1 ? "entry" : "entries"}, each unseals as you catch up.`;
 // Proposals (Alborz 2026-09-30): grouped under the FRIEND who proposed —
 // "{Friend} proposed new shows to watch." then one line per show, with
 // "(X is also in.)" when another friend has already opted in (never the
@@ -342,6 +347,10 @@ function buildDigestHtml(
       const intro = r.entries.length
         ? `<p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55">${escapeHtml(formatNames(r.authorNames))} ${verb}${soloBinge ? ` after watching <em>${escapeHtml(soloBinge)}</em>` : ""}:</p>`
         : "";
+      // A handed-over journal: its one line, linked into the room, above the letters.
+      const journals = (r.journals ?? [])
+        .map((j) => `<p style="margin:0 0 12px;font-size:15px;color:#1a2c3a;line-height:1.55"><a href="${baseUrl}/show-room/${encodeURIComponent(r.groupId)}" style="color:#1a2c3a;font-weight:700">${escapeHtml(journalLine(j))}</a></p>`)
+        .join("");
       const responses = r.responses
         .map((x) => {
           const url = `${baseUrl}/show-room/${encodeURIComponent(r.groupId)}?entry=${encodeURIComponent(x.threadId)}`;
@@ -360,7 +369,7 @@ function buildDigestHtml(
       return `
   <div style="margin:0 0 28px">
     <h2 style="${SECTION_H2}">${escapeHtml(r.roomName)}</h2>
-    ${intro}${items}${responses}${notes}${(reachedByRoom.get(r.groupId) ?? []).map(reachedLineHtml).join("")}${(promptsByRoom.get(r.groupId) ?? []).map(promptBlock).join("")}
+    ${journals}${intro}${items}${responses}${notes}${(reachedByRoom.get(r.groupId) ?? []).map(reachedLineHtml).join("")}${(promptsByRoom.get(r.groupId) ?? []).map(promptBlock).join("")}
   </div>`;
     })
     .join("");
@@ -546,7 +555,10 @@ function buildDigestText(
           return `  - ${formatNames(x.noterNames)} ${what} ${noteWhere(x, (o) => `${o}'s`)} "${x.title}" — ${url}`;
         })
         .join("\n");
-      const head = r.entries.length ? `${r.roomName}\n${formatNames(r.authorNames)} ${verb}:\n${items}` : r.roomName;
+      const journals = (r.journals ?? [])
+        .map((j) => `${journalLine(j)} — ${baseUrl}/show-room/${encodeURIComponent(r.groupId)}`)
+        .join("\n");
+      const head = r.entries.length ? `${r.roomName}\n${journals ? `${journals}\n` : ""}${formatNames(r.authorNames)} ${verb}:\n${items}` : `${r.roomName}${journals ? `\n${journals}` : ""}`;
       return [head, responses, notes].filter(Boolean).join("\n");
     })
     .join("\n\n");
@@ -1007,7 +1019,7 @@ serve(async (req) => {
   //    a digest on their own.)
   const { data: links, error: linkErr } = await admin
     .from("group_threads")
-    .select("group_id, thread_id, shared_at, threads(id, author_id, title, season, episode, is_deleted, is_public, from_season, from_episode)")
+    .select("group_id, thread_id, shared_at, journal_kind, threads(id, author_id, title, season, episode, is_deleted, is_public, from_season, from_episode)")
     .gte("shared_at", since);
   if (linkErr) return json({ error: "links_query_failed", detail: linkErr.message }, 500);
 
@@ -1299,7 +1311,7 @@ serve(async (req) => {
 
   // 6. Compute per-recipient, per-room visible-new entries.
   //    perUser: Map<userId, Map<groupId, { roomName, entries[] }>>
-  const perUser = new Map<string, Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }>>();
+  const perUser = new Map<string, Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[]; journals?: Map<string, number> }>>();
   for (const link of recentLinks) {
     const g = activeGroups.get(link.group_id);
     if (!g) continue;
@@ -1315,6 +1327,21 @@ serve(async (req) => {
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       // A letter from Sidebar (S0 E0) reaches every member, row or no row.
       if (!prog && t.author_id !== SIDEBAR_USER_ID) continue; // hasn't started → sees nothing
+      // A handed-over journal (Alborz 2026-10-26): ONE line per writer —
+      // "{name} opened their journal to you — 8 entries, each unseals as you
+      // catch up." — counting every copy handed over that night, sealed ones
+      // too, so the copies are never listed one by one.
+      if (link.journal_kind === "handover") {
+        if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
+        const jrooms = perUser.get(m.user_id)!;
+        if (!jrooms.has(link.group_id)) {
+          jrooms.set(link.group_id, { roomName: showNameById.get(g.show_id) ?? g.name, entries: [], responses: [], notes: [] });
+        }
+        const jroom = jrooms.get(link.group_id)!;
+        if (!jroom.journals) jroom.journals = new Map();
+        jroom.journals.set(t.author_id, (jroom.journals.get(t.author_id) ?? 0) + 1);
+        continue;
+      }
       if (!canView(t.season, t.episode, prog ? effectiveProgress(prog) : { s: 0, e: 0 })) continue;
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
@@ -1568,9 +1595,9 @@ serve(async (req) => {
       const uname = usernameById.get(authorId);
       return uname ? `@${uname}` : "a friend";
     };
-    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }>();
+    const rooms = perUser.get(userId) ?? new Map<string, { roomName: string; entries: any[]; responses: any[]; notes: any[]; journals?: Map<string, number> }>();
     const roomDigests: RoomDigest[] = [...rooms.entries()]
-      .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }]) => {
+      .map(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[]; journals?: Map<string, number> }]) => {
         const entries: DigestEntry[] = r.entries
           .filter((e: any) => e.authorId !== SIDEBAR_USER_ID) // Sidebar's letters get their own lines (below)
           .sort((a: any, b: any) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime())
@@ -1608,14 +1635,15 @@ serve(async (req) => {
           const n = authorName(x.noterId);
           if (!d.noterNames.includes(n)) d.noterNames.push(n);
         }
-        return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()], notes: [...notesByKey.values()] };
+        const journals: DigestJournal[] = [...(r.journals ?? new Map<string, number>()).entries()].map(([aid, count]) => ({ authorName: authorName(aid), count }));
+        return { groupId, roomName: r.roomName, entries, authorNames, responses: [...byThread.values()], notes: [...notesByKey.values()], journals };
       })
       // A room whose only news is a letter from Sidebar has no friend section.
-      .filter((r) => r.entries.length > 0 || r.responses.length > 0 || r.notes.length > 0)
+      .filter((r) => r.entries.length > 0 || r.responses.length > 0 || r.notes.length > 0 || r.journals.length > 0)
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
     // Letters from Sidebar (2026-09-30): their own linked lines under the greeting.
     const sidebarLetters: SidebarLetterDigest[] = [...rooms.entries()]
-      .flatMap(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[] }]) => r.entries
+      .flatMap(([groupId, r]: [string, { roomName: string; entries: any[]; responses: any[]; notes: any[]; journals?: Map<string, number> }]) => r.entries
         .filter((e: any) => e.authorId === SIDEBAR_USER_ID)
         .map((e: any) => ({ groupId, roomName: r.roomName, threadId: e.threadId, title: e.title })))
       .sort((a, b) => a.roomName.localeCompare(b.roomName));
