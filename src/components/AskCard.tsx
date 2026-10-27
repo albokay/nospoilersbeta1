@@ -15,15 +15,15 @@
  * only draws it. "Your take" is one line, sent from the card, once. A new
  * ask replaces the old one in the pin; ‹ › page back through earlier asks.
  *
- * `fullPage` (the phone, Alborz 2026-10-26): the open card is a FULL-SCREEN
- * page over the chat — the strip stays in the chat's stack, the back corner
- * returns to it — so the messages and the field never get squeezed under
- * an open card.
+ * `overlayInto` (the phone, Alborz 2026-10-26): the open card lays OVER the
+ * chat's body — the messages and the field stay in place, dimmed under the
+ * veil and unreachable — while the chat's head and the strip keep their
+ * places; the × folds it. So an open card never squeezes the chat.
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Lock } from "lucide-react";
 import { E } from "../styles/editorial";
-import { CornerTab } from "./editorial/Chrome";
 import { supabase } from "../lib/supabaseClient";
 import { personDisplayName } from "../lib/groupNames";
 import type { PeopleGroupMember } from "../types";
@@ -40,13 +40,14 @@ function askDate(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function AskCard({ groupId, userId, members, contactNames, fullPage = false }: {
+export default function AskCard({ groupId, userId, members, contactNames, overlayInto = null }: {
   groupId: string;
   userId: string;
   members: Member[];
   contactNames: Record<string, string>;
-  /** The phone: the open card covers the chat as a page. */
-  fullPage?: boolean;
+  /** The phone: the chat's body (messages + field), a positioned box the
+   *  open card lays over; the strip stays in the stack above it. */
+  overlayInto?: HTMLElement | null;
 }) {
   const [asks, setAsks] = useState<GroupAsk[] | null>(null);
   const [index, setIndex] = useState(0);                      // 0 = the newest ask
@@ -198,7 +199,7 @@ export default function AskCard({ groupId, userId, members, contactNames, fullPa
   const arrow: React.CSSProperties = { width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink, fontSize: 18, lineHeight: 1 };
 
   const inner = (
-        <div style={fullPage ? undefined : { position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, padding: "14px 18px 16px" }}>
+        <div style={{ position: "relative", background: E.color.cream, border: `1px solid ${E.color.ink}`, padding: "14px 18px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {asks.length > 1 && (
               <button type="button" aria-label="Earlier ask" disabled={index >= asks.length - 1} onClick={() => page(index + 1)} style={{ ...arrow, marginLeft: -6, color: index >= asks.length - 1 ? "rgba(26,58,74,0.3)" : E.color.ink }}>‹</button>
@@ -207,9 +208,9 @@ export default function AskCard({ groupId, userId, members, contactNames, fullPa
             {asks.length > 1 && (
               <button type="button" aria-label="Later ask" disabled={index === 0} onClick={() => page(index - 1)} style={{ ...arrow, color: index === 0 ? "rgba(26,58,74,0.3)" : E.color.ink }}>›</button>
             )}
-            {!fullPage && <button type="button" aria-label="Close" title="Close" onClick={() => { setOpen(false); setIndex(0); }} style={{ ...arrow, width: 28, height: 28, fontSize: 20, margin: "-4px -8px 0 0" }}>×</button>}
+            {<button type="button" aria-label="Close" title="Close" onClick={() => { setOpen(false); setIndex(0); }} style={{ ...arrow, width: 28, height: 28, fontSize: 20, margin: "-4px -8px 0 0" }}>×</button>}
           </div>
-          <div style={{ marginTop: 6, fontFamily: E.font.display, fontSize: fullPage ? 26 : 22, lineHeight: 1.25, color: E.color.ink, maxWidth: 300 }}>{opener}</div>
+          <div style={{ marginTop: 6, fontFamily: E.font.display, fontSize: 22, lineHeight: 1.25, color: E.color.ink, maxWidth: 300 }}>{opener}</div>
 
           <div style={{ marginTop: 14, borderTop: `1px solid ${E.color.hairline}` }}>
             {!state && <div style={{ ...MONO, height: 40, display: "flex", alignItems: "center" }}>…</div>}
@@ -262,16 +263,22 @@ export default function AskCard({ groupId, userId, members, contactNames, fullPa
         </div>
   );
 
-  if (fullPage) {
-    // The phone: the strip holds its place in the chat; the card is a page
-    // over it, the back corner folds it (his pick B, 2026-10-26).
+  if (overlayInto) {
+    // The phone: the strip holds its place under the head; the card lays
+    // over the chat's body on the veil — messages and field dimmed and
+    // unreachable behind it — and the × folds it (his notes, 2026-10-26).
     return (
       <>
         {strip}
-        <div role="dialog" aria-label="Thoughts on" style={{ position: "fixed", inset: 0, zIndex: 1200, background: E.color.cream, color: E.color.ink, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
-          <CornerTab kind="back" label="Back to the chat" onClick={() => { setOpen(false); setIndex(0); }} />
-          <div style={{ padding: `${E.safe.plus(E.measure.phone.titleTop)} ${G}px calc(40px + env(safe-area-inset-bottom, 0px))` }}>{inner}</div>
-        </div>
+        {createPortal(
+          <div role="dialog" aria-label="Thoughts on" style={{ position: "absolute", inset: 0, zIndex: 5, background: E.color.veil, overflowY: "auto", WebkitOverflowScrolling: "touch" as any, padding: `16px ${G}px calc(24px + env(safe-area-inset-bottom, 0px))`, boxSizing: "border-box" }}>
+            <div style={{ position: "relative" }}>
+              <div aria-hidden="true" style={{ position: "absolute", left: 6, top: 6, right: -6, bottom: -6, background: E.color.friend }} />
+              {inner}
+            </div>
+          </div>,
+          overlayInto,
+        )}
       </>
     );
   }

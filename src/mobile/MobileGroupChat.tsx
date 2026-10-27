@@ -60,6 +60,10 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const [group, setGroup] = useState<PeopleGroup | null>(null);
   const [viewerNumber, setViewerNumber] = useState<number | undefined>(undefined);
   const bodyRef = useRef<HTMLDivElement>(null);
+  // The chat's body (messages + field): the box the open "Thoughts on" card
+  // lays over on the phone (2026-10-26). A state ref so the portal mounts
+  // once the box exists.
+  const [bodyWrap, setBodyWrap] = useState<HTMLDivElement | null>(null);
 
   const loadChat = useCallback(async () => {
     try { setMessages(await fetchGroupMessages(groupId)); } catch (e) { console.error("[m-chat] load failed", e); }
@@ -193,11 +197,14 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
           <div style={{ ...E.type.letterTitle22, fontSize: 26 }}>{group ? groupGenericName(group, viewerNumber) : "Group"} chat</div>
           <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 8 }}>with {connected} &middot; not spoiler-gated</div>
         </div>
-        {/* The "Thoughts on…" strip from Sidebar under the head; open, the card is a
-            full-screen page over the chat (his pick, 2026-10-26). */}
-        <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} fullPage />
-        <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
-        <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
+        {/* The "Thoughts on…" strip from Sidebar under the head; open, the card
+            lays over the chat's body below, the messages and field dimmed and
+            unreachable behind it (his notes, 2026-10-26). */}
+        <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} overlayInto={bodyWrap} />
+        <div ref={setBodyWrap} style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
+          <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
+        </div>
       </div>
     );
   }
