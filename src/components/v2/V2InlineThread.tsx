@@ -844,47 +844,6 @@ export default function V2InlineThread({
               blend into the sky room background like the old inline banner did.
               Logic unchanged: first Save sets showRetagWarning → this modal →
               "Save & retag" re-calls handleSaveEdit, which bumps the tag. */}
-          {sendOpen && journalSend && editorialScope && (
-            <Confirm
-              desktop={!mobileIdiom}
-              title={`Send to ${journalSend.groupName}?`}
-              note={sendError ? <>{sendNote}<br /><span style={{ color: E.color.alert }}>{sendError}</span></> : sendNote}
-              confirmLabel={sending ? "Sending…" : "Send letter"}
-              cancelLabel="Cancel"
-              onConfirm={handleSend}
-              onCancel={() => { if (!sending) setSendOpen(false); }}
-              busy={sending}
-            />
-          )}
-          {sendOpen && journalSend && !editorialScope && (
-            <Modal
-              onClose={() => { if (!sending) setSendOpen(false); }}
-              width="min(420px, 90vw)"
-              cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
-            >
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>Send to {journalSend.groupName}?</div>
-              <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
-                {sendNote}
-                {sendError && <div style={{ color: CANON.alert, marginTop: 8 }}>{sendError}</div>}
-              </div>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-                <button
-                  onClick={() => setSendOpen(false)}
-                  disabled={sending}
-                  style={{ border: "2px solid var(--canon-dark,#1a3a4a)", background: "transparent", color: CANON.dark, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "9px 22px", borderRadius: 65, cursor: "pointer" }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSend}
-                  disabled={sending}
-                  style={{ border: "none", background: CANON.identity, color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
-                >
-                  {sending ? "Sending…" : "Send letter"}
-                </button>
-              </div>
-            </Modal>
-          )}
           {showRetagWarning && editorialScope && (
             <Confirm
               desktop={!mobileIdiom}
@@ -1296,6 +1255,49 @@ export default function V2InlineThread({
         </Modal>
       )}
 
+      {/* The journal entry's Send confirm (2026-10-26) lives at the root,
+          like the delete confirm: the acts row shows it outside edit mode. */}
+      {sendOpen && journalSend && editorialScope && (
+        <Confirm
+          desktop={!mobileIdiom}
+          title={`Send to ${journalSend.groupName}?`}
+          note={sendError ? <>{sendNote}<br /><span style={{ color: E.color.alert }}>{sendError}</span></> : sendNote}
+          confirmLabel={sending ? "Sending…" : "Send letter"}
+          cancelLabel="Cancel"
+          onConfirm={handleSend}
+          onCancel={() => { if (!sending) setSendOpen(false); }}
+          busy={sending}
+        />
+      )}
+      {sendOpen && journalSend && !editorialScope && (
+        <Modal
+          onClose={() => { if (!sending) setSendOpen(false); }}
+          width="min(420px, 90vw)"
+          cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
+        >
+          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>Send to {journalSend.groupName}?</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
+            {sendNote}
+            {sendError && <div style={{ color: CANON.alert, marginTop: 8 }}>{sendError}</div>}
+          </div>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button
+              onClick={() => setSendOpen(false)}
+              disabled={sending}
+              style={{ border: "2px solid var(--canon-dark,#1a3a4a)", background: "transparent", color: CANON.dark, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "9px 22px", borderRadius: 65, cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              style={{ border: "none", background: CANON.identity, color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
+            >
+              {sending ? "Sending…" : "Send letter"}
+            </button>
+          </div>
+        </Modal>
+      )}
       {showDeleteModal && editorialScope && (
         <Confirm
           desktop={!mobileIdiom}
