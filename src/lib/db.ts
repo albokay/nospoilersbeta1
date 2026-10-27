@@ -2998,7 +2998,10 @@ export async function createPeopleGroupInvite(groupId: string, email: string, in
   await checkRateLimit('send_invite', 6, 60, 'Too many invite requests sent. Please wait before trying again.');
   const name = inviteeName?.trim();
   const attempts: Record<string, unknown>[] = [];
-  if (name && autoRoomId) attempts.push({ p_group_id: groupId, p_email: email, p_invitee_display_name: name, p_auto_room_id: autoRoomId });
+  // The room rides the invite whether or not a name was typed (2026-10-27):
+  // the first attempt used to need BOTH, so a nameless invite silently lost
+  // its room and the show landed as a proposal for the invitee.
+  if (autoRoomId) attempts.push({ p_group_id: groupId, p_email: email, p_invitee_display_name: name || null, p_auto_room_id: autoRoomId });
   if (name) attempts.push({ p_group_id: groupId, p_email: email, p_invitee_display_name: name });
   attempts.push({ p_group_id: groupId, p_email: email });
   let res: { data: any; error: any } = { data: null, error: new Error("no attempt ran") };

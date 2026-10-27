@@ -10,11 +10,8 @@ import { M } from "./m";
 import { useAuth } from "../lib/auth";
 import { preventLastWordOrphan } from "../lib/utils";
 import {
-  createPeopleGroup,
   createPeopleGroupInvite,
   sendGroupInviteEmail,
-  setShowVote,
-  ensureProgressRow,
   fetchShows,
   fetchProgress,
   createShow,
@@ -168,23 +165,16 @@ export default function MobileInviteSheet({
   const completeRows = filledRows.filter((r) => r.email.includes("@") && (!creating || r.name.trim()));
   const ready = completeRows.length >= 1 && completeRows.length === filledRows.length && (!creating || inviteShows.length >= 1);
 
+  // "Add more friends" into the CURRENT group. A NEW group never comes
+  // through here since 2026-10-07 (the Send button routes to the first-letter
+  // step, the invites carrying the room); the old propose-then-invite branch
+  // went 2026-10-27.
   async function sendInvites() {
-    if (!user || sending || !ready) return;
+    if (!user || sending || !ready || !targetGroupId) return;
     const list = rows.map((r) => ({ name: r.name.trim(), email: r.email.trim() })).filter((r) => r.email);
     setSending(true);
     try {
-      const id = targetGroupId ?? (await createPeopleGroup());
-      if (creating) {
-        setCreatedGroupId(id);
-        // Propose the picked shows into the new group (proposing = your yes;
-        // a not-started show gets a quiet S0E0 row OUT of the personal pool).
-        for (const s of inviteShows) {
-          try {
-            await setShowVote(id, s.id, true);
-            if (!progress[s.id]) await ensureProgressRow(user.id, s.id);
-          } catch (e) { console.error("[m-invite] propose into new group failed", e); }
-        }
-      }
+      const id = targetGroupId;
       // All rows in PARALLEL (Alborz 2026-08-20, desktop parity — the
       // one-at-a-time loop made a multi-friend invite wait N× the single
       // time). Each row still awaits its OWN email leg so a silent refusal

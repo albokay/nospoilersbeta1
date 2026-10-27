@@ -45,7 +45,6 @@ import {
   fetchPeopleGroupsForUser,
   fetchPeopleGroupMembers,
   fetchGroupDashboard, fetchRoomEntryTags,
-  createPeopleGroup,
   setShowVote,
   startShowRoom,
   leaveShowRoom,
@@ -1494,31 +1493,18 @@ export default function DashboardPage() {
     try { const rail = await loadRail(user.id); setRailGroups(rail); } catch { /* the results card still shows */ }
   }
 
-  // "Create another watch group?" forms a NEW group as ONE act — ≥1 named
-  // friend AND ≥1 proposed show (CP2); "add more friends" invites into the
-  // current group. Either way each email mints a link, and a typed friend
-  // name rides the invite (it becomes your contact name for them on accept).
+  // "Add more friends" invites into the CURRENT group: each email mints a
+  // link, and a typed friend name rides the invite (it becomes your contact
+  // name for them on accept). A NEW group never comes through here since
+  // 2026-10-07 — the Send button routes to the first-letter step
+  // (`sendFirstLetter` → `bootstrapGroupWithLetter`, the invites carrying the
+  // room); the old propose-then-invite branch went 2026-10-27.
   async function sendInvites() {
-    if (!user || inviteSending) return;
+    if (!user || inviteSending || !inviteTargetGroupId) return;
     const rows = inviteRows.map((r) => ({ name: r.name.trim(), email: r.email.trim() })).filter((r) => r.email);
     setInviteSending(true);
     try {
-      const creating = !inviteTargetGroupId;
-      const id = inviteTargetGroupId ?? (await createPeopleGroup());
-      if (creating) {
-        setCreatedGroupId(id);
-        // Propose the picked shows into the new group (proposing = your yes).
-        for (const s of inviteShows) {
-          try {
-            await setShowVote(id, s.id, true);
-            if (!progress[s.id]) {
-              await ensureProgressRow(user.id, s.id);
-              setProgress((prev) => ({ ...prev, [s.id]: { s: 0, e: 0, highestS: 0, highestE: 0 } }));
-              setOutOfPool((prev) => new Set(prev).add(s.id)); // mirror in_pool=false
-            }
-          } catch (e) { console.error("[dashboard] propose into new group failed", e); }
-        }
-      }
+      const id = inviteTargetGroupId;
       // All rows in PARALLEL (Alborz 2026-08-20 — the one-at-a-time loop made
       // a multi-friend invite wait N× the single-invite time). Each row still
       // awaits its OWN email leg so a silent refusal (stale token, Resend,
