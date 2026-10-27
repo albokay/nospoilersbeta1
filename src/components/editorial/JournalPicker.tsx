@@ -68,7 +68,7 @@ export default function JournalPicker({ entries, showName, groupName, busy = fal
 
   if (desktop) {
     return (
-      <EditorialDialog onClose={() => { if (!busy) onClose(); }} width={520} label="Hand over your journal">
+      <EditorialDialog onClose={() => { if (!busy) onClose(); }} width={520} label="Hand over your journal" zIndex={1200}>
         {head}
         <div style={{ maxHeight: "50vh", overflowY: "auto" }}>{list}</div>
         <div style={{ marginTop: 20 }}>{foot}</div>

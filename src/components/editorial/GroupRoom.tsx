@@ -500,9 +500,9 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
 }
 
 /** The desktop's centred card on the veil, the deck's card with a × at its corner. */
-export function EditorialDialog({ onClose, width = 480, label, align = "center", children }: { onClose: () => void; width?: number; label?: string; align?: "center" | "left"; children: React.ReactNode }) {
+export function EditorialDialog({ onClose, width = 480, label, align = "center", zIndex = 1100, children }: { onClose: () => void; width?: number; label?: string; align?: "center" | "left"; /** A dialog over another dialog (the journal picker over the answer sheet, 2026-10-26) passes a higher one. */ zIndex?: number; children: React.ReactNode }) {
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 1100, background: E.color.veil, overflowY: "auto" }}>
+    <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex, background: E.color.veil, overflowY: "auto" }}>
       <div role="dialog" aria-label={label} style={{ position: "relative", width, maxWidth: "92vw", margin: "72px auto 48px", boxSizing: "border-box", background: E.color.cream, boxShadow: E.shadow.cardStack, padding: "30px 32px 32px", textAlign: align, color: E.color.ink }}>
         <button type="button" aria-label="Close" title="Close" onClick={onClose} style={{ position: "absolute", right: 12, top: 10, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 20, lineHeight: 1, background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>×</button>
         {children}
