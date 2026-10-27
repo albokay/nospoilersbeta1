@@ -1224,7 +1224,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     if (!roomId || handingOver) return;
     setHandingOver(true); setJournalPickError(null);
     try {
-      await handOverJournal(roomId, threadIds);
+      const copied = await handOverJournal(roomId, threadIds);
+      if (copied === 0) { setJournalPickError("Nothing was handed over \u2014 those entries are already letters in this room."); return; }
       setJournalPickOpen(false); setHandOverOpen(false);
       await load();
       setTab("friend");

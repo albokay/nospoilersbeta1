@@ -11,7 +11,8 @@
 --    originally written (the original's created_at). Display only: the
 --    FROM line's "finished spring 2024" and the one-time card's date.
 -- 3) hand_over_journal(room, thread ids) — copies the caller's picked
---    journal entries for the room's show into the room in ONE transaction
+--    journal entries (writing with no link to a room they're currently in)
+--    for the room's show into the room in ONE transaction
 --    (no phantom drafts if a link fails), joins the caller to the room
 --    (the "I'm in" the handover implies: vote row + pass cleared), and
 --    skips any entry already handed to this room. Returns the count.
@@ -83,8 +84,14 @@ BEGIN
       AND t.show_id = v_show
       AND t.is_deleted = false
       AND t.is_public = false
-      -- a journal entry: linked to no room
-      AND NOT EXISTS (SELECT 1 FROM public.group_threads gt WHERE gt.thread_id = t.id)
+      -- a journal entry: linked to no room the caller is IN. A letter in a
+      -- room they've since left is theirs to hand over too (2026-10-26 fix:
+      -- the app can't see that old link either, so it shows in the journal).
+      AND NOT EXISTS (
+        SELECT 1 FROM public.group_threads gt
+        JOIN public.friend_group_members fm ON fm.group_id = gt.group_id AND fm.user_id = v_caller
+        WHERE gt.thread_id = t.id
+      )
       -- not already handed to this room
       AND NOT EXISTS (
         SELECT 1 FROM public.threads c

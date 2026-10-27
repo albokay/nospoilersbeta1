@@ -984,7 +984,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       // The room exists from the first yes; the routine copies the picked
       // entries into it and joins you (vote + membership, pass cleared).
       const { roomId } = await startShowRoom(groupId, showId);
-      await handOverJournal(roomId, threadIds);
+      const copied = await handOverJournal(roomId, threadIds);
+      if (copied === 0) { setJournalPickError("Nothing was handed over \u2014 those entries are already letters in this room."); return; }
       if (!progress[showId]) await ensureProgressRow(user.id, showId);
       setJournalPickOpen(false);
       setClicked(null);
