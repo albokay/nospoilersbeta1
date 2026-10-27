@@ -1156,33 +1156,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     return () => { cancelled = true; };
   }, [tab, referenceAvailable, show?.id]);
 
-  if (authLoading || loading) {
-    return (
-      <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
-        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
-        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
-      </div>
-    );
-  }
-
-  const bodyBg = editorial ? E.color.cream : tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
-  const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
-  const effectiveSortOrder = userFilter ? "desc" : sortOrder;
-
-  const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
-    threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
-    authorId: user?.id ?? "", authorUsername: t.author,
-    isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
-    isDeparted: false, isDeleted: t.isDeleted ?? false,
-    updatedAt: t.updatedAt, replyCount: 0, thread: t,
-  }));
-
-  // username → the viewer's given name (identity fallback) for the reused
-  // feed components + roster + filter — desktop's displayNames convention.
-  const displayNames: Record<string, string> = {};
-  for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
-
   // ── The journal arc inside the room (2026-10-26) ──
+  // Hooks, so they sit ABOVE the loading return (the phone's "oops" screen
+  // on every room, 2026-10-26: the hook count changed once the room loaded).
   // Who pitched = the earliest yes on this show in the parent group; the
   // hand-over link shows only in a room a FRIEND pitched, while you have
   // journal entries for the show and haven't handed any over yet.
@@ -1212,10 +1188,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       const d = journalDate(c.pts, show);
       if (!d) continue;
       const sorted = [...c.pts].sort((a, b) => a.s - b.s || a.e - b.e);
-      out.push({ key, authorId: c.authorId, name: displayNames[c.username] ?? c.username, dateLabel: journalDateLabel(d), count: c.pts.length, from: { s: sorted[0].s, e: sorted[0].e }, to: { s: sorted[sorted.length - 1].s, e: sorted[sorted.length - 1].e }, written: writtenPhrase(d.latestAt) });
+      const mem = mapMembers.find((mm) => mm.userId === c.authorId);
+      out.push({ key, authorId: c.authorId, name: roomContactNames[c.authorId] ?? mem?.displayName ?? c.username, dateLabel: journalDateLabel(d), count: c.pts.length, from: { s: sorted[0].s, e: sorted[0].e }, to: { s: sorted[sorted.length - 1].s, e: sorted[sorted.length - 1].e }, written: writtenPhrase(d.latestAt) });
     }
     return out;
-  }, [feedEntries, user, editorial, roomId, show, displayNames, closedJournalCards]);
+  }, [feedEntries, user, editorial, roomId, show, mapMembers, roomContactNames, closedJournalCards]);
   const closeJournalCard = (key: string) => {
     try { localStorage.setItem(key, "1"); } catch { /* tolerate */ }
     setClosedJournalCards((prev) => new Set(prev).add(key));
@@ -1237,6 +1214,31 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     }
   }
 
+  if (authLoading || loading) {
+    return (
+      <div style={{ ...page, background: C.green, display: "flex", alignItems: "center", justifyContent: "center" }} aria-busy="true">
+        {/* Standard loading line: "loading" + ellipses, Header 2, cream. */}
+        <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: C.cream }}>loading<LoadingDots /></span>
+      </div>
+    );
+  }
+
+  const bodyBg = editorial ? E.color.cream : tab === "friend" ? C.sky : tab === "reference" ? C.yellow : C.green;
+  const visibleFriendEntries = userFilter ? feedEntries.filter((e) => e.authorId === userFilter) : feedEntries;
+  const effectiveSortOrder = userFilter ? "desc" : sortOrder;
+
+  const privateFeedEntries: V2RoomFeedEntry[] = privateEntries.map((t) => ({
+    threadId: t.id, s: t.season, e: t.episode, title: t.titleBase, body: t.body, preview: t.preview,
+    authorId: user?.id ?? "", authorUsername: t.author,
+    isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
+    isDeparted: false, isDeleted: t.isDeleted ?? false,
+    updatedAt: t.updatedAt, replyCount: 0, thread: t,
+  }));
+
+  // username → the viewer's given name (identity fallback) for the reused
+  // feed components + roster + filter — desktop's displayNames convention.
+  const displayNames: Record<string, string> = {};
+  for (const mm of mapMembers) if (mm.username) displayNames[mm.username] = roomContactNames[mm.userId] ?? mm.displayName ?? mm.username;
 
   // The room's paper note (checkpoint 4): the letters you haven't opened yet,
   // by writer; hidden when nothing waits. Dismissed per account and room.
