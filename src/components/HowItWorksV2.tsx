@@ -52,7 +52,7 @@ export const panelCaptions: React.ReactNode[] = [
   <>
     There is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your letter gets notes (even though you don{"\u2019"}t know it yet).
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets a couple {"\u201C"}notes{"\u201D"} {"\u2014"} responses to your writing. You can{"\u2019"}t see them yet.
   </>,
   <>
     A few days later you watch episode 2 and more activity is revealed to you.
@@ -81,7 +81,7 @@ export const panelCaptionsMobile: React.ReactNode[] = [
   <>
     But in reality, there is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your letter gets notes {"\u2014"} even though you can{"\u2019"}t see them yet:
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets a couple {"\u201C"}notes{"\u201D"} {"\u2014"} responses to your writing. You can{"\u2019"}t see them yet:
   </>,
   panelCaptions[2],
   <>
