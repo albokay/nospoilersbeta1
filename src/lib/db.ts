@@ -5,6 +5,7 @@
 import { supabase } from "./supabaseClient";
 import { fetchAskNewGroups } from "./groupAsks";
 import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation, PeopleGroup, PeopleGroupMember, GroupShowVote } from "../types";
+import { groupDisplayName } from "./groupNames";
 import type { PromptEntry } from "./promptData";
 import { repliesByThread } from "./mockData";
 import { canView, type ViewerProgress } from "./utils";
@@ -3758,15 +3759,16 @@ export async function fetchJournalEntries(userId: string, showId: string): Promi
   return mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
 }
 
-/** Which journal entries already have a handed-over copy in this room
- *  (the copies' `source_thread_id`). Empty when the viewer can't see the
- *  room (not a member) — they haven't handed anything to it then. */
+/** Which journal entries already have a copy in this room — handed over or
+ *  sent (both are copies since 2026-10-28) — by the copies' `source_thread_id`.
+ *  Empty when the viewer can't see the room (not a member) — they haven't
+ *  handed anything to it then. */
 export async function fetchHandedOverSourceIds(roomId: string, userId: string): Promise<Set<string>> {
   const { data, error } = await supabase
     .from("group_threads")
     .select("journal_kind, threads!inner(source_thread_id, author_id)")
     .eq("group_id", roomId)
-    .eq("journal_kind", "handover");
+    .in("journal_kind", ["handover", "sent"]);
   if (error || !data) return new Set();
   const out = new Set<string>();
   for (const row of data as any[]) {
@@ -3783,6 +3785,53 @@ export async function handOverJournal(roomId: string, threadIds: string[]): Prom
   if (error) throw error;
   if (!data || data.ok === false) throw new Error(data?.error || "hand_over_journal failed");
   return Number(data.count ?? 0);
+}
+
+/** Send ONE journal entry to several rooms as copies (2026-10-28; the
+ *  entry stays in the journal). Returns the rooms that received a copy —
+ *  a room already holding one is skipped by the routine. */
+export async function sendJournalEntry(threadId: string, roomIds: string[]): Promise<string[]> {
+  const { data, error } = await supabase.rpc("send_journal_entry", { p_thread_id: threadId, p_room_ids: roomIds });
+  if (error) throw error;
+  if (!data || data.ok === false) throw new Error(data?.error || "send_journal_entry failed");
+  return ((data.room_ids ?? []) as string[]);
+}
+
+/** Where a journal entry can go (2026-10-28): every group of the viewer's
+ *  that has a room for the show, named as the viewer sees the group
+ *  (custom name → the names they gave its members → "Group N"). One query
+ *  for the rooms, one for every member, one for the viewer's join order. */
+export type JournalPlace = { groupId: string; roomId: string; name: string };
+export async function fetchJournalPlaces(userId: string, showId: string, groups: PeopleGroup[], contactNames: Record<string, string>): Promise<JournalPlace[]> {
+  if (!groups.length) return [];
+  const ids = groups.map((g) => g.id);
+  const [rooms, joinOrder, memberRows] = await Promise.all([
+    fetchShowRoomsForGroups(ids),
+    fetchMyGroupJoinOrder(userId),
+    supabase.from("people_group_members").select("group_id, user_id").in("group_id", ids).then((r) => (r.data ?? []) as { group_id: string; user_id: string }[]),
+  ]);
+  const forShow = rooms.filter((r) => r.showId === showId);
+  if (!forShow.length) return [];
+  const otherIds = [...new Set(memberRows.map((m) => m.user_id).filter((u) => u !== userId))];
+  const profiles: Record<string, { username: string; displayName: string | null }> = {};
+  if (otherIds.length) {
+    let profs: any = await supabase.from("profiles").select("id, username, display_name").in("id", otherIds);
+    if (profs.error) profs = await supabase.from("profiles").select("id, username").in("id", otherIds);
+    for (const p of (profs.data ?? []) as any[]) profiles[p.id] = { username: p.username, displayName: p.display_name ?? null };
+  }
+  // The viewer's number for each group: their Nth group by join order.
+  const numberById: Record<string, number> = {};
+  [...ids].sort((a, b) => (joinOrder[a] ?? 0) - (joinOrder[b] ?? 0)).forEach((gid, i) => { numberById[gid] = i + 1; });
+  const out: JournalPlace[] = [];
+  for (const r of forShow) {
+    const g = groups.find((x) => x.id === r.groupId);
+    if (!g) continue;
+    const others: PeopleGroupMember[] = memberRows
+      .filter((m) => m.group_id === g.id && m.user_id !== userId)
+      .map((m) => ({ groupId: g.id, userId: m.user_id, username: profiles[m.user_id]?.username ?? "", displayName: profiles[m.user_id]?.displayName ?? null, joinedAt: 0 }));
+    out.push({ groupId: g.id, roomId: r.roomId, name: groupDisplayName(g, others, contactNames, [], numberById[g.id]) });
+  }
+  return out;
 }
 
 /** Remove a thread from a friend group (leaves tombstone in original thread). */

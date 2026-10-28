@@ -108,9 +108,10 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
 export function JournalLetter({ style }: { mobile?: boolean; style?: React.CSSProperties }) {
   return (
     <SidebarPaper tone="alert" style={style}>
-      <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is best with friends.</div>
-      <p style={{ ...E.type.letterBody15, fontWeight: 700, margin: "10px 0 0" }}>But your journal is just for you &mdash; no one will ever see what you write here.</p>
-      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}>Write freely as you watch; sometimes we do our best thinking when we write for ourselves. If you ever change your mind, you can send these thoughts to your friends. And if a friend picks a show you&rsquo;ve already written about, you can choose to share your journal with them.</p>
+      {/* His words, 2026-10-28 (Send is a copy now): the two ways. */}
+      <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>You can use your journal in two ways.</div>
+      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>1. For yourself.</span> It stays here and no one else ever sees it. We do some of our best thinking by taking a moment to write.</p>
+      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>2. For everyone.</span> Watching a show with more than one friend group? Write it once here and send it to all of them. And if a friend later invites you to a show you&rsquo;ve already written about, you can hand over your journal, a time capsule of your thoughts. Everything stays in your journal; each group gets its own copy.</p>
     </SidebarPaper>
   );
 }

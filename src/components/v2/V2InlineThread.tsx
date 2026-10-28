@@ -1,4 +1,5 @@
 import WhatsNextPanel from "../WhatsNextPanel";
+import JournalSendPicker from "../editorial/JournalSendPicker";
 import { useEditorialScope } from "../../lib/skin";
 import { E } from "../../styles/editorial";
 import { Confirm, BottomSheet } from "../editorial/Overlays";
@@ -7,7 +8,7 @@ import { Block } from "../editorial/Onboarding";
 import { UNDERLINE_WORD, INK_BLOCK_M, INK_SMALL, REPLY_TA_CSS } from "../editorial/MapNotes";
 import { PAPER_TEXTAREA, PAPER_LH, COMPOSE_CSS } from "../editorial/Compose";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CANON } from "../../styles/canon";
 import { ChevronUp, MessageSquare, X } from "lucide-react";
@@ -33,9 +34,8 @@ import {
   deleteHighlight as dbDeleteHighlight,
   type CitationEntry,
   type Highlight,
-  addThreadToGroup,
+  sendJournalEntry,
 } from "../../lib/db";
-import { joinNames } from "../../lib/groupNames";
 import { effectiveProgress } from "../../lib/utils";
 import type { ProgressEntry, Thread } from "../../types";
 
@@ -123,14 +123,21 @@ export type V2InlineThreadProps = {
   /** With `journalEntry`, the room to send the entry to (2026-10-26): the
    *  "Send to {group} →" block. Absent in the dashboard's private room. */
   journalSend?: JournalSendTarget;
+  /** The rooms that already hold a copy of this entry (2026-10-28). */
+  sentTo?: string[];
 };
+/** Send is a COPY (2026-10-28): the entry stays in the journal; a copy goes
+ *  to each group picked. `places` = every group of the viewer's with a room
+ *  for the show (the current room first), `alreadyThere` for rooms holding a
+ *  copy of THIS entry (set per entry by the feed from `sentTo`). */
 export type JournalSendTarget = {
-  roomId: string;
-  groupName: string;
-  /** The room's other current members, as the viewer names them. */
-  friendNames: string[];
-  /** After the send lands (the room reloads and shows the friend tab). */
-  onSent: () => void;
+  places: { groupId: string; roomId: string; name: string }[];
+  /** The room this journal tab is open in, when it is one (hides nothing
+   *  but orders the list and decides the tab after the send). */
+  currentRoomId?: string;
+  /** After the send lands: the room reloads; `toFriendTab` when the current
+   *  room received a copy. */
+  onSent: (sentRoomIds: string[]) => void;
 };
 
 export default function V2InlineThread({
@@ -158,6 +165,7 @@ export default function V2InlineThread({
   mobileIdiom = false,
   journalEntry = false,
   journalSend,
+  sentTo,
 }: V2InlineThreadProps) {
   const editorialScope = useEditorialScope();
   const { profile } = useAuth();
@@ -600,28 +608,34 @@ export default function V2InlineThread({
   // ── Delete flow ─────────────────────────────────────────────────────────
   const openDelete = () => setShowDeleteModal(true);
   const cancelDelete = () => setShowDeleteModal(false);
-  // Send a journal entry to the room (2026-10-26): the group_threads link
-  // with journal_kind "sent" — it leaves the journal and becomes a letter
-  // stamped where it was written. The confirm names who reads it when.
+  // Send a journal entry to your groups (2026-10-26; a COPY since 10-28):
+  // the picker lists every group with a room for the show; each picked one
+  // gets a copy stamped where the entry was written. The entry stays here.
   const [sendOpen, setSendOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const handleSend = async () => {
+  const sendPlaces = useMemo(() => {
+    if (!journalSend) return [];
+    const there = new Set(sentTo ?? []);
+    const list = journalSend.places.map((p) => ({ ...p, alreadyThere: there.has(p.roomId) }));
+    const cur = journalSend.currentRoomId;
+    return cur ? [...list.filter((p) => p.roomId === cur), ...list.filter((p) => p.roomId !== cur)] : list;
+  }, [journalSend, sentTo]);
+  const sendOpenPlaces = sendPlaces.filter((p) => !p.alreadyThere);
+  const sendLabel = sendOpenPlaces.length === 1 ? `Send to ${sendOpenPlaces[0].name} →` : "Send to your groups →";
+  const handleSend = async (roomIds: string[]) => {
     if (!journalSend || sending) return;
     setSending(true); setSendError(null);
     try {
-      await addThreadToGroup(thread.id, journalSend.roomId, { journalKind: "sent" });
+      const sent = await sendJournalEntry(thread.id, roomIds);
       setSendOpen(false);
-      journalSend.onSent();
+      journalSend.onSent(sent);
     } catch (err: any) {
       setSendError(err?.message ?? "Couldn't send it just now.");
     } finally {
       setSending(false);
     }
   };
-  const sendNote = journalSend
-    ? `It leaves your journal and becomes a letter stamped S${thread.season} E${thread.episode}. ${journalSend.friendNames.length ? `${joinNames(journalSend.friendNames)} ${journalSend.friendNames.length === 1 ? "reads" : "read"}` : "Your friends read"} it once they reach that episode.`
-    : "";
 
   const handleDelete = async () => {
     setDeleteSubmitting(true);
@@ -967,15 +981,16 @@ export default function V2InlineThread({
       )}
       {!isTombstone && !editing && !pickMode && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: editorialScope ? 18 : 8, padding: "8px 0", marginTop: 16, flexWrap: "wrap" }}>
-          {isOwn && journalEntry && journalSend && (
-            // The action at the row's left; the acts keep the right.
+          {isOwn && journalEntry && journalSend && sendOpenPlaces.length > 0 && (
+            // The action at the row's left; the acts keep the right. Gone
+            // once every group has a copy.
             <button
               type="button"
               className={editorialScope ? undefined : "btn sb-edit-business"}
               onClick={() => { setSendError(null); setSendOpen(true); }}
               style={editorialScope ? { ...INK_BLOCK_M, marginRight: "auto" } : { ...sPillGeom, marginRight: "auto" }}
             >
-              Send to {journalSend.groupName} →
+              {sendLabel}
             </button>
           )}
           {isOwn && (
@@ -1255,18 +1270,18 @@ export default function V2InlineThread({
         </Modal>
       )}
 
-      {/* The journal entry's Send confirm (2026-10-26) lives at the root,
-          like the delete confirm: the acts row shows it outside edit mode. */}
+      {/* The journal entry's Send picker (2026-10-26; the copy picker since
+          10-28) lives at the root, like the delete confirm: the acts row
+          shows it outside edit mode. */}
       {sendOpen && journalSend && editorialScope && (
-        <Confirm
+        <JournalSendPicker
           desktop={!mobileIdiom}
-          title={`Send to ${journalSend.groupName}?`}
-          note={sendError ? <>{sendNote}<br /><span style={{ color: E.color.alert }}>{sendError}</span></> : sendNote}
-          confirmLabel={sending ? "Sending…" : "Send letter"}
-          cancelLabel="Cancel"
-          onConfirm={handleSend}
-          onCancel={() => { if (!sending) setSendOpen(false); }}
+          places={sendPlaces}
+          stamp={`S${thread.season} E${thread.episode}`}
           busy={sending}
+          error={sendError}
+          onConfirm={handleSend}
+          onClose={() => { if (!sending) setSendOpen(false); }}
         />
       )}
       {sendOpen && journalSend && !editorialScope && (
@@ -1275,9 +1290,9 @@ export default function V2InlineThread({
           width="min(420px, 90vw)"
           cardStyle={{ background: CANON.cream, textAlign: "center", padding: "28px 32px" }}
         >
-          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>Send to {journalSend.groupName}?</div>
+          <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 700, fontSize: 14, color: CANON.dark, marginBottom: 10 }}>Send to {sendOpenPlaces[0]?.name ?? "your friends"}?</div>
           <div style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, color: CANON.dark, lineHeight: 1.5, marginBottom: 20 }}>
-            {sendNote}
+            A copy becomes a letter stamped S{thread.season} E{thread.episode}, sealed until your friends reach that episode. Your journal keeps the entry.
             {sendError && <div style={{ color: CANON.alert, marginTop: 8 }}>{sendError}</div>}
           </div>
           <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
@@ -1289,7 +1304,7 @@ export default function V2InlineThread({
               Cancel
             </button>
             <button
-              onClick={handleSend}
+              onClick={() => handleSend(sendOpenPlaces.slice(0, 1).map((p) => p.roomId))}
               disabled={sending}
               style={{ border: "none", background: CANON.identity, color: CANON.cream, fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, padding: "11px 24px", borderRadius: 65, cursor: "pointer" }}
             >

@@ -316,12 +316,13 @@ export function EpisodeRow({ n, title, state, children }: { n: number; title: st
 }
 
 /** A journal entry's row: the Lora title, "Journal · S1 E3 · edited yesterday", the first line. */
-export function DraftRow({ title, meta, line, onClick }: { title: string | null; meta: string; line?: string | null; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void }) {
+export function DraftRow({ title, meta, line, note, onClick }: { title: string | null; meta: string; line?: string | null; /** "Sent to Couch Club · Book Club" (2026-10-28): the groups holding a copy. */ note?: string | null; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void }) {
   return (
     <button type="button" onClick={onClick} style={{ display: "block", width: "100%", padding: "14px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, textAlign: "left", cursor: "pointer", color: E.color.ink, WebkitTapHighlightColor: "transparent" }}>
       <div style={{ ...E.type.letterTitle22, fontSize: 20, color: title ? E.color.ink : "rgba(26,58,74,0.55)" }}>{title || "Untitled"}</div>
       <div style={{ ...FROM_LINE, marginTop: 6 }}>{meta}</div>
       {line && <div style={{ ...E.type.letterBody15, fontSize: 14, marginTop: 8, color: "rgba(26,58,74,0.75)" }}>{line}</div>}
+      {note && <div style={{ ...FROM_LINE, marginTop: 8, color: E.color.identity }}>{note}</div>}
     </button>
   );
 }

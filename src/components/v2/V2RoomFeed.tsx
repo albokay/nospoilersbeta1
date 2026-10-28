@@ -125,6 +125,10 @@ export type V2RoomFeedEntry = {
    *  handed-over journal, dated by `writtenAt` on its FROM line. */
   journalKind?: "sent" | "handover";
   writtenAt?: number;
+  /** A journal entry's copies (2026-10-28): the rooms holding one, and the
+   *  groups' names for the "Sent to …" line. */
+  sentToRoomIds?: string[];
+  sentToNames?: string[];
   isEdited?: boolean;
   /** Author has departed this room. Adds the inline "has left the room" tag. */
   isDeparted?: boolean;
@@ -1074,6 +1078,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       mobileIdiom={mobileIdiom}
                       journalEntry={editorialDrafts}
                       journalSend={editorialDrafts ? journalSend : undefined}
+                      sentTo={editorialDrafts ? entry.sentToRoomIds : undefined}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}
@@ -1133,6 +1138,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                   title={entry.isDeleted ? "(deleted)" : entry.title}
                   meta={`Journal · S${entry.s} E${entry.e} · edited ${timeAgo(entry.updatedAt)}`}
                   line={entry.isDeleted ? null : entry.preview}
+                  note={entry.sentToNames?.length ? `Sent to ${entry.sentToNames.join(" · ")}` : null}
                   onClick={(ev) => toggleExpand(entry.threadId, ev)}
                 />
               </div>
@@ -1191,6 +1197,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                           : demoMode ? null : <>{" · "}{timeAgo(entry.updatedAt)}</>}
                         {entry.isDeparted ? " · has left the room" : ""}
                         {!entry.isDeleted && entry.isEdited ? " · edited" : ""}
+                        {editorialDrafts && entry.sentToNames?.length ? <span style={{ color: E.color.identity }}>{" · "}Sent to {entry.sentToNames.join(" · ")}</span> : null}
                       </span>
                     </div>
                     <h2 style={{ ...ENTRY_TITLE, opacity: entry.isDeleted ? 0.35 : 1 }}>{entry.isDeleted ? "(deleted letter)" : entry.title}</h2>
@@ -1441,6 +1448,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                       mobileIdiom={mobileIdiom}
                       journalEntry={editorialDrafts}
                       journalSend={editorialDrafts ? journalSend : undefined}
+                      sentTo={editorialDrafts ? entry.sentToRoomIds : undefined}
                       viewerProgress={viewerProgress}
                       userId={userId}
                       replyCount={entry.replyCount}

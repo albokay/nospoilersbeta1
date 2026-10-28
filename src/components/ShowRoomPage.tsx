@@ -23,7 +23,7 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState, fetchSidebarLetters,
   fetchThreadSeenProgress, isAboveSeenProgress,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchJournalPlaces, type JournalPlace, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress, isSeasonEnd } from "../lib/utils";
@@ -121,7 +121,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // when the group has a custom name (the line reads "with {name}") or no
   // one else is in the room yet.
   const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
-  const [journalFriendNames, setJournalFriendNames] = useState<string[]>([]);
+  // Send is a copy (2026-10-28): the groups a journal entry can go to, and
+  // the rooms already holding a copy of each entry.
+  const [journalPlaces, setJournalPlaces] = useState<JournalPlace[]>([]);
+  const [sentTo, setSentTo] = useState<Record<string, string[]>>({});
   // Email-digest subscription for THIS room + viewer. Lazy — fetched only when
   // the gear modal opens (no extra room-load egress). null = loading/unknown.
   // digestOptOut=true → unsubscribed. Backed by get/set_room_digest_opt_out.
@@ -354,6 +357,21 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         if (psShow) freshenShow(psShow);
         setProgressForShow(progressMap[privateShowId] ?? null);
         setPrivateEntries(mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread));
+        // The journal reads the same wherever it's opened (2026-10-28): the
+        // dashboard's journal carries the places and the "Sent to" lines too.
+        const [pGroups, pCn] = await Promise.all([
+          fetchPeopleGroupsForUser(user.id).catch(() => []),
+          fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
+        ]);
+        const pPlaces = await fetchJournalPlaces(user.id, privateShowId, pGroups, pCn).catch(() => [] as JournalPlace[]);
+        const pSent: Record<string, string[]> = {};
+        for (const x of mine) {
+          const src = x.thread.sourceThreadId;
+          if (!src || !x.allGroups.length) continue;
+          (pSent[src] ??= []).push(...x.allGroups.map((g) => g.groupId));
+        }
+        setJournalPlaces(pPlaces);
+        setSentTo(pSent);
         setParentGroupId(null);
         setFeedEntries([]);
         setMapMembers([]);
@@ -401,7 +419,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       });
       const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
-        parentGid ? fetchPeopleGroupsForUser(user.id).catch(() => []) : Promise.resolve([]),
+        // Always (2026-10-28): the journal's places need every group.
+        fetchPeopleGroupsForUser(user.id).catch(() => []),
         fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
         fetchUserThreads(user.id, showId),
         grP,
@@ -428,12 +447,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
       let derivedGroupName: string | null = null;
       let derivedPeople: { username: string; label: string }[] | null = null;
-      // The journal's Send confirm names the room's other current members
-      // (2026-10-26), whatever the group is called.
-      const friendNames = roomMapData
-        .filter((m) => !m.isDeparted && m.userId !== user.id)
-        .map((m) => cn[m.userId] ?? m.displayName ?? m.username ?? "")
-        .filter(Boolean);
       if (pg) {
         if (pg.name) derivedGroupName = pg.name;
         else {
@@ -480,6 +493,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       }));
 
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);
+      // Where this journal can go (2026-10-28): every group of yours with a
+      // room for the show, named as you see it; and which rooms already hold
+      // a copy of each entry (the copies ride in `mine` with their source).
+      const places = await fetchJournalPlaces(user.id, showId, myGroups, cn).catch(() => [] as JournalPlace[]);
+      const sentMap: Record<string, string[]> = {};
+      for (const x of mine) {
+        const src = x.thread.sourceThreadId;
+        if (!src || !x.allGroups.length) continue;
+        (sentMap[src] ??= []).push(...x.allGroups.map((g) => g.groupId));
+      }
+      setJournalPlaces(places);
+      setSentTo(sentMap);
 
       // The unlock line (letters in transit, 2026-09-25): when this load
       // lands with the viewer further along than the last one, the entries
@@ -507,7 +532,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (showRow) freshenShow(showRow);
       setGroupName(derivedGroupName);
       setGroupPeople(derivedPeople);
-      setJournalFriendNames(friendNames);
       setProgressForShow(progress);
       setFeedEntries([...entries, ...gatedStubs]);
       // The pitcher = the earliest yes on this show in the group (2026-10-26).
@@ -1098,9 +1122,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // journal entries for the show and haven't handed any over yet.
   const myHandoverCopies = useMemo(() => feedEntries.filter((e) => e.journalKind === "handover" && !!user && e.authorId === user.id), [feedEntries, user]);
   const journalToHand = useMemo(() => {
-    const handed = new Set(myHandoverCopies.map((e) => e.thread.sourceThreadId).filter(Boolean) as string[]);
+    // A copy already in this room, handed over OR sent (2026-10-28), is not offered again.
+    const handed = new Set(privateEntries.filter((t) => roomId && (sentTo[t.id] ?? []).includes(roomId)).map((t) => t.id));
+    for (const e of myHandoverCopies) if (e.thread.sourceThreadId) handed.add(e.thread.sourceThreadId);
     return sortJournal(privateEntries.filter((t) => !handed.has(t.id)));
-  }, [privateEntries, myHandoverCopies]);
+  }, [privateEntries, myHandoverCopies, sentTo, roomId]);
   const showHandOverLink = editorial && !privateOnly && !!roomId && !!user && !!pitcherId && pitcherId !== user.id && myHandoverCopies.length === 0 && journalToHand.length > 0;
   // Friends' handed-over journals: one one-time card each (closed per device).
   const journalCards = useMemo(() => {
@@ -1224,6 +1250,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
     isRewatch: t.isRewatch, rewatchS: t.rewatchS, rewatchE: t.rewatchE, isEdited: t.isEdited, fromS: t.fromS, fromE: t.fromE,
     isDeparted: false, isDeleted: t.isDeleted ?? false,
     updatedAt: t.updatedAt, replyCount: 0, thread: t,
+    sentToRoomIds: sentTo[t.id] ?? [],
+    sentToNames: (sentTo[t.id] ?? []).map((rid) => journalPlaces.find((pl) => pl.roomId === rid)?.name).filter((n): n is string => !!n),
   }));
 
   return (
@@ -1587,7 +1615,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <V2RoomFeed
                     editorial={editorial}
                     editorialDrafts={editorial}
-                    journalSend={!privateOnly && roomId ? { roomId, groupName: groupName ?? "your friends", friendNames: journalFriendNames, onSent: () => { void load(); setTab("friend"); } } : undefined}
+                    journalSend={journalPlaces.length ? { places: journalPlaces, currentRoomId: !privateOnly && roomId ? roomId : undefined, onSent: (sent) => { void load(); if (!privateOnly && roomId && sent.includes(roomId)) setTab("friend"); } } : undefined}
                     displayNames={displayNames}
                     entries={privateFeedEntries}
                     responsesOff={!privateOnly && lettersOnly !== false}
