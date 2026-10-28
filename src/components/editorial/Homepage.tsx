@@ -117,11 +117,13 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
         {signIn}
         <HomepageNarrative headerHeight={desktop ? 100 : 110} editorial phone={!desktop} />
         {/* The seam (his notes, 10-27, both platforms): the green fades into the
-            cream over 240px under the logo; the hero starts 30px inside the tail. */}
-        <div aria-hidden="true" style={{ height: 240, background: `linear-gradient(to bottom, ${E.color.personal}, ${E.color.cream})` }} />
+            cream under the logo — 240px on desktop, 150px on the phone (his
+            follow-up: 240 was too far to scroll) — and the hero starts inside
+            the tail (30px / 40px). */}
+        <div aria-hidden="true" style={{ height: desktop ? 240 : 150, background: `linear-gradient(to bottom, ${E.color.personal}, ${E.color.cream})` }} />
       </div>
       {/* The cream page (his order, 10-14): the hero, How it works, the acts, then the beta letter at the foot */}
-      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px 40px`, marginTop: -30 }}>
+      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px 40px`, marginTop: desktop ? -30 : -40 }}>
         <div style={col}>
           <Hero desktop={desktop} />
         </div>
