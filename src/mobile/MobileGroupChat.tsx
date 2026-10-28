@@ -203,7 +203,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
         <AskCard groupId={groupId} userId={selfUserId} members={members} contactNames={contactNames} overlayInto={bodyWrap} />
         <div ref={setBodyWrap} style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <ChatMessages rows={rows} bodyRef={bodyRef} empty={<>Nothing here yet. Remember, chat isn&rsquo;t spoiler-gated.</>} />
-          <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom />
+          <ChatComposer value={input} onChange={setInput} onSend={sendChat} safeBottom phone />
         </div>
       </div>
     );

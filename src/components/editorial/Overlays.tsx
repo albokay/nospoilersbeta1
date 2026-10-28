@@ -8,7 +8,7 @@
  *   ChatMessages / ChatComposer   the chat, both platforms
  * The hosts keep their state and calls; these only draw.
  */
-import React, { useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUp } from "lucide-react";
 import { E } from "../../styles/editorial";
@@ -176,7 +176,7 @@ export function ChatMessages({ rows, empty, bodyRef, style }: { rows: ChatRow[];
       {rows.map((m) => (
         <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: m.mine ? "flex-end" : "flex-start", marginBottom: 14, opacity: m.pending ? 0.6 : 1 }}>
           {!m.mine && <div style={{ ...E.type.label10, color: E.color.inkMuted, marginBottom: 5 }}>{m.name}</div>}
-          <div style={{ maxWidth: "82%", padding: "10px 14px", fontFamily: E.font.interface, fontSize: 15, lineHeight: 1.45, color: E.color.ink, overflowWrap: "anywhere", ...(m.mine ? { background: E.color.cream, border: `1px solid ${E.color.ink}` } : { background: E.color.friend }) }}>{linkifyText(m.body)}</div>
+          <div style={{ maxWidth: "82%", padding: "10px 14px", fontFamily: E.font.interface, fontSize: 15, lineHeight: 1.45, color: E.color.ink, overflowWrap: "anywhere", whiteSpace: "pre-wrap", ...(m.mine ? { background: E.color.cream, border: `1px solid ${E.color.ink}` } : { background: E.color.friend }) }}>{linkifyText(m.body)}</div>
           {m.pending && (m.failed && m.onRetry
             ? <UnderlineWord onClick={m.onRetry} style={{ ...E.type.label10, marginTop: 4 }}>not sent · retry</UnderlineWord>
             : <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 4 }}>sending…</div>)}
@@ -186,14 +186,33 @@ export function ChatMessages({ rows, empty, bodyRef, style }: { rows: ChatRow[];
   );
 }
 
-/** The composer on a cream foot: the field on a rule, the send as an ink square. */
-export function ChatComposer({ value, onChange, onSend, placeholder = "Message the group", safeBottom = false }: { value: string; onChange: (v: string) => void; onSend: () => void; placeholder?: string; safeBottom?: boolean }) {
+/** The composer on a cream foot: the field on a rule, the send as an ink square.
+ *  The field grows with the message (his note, 10-27, like a phone's
+ *  messages app): one line to start, up to three, then the text scrolls
+ *  inside it. On the phone the keyboard's return key breaks the line and the
+ *  square sends; on desktop Enter sends and Shift+Enter breaks the line. */
+const CHAT_LINE = 22;
+const CHAT_PAD_Y = 11;
+const CHAT_MAX_LINES = 3;
+export function ChatComposer({ value, onChange, onSend, placeholder = "Message the group", safeBottom = false, phone = false }: { value: string; onChange: (v: string) => void; onSend: () => void; placeholder?: string; safeBottom?: boolean; /** The phone: return breaks the line, the square sends. */ phone?: boolean }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const max = CHAT_LINE * CHAT_MAX_LINES + CHAT_PAD_Y * 2;
+    const next = Math.min(Math.max(el.scrollHeight, CHAT_LINE + CHAT_PAD_Y * 2), max);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [value]);
   return (
-    <div style={{ display: "flex", gap: 12, alignItems: "center", padding: `12px ${G}px ${safeBottom ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : "16px"}`, borderTop: `1px solid ${E.color.hairline}`, background: E.color.cream, flexShrink: 0 }}>
+    <div style={{ display: "flex", gap: 12, alignItems: "flex-end", padding: `12px ${G}px ${safeBottom ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : "16px"}`, borderTop: `1px solid ${E.color.hairline}`, background: E.color.cream, flexShrink: 0 }}>
       <style>{FORM_CSS}</style>
-      <input
-        className="e-field" value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onSend(); }} placeholder={placeholder} aria-label={placeholder}
-        style={{ flex: 1, minWidth: 0, height: 44, boxSizing: "border-box", border: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, color: E.color.ink, padding: "0 12px", margin: 0 }}
+      <textarea
+        ref={ref} className="e-field" rows={1} value={value} onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && !phone && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+        placeholder={placeholder} aria-label={placeholder}
+        style={{ flex: 1, minWidth: 0, height: CHAT_LINE + CHAT_PAD_Y * 2, boxSizing: "border-box", border: `1px solid ${E.color.ink}`, borderRadius: 0, outline: "none", background: "transparent", fontFamily: E.font.interface, fontSize: 16, lineHeight: `${CHAT_LINE}px`, color: E.color.ink, padding: `${CHAT_PAD_Y}px 12px`, margin: 0, resize: "none", overflowY: "hidden", WebkitAppearance: "none" }}
       />
       <button type="button" onClick={onSend} aria-label="Send" title="Send" style={{ width: 44, height: 44, flexShrink: 0, background: E.color.ink, color: E.color.cream, border: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         <ArrowUp size={20} strokeWidth={1.8} />
