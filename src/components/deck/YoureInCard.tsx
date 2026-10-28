@@ -14,6 +14,7 @@
  * invitee (post-accept — names the waiting friend).
  */
 import React, { useEffect, useRef, useState } from "react";
+import { cardSwipeHandlers } from "../../lib/cardSwipe";
 import { ArrowRight } from "lucide-react";
 import LoadingDots from "../LoadingDots";
 import InviteLinkRow, { type InviteLink } from "../InviteLinkRow";
@@ -67,10 +68,12 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
   // direction — proceeds, same as tapping the tab. Applies everywhere the
   // card appears (incl. the invite-accept prompt — a swipe is no more
   // accidental than a tap).
-  const SWIPE_COMMIT_PX = 80;
   const [dragX, setDragX] = useState(0);
   const [flung, setFlung] = useState<"left" | "right" | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // A drag is a swipe only once it has gone sideways (lib/cardSwipe, 10-27).
+  const claimed = useRef(false);
+  const swipe = () => cardSwipeHandlers({ dragStart, claimed, dragX, setDragX, blocked: () => !!(busy || flung), onCommit: (dir) => { setFlung(dir); onDone(); } });
   // The invite-accept usage works async after onDone (busy dots, possible
   // error line ON the card) — bring a flung card back so that state is
   // visible. The onboarding usage unmounts before this matters.
@@ -82,28 +85,25 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
   // with the show, the friend and "left them a letter" in alert, each friend
   // on a hairline row with Copy link, GET STARTED! breaking the bottom-right.
   if (editorial) {
-    const touch = mobile ? {
-      onTouchStart: (e: React.TouchEvent) => { if (busy || flung) return; dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; },
-      onTouchMove: (e: React.TouchEvent) => { if (!dragStart.current || flung) return; setDragX(e.touches[0].clientX - dragStart.current.x); },
-      onTouchEnd: () => { if (!dragStart.current || flung) return; dragStart.current = null; if (Math.abs(dragX) > SWIPE_COMMIT_PX && !busy) { setFlung(dragX > 0 ? "right" : "left"); onDone(); } else setDragX(0); },
-      onTouchCancel: () => { dragStart.current = null; setDragX(0); },
-    } : {};
+    const touch = mobile ? swipe() : {};
     const alert: React.CSSProperties = { color: E.color.alert, fontWeight: 600 };
     return (
       <div
         // 1002 on desktop (his catch, 10-14): the dashboard's header rides at 1001
         // during the onboarding as its escape hatch, and at 900 this page sat
         // under it — the dashboard's logo painted over the card's own.
-        style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 1002, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, padding: mobile ? `calc(env(safe-area-inset-top, 0px) + 120px) ${E.space.gutter}px 40px` : "190px 24px 60px" }}
+        // The phone (his note, 10-27): the card sits centred on the screen when it
+        // fits and scrolls from the top when it doesn't (the inviter's link rows).
+        style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 1002, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, padding: mobile ? `calc(env(safe-area-inset-top, 0px) + 24px) ${E.space.gutter}px 24px` : "190px 24px 60px", ...(mobile ? { display: "flex", flexDirection: "column" as const } : {}) }}
         onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
       >
         {!mobile && <div style={{ position: "absolute", left: "50%", top: 40, marginLeft: -70 }}><SidebarLogo scale={0.5} blocksOpacity={1} betaBadge /></div>}
-        <div style={{ width: mobile ? "100%" : 560, maxWidth: "100%", margin: "0 auto" }}>
+        <div style={{ width: mobile ? "100%" : 560, maxWidth: "100%", margin: mobile ? "auto 0" : "0 auto" }}>
           <div
             {...touch}
             style={{
               position: "relative", background: E.color.cream, boxShadow: E.shadow.cardStack, padding: mobile ? "28px 24px 96px" : "32px 32px 100px", boxSizing: "border-box",
-              ...(mobile ? { touchAction: "none" as const } : {}),
+              ...(mobile ? { touchAction: "pan-y" as const } : {}),
               transform: flung
                 ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
                 : dragX !== 0 ? `translateX(${dragX}px) rotate(${dragX / 18}deg)` : undefined,
@@ -151,26 +151,10 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
       onClick={(e) => { if (onDismiss && !busy && e.target === e.currentTarget) onDismiss(); }}
     >
       <div
-        onTouchStart={mobile ? (e) => {
-          if (busy || flung) return;
-          dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        } : undefined}
-        onTouchMove={mobile ? (e) => {
-          if (!dragStart.current || flung) return;
-          setDragX(e.touches[0].clientX - dragStart.current.x);
-        } : undefined}
-        onTouchEnd={mobile ? () => {
-          if (!dragStart.current || flung) return;
-          dragStart.current = null;
-          if (Math.abs(dragX) > SWIPE_COMMIT_PX && !busy) {
-            setFlung(dragX > 0 ? "right" : "left");
-            onDone();
-          } else setDragX(0); // under threshold → spring back
-        } : undefined}
-        onTouchCancel={mobile ? () => { dragStart.current = null; setDragX(0); } : undefined}
+        {...(mobile ? swipe() : {})}
         style={{
           // Pass 3 paddings: desktop top 72 → 64; mobile 56/28/40 → 32/24/28.
-          ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "32px 24px 28px" : "64px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column", touchAction: "none" as const } : {}),
+          ...cardStyle, width: mobile ? "calc(100% - 40px)" : "min(880px, 88vw)", height: mobile ? "min(680px, 78dvh)" : "min(590px, 72vh)", padding: mobile ? "32px 24px 28px" : "64px 64px 56px", ...(mobile ? { display: "flex", flexDirection: "column", touchAction: "pan-y" as const } : {}),
           transform: flung
             ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
             : dragX !== 0
@@ -188,7 +172,7 @@ export default function YoureInCard({ variant, idiom, onDone, busy = false, erro
 
         {/* The body may now carry one link row per friend (up to 7), so it
             scrolls past a cap instead of pushing GET STARTED! / the closer
-            off the card. On mobile the card itself is touchAction:none for
+            off the card. On mobile the card itself is touchAction:pan-y (a sideways drag swipes) and
             the swipe; pan-y here lets the body scroll under a finger. */}
         <div style={{
           // Pass 3: 14/600 Identity → Body 15/400 dark ink; the alert

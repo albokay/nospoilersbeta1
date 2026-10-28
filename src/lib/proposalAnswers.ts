@@ -25,11 +25,19 @@ export function answerLines(names: AnswerNames): string[] {
  *  passes by name up to two, counts past that (Alborz, 10-14: a pitcher must
  *  see WHO answered WHAT — "Rodrigo has seen it", not "1 seen it"). */
 export function answerRowLine(names: AnswerNames): string | null {
-  const parts: string[] = [];
-  if (names.in.length) parts.push(`${list(names.in)} ${names.in.length === 1 ? "is" : "are"} in`);
-  if (names.out.length) parts.push(names.out.length <= 2 ? `${list(names.out)} ${names.out.length === 1 ? "is" : "are"} sitting this out` : `${names.out.length} sitting out`);
-  if (names.seen.length) parts.push(names.seen.length <= 2 ? `${list(names.seen)} ${names.seen.length === 1 ? "has" : "have"} seen it` : `${names.seen.length} seen it`);
-  return parts.length ? parts.join(" · ") : null;
+  const parts = answerRowParts(names);
+  return parts.length ? parts.map((p) => p.text).join(" · ") : null;
+}
+
+/** The same line as parts, each pass marked — on your own pitch's row the
+ *  passes draw in alert (his note, 10-27), so a friend's "seen it" can't hide
+ *  in the grey. */
+export function answerRowParts(names: AnswerNames): { text: string; pass: boolean }[] {
+  const parts: { text: string; pass: boolean }[] = [];
+  if (names.in.length) parts.push({ text: `${list(names.in)} ${names.in.length === 1 ? "is" : "are"} in`, pass: false });
+  if (names.out.length) parts.push({ text: names.out.length <= 2 ? `${list(names.out)} ${names.out.length === 1 ? "is" : "are"} sitting this out` : `${names.out.length} sitting out`, pass: true });
+  if (names.seen.length) parts.push({ text: names.seen.length <= 2 ? `${list(names.seen)} ${names.seen.length === 1 ? "has" : "have"} seen it` : `${names.seen.length} seen it`, pass: true });
+  return parts;
 }
 
 /** Your own pass, in a pill's right slot / after the row line. */

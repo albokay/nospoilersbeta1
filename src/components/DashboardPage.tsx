@@ -19,7 +19,7 @@
  *   • email invites + accept, rail invite/color states, chat, gear options → CP5/CP6
  *   • clicking a show into its room                           → CP4
  */
-import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, Fragment, type ReactNode } from "react";
 import { CANON } from "../styles/canon";
 import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
@@ -94,7 +94,7 @@ import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
@@ -625,6 +625,17 @@ export default function DashboardPage() {
     if (!line && !mine) return null;
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   }
+  // Your own pitch's row (his note, 10-27): the friends' passes in alert, the
+  // "is in" part and everything else as before.
+  const proposalLineNode = (showId: string, mine: boolean): ReactNode => {
+    if (!mine) return editorialProposalLine(showId);
+    const parts = answerRowParts(answerNamesFor(showId));
+    if (!parts.length) return editorialProposalLine(showId);
+    return parts.flatMap((p, i) => [
+      i > 0 ? <span key={`sep${i}`}> · </span> : null,
+      <span key={i} style={p.pass ? { color: E.color.alert } : undefined}>{p.text}</span>,
+    ]);
+  };
   // "Haven't started yet" show button: tooltip lists the other friends who are
   // interested; falls back to the standard progress/notif tip. (showName /
   // selfOpted params kept for the callers — the 2026-08-12 copy no longer
@@ -2383,7 +2394,7 @@ export default function DashboardPage() {
                             poster={false}
                             nameSize={16}
                             name={r.name}
-                            line={editorialProposalLine(r.pill.showId)}
+                            line={proposalLineNode(r.pill.showId, mine)}
                             dashed={r.passed}
                             fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                             mine={justPitched.has(r.pill.showId)}

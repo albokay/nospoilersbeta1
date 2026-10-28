@@ -193,7 +193,8 @@ export default function AskCard({ groupId, userId, members, contactNames, overla
   const total = members.length || answered.length;
   const inCount = answered.length;
   const allIn = total > 0 && inCount >= total;
-  const headLabel = `From Sidebar · ${newest ? "pinned" : askDate(current.createdAt)}${asks.length > 1 ? ` · ${asks.length - index} of ${asks.length}` : ""}`;
+  // The eyebrow names what the card is (his note, 10-27): "A conversation starter", an older ask carrying its date; the folded strip keeps "Pinned".
+  const headLabel = `A conversation starter${newest ? "" : ` · ${askDate(current.createdAt)}`}${asks.length > 1 ? ` · ${asks.length - index} of ${asks.length}` : ""}`;
   const hairRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, height: 40, borderBottom: `1px solid ${E.color.hairline}` };
   const nameCell: React.CSSProperties = { ...MONO, width: 56, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
   const arrow: React.CSSProperties = { width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink, fontSize: 18, lineHeight: 1 };

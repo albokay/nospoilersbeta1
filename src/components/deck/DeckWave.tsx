@@ -22,6 +22,7 @@
  * The page dims behind the card everywhere (Alborz, CP0 review).
  */
 import React, { useEffect, useRef, useState } from "react";
+import { cardSwipeHandlers } from "../../lib/cardSwipe";
 import { useAuth } from "../../lib/auth";
 import { fetchDeckCards, fetchMyDeckAnswers, fetchMyLastDeckAnswerAt, upsertDeckAnswer, type DeckCard } from "../../lib/db";
 import { readPendingDeckAnswers, addPendingDeckAnswer } from "../../lib/deckPending";
@@ -121,10 +122,11 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   const doneRef = useRef(false);
   // Mobile drag-to-swipe: dragX follows the finger; past the threshold the
   // card is "flung" (transitioned off-screen) instead of keyframe-exited.
-  const SWIPE_COMMIT_PX = 80;
   const [dragX, setDragX] = useState(0);
   const [flung, setFlung] = useState<"left" | "right" | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // A drag is a swipe only once it has gone sideways (lib/cardSwipe, 10-27).
+  const claimed = useRef(false);
   // Pass 3: one caption under the first card teaches the gesture; it hides
   // after the first answer (this mount).
   const [hasAnswered, setHasAnswered] = useState(false);
@@ -254,12 +256,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
   if (editorial) {
     const welcome = heading === "welcome";
     const n = Math.min(idx, queue.length - 1) + 1;
-    const touch = mobile ? {
-      onTouchStart: (e: React.TouchEvent) => { if (exit || flung) return; dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; },
-      onTouchMove: (e: React.TouchEvent) => { if (!dragStart.current || flung) return; setDragX(e.touches[0].clientX - dragStart.current.x); },
-      onTouchEnd: () => { if (!dragStart.current || flung) return; dragStart.current = null; if (Math.abs(dragX) > SWIPE_COMMIT_PX) answer(dragX > 0, true); else setDragX(0); },
-      onTouchCancel: () => { dragStart.current = null; setDragX(0); },
-    } : {};
+    const touch = mobile ? cardSwipeHandlers({ dragStart, claimed, dragX, setDragX, blocked: () => !!(exit || flung), onCommit: (dir) => answer(dir === "right", true) }) : {};
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: mobile ? 1000 : 900, overflowY: "auto", WebkitOverflowScrolling: "touch", boxSizing: "border-box", background: welcome ? E.color.accent : E.color.veil, color: E.color.ink, fontFamily: E.font.interface, display: "flex", justifyContent: "center", alignItems: welcome ? "flex-start" : "center", padding: mobile ? `calc(env(safe-area-inset-top, 0px) + ${welcome ? 64 : 24}px) ${E.space.gutter}px 40px` : welcome ? "170px 24px 60px" : "24px" }}>
         {welcome && !mobile && (
@@ -272,7 +269,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             {...touch}
             style={{
               ...questionCardStyle(mobile, { marginTop: welcome ? 30 : 0 }),
-              ...(mobile ? { touchAction: "none" as const } : {}),
+              ...(mobile ? { touchAction: "pan-y" as const } : {}),
               transform: flung
                 ? `translateX(${flung === "right" ? "120vw" : "-120vw"}) rotate(${flung === "right" ? 14 : -14}deg)`
                 : dragX !== 0 ? `translateX(${dragX}px) rotate(${dragX / 18}deg)` : undefined,
@@ -353,21 +350,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
 
         <div
           key={card.id}
-          onTouchStart={mobile ? (e) => {
-            if (exit || flung) return;
-            dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-          } : undefined}
-          onTouchMove={mobile ? (e) => {
-            if (!dragStart.current || flung) return;
-            setDragX(e.touches[0].clientX - dragStart.current.x);
-          } : undefined}
-          onTouchEnd={mobile ? () => {
-            if (!dragStart.current || flung) return;
-            dragStart.current = null;
-            if (Math.abs(dragX) > SWIPE_COMMIT_PX) answer(dragX > 0, true);
-            else setDragX(0); // under threshold → spring back
-          } : undefined}
-          onTouchCancel={mobile ? () => { dragStart.current = null; setDragX(0); } : undefined}
+          {...(mobile ? cardSwipeHandlers({ dragStart, claimed, dragX, setDragX, blocked: () => !!(exit || flung), onCommit: (dir) => answer(dir === "right", true) }) : {})}
           style={{
             ...cardStyle,
             height: mobile ? "min(500px, 55dvh)" : "min(580px, 66vh)",
@@ -376,7 +359,7 @@ export default function DeckWave({ wave, heading, idiom, requirePriorWave, leadC
             // corner tabs on small screens).
             flexShrink: 0,
             // Own the touch gesture — no scroll/rubber-band competition.
-            ...(mobile ? { touchAction: "none" as const } : {}),
+            ...(mobile ? { touchAction: "pan-y" as const } : {}),
             // Swipe visuals: follow the finger with a slight tilt; flung
             // cards transition off-screen FROM the drag position (the
             // keyframe exit stays for tap answers).

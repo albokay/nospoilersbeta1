@@ -52,7 +52,7 @@ export const panelCaptions: React.ReactNode[] = [
   <>
     There is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your letter gets responses (even though you don{"\u2019"}t know it yet).
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets notes (even though you don{"\u2019"}t know it yet).
   </>,
   <>
     A few days later you watch episode 2 and more activity is revealed to you.
@@ -81,7 +81,7 @@ export const panelCaptionsMobile: React.ReactNode[] = [
   <>
     But in reality, there is a lot more activity in the room because the show has 4 episodes available. For now, you can{"\u2019"}t see anything written from beyond episode 1.
     {"\n\n"}
-    Your friends have been updating their watch progress and writing. Soon enough, your letter gets responses {"\u2014"} even though you can{"\u2019"}t see them yet:
+    Your friends have been updating their watch progress and writing. Soon enough, your letter gets notes {"\u2014"} even though you can{"\u2019"}t see them yet:
   </>,
   panelCaptions[2],
   <>
@@ -143,7 +143,7 @@ export function pillLabel(type: PillType) {
   switch (type) {
     case "your-post": return "YOUR LETTER";
     case "post": return "LETTER";
-    case "reply": return "RESPONSE";
+    case "reply": return "NOTE";
     case "invisible": return "SEALED";
   }
 }
@@ -155,7 +155,7 @@ export function basePillStyle(type: PillType, align: PillAlign, slotIndex: numbe
   const offset = align === "right" ? INDENT : -INDENT;
 
   // The editorial skin (Alborz's notes, item 7): the diagram's pills as the
-  // site's blocks — your letter an ink block, a letter or response an
+  // site's blocks — your letter an ink block, a letter or note an
   // ink-framed slot, a sealed one the dashed friend frame with alert words;
   // the labels in mono. Same slots, same motion.
   if (ed) return {
@@ -225,7 +225,7 @@ function PanelGraphic({ panelIndex, ed = false }: { panelIndex: number; ed?: boo
     borderRadius: ed ? 0 : 16,
     background: ed ? E.color.cream : BOX_BG,
     border: ed ? `1px solid ${E.color.ink}` : undefined,
-    padding: "20px 16px",
+    padding: "28px 24px",
     position: "relative",
     overflow: "hidden",
   };
@@ -383,7 +383,9 @@ function PanelGraphic({ panelIndex, ed = false }: { panelIndex: number; ed?: boo
 
 // ── Main component ────────────────────────────────────────────────────────
 
-const PANEL_HEIGHT = 520;
+// His note, 10-27: the first page ran to the box's edge — the box is wider
+// (960) and taller (600), with more room around the caption and the diagram.
+const PANEL_HEIGHT = 600;
 const TOTAL_STEPS = 5;
 
 export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => void; onSignup?: () => void } = {}) {
@@ -416,21 +418,21 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
         background: editorial ? E.color.cream : PAGE_BG,
         fontFamily: '"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
         color: editorial ? E.color.ink : CANON.cream,
-        padding: "24px 16px 40px",
+        padding: "28px 24px 44px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
       }}
     >
       {/* Close button */}
-      <div style={{ width: "100%", maxWidth: 860, marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ width: "100%", maxWidth: 960, marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
         <button className={editorial ? undefined : "close-x"} onClick={handleClose} aria-label="Close" style={editorial ? { width: 28, height: 28, padding: 0, background: "transparent", border: `1px solid ${E.color.ink}`, borderRadius: 0, color: E.color.ink, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" } : undefined}>
           <X size={14} />
         </button>
       </div>
 
       {/* Panel area */}
-      <div style={{ width: "100%", maxWidth: 860, height: PANEL_HEIGHT }}>
+      <div style={{ width: "100%", maxWidth: 960, height: PANEL_HEIGHT }}>
         {isJoinStep ? (
           <div
             style={{
@@ -481,7 +483,7 @@ export default function HowItWorksV2({ onClose, onSignup }: { onClose?: () => vo
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "center",
-                padding: "24px 48px 24px 32px",
+                padding: "32px 56px 32px 40px",
               }}
             >
               {panelTitles[step] && (

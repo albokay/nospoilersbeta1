@@ -1308,7 +1308,7 @@ function AppShell() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowHowItWorks(false); }}
         >
           <div style={{
-            width: "min(92vw, 860px)",
+            width: "min(92vw, 960px)",
             maxHeight: "90vh",
             borderRadius: 20,
             background: CANON.personal,

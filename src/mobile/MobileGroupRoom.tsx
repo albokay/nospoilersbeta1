@@ -65,7 +65,7 @@ import { ensureCatalogShow } from "../lib/browseCatalog";
 import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSelfNote, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
@@ -957,6 +957,18 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
   };
 
+  // Your own pitch's row (his note, 10-27): the friends' passes in alert, the
+  // "is in" part and everything else as before.
+  const proposalLineNode = (showId: string, mine: boolean): React.ReactNode => {
+    if (!mine) return proposalLine(showId);
+    const parts = answerRowParts(answerNamesFor(showId));
+    if (!parts.length) return proposalLine(showId);
+    return parts.flatMap((p, i) => [
+      i > 0 ? <span key={`sep${i}`}> · </span> : null,
+      <span key={i} style={p.pass ? { color: E.color.alert } : undefined}>{p.text}</span>,
+    ]);
+  };
+
   // Browse-row poster tap (2026-08-17, mirrors DashboardPage.pickBrowseShow):
   // make sure the show is in Sidebar's catalog (same side effect as picking a
   // TVMaze search result), then open the yellow sheet in its plain vote form.
@@ -1393,7 +1405,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         poster={false}
                         nameSize={16}
                         name={r.name}
-                        line={proposalLine(r.pill.showId)}
+                        line={proposalLineNode(r.pill.showId, mine)}
                         dashed={r.passed}
                         fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                         mine={justPitched.has(r.pill.showId)}

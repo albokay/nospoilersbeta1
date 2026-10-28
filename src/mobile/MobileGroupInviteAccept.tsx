@@ -276,6 +276,7 @@ export default function MobileGroupInviteAccept({ token }: { token: string }) {
           <HomepageNarrative
             headerHeight={0}
             editorial={editorial}
+            phone
             invitee={{
               inviterName: info.inviterDisplayName || info.inviterName || "Your friend",
               showName: letter?.showName,

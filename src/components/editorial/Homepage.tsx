@@ -115,11 +115,14 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
       {/* The scroll on green FIRST (Alborz, round 6), Sign in over its top */}
       <div style={{ position: "relative", background: E.color.personal, color: E.color.cream, overflow: "hidden" }}>
         {signIn}
-        <HomepageNarrative headerHeight={desktop ? 100 : 110} editorial />
+        <HomepageNarrative headerHeight={desktop ? 100 : 110} editorial phone={!desktop} />
+        {/* The seam (his notes, 10-27, both platforms): the green fades into the
+            cream over 240px under the logo; the hero starts 30px inside the tail. */}
+        <div aria-hidden="true" style={{ height: 240, background: `linear-gradient(to bottom, ${E.color.personal}, ${E.color.cream})` }} />
       </div>
       {/* The cream page (his order, 10-14): the hero, How it works, the acts, then the beta letter at the foot */}
-      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px 40px` }}>
-        <div style={{ ...col, paddingTop: desktop ? 110 : 72 }}>
+      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px 40px`, marginTop: -30 }}>
+        <div style={col}>
           <Hero desktop={desktop} />
         </div>
         <div style={col}>
@@ -145,7 +148,8 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
       </div>
       {letterOpen && (
         <EditorialSheet onClose={() => setLetterOpen(false)}>
-          <div style={{ ...E.type.label10, color: E.color.inkMuted }}>A letter for beta testers</div>
+          {/* Clear of the sheet's handle (his note, 10-27). */}
+          <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 24 }}>A letter for beta testers</div>
           <Letter paragraphs={BETA_LETTER_PARAGRAPHS_MOBILE} style={{ padding: "16px 0 8px" }} />
         </EditorialSheet>
       )}

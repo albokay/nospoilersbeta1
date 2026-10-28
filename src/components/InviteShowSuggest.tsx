@@ -125,11 +125,28 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
   // The pick that just landed (his notes, 10-14): its row fills from cream to
   // yellow over a second — the group room's arrival wash, run in reverse so
   // it ends on the yellow the rows wear.
-  const [landed, setLanded] = useState<string | null>(null);
+  // His note, 10-27: a pick made down in the strips landed out of view, so
+  // the wash went unseen. The new row now waits cream ("pending") while the
+  // picks block scrolls into view, and washes to yellow once the scroll has
+  // settled (scrollend where the browser has it, a timer otherwise).
+  const [landed, setLanded] = useState<{ key: string; phase: "pending" | "wash" } | null>(null);
+  const picksRef = useRef<HTMLDivElement | null>(null);
   function land(p: InviteShowPick) {
     const k = pickKey(p);
-    setLanded(k);
-    window.setTimeout(() => setLanded((c) => (c === k ? null : c)), 1200);
+    setLanded({ key: k, phase: "pending" });
+    const wash = () => setLanded((c) => (c && c.key === k ? { key: k, phase: "wash" } : c));
+    window.requestAnimationFrame(() => {
+      const el = picksRef.current;
+      if (!el) { wash(); return; }
+      const r = el.getBoundingClientRect();
+      if (r.top >= 0 && r.bottom <= window.innerHeight) { wash(); return; }
+      let done = false;
+      const finish = () => { if (done) return; done = true; window.removeEventListener("scrollend", finish); wash(); };
+      window.addEventListener("scrollend", finish, { once: true });
+      window.setTimeout(finish, 700);
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    window.setTimeout(() => setLanded((c) => (c && c.key === k ? null : c)), 2600);
   }
   function addPick(p: InviteShowPick) {
     commit([...picks, p]);
@@ -210,12 +227,12 @@ export default function InviteShowSuggest({ token, idiom, excludeTvmazeIds, blee
           // The picks on yellow (his notes, 10-14): each row a padded accent bar
           // with 2px of cream between them, so they read with the pitched band
           // above; the one that just landed washes in from cream.
-          <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div ref={picksRef} style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 2, scrollMarginTop: 24, scrollMarginBottom: 24 }}>
             <style>{LAND_CSS}</style>
             {picks.map((p, i) => {
               const k = pickKey(p);
               return (
-                <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: E.color.accent, ...(landed === k ? { animation: "eRowLand 1s ease-out forwards" } : {}) }}>
+                <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", background: landed?.key === k && landed.phase === "pending" ? E.color.cream : E.color.accent, ...(landed?.key === k && landed.phase === "wash" ? { animation: "eRowLand 1s ease-out forwards" } : {}) }}>
                   <span style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 15, color: E.color.ink }}>{p.name}</span>
                   <UnderlineWord onClick={() => removePick(i)} label={`remove ${p.name}`}>Remove</UnderlineWord>
                 </div>

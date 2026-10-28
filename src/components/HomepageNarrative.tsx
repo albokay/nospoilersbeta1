@@ -24,44 +24,79 @@ function useReveal(threshold = 0.2) {
 }
 
 // ── Parallax ──────────────────────────────────────────────────────────────────
-// Imperative-write hook — writes the transform directly to the element
-// via ref instead of via React state. Avoids one re-render per scroll
-// event per parallax instance (the cloud section has ~20 instances, so
-// the win compounds). rAF-throttled so multiple scroll events per frame
-// only schedule one DOM write. translate3d(0, y, 0) forces a GPU layer
-// so the compositor can move the element without involving the main
-// thread. Critical for mobile where scroll events fire irregularly and
-// state-driven transforms produced visible stutter on iOS Safari.
+// His note, 10-27 (the phone's scroll stuttered in a Safari tab): two changes.
+// (1) Where the browser has CSS scroll-driven animations (Safari 26+, Chrome
+//     115+), the bubble's drift is a `view()` timeline animation — the
+//     compositor moves it, no scroll listener, no main-thread work per
+//     frame. The keyframes reproduce the JavaScript path's steady state: an
+//     offset of `rate / (1 - rate)` times the bubble's distance from the
+//     viewport's centre (the old per-frame measurement included its own
+//     previous offset, which settles at that ratio).
+// (2) Elsewhere, ONE scroll listener and ONE frame serve every bubble: all
+//     the measurements first, then all the transform writes, instead of
+//     sixteen listeners each reading and writing in turn (each read after
+//     another's write forced a style pass). translate3d keeps each bubble on
+//     its own layer; integer px avoids sub-pixel jitter.
+const SCROLL_DRIVEN = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("animation-timeline: view()");
+const PARALLAX_CSS = "@keyframes sbParallax{from{transform:translate3d(0,calc(var(--sb-par) * (50vh + 50%)),0)}to{transform:translate3d(0,calc(-1 * var(--sb-par) * (50vh + 50%)),0)}}";
+let parallaxCssInjected = false;
+function injectParallaxCss() {
+  if (parallaxCssInjected || typeof document === "undefined") return;
+  parallaxCssInjected = true;
+  const el = document.createElement("style");
+  el.textContent = PARALLAX_CSS;
+  document.head.appendChild(el);
+}
+
+type ParallaxEntry = { el: HTMLElement; rate: number; last: string };
+const parallaxRegistry = new Set<ParallaxEntry>();
+let parallaxRaf = 0;
+let parallaxListening = false;
+function parallaxPass() {
+  parallaxRaf = 0;
+  const vh = window.innerHeight;
+  const writes: [ParallaxEntry, string][] = [];
+  for (const p of parallaxRegistry) {
+    const rect = p.el.getBoundingClientRect();
+    const center = rect.top + rect.height / 2 - vh / 2;
+    const t = `translate3d(0, ${Math.round(center * p.rate)}px, 0)`;
+    if (t !== p.last) writes.push([p, t]);
+  }
+  for (const [p, t] of writes) { p.el.style.transform = t; p.last = t; }
+}
+function parallaxSchedule() {
+  if (!parallaxRaf) parallaxRaf = requestAnimationFrame(parallaxPass);
+}
+function registerParallax(entry: ParallaxEntry): () => void {
+  parallaxRegistry.add(entry);
+  if (!parallaxListening) {
+    parallaxListening = true;
+    window.addEventListener("scroll", parallaxSchedule, { passive: true });
+  }
+  parallaxSchedule();
+  return () => {
+    parallaxRegistry.delete(entry);
+    if (parallaxRegistry.size === 0 && parallaxListening) {
+      parallaxListening = false;
+      window.removeEventListener("scroll", parallaxSchedule);
+      if (parallaxRaf) { cancelAnimationFrame(parallaxRaf); parallaxRaf = 0; }
+    }
+  };
+}
+
 function useParallax(rate = 0.12) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    let raf = 0;
-    let lastTransform = "";
-    function update() {
-      raf = 0;
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const center = rect.top + rect.height / 2 - window.innerHeight / 2;
-      // Round to integer px to avoid sub-pixel jitter and skip writes
-      // when the transform value hasn't changed.
-      const offset = Math.round(center * rate);
-      const transform = `translate3d(0, ${offset}px, 0)`;
-      if (transform !== lastTransform) {
-        el.style.transform = transform;
-        lastTransform = transform;
-      }
+    const el = ref.current;
+    if (!el) return;
+    if (SCROLL_DRIVEN) {
+      injectParallaxCss();
+      el.style.setProperty("--sb-par", String(rate / (1 - rate)));
+      el.style.animation = "sbParallax linear both";
+      el.style.setProperty("animation-timeline", "view()");
+      return () => { el.style.animation = ""; el.style.removeProperty("animation-timeline"); };
     }
-    function onScroll() {
-      if (raf) return;  // already scheduled this frame
-      raf = requestAnimationFrame(update);
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();  // initial position
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
+    return registerParallax({ el, rate, last: "" });
   }, [rate]);
   return { ref };
 }
@@ -301,11 +336,11 @@ function AnimatedLogo() {
 // into view (SidebarLogo animates on MOUNT, so we mount it on reveal inside
 // a reserved box). No tagline, no scroll-docking — the homepage's
 // AnimatedLogo is untouched. ─────────────────────────────────────────────────
-function StaticLogo() {
+function StaticLogo({ scale = 1 }: { scale?: number }) {
   const { ref, visible } = useReveal(0.3);
   return (
-    <div ref={ref} style={{ width: LOGO_W, height: LOGO_H, flexShrink: 0 }}>
-      {visible && <SidebarLogo scale={1} blocksOpacity={1} betaBadge />}
+    <div ref={ref} style={{ width: LOGO_W * scale, height: LOGO_H * scale, flexShrink: 0 }}>
+      {visible && <SidebarLogo scale={scale} blocksOpacity={1} betaBadge />}
     </div>
   );
 }
@@ -323,8 +358,11 @@ function StaticLogo() {
 //     (StaticLogo — "talk. together. whenever." is on its way out);
 //   • a LANDING section after the logo: "Sidebar is where you can talk
 //     freely." + the "Join {name} →" button (onJoin → the door questions).
-export default function HomepageNarrative({ headerHeight = 56, invitee, editorial = false }: {
+export default function HomepageNarrative({ headerHeight = 56, invitee, editorial = false, phone = false }: {
   headerHeight?: number;
+  /** The phone (his notes, 10-27): the editorial finale's logo at 70%, sitting
+   *  equidistant between the big line and the join block. Desktop unchanged. */
+  phone?: boolean;
   invitee?: { inviterName: string; onJoin: () => void; /** The show the inviter picked and wrote about (the invitee-flow pass, 2026-10-17). */ showName?: string };
   /** The editorial skin (checkpoint 8, 2026-10-12; the E3Scroll and
    *  E3OnbInvitee / D3OnbInvitee boards): the same bubbles, the copy in
@@ -431,13 +469,13 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           <Copy size={38} editorial>Sidebar is where<br />you can talk freely.</Copy>
           {invitee ? (
             <>
-              <div style={{ marginTop: 88 }}><StaticLogo /></div>
-              <div style={{ marginTop: 40, width: "min(480px, 100%)" }}>
+              <div style={{ marginTop: phone ? 64 : 88 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
+              <div style={{ marginTop: phone ? 64 : 40, width: "min(480px, 100%)" }}>
                 <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} editorial />
               </div>
             </>
           ) : (
-            <div style={{ marginTop: 56 }}><StaticLogo /></div>
+            <div style={{ marginTop: 56 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
           )}
         </section>
       ) : invitee ? (
@@ -535,7 +573,7 @@ function JoinButton({ name, onClick, editorial = false }: { name: string; onClic
   if (editorial) {
     return (
       <div ref={ref} style={{ opacity: visible ? 1 : 0, transition: "opacity 0.8s ease 0.2s" }}>
-        <button type="button" onClick={onClick} style={{ ...E.type.button16, width: "100%", height: 56, background: E.color.ink, color: E.color.cream, border: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
+        <button type="button" onClick={onClick} style={{ ...E.type.button16, width: "100%", height: 56, padding: "0 32px", boxSizing: "border-box", background: E.color.ink, color: E.color.cream, border: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
           Join {name} →
         </button>
       </div>
