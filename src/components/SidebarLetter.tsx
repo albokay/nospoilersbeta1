@@ -108,10 +108,11 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
 export function JournalLetter({ style }: { mobile?: boolean; style?: React.CSSProperties }) {
   return (
     <SidebarPaper tone="alert" style={style}>
-      {/* His words, 2026-10-28 (Send is a copy now): the two ways. */}
-      <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>You can use your journal in two ways.</div>
-      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>1. For yourself.</span> It stays here and no one else ever sees it. We do some of our best thinking by taking a moment to write.</p>
-      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>2. For everyone.</span> Watching a show with more than one friend group? Write it once here and send it to all of them. And if a friend later invites you to a show you&rsquo;ve already written about, you can hand over your journal, a time capsule of your thoughts. Everything stays in your journal; each group gets its own copy.</p>
+      {/* His words, 2026-10-28 (Send is a copy now; his wording that evening). */}
+      <div style={{ ...E.type.letterTitle22, fontSize: 19 }}>Sidebar is for your friends, but the journal tab is for you.</div>
+      <p style={{ ...E.type.letterBody15, fontWeight: 700, color: E.color.ink, margin: "10px 0 0" }}>You can use it in two ways:</p>
+      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>1. For yourself.</span> Your writing stays here and no one else ever sees it. We do some of our best thinking when we write.</p>
+      <p style={{ ...E.type.letterBody15, color: E.color.inkSub, margin: "10px 0 0" }}><span style={{ fontWeight: 700, color: E.color.ink }}>2. As a publisher.</span> Watching a show with more than one friend group? Write it here once and send it to all of them. And if a friend later invites you to a show you&rsquo;ve already written about, you can hand over your journal &mdash; like a time capsule of your thoughts. Your writing stays here; each group gets its own copy.</p>
     </SidebarPaper>
   );
 }

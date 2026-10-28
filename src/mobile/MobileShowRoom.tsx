@@ -1647,7 +1647,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             )}
             {editorial ? (
               // The journal's note as a letter from Sidebar (his ask, 2026-10-26), at the foot of the list.
-              <JournalLetter mobile style={{ marginTop: privateFeedEntries.length ? 32 : 18 }} />
+              // Where the friend tab's letter sits under the band (his note, 10-28).
+              <JournalLetter mobile style={{ marginTop: privateFeedEntries.length ? 32 : 22 }} />
             ) : (
             <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 20, boxSizing: "border-box" }}>
               <p style={{ fontFamily: LORA, fontWeight: 700, fontSize: 22, lineHeight: 1.3, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>

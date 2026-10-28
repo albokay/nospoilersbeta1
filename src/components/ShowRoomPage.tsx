@@ -1627,7 +1627,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 )}
                 {editorial ? (
                   // The journal's note as a letter from Sidebar (his ask, 2026-10-26), at the foot of the list.
-                  <JournalLetter style={{ marginTop: privateFeedEntries.length ? 32 : 18 }} />
+                  // Where the friend tab's letter sits (his note, 10-28): the column's 28 + the paper's 22 under the write row.
+                  <JournalLetter style={{ marginTop: privateFeedEntries.length ? 32 : 50 }} />
                 ) : (
                 <div style={{ marginTop: privateFeedEntries.length ? 40 : 8, border: "2px dashed rgba(254,248,234,0.8)", borderRadius: 24, padding: 24, boxSizing: "border-box" }}>
                   <p style={{ ...D.type.subtitle, color: C.cream, margin: "0 0 10px" }}>Sidebar is best with friends.</p>
