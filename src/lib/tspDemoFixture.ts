@@ -147,7 +147,7 @@ const INSTRUCTIONAL_ENTRIES: V2RoomFeedEntry[] = [
     preview: `Maya is still on episode 2, so anything you write about episode 4 stays sealed for her until she catches up.`,
     body: `Maya is still on episode 2, so anything you write about episode 4 stays sealed for her until she catches up. Write freely. The spoiler-gate does the work of protecting everyone from spoilers.\n\nTwo episodes to go.` }),
   entry({ id: "tsp-gate-5", e: 5, author: U.alborz, isInstructional: true,
-    title: "This is how your real friend rooms will work",
+    title: "This is how your real rooms will work",
     preview: `Hopefully it’s clicking. You mark your progress, the room answers.`,
     body: `Hopefully it’s clicking. You mark your progress, the room answers. Letters open, the map fills in, and conversations stay sealed until you’re ready.\n\nOne episode left in “The Sidebar Protocol.”` }),
   entry({ id: "tsp-gate-6", e: 6, author: U.alborz, isInstructional: true,

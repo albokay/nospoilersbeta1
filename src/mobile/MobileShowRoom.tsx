@@ -1427,7 +1427,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           </>
         ) : (
         <div style={{ display: "flex", alignItems: "flex-end", gap: 6, padding: "8px 16px 0" }}>
-          {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
+          {!privateOnly && <RoomTab label="letters" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
           {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
           {/* CP6: solo → drafts (desktop parity) — just-for-you space. */}
           <RoomTab label="journal" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />

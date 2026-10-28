@@ -35,7 +35,8 @@ import { UnderlineWord } from "./Chrome";
 
 export type RoomTabKey = "friend" | "reference" | "private";
 export const TAB_COLOUR: Record<RoomTabKey, string> = { friend: E.color.personal, reference: E.color.accent, private: E.color.draft };
-export const TAB_LABEL: Record<RoomTabKey, string> = { friend: "Friend room", reference: "Show guide", private: "Journal" };
+// "Letters" (his call, 10-28): the tab names what is on it, like the other two; "room" stays the show's space.
+export const TAB_LABEL: Record<RoomTabKey, string> = { friend: "Letters", reference: "Show guide", private: "Journal" };
 
 /** The CSS variables the classic room's inner pieces read (the opened
  *  letter, its responses, the edit form), redefined for ink on cream. */

@@ -1410,7 +1410,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         <div style={{ padding: "0 24px" }}>
           <div style={{ display: "flex", gap: 64, alignItems: "flex-end", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ flex: "0 1 672px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
-              {!privateOnly && <RoomTab label="friend room" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
+              {!privateOnly && <RoomTab label="letters" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
               {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
               {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
                   author-only space; sharing is manual copy/paste, no convert. */}
