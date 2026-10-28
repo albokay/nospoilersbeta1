@@ -38,9 +38,8 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 const RATE_LIMIT_PER_DAY = 10;
 const FROM_ADDRESS       = '"Sidebar" <invites@sidebar.watch>';
-// Replies reach a read inbox (Alborz 2026-10-27): sidebar.watch has no mail
-// delivery yet (no MX), so the reply-to points at his own address until it does.
-const REPLY_TO = "akamalizad@gmail.com";
+// Replies go back to invites@ — an alias on the sidebar.watch Microsoft 365
+// mailbox since 2026-10-27 (no reply-to needed).
 
 // Escape user-controlled values before interpolating into email HTML, so a
 // crafted inviter name / room name (or an edited show title) can't inject
@@ -239,7 +238,7 @@ serve(async (req) => {
     const resendRes = await fetch("https://api.resend.com/emails", {
       method:  "POST",
       headers: { "Authorization": `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM_ADDRESS, reply_to: REPLY_TO, to: [email], subject, html, text }),
+      body: JSON.stringify({ from: FROM_ADDRESS, to: [email], subject, html, text }),
     });
 
     if (!resendRes.ok) {
