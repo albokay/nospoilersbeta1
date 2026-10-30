@@ -340,6 +340,13 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
   editorial?: boolean;
 }) {
   const ed = editorial;
+  /** One cloud bubble: desktop as laid out; on the phone twice the width
+   *  (capped at 46vw) in the left or right column. */
+  const cloud = (rate: number, src: string, top: string, left: number, width: number) => {
+    const w = phone ? Math.min(width * 2, 46) : width;
+    const l = phone ? (left < 40 ? 4 : 96 - w) : left;
+    return <CloudBubble key={`${src}-${top}`} src={src} top={top} left={`${l}vw`} width={`${w}vw`} rate={rate} />;
+  };
   return (
     <>
       {invitee && (
@@ -406,26 +413,31 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           width: "min(520px, 80vw)", zIndex: 10,
           padding: "0 0 40px",
         }}>
-          <Copy editorial={ed}>You're all dying to talk about<br />your favorite show right now.</Copy>
+          <Copy editorial={ed} balance>You're all dying to talk about your favorite show right now.</Copy>
         </div>
 
-        {/* Above copy — spread evenly across full width, no right-side clustering */}
-        <CloudBubble src="/ns-friend.svg" top="1%"  left="4vw"  width="24vw" rate={0.22} />
-        <CloudBubble src="/ns-you.svg"    top="2%"  left="66vw" width="26vw" rate={0.14} />
-        <CloudBubble src="/ns-friend.svg" top="11%" left="34vw" width="22vw" rate={0.28} />
-        <CloudBubble src="/ns-you.svg"    top="10%" left="62vw" width="20vw" rate={0.18} />
-        <CloudBubble src="/ns-friend.svg" top="20%" left="8vw"  width="26vw" rate={0.24} />
-        <CloudBubble src="/ns-you.svg"    top="19%" left="46vw" width="24vw" rate={0.20} />
-        <CloudBubble src="/ns-friend.svg" top="29%" left="24vw" width="22vw" rate={0.16} />
-        <CloudBubble src="/ns-you.svg"    top="28%" left="60vw" width="26vw" rate={0.26} />
+        {/* Above copy — spread evenly across full width, no right-side clustering.
+            The phone (his note, 10-30): the bubbles were a quarter of the
+            width at most, so they read tiny; on the phone each is twice its
+            desktop vw (capped at 46vw) and the cloud becomes two columns —
+            a bubble whose desktop left is under 40vw hugs the left edge,
+            the rest hug the right. Desktop geometry is untouched. */}
+        {cloud(0.22, "/ns-friend.svg", "1%",  4,  24)}
+        {cloud(0.14, "/ns-you.svg",    "2%",  66, 26)}
+        {cloud(0.28, "/ns-friend.svg", "11%", 34, 22)}
+        {cloud(0.18, "/ns-you.svg",    "10%", 62, 20)}
+        {cloud(0.24, "/ns-friend.svg", "20%", 8,  26)}
+        {cloud(0.20, "/ns-you.svg",    "19%", 46, 24)}
+        {cloud(0.16, "/ns-friend.svg", "29%", 24, 22)}
+        {cloud(0.26, "/ns-you.svg",    "28%", 60, 26)}
 
         {/* Below copy — evenly spread, no overlapping columns */}
-        <CloudBubble src="/ns-friend.svg" top="58%" left="5vw"  width="26vw" rate={0.26} />
-        <CloudBubble src="/ns-you.svg"    top="59%" left="52vw" width="24vw" rate={0.18} />
-        <CloudBubble src="/ns-friend.svg" top="68%" left="30vw" width="24vw" rate={0.22} />
-        <CloudBubble src="/ns-you.svg"    top="67%" left="64vw" width="22vw" rate={0.14} />
-        <CloudBubble src="/ns-friend.svg" top="78%" left="10vw" width="28vw" rate={0.20} />
-        <CloudBubble src="/ns-you.svg"    top="77%" left="44vw" width="26vw" rate={0.24} />
+        {cloud(0.26, "/ns-friend.svg", "58%", 5,  26)}
+        {cloud(0.18, "/ns-you.svg",    "59%", 52, 24)}
+        {cloud(0.22, "/ns-friend.svg", "68%", 30, 24)}
+        {cloud(0.14, "/ns-you.svg",    "67%", 64, 22)}
+        {cloud(0.20, "/ns-friend.svg", "78%", 10, 28)}
+        {cloud(0.24, "/ns-you.svg",    "77%", 44, 26)}
       </section>
 
       {/* 6 — Finale. Homepage: unchanged (copy 450px above the docking logo).
