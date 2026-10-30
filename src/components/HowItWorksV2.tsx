@@ -43,7 +43,7 @@ export const panelCaptions: React.ReactNode[] = [
   <>
     Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
-    You watch the first episode, log your watch progress, and write a post about your first impressions. Sidebar calls posts {"\u201C"}letters{"\u201D"} {"\u2014"} deliberate writing that you and your friends may have to wait to read.
+    You watch the first episode, log your watch progress, and write to your friends about your first impressions. Sidebar calls this writing {"\u201C"}letters{"\u201D"}: written for the people in the room, and sometimes they have to wait to read it.
     {"\n\n"}
     There are a handful of letters to read in the room. These were all written when your friends were also on episode 1.
     {"\n\n"}
@@ -74,7 +74,7 @@ export const panelCaptionsMobile: React.ReactNode[] = [
   <>
     Your friends have been watching a new show and invite you to their Sidebar room.
     {"\n\n"}
-    You watch the first episode, log your watch progress, and write a post about your first impressions. Sidebar calls posts {"\u201C"}letters{"\u201D"} {"\u2014"} deliberate writing that you and your friends may have to wait to read.
+    You watch the first episode, log your watch progress, and write to your friends about your first impressions. Sidebar calls this writing {"\u201C"}letters{"\u201D"}: written for the people in the room, and sometimes they have to wait to read it.
     {"\n\n"}
     There are a handful of letters to read in the room. These were all written when your friends were also on episode 1:
   </>,

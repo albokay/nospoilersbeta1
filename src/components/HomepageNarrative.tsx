@@ -431,7 +431,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         // the cluster lands centred at the scroll's end, with the line lifted
         // 88px clear of the logo (his notes, 10-14).
         <section style={{ minHeight: invitee ? "100svh" : "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box" }}>
-          <Copy size={38} editorial>Sidebar is where<br />you can talk freely.</Copy>
+          <Copy size={38} editorial balance>Sidebar is where the three of you can talk freely.</Copy>
           {invitee ? (
             <>
               <div style={{ marginTop: phone ? 64 : 88 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
@@ -454,7 +454,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           justifyContent: "flex-end",
         }}>
           <div style={{ marginBottom: 450, display: "flex", justifyContent: "center" }}>
-            <Copy size={38}>Sidebar is where<br />you can talk freely.</Copy>
+            <Copy size={38} balance>Sidebar is where the three of you can talk freely.</Copy>
           </div>
           <div style={{ display: "flex", justifyContent: "center" }}>
             <AnimatedLogo />
@@ -471,7 +471,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box",
         }}>
           <StaticLogo />
-          <Copy size={38}>Here, you can<br />talk freely.</Copy>
+          <Copy size={38} balance>Here, the three of you can talk freely.</Copy>
           <JoinButton name={invitee.inviterName} onClick={invitee.onJoin} />
         </section>
       )}

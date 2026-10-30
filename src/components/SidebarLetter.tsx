@@ -51,6 +51,7 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
         <div style={{ ...FROM_LINE, paddingRight: pr }}>From: Sidebar · Pinned</div>
         <div style={{ ...E.type.letterTitle22, marginTop: 12, paddingRight: pr }}>Dear {firstName},</div>
         <div className="sb-balance" style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 8, paddingRight: pr }}>{ROOM_LETTER.headline}</div>
+        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p0}</p>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1}</p>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1b}</p>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
@@ -85,7 +86,8 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
           {ROOM_LETTER.headline}
         </div>
       </div>
-      <p style={body}>{ROOM_LETTER.p1}</p>
+      <p style={body}>{ROOM_LETTER.p0}</p>
+      <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p1}</p>
       <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p1b}</p>
       <p style={{ ...body, marginTop: m ? 10 : 14 }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: m ? 16 : 22 }}>

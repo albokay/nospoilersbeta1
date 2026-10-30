@@ -178,7 +178,9 @@ export function tipsDefaultOpen(page: TipsPage, userId: string | null | undefine
  *  used to say (the sticky and its copy retired with it). Rendered by
  *  SidebarLetter; "Dear {first name}," is the component's. */
 export const ROOM_LETTER = {
-  headline: "On Sidebar, you write letters to your friends.",
+  headline: "On Sidebar, you write letters to your friends — not reviews.",
+  /** One line on its own (Alborz 2026-10-30): the permission for the voice friends already write in. */
+  p0: "Write the way you’d talk to your friends.",
   p1: "Every letter in this room wears a stamp with the episode it was written from. Every member has a stamp of their own.",
   /** Its own paragraph (Alborz 2026-09-30). */
   p1b: "A letter stamped ahead of you stays sealed until you get there, and yours stay sealed for friends who are behind. Write as if everyone’s right where you are.",
