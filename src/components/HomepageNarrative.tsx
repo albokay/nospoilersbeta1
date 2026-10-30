@@ -340,11 +340,12 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
   editorial?: boolean;
 }) {
   const ed = editorial;
-  /** One cloud bubble: desktop as laid out; on the phone twice the width
-   *  (capped at 46vw) in the left or right column. */
-  const cloud = (rate: number, src: string, top: string, left: number, width: number) => {
-    const w = phone ? Math.min(width * 2, 46) : width;
-    const l = phone ? (left < 40 ? 4 : 96 - w) : left;
+  /** One cloud bubble: desktop as laid out; on the phone 1.5× the width at
+   *  its own hand-placed left (his 10-30 follow-up: twice was too big and
+   *  two even columns lost the scatter). */
+  const cloud = (rate: number, src: string, top: string, left: number, width: number, phoneLeft: number) => {
+    const w = phone ? Math.round(width * 1.5) : width;
+    const l = phone ? phoneLeft : left;
     return <CloudBubble key={`${src}-${top}`} src={src} top={top} left={`${l}vw`} width={`${w}vw`} rate={rate} />;
   };
   return (
@@ -367,7 +368,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
               </div>
             </div>
           </Screen>
-          <ScrollCue label="(what’s Sidebar?)" />
+          <ScrollCue label="(what’s Sidebar?)" fadeBy={phone ? 0.12 : 0.35} />
         </>
       )}
 
@@ -375,7 +376,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           note, 10-30): the editorial homepage draws none of its own (the
           classic desktop page's arrow lives in App.tsx; the classic phone page
           never had one). The invitee scroll keeps its labelled cue above. */}
-      {!invitee && ed && <ScrollCue />}
+      {!invitee && ed && <ScrollCue fadeBy={phone ? 0.12 : 0.35} />}
 
       {/* 1 — Opening blue bubble, centered */}
       <Screen extraTop={headerHeight}>
@@ -417,27 +418,28 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         </div>
 
         {/* Above copy — spread evenly across full width, no right-side clustering.
-            The phone (his note, 10-30): the bubbles were a quarter of the
-            width at most, so they read tiny; on the phone each is twice its
-            desktop vw (capped at 46vw) and the cloud becomes two columns —
-            a bubble whose desktop left is under 40vw hugs the left edge,
-            the rest hug the right. Desktop geometry is untouched. */}
-        {cloud(0.22, "/ns-friend.svg", "1%",  4,  24)}
-        {cloud(0.14, "/ns-you.svg",    "2%",  66, 26)}
-        {cloud(0.28, "/ns-friend.svg", "11%", 34, 22)}
-        {cloud(0.18, "/ns-you.svg",    "10%", 62, 20)}
-        {cloud(0.24, "/ns-friend.svg", "20%", 8,  26)}
-        {cloud(0.20, "/ns-you.svg",    "19%", 46, 24)}
-        {cloud(0.16, "/ns-friend.svg", "29%", 24, 22)}
-        {cloud(0.26, "/ns-you.svg",    "28%", 60, 26)}
+            The phone (his notes, 10-30): the bubbles were a quarter of the
+            width at most, so they read tiny; on the phone each is 1.5× its
+            desktop vw (30–42vw) at the LAST argument's left — hand-placed so
+            no two in a band touch and the insets vary (2…26 from the left,
+            86…96 at the right) the way the desktop's scatter does. Desktop
+            geometry is untouched. */}
+        {cloud(0.22, "/ns-friend.svg", "1%",  4,  24, 2)}
+        {cloud(0.14, "/ns-you.svg",    "2%",  66, 26, 52)}
+        {cloud(0.28, "/ns-friend.svg", "11%", 34, 22, 22)}
+        {cloud(0.18, "/ns-you.svg",    "10%", 62, 20, 64)}
+        {cloud(0.24, "/ns-friend.svg", "20%", 8,  26, 6)}
+        {cloud(0.20, "/ns-you.svg",    "19%", 46, 24, 58)}
+        {cloud(0.16, "/ns-friend.svg", "29%", 24, 22, 14)}
+        {cloud(0.26, "/ns-you.svg",    "28%", 60, 26, 55)}
 
         {/* Below copy — evenly spread, no overlapping columns */}
-        {cloud(0.26, "/ns-friend.svg", "58%", 5,  26)}
-        {cloud(0.18, "/ns-you.svg",    "59%", 52, 24)}
-        {cloud(0.22, "/ns-friend.svg", "68%", 30, 24)}
-        {cloud(0.14, "/ns-you.svg",    "67%", 64, 22)}
-        {cloud(0.20, "/ns-friend.svg", "78%", 10, 28)}
-        {cloud(0.24, "/ns-you.svg",    "77%", 44, 26)}
+        {cloud(0.26, "/ns-friend.svg", "58%", 5,  26, 3)}
+        {cloud(0.18, "/ns-you.svg",    "59%", 52, 24, 50)}
+        {cloud(0.22, "/ns-friend.svg", "68%", 30, 24, 26)}
+        {cloud(0.14, "/ns-you.svg",    "67%", 64, 22, 63)}
+        {cloud(0.20, "/ns-friend.svg", "78%", 10, 28, 0)}
+        {cloud(0.24, "/ns-you.svg",    "77%", 44, 26, 48)}
       </section>
 
       {/* 6 — Finale. Homepage: unchanged (copy 450px above the docking logo).
@@ -525,13 +527,13 @@ function HeroCopy() {
 // The invitee opening's scroll cue — the HOMEPAGE arrow's exact treatment
 // (App.tsx: fixed bottom 8vh, centered, ArrowDown 49/2 cream, opacity 0.6
 // fading out over the first stretch of scrolling).
-function ScrollCue({ label }: { label?: string } = {}) {
+function ScrollCue({ label, fadeBy = 0.35 }: { label?: string; /** Gone once this fraction of the viewport has scrolled; the phone uses 0.12 so it is gone before the first line arrives (his note, 10-30). */ fadeBy?: number } = {}) {
   const [opacity, setOpacity] = useState(0.6);
   useEffect(() => {
     let raf = 0;
     function update() {
       raf = 0;
-      setOpacity(Math.max(0.6 - (window.scrollY / (window.innerHeight * 0.35)) * 0.6, 0));
+      setOpacity(Math.max(0.6 - (window.scrollY / (window.innerHeight * fadeBy)) * 0.6, 0));
     }
     function onScroll() {
       if (raf) return;
@@ -540,7 +542,7 @@ function ScrollCue({ label }: { label?: string } = {}) {
     window.addEventListener("scroll", onScroll, { passive: true });
     update();
     return () => { window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); };
-  }, []);
+  }, [fadeBy]);
   if (opacity <= 0) return null;
   return (
     <div style={{
