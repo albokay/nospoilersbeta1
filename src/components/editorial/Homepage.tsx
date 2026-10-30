@@ -109,8 +109,13 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
   const signIn = (
     <button type="button" onClick={onSignIn} style={{ position: "absolute", top: desktop ? 34 : "calc(env(safe-area-inset-top, 0px) + 18px)", right: desktop ? E.measure.desktop.inside + 120 : 20, height: 36, padding: "0 14px", border: `1px solid ${E.color.cream}`, background: "transparent", color: E.color.cream, ...E.type.label11, display: "inline-flex", alignItems: "center", cursor: "pointer", zIndex: 3 }}>Sign in</button>
   );
+  // The phone clips sideways overflow (his note, 10-30): the tilted beta
+  // note runs 30px off the right edge on purpose, which widened the page
+  // and let iOS scroll it left and right. `clip` keeps the window as the
+  // scroller (no new scroll container, so the parallax and the fixed cue
+  // are untouched).
   return (
-    <div style={{ background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, minHeight: desktop ? "100vh" : "100dvh" }}>
+    <div style={{ background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface, minHeight: desktop ? "100vh" : "100dvh", ...(desktop ? {} : { overflowX: "clip" }) }}>
       {desktop && onFeedback && <CornerTab desktop kind="feedback" label="Feedback" onClick={onFeedback} />}
       {/* The scroll on green FIRST (Alborz, round 6), Sign in over its top */}
       <div style={{ position: "relative", background: E.color.personal, color: E.color.cream, overflow: "hidden" }}>
