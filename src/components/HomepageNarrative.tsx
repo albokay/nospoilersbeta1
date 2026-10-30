@@ -364,6 +364,12 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         </>
       )}
 
+      {/* The scroll cue on the regular editorial scroll, both platforms (his
+          note, 10-30): the editorial homepage draws none of its own (the
+          classic desktop page's arrow lives in App.tsx; the classic phone page
+          never had one). The invitee scroll keeps its labelled cue above. */}
+      {!invitee && ed && <ScrollCue />}
+
       {/* 1 — Opening blue bubble, centered */}
       <Screen extraTop={headerHeight}>
         <Bubble src="/ns-you.svg" align="center" rate={0.08} />
@@ -430,7 +436,13 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         // (invitee) "Join {name} →". The invitee's section is a full screen so
         // the cluster lands centred at the scroll's end, with the line lifted
         // 88px clear of the logo (his notes, 10-14).
-        <section style={{ minHeight: invitee ? "100svh" : "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)", boxSizing: "border-box" }}>
+        // The homepage's finale (his note, 10-30): the line sits at the
+        // section's middle and the settled logo halfway between the line and
+        // the cream fade that follows the section — a spacer above the line,
+        // the logo centred in the half below it, no bottom padding so the
+        // half ends where the fade begins.
+        <section style={{ minHeight: invitee ? "100svh" : "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: invitee ? "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)" : "48px 32px 0", boxSizing: "border-box" }}>
+          {!invitee && <div style={{ flex: 1 }} />}
           <Copy size={38} editorial balance>Sidebar is where the three of you can talk freely.</Copy>
           {invitee ? (
             <>
@@ -440,7 +452,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
               </div>
             </>
           ) : (
-            <div style={{ marginTop: 56 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
+            <div style={{ flex: 1, display: "flex", alignItems: "center" }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
           )}
         </section>
       ) : invitee ? (

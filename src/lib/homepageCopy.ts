@@ -38,12 +38,15 @@ export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 // (3, flag — the step the mechanism depends on), the letters framing (4,
 // envelope: stamped, sealed, a letter from the future), the pace payoff (5,
 // road). The shield step retired (its point lives in 3 and 4).
+// 2026-10-30 (Alborz, verbatim): step 1 names the cap — a group holds 8
+// MEMBERS including you (the server cap in people_group_members), so "up to 7
+// friends"; steps 3–5 reworded; step 4 drops "On Sidebar".
 export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
-  { Icon: UsersRound,        text: "Start a group with the friends you love talking to." },
+  { Icon: UsersRound,        text: "Start a group with up to 7 friends you love talking to." },
   { Icon: DoorOpen,          text: "Each of you lists what you’d like to watch together, then you agree on a show and start a room." },
-  { Icon: Flag,              text: "After each episode, mark where you are. That’s what keeps the room spoiler-free." },
-  { Icon: Mail,              text: "On Sidebar, everything you write is stamped with the episode you’re on and stays sealed until your friends get there — like a letter to them from the future." },
-  { Icon: Road,              text: "So watch at your own pace. Binge ahead and your letters wait for your friends. Take your time and there’s always a letter waiting for you." },
+  { Icon: Flag,              text: "After watching each episode, mark your progress. That’s what keeps the room spoiler-free." },
+  { Icon: Mail,              text: "Everything you write is stamped with the episode you’re on and stays sealed until your friends get there — like a letter to them from the future." },
+  { Icon: Road,              text: "So watch at your own pace. Binge ahead and your writing sets the tone for the group. Take your time and there’s always a letter waiting for you." },
 ];
 
 export const CTA_JOIN_LABEL = "Join / sign in";
@@ -65,7 +68,7 @@ export const BETA_LETTER_PARAGRAPHS: string[] = [
   "I’m making this site because I love stories and I love thinking and talking about them. If you’re reading this right now, you’re probably the same way. That’s the whole point here: to make it easier to have ongoing conversations about the TV shows we love (or love to hate) with our friends.",
   "Sidebar is built around the handful of people you actually want to talk to. You’re not writing reviews. You’re writing to your friends. And because everyone’s writing is tied to their own progress, it doesn’t matter whether you’re all watching in step, one of you is racing ahead, or someone’s a whole season behind. If you’re ahead, you write letters from the future that open as your friends catch up, episode by episode. If you’re behind, you have letters waiting for you at each episode. Nobody gets spoiled, and nobody has to stay quiet.",
   "I think the mechanics will inspire you to slow down and think more deeply about what you’re watching. More time to sit with a show, more reason to feel close to your friends through it. But that’s just me. It might inspire your watching in some way I’d never expect, and I’m eager to find out about that.",
-  "Use the ‘feedback’ tab on the left to send your thoughts as they come. Your gut reactions are as important as your more considered thoughts.",
+  "Use the ‘feedback’ tab in the top left corner to send your thoughts as they come. Your gut reactions are as important as your more considered thoughts.",
   "Excited to see how you use the site.",
   "— Alborz",
 ];

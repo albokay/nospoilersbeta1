@@ -50,11 +50,11 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
         </span>
         <div style={{ ...FROM_LINE, paddingRight: pr }}>From: Sidebar · Pinned</div>
         <div style={{ ...E.type.letterTitle22, marginTop: 12, paddingRight: pr }}>Dear {firstName},</div>
-        <div className="sb-balance" style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 8, paddingRight: pr }}>{ROOM_LETTER.headline}</div>
+        <div className="sb-balance" style={{ ...E.type.letterTitle22, fontSize: 19, marginTop: 8, paddingRight: pr }}>{ROOM_LETTER.headline}<em>{ROOM_LETTER.headlineEm}</em></div>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p0}</p>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1}</p>
         <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p1b}</p>
-        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
+        <p style={{ ...E.type.letterBody15, lineHeight: 1.55, margin: "10px 0 0" }}>{ROOM_LETTER.p2}</p>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
           <span style={{ ...E.type.quote14, color: E.color.ink }}>{ROOM_LETTER.signoff}</span>
           <FrameButton onClick={dismiss}>{ROOM_LETTER.cta}</FrameButton>
@@ -83,13 +83,13 @@ export default function SidebarLetter({ idiom, userId, firstName, open, onDismis
       <div style={{ paddingRight: m ? 84 : 130, boxSizing: "border-box" }}>
         <div style={{ fontFamily: LORA, fontSize: m ? 16 : 20, color: CANON.identity, marginBottom: m ? 6 : 8 }}>Dear {firstName},</div>
         <div className="sb-balance" style={{ fontFamily: LORA, fontWeight: 700, fontSize: m ? 22 : 30, lineHeight: 1.2, color: CANON.identity, maxWidth: 560, marginBottom: m ? 12 : 14 }}>
-          {ROOM_LETTER.headline}
+          {ROOM_LETTER.headline}<em>{ROOM_LETTER.headlineEm}</em>
         </div>
       </div>
       <p style={body}>{ROOM_LETTER.p0}</p>
       <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p1}</p>
       <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p1b}</p>
-      <p style={{ ...body, marginTop: m ? 10 : 14 }}>{m ? ROOM_LETTER.p2Mobile : ROOM_LETTER.p2}</p>
+      <p style={{ ...body, marginTop: m ? 10 : 14 }}>{ROOM_LETTER.p2}</p>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: m ? 16 : 22 }}>
         <span style={{ fontFamily: LORA, fontStyle: "italic", fontSize: m ? 15 : 18, color: CANON.dark }}>{ROOM_LETTER.signoff}</span>
         <button
