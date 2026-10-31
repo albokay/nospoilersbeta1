@@ -1388,7 +1388,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <EditorialColumn wide style={{ marginTop: E.measure.desktop.tabsGap }}>
               <FolderTabs
                 width={E.measure.desktop.letters}
-                tabs={[...(!privateOnly ? ["friend"] : []), ...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]}
+                // Letters · Journal · Show guide (his call, 10-30): the journal
+                // sits second, ahead of the guide.
+                tabs={[...(!privateOnly ? ["friend"] : []), "private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
                 active={tab}
                 onChange={(t) => setTab(t)}
               />
@@ -1411,10 +1413,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           <div style={{ display: "flex", gap: 64, alignItems: "flex-end", justifyContent: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div style={{ flex: "0 1 672px", minWidth: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
               {!privateOnly && <RoomTab label="letters" active={tab === "friend"} bg={C.sky} onClick={() => setTab("friend")} />}
-              {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
               {/* CP6 (2026-07-06): solo journaling downgraded to DRAFTS — an
-                  author-only space; sharing is manual copy/paste, no convert. */}
+                  author-only space; sharing is manual copy/paste, no convert.
+                  Second tab since 10-30 (his call), ahead of the guide. */}
               <RoomTab label="journal" active={tab === "private"} bg={C.green} onClick={() => setTab("private")} />
+              {referenceAvailable && <RoomTab label="show guide" active={tab === "reference"} bg={C.yellow} onClick={() => setTab("reference")} />}
             </div>
             <div style={{ flex: "0 0 300px" }} aria-hidden />
           </div>
