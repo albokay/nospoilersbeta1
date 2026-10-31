@@ -554,7 +554,10 @@ export default function ShowReference({
       const ahead = season.n === prog.s ? (data?.episodes ?? []).filter((ep) => idx(ep.s, ep.e) > vIdx) : [];
       return (
         <div style={{ ...paper, marginTop: 16 }}>
-          {season.eps.map((ep, n) => plotEntry(ep, n === 0))}
+          {/* The season's name heads its column on desktop (his note; on the
+              phone the strip right above already names it). */}
+          {!mobile && <div style={{ ...E.type.letterTitle22, fontSize: 18, ...onRule, color: E.color.ink }}>Season {season.n}</div>}
+          {season.eps.map((ep, n) => plotEntry(ep, n === 0 && mobile))}
           {ahead.length > 0 && (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: RULE, height: RULE }}>
@@ -715,7 +718,7 @@ export default function ShowReference({
                     {starAllowed && (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent }}>
                         <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
-                        Star the ones that mattered
+                        Star the essentials
                       </span>
                     )}
                     {/* "3 of 8 rated" until every listed episode is rated (2026-10-22). */}
