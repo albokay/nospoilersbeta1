@@ -433,7 +433,7 @@ export default function ShowReference({
           title={starred ? "Un-star this essential" : "Star as an essential episode"}
           style={{ background: "transparent", border: 0, padding: 0, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, ...(onStill ? { position: "absolute", top: 4, left: 4 } : {}) }}
         >
-          <Star size={onStill ? 22 : 16} color={E.color.accent} fill={starred ? E.color.accent : "none"} strokeWidth={2} aria-hidden="true" />
+          <Star size={onStill ? 22 : 16} color={E.color.accent} fill={starred ? E.color.accent : E.color.cream} strokeWidth={2} aria-hidden="true" />
         </button>
       );
     };
@@ -455,16 +455,22 @@ export default function ShowReference({
       const rKey = `${ep.s}-${ep.e}`;
       const r = ratings.get(rKey) ?? 0;
       const open = ratingOpen === rKey;
+      const circleBtn = (
+        <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, r > 0 || open)}>
+          {r > 0 ? <StarFace rating={r} size={18} color={E.color.cream} /> : (!open && <span aria-hidden="true" style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1, color: "rgba(26,58,74,0.45)" }}>?</span>)}
+        </button>
+      );
       return (
         <div key={rKey} style={{ marginTop: first ? 0 : RULE }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: RULE }}>
+          {/* The title line (his notes, round 2): the circle to the LEFT of the
+              words — on desktop hanging out beyond the column's edge, on the
+              phone inline before "Ep. 2 · Title", where the line also sits on
+              a cream band so no rule runs directly above or below the words. */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
+            {ratingAllowed && mobile && circleBtn}
             <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0 }}>Ep. {ep.e} · {ep.title}</span>
-            {ratingAllowed && (
-              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, r > 0 || open)}>
-                {r > 0 ? <StarFace rating={r} size={18} color={E.color.cream} /> : (!open && <span aria-hidden="true" style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1, color: "rgba(26,58,74,0.45)" }}>?</span>)}
-              </button>
-            )}
             {starAllowed && !ep.still && starBtn(ep, false)}
+            {ratingAllowed && !mobile && <span style={{ position: "absolute", left: -36, top: 2, display: "inline-flex" }}>{circleBtn}</span>}
           </div>
           {open && (
             // The picker: seven circles — the empty ring (no rating) then 1
