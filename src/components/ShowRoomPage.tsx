@@ -42,6 +42,7 @@ import OneSelectProgress from "./OneSelectProgress";
 import RatingCaptureModal from "./RatingCaptureModal";
 import SidebarLogo from "./SidebarLogo";
 import ShowReference from "./reference/ShowReference";
+import { episodeWritingCounts } from "./reference/ShowReference";
 import FeedbackWidget from "./FeedbackWidget";
 import DeckWave from "./deck/DeckWave";
 import TSPDemoModal from "./TSPDemoModal";
@@ -1540,7 +1541,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
             {tab === "reference" && show && refEff && (
               <div style={editorial ? { marginTop: 28 } : undefined}>
-                <ShowReference showId={show.id} viewerProgress={refEff} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+                <ShowReference showId={show.id} viewerProgress={refEff} episodeCounts={episodeWritingCounts(feedEntries, privateEntries)} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
                   if (m.userId !== user?.id) return m;
                   if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
                   const i = m.ratings.findIndex((x) => x.s === s && x.e === e);

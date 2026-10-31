@@ -8,7 +8,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
 import { E } from "../../styles/editorial";
@@ -27,12 +27,30 @@ import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
+
+/** The sheet's margin counts (2026-10-31): the room's letters and the
+ *  viewer's journal entries by the episode they're stamped on — a binge
+ *  letter counts on the episode it's sealed at (the range's end). */
+export function episodeWritingCounts(
+  letters: { s: number; e: number; isDeleted?: boolean; isInstructional?: boolean }[],
+  journal: { season: number; episode: number; isDeleted?: boolean }[],
+): Map<string, { letters: number; journal: number }> {
+  const out = new Map<string, { letters: number; journal: number }>();
+  const at = (s: number, e: number) => { const k = `${s}-${e}`; let c = out.get(k); if (!c) { c = { letters: 0, journal: 0 }; out.set(k, c); } return c; };
+  for (const l of letters) if (!l.isDeleted && !l.isInstructional) at(l.s, l.e).letters += 1;
+  for (const j of journal) if (!j.isDeleted) at(j.season, j.episode).journal += 1;
+  return out;
+}
 const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, episodeCounts,
 }: {
+  /** The sheet's margin counts (the guide redesign, 2026-10-31): the room's
+   *  letters and the viewer's journal entries by the episode they're stamped
+   *  on, "s-e" → counts; see episodeWritingCounts. */
+  episodeCounts?: Map<string, { letters: number; journal: number }>;
   /** Rating from the guide (2026-10-22): fires after a rating lands (null =
    *  cleared), so the room can patch its own map cell in place — no reload,
    *  the viewer keeps rating and scrolling. */
@@ -343,8 +361,8 @@ export default function ShowReference({
       const since = idx(p.firstS, p.firstE) > idx(1, 1) ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`) : null;
       return [p.character, since].filter(Boolean).join(" · ") || null;
     };
-    const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary));
-    const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx && ep.summary) })).filter((season) => season.eps.length > 0);
+    const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx));
+    const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx) })).filter((season) => season.eps.length > 0);
     // The star on the plot (Alborz, round 5 follow-up): a line and a star
     // after each episode's label, for a show you've FINISHED that's in your
     // canon — the essentials live where their plot sits.
@@ -355,46 +373,85 @@ export default function ShowReference({
       width: size, height: size, borderRadius: "50%", border: `2px solid ${E.color.identity}`, background: on ? E.color.identity : "transparent",
       padding: 0, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", ...extra,
     });
-    const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null }) => {
+    // The sheet (the guide redesign, 2026-10-31, his canvas): one ruled sheet
+    // per season under "Previously, on {show}." — each watched episode is a
+    // mono label and the rating circle in a margin, the title, the still and
+    // the summary in the column (the still full-width on the phone, in a
+    // right margin on desktop; tapping it enlarges, as the classic guide
+    // did), and a mono line counting the letters and journal entries stamped
+    // on it (his call: the pinned counts ride along). Unrated = the ring with
+    // a grey "?" (his call; replaces the 10-22 words in this layout). The
+    // picker spans the sheet on the phone (seven 36px circles need 288, the
+    // column alone is ~284) and the column on desktop; its block is four
+    // rules tall so the lines under it keep their rhythm. The circles sit
+    // 2px lower than the boards' first cut, centred between two rules.
+    const RULE = E.space.paperRule;
+    const paper: React.CSSProperties = {
+      backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${RULE - 1}px, ${E.color.inkLines} ${RULE - 1}px, ${E.color.inkLines} ${RULE}px)`,
+      backgroundSize: `100% ${RULE}px`,
+    };
+    const onRule: React.CSSProperties = { lineHeight: `${RULE}px` };
+    const rowGrid: React.CSSProperties = mobile
+      ? { display: "grid", gridTemplateColumns: "40px minmax(0, 1fr)", columnGap: 10 }
+      : { display: "grid", gridTemplateColumns: "40px minmax(0, 1fr) 92px", columnGap: 14 };
+    const stillBtn = (ep: { e: number; still?: string | null }, wide: boolean) => (
+      <button type="button" onClick={() => setStillOpen(ep.still!)} aria-label={`Enlarge the episode ${ep.e} still`} style={{ display: "block", padding: 0, border: 0, background: "transparent", cursor: "zoom-in", ...(wide ? { width: "100%", margin: "4px 0" } : { marginTop: 6 }) }}>
+        <img src={ep.still!} alt="" loading="lazy" style={wide ? { width: "100%", height: RULE * 6 - 8, objectFit: "cover", display: "block" } : { width: 92, height: 58, objectFit: "cover", display: "block" }} />
+      </button>
+    );
+    const countsLine = (ep: { s: number; e: number }) => {
+      const c = episodeCounts?.get(`${ep.s}-${ep.e}`);
+      if (!c || (!c.letters && !c.journal)) return null;
+      const parts: string[] = [];
+      if (c.letters) parts.push(`${c.letters} ${c.letters === 1 ? "letter" : "letters"}`);
+      if (c.journal) parts.push(`${c.journal} journal ${c.journal === 1 ? "entry" : "entries"}`);
+      return <div style={{ ...E.type.label10, ...onRule, color: E.color.inkMuted }}>{parts.join(" · ")}</div>;
+    };
+    const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null; still?: string | null }, first: boolean) => {
       const starred = essentials.has(idx(ep.s, ep.e));
       const rKey = `${ep.s}-${ep.e}`;
       const r = ratings.get(rKey) ?? 0;
       const open = ratingOpen === rKey;
+      const body = (
+        <>
+          {mobile && ep.still && stillBtn(ep, true)}
+          {ep.summary && <div style={{ ...E.type.letterBody15, ...onRule }}>{ep.summary}</div>}
+          {countsLine(ep)}
+        </>
+      );
       return (
-        <div key={`${ep.s}-${ep.e}`} style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ ...E.type.label10, color: E.color.inkMuted, minWidth: 0 }}>S{ep.s} E{ep.e} · {ep.title}</span>
-            {(starAllowed || ratingAllowed) && <span aria-hidden="true" style={{ flex: 1, minWidth: 24, height: 1, background: E.color.hairline }} />}
-            {starAllowed && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => toggleEssential(ep.s, ep.e)}
-                  aria-pressed={starred}
-                  title={starred ? "Un-star this essential" : "Star as an essential episode"}
-                  style={{ background: "transparent", border: 0, padding: 0, width: 28, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "flex-end", cursor: "pointer", flexShrink: 0 }}
-                >
-                  <Star size={16} color={E.color.accent} fill={starred ? E.color.accent : "none"} strokeWidth={1.8} aria-hidden="true" />
-                </button>
-              </>
-            )}
-            {ratingAllowed && (r > 0 || open ? (
-              // Rated: the map's cell, cream stars on the identity fill (his
-              // note on the mockups). Open: the filled ring while picking.
-              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, true)}>
-                {r > 0 && <StarFace rating={r} size={18} color={E.color.cream} />}
+        <div key={rKey} style={{ ...rowGrid, marginTop: first ? 0 : RULE }}>
+          <div style={{ paddingTop: 6, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+            <span style={{ ...E.type.label11, color: E.color.ink }}>E{ep.e}</span>
+            {ratingAllowed && (
+              // Rated: the map's cell, cream stars on the identity fill. Open:
+              // the filled ring while picking. Unrated: the ring with a grey "?".
+              <button type="button" onClick={() => setRatingOpen(open ? null : rKey)} aria-expanded={open} aria-label={r ? `Rated: ${RATING_LABELS[r]}. Change it` : "Rate this episode"} title={r ? RATING_LABELS[r] : "Rate this episode"} style={circle(24, r > 0 || open)}>
+                {r > 0 ? <StarFace rating={r} size={18} color={E.color.cream} /> : (!open && <span aria-hidden="true" style={{ fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1, color: "rgba(26,58,74,0.45)" }}>?</span>)}
               </button>
-            ) : (
-              // Unrated: a word, not a bare ring (his note, 2026-10-22).
-              <UnderlineWord onClick={() => setRatingOpen(rKey)} label="Rate this episode" style={{ flexShrink: 0 }}>Rate episode →</UnderlineWord>
-            ))}
+            )}
+            {starAllowed && (
+              <button
+                type="button"
+                onClick={() => toggleEssential(ep.s, ep.e)}
+                aria-pressed={starred}
+                title={starred ? "Un-star this essential" : "Star as an essential episode"}
+                style={{ background: "transparent", border: 0, padding: 0, width: 24, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+              >
+                <Star size={16} color={E.color.accent} fill={starred ? E.color.accent : "none"} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            )}
           </div>
+          <div>
+            <div style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule }}>{ep.title}</div>
+            {!open && body}
+          </div>
+          {!mobile && <div>{ep.still && stillBtn(ep, false)}</div>}
           {open && (
-            // The picker, right under the episode's line (his note): seven
-            // circles — the empty ring (no rating, the map's no-stars state)
-            // then 1 to 6 — the chosen one filled, its words under ITS circle
-            // (the first flush left, the last flush right).
-            <div style={{ marginTop: 10, padding: "12px 14px 10px", border: `1px solid ${E.color.ink}`, ...(mobile ? {} : { width: 360, boxSizing: "border-box", marginLeft: "auto" }) }}>
+            // The picker: seven circles — the empty ring (no rating) then 1
+            // to 6 — the chosen one filled, its words under ITS circle (the
+            // first flush left, the last flush right). 112px tall = 4 rules.
+            <div style={{ gridColumn: mobile ? "1 / -1" : "2 / -1", margin: "15px 0", padding: "12px 14px 10px", border: `1px solid ${E.color.ink}`, background: E.color.cream, boxSizing: "border-box" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", justifyItems: "center", gap: 6 }}>
                 {[0, 1, 2, 3, 4, 5, 6].map((n) => {
                   const on = r === n;
@@ -410,7 +467,7 @@ export default function ShowReference({
               </div>
             </div>
           )}
-          <div style={{ ...E.type.letterBody15, lineHeight: 1.55, marginTop: 4 }}>{ep.summary}</div>
+          {open && <div style={{ gridColumn: 2 }}>{body}</div>}
         </div>
       );
     };
@@ -459,49 +516,83 @@ export default function ShowReference({
             )}
           </>
         )}
-        {/* The plot so far — by season once more than one is watched (round
-            5): a mono row per season with its count and a chevron; the
-            season you're in starts open; opening one closes the other. The
-            episode list that followed is gone (his call: it only ever showed
-            the season you're in, and the plot and the picker already say
-            what's been seen); the essentials star moved onto the plot
-            entries (finished canon shows). */}
-        {plotEpisodes.length > 0 && (
-          <>
-            {/* The head's right slot explains the star (his pick, round 5
-                follow-up): a small star and "star the ones that mattered",
-                all in accent, while the stars are available. */}
-            <div ref={plotHeadRef}>
-              <SectionHead style={{ marginTop: 28 }} right={(starAllowed || (ratingAllowed && ratedCount < plotEpisodes.length)) ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 12, flexShrink: 0, whiteSpace: "nowrap" }}>
-                  {starAllowed && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent }}>
-                      <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
-                      Star the ones that mattered
-                    </span>
-                  )}
-                  {/* "3 of 8 rated" until every listed episode is rated (2026-10-22). */}
-                  {ratingAllowed && ratedCount < plotEpisodes.length && <span style={{ color: E.color.inkMuted }}>{ratedCount} of {plotEpisodes.length} rated</span>}
-                </span>
-              ) : null}>Plot so far</SectionHead>
-            </div>
-            {plotSeasons.length <= 1 ? plotEpisodes.map(plotEntry) : plotSeasons.map((season) => {
-              const open = openPlotSeason === season.n;
-              return (
-                <div key={season.n}>
-                  <button type="button" onClick={() => setOpenPlotSeason(open ? null : season.n)} aria-expanded={open} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink, ...E.type.label11, textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
-                    <span>Season {season.n}</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
-                      {season.eps.length} {season.eps.length === 1 ? "episode" : "episodes"}
-                      <span aria-hidden="true" style={{ fontSize: 9 }}>{open ? "▲" : "▼"}</span>
-                    </span>
-                  </button>
-                  {open && <div style={{ paddingBottom: 10 }}>{season.eps.map(plotEntry)}</div>}
+        {/* The sheet: one season at a time — the season you're in (or the one
+            opened from the strips below), the "You are here" rule and the
+            rest of the season dimmed, "After you watch it". */}
+        {plotEpisodes.length > 0 && (() => {
+          const sheetSeason = plotSeasons.length <= 1 ? plotSeasons[0] : (plotSeasons.find((x) => x.n === openPlotSeason) ?? plotSeasons[plotSeasons.length - 1]);
+          const seasonData = ref.seasons.find((x) => x.n === sheetSeason.n);
+          const ahead = sheetSeason.n === prog.s ? (seasonData?.episodes ?? []).filter((ep) => idx(ep.s, ep.e) > vIdx) : [];
+          // The strips: every watched season, then the next one locked (his
+          // call, 2026-10-31: the locked strip shows whenever the show has a
+          // next season; the chevrons once more than one season is watched).
+          const strips = [...ref.seasons].filter((season) => season.n <= prog.s + 1 && season.episodes.length > 0).sort((a, b) => a.n - b.n);
+          return (
+            <>
+              <div ref={plotHeadRef} style={{ marginTop: 36, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}` }}>
+                <span style={{ ...E.type.letterTitle22, color: E.color.ink }}>Previously, on {ref.showName}.</span>
+                {(starAllowed || (ratingAllowed && ratedCount < plotEpisodes.length)) && (
+                  <span style={{ ...E.type.label11, display: "inline-flex", alignItems: "center", gap: 12, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    {starAllowed && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.accent }}>
+                        <Star size={12} color={E.color.accent} strokeWidth={2} aria-hidden="true" />
+                        Star the ones that mattered
+                      </span>
+                    )}
+                    {/* "3 of 8 rated" until every listed episode is rated (2026-10-22). */}
+                    {ratingAllowed && ratedCount < plotEpisodes.length && <span style={{ color: E.color.inkMuted }}>{ratedCount} of {plotEpisodes.length} rated</span>}
+                  </span>
+                )}
+              </div>
+              <div style={{ ...paper, marginTop: 16 }}>
+                {sheetSeason.eps.map((ep, n) => plotEntry(ep, n === 0))}
+                {ahead.length > 0 && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: RULE, height: RULE }}>
+                      <span style={{ ...E.type.label10, color: E.color.ink, whiteSpace: "nowrap" }}>You are here · S{prog.s} E{prog.e}</span>
+                      <span aria-hidden="true" style={{ flex: 1, height: 1, background: E.color.ink }} />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px minmax(0, 1fr)", columnGap: mobile ? 10 : 14, color: "rgba(26,58,74,0.45)" }}>
+                      {ahead.map((ep) => (
+                        <React.Fragment key={ep.e}>
+                          <div style={{ ...E.type.label11, ...onRule }}>E{ep.e}</div>
+                          <div style={{ ...E.type.body14, ...onRule }}>After you watch it</div>
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              {strips.length > 1 && (
+                <div style={{ marginTop: 28 }}>
+                  {strips.map((season, n) => {
+                    const watched = plotSeasons.find((x) => x.n === season.n);
+                    const total = season.episodes.length;
+                    const open = !!watched && sheetSeason.n === season.n;
+                    const switchable = !!watched && plotSeasons.length > 1;
+                    return (
+                      <button
+                        key={season.n}
+                        type="button"
+                        disabled={!switchable}
+                        onClick={() => setOpenPlotSeason(season.n)}
+                        aria-expanded={switchable ? open : undefined}
+                        aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderTop: n === 0 ? `1px solid ${E.color.ink}` : 0, borderBottom: `1px solid ${E.color.hairline}`, ...E.type.label11, color: E.color.ink, cursor: switchable ? "pointer" : "default", textAlign: "left" }}
+                      >
+                        <span>Season {season.n}</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
+                          {watched && watched.eps.length < total ? `${watched.eps.length} of ${total}` : `${total} ${total === 1 ? "episode" : "episodes"}`}
+                          {!watched ? <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" /> : switchable && <span aria-hidden="true" style={{ fontSize: 9, color: E.color.ink }}>{open ? "▲" : "▼"}</span>}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </>
-        )}
+              )}
+            </>
+          );
+        })()}
         {(ref.launchTrailerKey || ref.seasons.some((season) => season.n >= 2 && season.trailerKey)) && (
           <>
             <SectionHead style={{ marginTop: 28 }}>Trailers</SectionHead>
@@ -533,6 +624,23 @@ export default function ShowReference({
             </>
           )}
         </div>
+        {/* The still lightbox: dim + a larger render; clicking outside closes. */}
+        {stillOpen && (
+          <div
+            onClick={() => setStillOpen(null)}
+            role="button"
+            aria-label="Close"
+            style={{ position: "fixed", inset: 0, zIndex: 1100, background: E.color.veil, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box", cursor: "zoom-out" }}
+          >
+            <img
+              src={stillLarge(stillOpen)}
+              alt=""
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => { const img = e.currentTarget; if (!img.src.endsWith(stillOpen)) img.src = stillOpen; }}
+              style={{ maxWidth: "min(860px, 92vw)", maxHeight: "80vh", cursor: "default", boxShadow: "0 12px 36px rgba(0,0,0,0.35)" }}
+            />
+          </div>
+        )}
       </div>
     );
   }
