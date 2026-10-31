@@ -109,9 +109,8 @@ export default function ShowReference({
   onRated?: (season: number, episode: number, rating: number | null) => void;
   /** The editorial skin (checkpoint 4, 2026-10-12; the bible's GuideRows):
    *  the same guide as hairline rows in ink — the stops line, CAST with the
-   *  as-of episode, PLOT SO FAR in Lora, EPISODES with Watched / You are
-   *  here / After you watch it (the unwatched rows keep their titles back,
-   *  as the live guide does), the trailers. */
+   *  as-of episode, the sheet of watched episodes (it ends where you are;
+   *  nothing past it is listed), the trailers. */
   editorial?: boolean;
   showId: string;
   /** The viewer's EFFECTIVE progress (rewatch-aware ceiling) — ≥ S1E1. */
@@ -290,25 +289,28 @@ export default function ShowReference({
   // a third of the way down the screen. The room scrolls inside a fixed
   // container on the phone, so the nearest scroller is found first.
   const plotHeadRef = useRef<HTMLDivElement>(null);
+  // Scrolls the sheet's head to `fraction` of the way down the nearest
+  // scroller (a third on arrival; near the top when a season tab is picked).
+  const scrollToPlotHead = (fraction: number) => {
+    const el = plotHeadRef.current;
+    if (!el) return;
+    let scroller: HTMLElement | null = el.parentElement;
+    while (scroller && scroller !== document.body) {
+      const oy = getComputedStyle(scroller).overflowY;
+      if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
+    }
+    const top = el.getBoundingClientRect().top;
+    if (scroller && scroller !== document.body) {
+      const r = scroller.getBoundingClientRect();
+      scroller.scrollBy({ top: top - (r.top + r.height * fraction), behavior: "smooth" });
+    } else {
+      window.scrollBy({ top: top - window.innerHeight * fraction, behavior: "smooth" });
+    }
+  };
   useEffect(() => {
     if (!nudgeEssentials || !editorial || !ref) return;
-    const t = window.setTimeout(() => {
-      const el = plotHeadRef.current;
-      if (!el) return;
-      let scroller: HTMLElement | null = el.parentElement;
-      while (scroller && scroller !== document.body) {
-        const oy = getComputedStyle(scroller).overflowY;
-        if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
-        scroller = scroller.parentElement;
-      }
-      const top = el.getBoundingClientRect().top;
-      if (scroller && scroller !== document.body) {
-        const r = scroller.getBoundingClientRect();
-        scroller.scrollBy({ top: top - (r.top + r.height / 3), behavior: "smooth" });
-      } else {
-        window.scrollBy({ top: top - window.innerHeight / 3, behavior: "smooth" });
-      }
-    }, 400);
+    const t = window.setTimeout(() => scrollToPlotHead(1 / 3), 400);
     return () => window.clearTimeout(t);
   }, [nudgeEssentials, editorial, ref]);
 
@@ -547,31 +549,17 @@ export default function ShowReference({
         </div>
       );
     };
-    // One season's sheet: its watched episodes, and for the season you're
-    // in the "You are here" rule with the rest dimmed, "After you watch it".
-    const sheetFor = (season: { n: number; eps: typeof plotEpisodes }) => {
-      const data = ref.seasons.find((x) => x.n === season.n);
-      const ahead = season.n === prog.s ? (data?.episodes ?? []).filter((ep) => idx(ep.s, ep.e) > vIdx) : [];
-      return (
-        <div style={{ ...paper, marginTop: 16 }}>
-          {/* The season's name heads its column on desktop (his note; on the
-              phone the strip right above already names it). */}
-          {!mobile && <div style={{ ...E.type.letterTitle22, fontSize: 18, ...onRule, color: E.color.ink }}>Season {season.n}</div>}
-          {season.eps.map((ep, n) => plotEntry(ep, n === 0 && mobile))}
-          {ahead.length > 0 && (
-            <>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: RULE, height: RULE }}>
-                <span style={{ ...E.type.label10, color: E.color.ink, whiteSpace: "nowrap" }}>You are here · S{prog.s} E{prog.e}</span>
-                <span aria-hidden="true" style={{ flex: 1, height: 1, background: E.color.ink }} />
-              </div>
-              {ahead.map((ep) => (
-                <div key={ep.e} style={{ ...E.type.body14, ...onRule, color: "rgba(26,58,74,0.45)" }}>Ep. {ep.e} · After you watch it</div>
-              ))}
-            </>
-          )}
-        </div>
-      );
-    };
+    // One season's sheet: its watched episodes. The sheet ends where you
+    // are — no "You are here" rule or dimmed "After you watch it" rows
+    // (his note, 2026-10-31); the stop line at the top already says it.
+    const sheetFor = (season: { n: number; eps: typeof plotEpisodes }) => (
+      <div style={{ ...paper, marginTop: 16 }}>
+        {/* The season's name heads its column on desktop (his note; on the
+            phone the strip right above already names it). */}
+        {!mobile && <div style={{ ...E.type.letterTitle22, fontSize: 18, ...onRule, color: E.color.ink }}>Season {season.n}</div>}
+        {season.eps.map((ep, n) => plotEntry(ep, n === 0 && mobile))}
+      </div>
+    );
     // The seasons (his notes, 2026-10-31). Every season up to the next
     // unwatched one, which is sealed with a red lock. On the PHONE they're
     // strips inline with the sheets — Season 1, its episodes, Season 2… —
@@ -622,7 +610,7 @@ export default function ShowReference({
               key={season.n}
               type="button"
               disabled={!watched || on}
-              onClick={() => setOpenPlotSeason(season.n)}
+              onClick={() => { setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
               aria-pressed={on}
               aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched && !on ? "pointer" : "default", textAlign: "left" }}
@@ -660,7 +648,7 @@ export default function ShowReference({
         {/* The room link above the stop line, the group's name in quotes
             (Alborz's notes, round 5). */}
         {user && roomLinks.length > 0 && (
-          <div style={{ marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
+          <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
             {roomLinks.map((r) => (
               <UnderlineWord key={r.roomId} onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)} title={`Open your show room with ${r.label}`}>Open your room with &ldquo;{r.label}&rdquo; →</UnderlineWord>
             ))}
