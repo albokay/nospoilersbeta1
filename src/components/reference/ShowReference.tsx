@@ -29,6 +29,51 @@ import { D } from "../dashboardChrome";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 
+/** Paragraphs for a long summary (his note, 2026-10-31): the blob holds
+ *  each summary as one line (the builder collapses whitespace), and a long
+ *  one reads as a block. Cut at sentence ends — not after Mr., Dr., an
+ *  initial or the like — then group the sentences into paragraphs of
+ *  about equal length, aiming at ~280 characters each; anything under 320
+ *  stays whole. The breaks are arbitrary by design: scan-ability over
+ *  sense, his call. */
+const ABBREV = /(?:^|\s)(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Lt|Sgt|Gen|Col|Capt|Prof|Mt|vs|No|Op|Vol|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|[A-Z])\.$/;
+export function summaryParagraphs(text: string): string[] {
+  const t = text.trim();
+  if (t.length < 320) return [t];
+  // Sentence ends: . ! ? (with a closing quote or bracket), then a space,
+  // then a capital, digit or opening quote.
+  const parts = t.split(/(?<=[.!?]["”’)\]]?)\s+(?=["“‘(\[]?[A-Z0-9])/);
+  const sentences: string[] = [];
+  for (const p of parts) {
+    const last = sentences[sentences.length - 1];
+    if (last !== undefined && ABBREV.test(last)) sentences[sentences.length - 1] = `${last} ${p}`;
+    else sentences.push(p);
+  }
+  if (sentences.length < 2) return [t];
+  const total = t.length;
+  const k = Math.min(sentences.length, Math.max(2, Math.round(total / 280)));
+  const out: string[] = [];
+  let cur: string[] = [];
+  let len = 0;
+  let n = 0;
+  for (let i = 0; i < sentences.length; i++) {
+    const sn = sentences[i];
+    const remainingParas = k - out.length;
+    const remainingSentences = sentences.length - i;
+    // Close the paragraph once it has reached its share — but never leave
+    // fewer sentences than paragraphs still to fill.
+    const share = (total - n) / remainingParas;
+    if (cur.length > 0 && remainingParas > 1 && remainingSentences >= remainingParas && len + sn.length / 2 > share) {
+      out.push(cur.join(" ")); n += len; cur = []; len = 0;
+    }
+    cur.push(sn); len += sn.length + 1;
+  }
+  if (cur.length) out.push(cur.join(" "));
+  // A short tail (under 80 characters) joins the paragraph before it.
+  if (out.length > 1 && out[out.length - 1].length < 80) { const tail = out.pop()!; out[out.length - 1] += ` ${tail}`; }
+  return out;
+}
+
 /** The sheet's margin counts (2026-10-31): the room's letters and the
  *  viewer's journal entries by the episode they're stamped on — a binge
  *  letter counts on the episode it's sealed at (the range's end). */
@@ -438,7 +483,7 @@ export default function ShowReference({
       );
     };
     const still = (ep: { s: number; e: number; still?: string | null }) => (
-      <div style={mobile ? { position: "relative", width: "100%", height: RULE * 6 - 8, margin: "4px 0" } : { position: "relative", float: "right", width: 224, height: 126, margin: "4px 0 8px 18px" }}>
+      <div style={mobile ? { position: "relative", width: "100%", height: RULE * 6 - 8, margin: "4px 0" } : { position: "relative", float: "right", width: 256, height: 144, margin: "4px 0 8px 20px" }}>
         <img src={ep.still!} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         {starAllowed && starBtn(ep, true)}
       </div>
@@ -494,7 +539,9 @@ export default function ShowReference({
           )}
           <div style={{ display: "flow-root" }}>
             {ep.still && still(ep)}
-            {ep.summary && <div style={{ ...E.type.letterBody15, ...onRule }}>{ep.summary}</div>}
+            {ep.summary && summaryParagraphs(ep.summary).map((para, i) => (
+              <div key={i} style={{ ...E.type.letterBody15, ...onRule, marginTop: i === 0 ? 0 : RULE }}>{para}</div>
+            ))}
             {countsLine(ep)}
           </div>
         </div>
