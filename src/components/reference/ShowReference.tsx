@@ -8,6 +8,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Lock, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
@@ -45,8 +46,13 @@ const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, episodeCounts,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, episodeCounts, railHost,
 }: {
+  /** The desktop rail (the guide redesign, 2026-10-31): the room page hands
+   *  the guide its right pane, and the trailers (first, so a long-running
+   *  show never pushes them down — his call) and the season strips render
+   *  there instead of under the sheet. */
+  railHost?: HTMLElement | null;
   /** The sheet's margin counts (the guide redesign, 2026-10-31): the room's
    *  letters and the viewer's journal entries by the episode they're stamped
    *  on, "s-e" → counts; see episodeWritingCounts. */
@@ -495,6 +501,63 @@ export default function ShowReference({
         </div>
       );
     };
+    // The sheet's season (one in view at a time): the season you're in, or
+    // the one opened from the strips. The strips: every watched season, then
+    // the next one locked (his call, 2026-10-31: the locked strip shows
+    // whenever the show has a next season; the chevrons once more than one
+    // season is watched). On desktop they live in the rail under the
+    // trailers; on the phone under the sheet, then the trailers.
+    const sheetSeason = plotEpisodes.length === 0 ? null : plotSeasons.length <= 1 ? plotSeasons[0] : (plotSeasons.find((x) => x.n === openPlotSeason) ?? plotSeasons[plotSeasons.length - 1]);
+    const seasonData = sheetSeason ? ref.seasons.find((x) => x.n === sheetSeason.n) : undefined;
+    const ahead = sheetSeason && sheetSeason.n === prog.s ? (seasonData?.episodes ?? []).filter((ep) => idx(ep.s, ep.e) > vIdx) : [];
+    const strips = [...ref.seasons].filter((season) => season.n <= prog.s + 1 && season.episodes.length > 0).sort((a, b) => a.n - b.n);
+    const stripsNode = (inRail: boolean) => (sheetSeason && strips.length > 1) ? (
+      <div style={inRail ? undefined : { marginTop: 28 }}>
+        {inRail && <SectionHead style={{ marginTop: 44 }}>Seasons</SectionHead>}
+
+        {strips.map((season, n) => {
+          const watched = plotSeasons.find((x) => x.n === season.n);
+          const total = season.episodes.length;
+          const open = !!watched && sheetSeason.n === season.n;
+          const switchable = !!watched && plotSeasons.length > 1;
+          return (
+            <button
+              key={season.n}
+              type="button"
+              disabled={!switchable}
+              onClick={() => setOpenPlotSeason(season.n)}
+              aria-expanded={switchable ? open : undefined}
+              aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderTop: n === 0 && !inRail ? `1px solid ${E.color.ink}` : 0, borderBottom: `1px solid ${E.color.hairline}`, ...E.type.label11, color: E.color.ink, cursor: switchable ? "pointer" : "default", textAlign: "left" }}
+            >
+              <span>Season {season.n}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
+                {watched && watched.eps.length < total ? `${watched.eps.length} of ${total}` : `${total} ${total === 1 ? "episode" : "episodes"}`}
+                {!watched ? <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" /> : switchable && <span aria-hidden="true" style={{ fontSize: 9, color: E.color.ink }}>{open ? "▲" : "▼"}</span>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
+    const trailersNode = (ref.launchTrailerKey || ref.seasons.some((season) => season.n >= 2 && season.trailerKey)) ? (
+      <>
+        <SectionHead style={railHost ? undefined : { marginTop: 28 }}>Trailers</SectionHead>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560, marginTop: 14 }}>
+          {ref.launchTrailerKey && <RefTrailer label="the launch trailer" trailerKey={ref.launchTrailerKey} editorial />}
+          {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
+            const prev = ref.seasons.find((x) => x.n === season.n - 1);
+            const prevLast = prev?.episodes[prev.episodes.length - 1];
+            const unlocked = !!prevLast && vIdx >= idx(prevLast.s, prevLast.e);
+            if (unlocked) return <RefTrailer key={season.n} label={`season ${season.n}`} trailerKey={season.trailerKey!} editorial />;
+            if (season.n === prog.s + 1) {
+              return <div key={season.n} style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>The season {season.n} trailer unlocks when you finish season {season.n - 1}.</div>;
+            }
+            return null;
+          })}
+        </div>
+      </>
+    ) : null;
     return (
       <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
         {/* The room link above the stop line, the group's name in quotes
@@ -549,15 +612,7 @@ export default function ShowReference({
         {/* The sheet: one season at a time — the season you're in (or the one
             opened from the strips below), the "You are here" rule and the
             rest of the season dimmed, "After you watch it". */}
-        {plotEpisodes.length > 0 && (() => {
-          const sheetSeason = plotSeasons.length <= 1 ? plotSeasons[0] : (plotSeasons.find((x) => x.n === openPlotSeason) ?? plotSeasons[plotSeasons.length - 1]);
-          const seasonData = ref.seasons.find((x) => x.n === sheetSeason.n);
-          const ahead = sheetSeason.n === prog.s ? (seasonData?.episodes ?? []).filter((ep) => idx(ep.s, ep.e) > vIdx) : [];
-          // The strips: every watched season, then the next one locked (his
-          // call, 2026-10-31: the locked strip shows whenever the show has a
-          // next season; the chevrons once more than one season is watched).
-          const strips = [...ref.seasons].filter((season) => season.n <= prog.s + 1 && season.episodes.length > 0).sort((a, b) => a.n - b.n);
-          return (
+        {sheetSeason && (
             <>
               <div ref={plotHeadRef} style={{ marginTop: 36, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingBottom: 9, borderBottom: `1px solid ${E.color.ink}` }}>
                 <span style={{ ...E.type.letterTitle22, color: E.color.ink }}>Previously, on {ref.showName}.</span>
@@ -593,53 +648,16 @@ export default function ShowReference({
                   </>
                 )}
               </div>
-              {strips.length > 1 && (
-                <div style={{ marginTop: 28 }}>
-                  {strips.map((season, n) => {
-                    const watched = plotSeasons.find((x) => x.n === season.n);
-                    const total = season.episodes.length;
-                    const open = !!watched && sheetSeason.n === season.n;
-                    const switchable = !!watched && plotSeasons.length > 1;
-                    return (
-                      <button
-                        key={season.n}
-                        type="button"
-                        disabled={!switchable}
-                        onClick={() => setOpenPlotSeason(season.n)}
-                        aria-expanded={switchable ? open : undefined}
-                        aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderTop: n === 0 ? `1px solid ${E.color.ink}` : 0, borderBottom: `1px solid ${E.color.hairline}`, ...E.type.label11, color: E.color.ink, cursor: switchable ? "pointer" : "default", textAlign: "left" }}
-                      >
-                        <span>Season {season.n}</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
-                          {watched && watched.eps.length < total ? `${watched.eps.length} of ${total}` : `${total} ${total === 1 ? "episode" : "episodes"}`}
-                          {!watched ? <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" /> : switchable && <span aria-hidden="true" style={{ fontSize: 9, color: E.color.ink }}>{open ? "▲" : "▼"}</span>}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              {!railHost && stripsNode(false)}
             </>
-          );
-        })()}
-        {(ref.launchTrailerKey || ref.seasons.some((season) => season.n >= 2 && season.trailerKey)) && (
-          <>
-            <SectionHead style={{ marginTop: 28 }}>Trailers</SectionHead>
-            <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560, marginTop: 14 }}>
-              {ref.launchTrailerKey && <RefTrailer label="the launch trailer" trailerKey={ref.launchTrailerKey} />}
-              {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
-                const prev = ref.seasons.find((x) => x.n === season.n - 1);
-                const prevLast = prev?.episodes[prev.episodes.length - 1];
-                const unlocked = !!prevLast && vIdx >= idx(prevLast.s, prevLast.e);
-                if (unlocked) return <RefTrailer key={season.n} label={`season ${season.n}`} trailerKey={season.trailerKey!} />;
-                if (season.n === prog.s + 1) {
-                  return <div key={season.n} style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>The season {season.n} trailer unlocks when you finish season {season.n - 1}.</div>;
-                }
-                return null;
-              })}
-            </div>
-          </>
+        )}
+        {!railHost && trailersNode}
+        {railHost && createPortal(
+          <div style={{ color: E.color.ink, fontFamily: E.font.interface }}>
+            {trailersNode}
+            {stripsNode(true)}
+          </div>,
+          railHost,
         )}
         <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 48, maxWidth: 620 }}>
           Episode and cast data from{" "}
@@ -1070,11 +1088,11 @@ function stillLarge(url: string): string {
 
 // Inline trailer facade (TrailerCard's thumbnail→iframe pattern, but for a
 // KNOWN key from the reference blob).
-function RefTrailer({ label, trailerKey }: { label: string; trailerKey: string }) {
+function RefTrailer({ label, trailerKey, editorial = false }: { label: string; trailerKey: string; editorial?: boolean }) {
   const [playing, setPlaying] = useState(false);
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: CANON.cream, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: editorial ? E.color.ink : CANON.cream, marginBottom: 6 }}>{label}</div>
       <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 14, overflow: "hidden", background: "rgba(0,0,0,0.25)" }}>
         {playing ? (
           <iframe

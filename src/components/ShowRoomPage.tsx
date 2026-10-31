@@ -172,6 +172,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // resolved into a username → display-name map for every room surface.
   const [roomContactNames, setRoomContactNames] = useState<Record<string, string>>({});
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
+  // The guide's rail (the guide redesign, 2026-10-31): on the guide tab the
+  // right pane hosts the trailers and the season strips, portalled in by
+  // ShowReference — so the solo room gets the pane too, on that tab only.
+  const [guideRail, setGuideRail] = useState<HTMLDivElement | null>(null);
   // The dashboard band arrives ON the reference tab (nav state, CP2).
   const [tab, setTab] = useState<Tab>(() =>
     (location.state as { openReference?: boolean } | null)?.openReference
@@ -1541,7 +1545,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
             {tab === "reference" && show && refEff && (
               <div style={editorial ? { marginTop: 28 } : undefined}>
-                <ShowReference showId={show.id} viewerProgress={refEff} episodeCounts={episodeWritingCounts(feedEntries, privateEntries)} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+                <ShowReference showId={show.id} viewerProgress={refEff} episodeCounts={episodeWritingCounts(feedEntries, privateEntries)} railHost={editorial ? guideRail : null} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
                   if (m.userId !== user?.id) return m;
                   if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
                   const i = m.ratings.findIndex((x) => x.s === s && x.e === e);
@@ -1658,8 +1662,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           {/* RIGHT pane: season map. Reserved but hidden on the private tab so
               the left column keeps the exact same placement across tabs.
               Omitted entirely in the private-only standalone (no group). */}
-          {!privateOnly && roomId && (
-            <div style={{ flex: editorial ? `0 0 ${E.measure.desktop.rail}px` : "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" ? "visible" : "hidden" }} aria-hidden={tab !== "friend"}>
+          {((!privateOnly && roomId) || (editorial && tab === "reference")) && (
+            <div style={{ flex: editorial ? `0 0 ${E.measure.desktop.rail}px` : "0 0 auto", alignSelf: "stretch", visibility: tab === "friend" || (editorial && tab === "reference") ? "visible" : "hidden" }} aria-hidden={!(tab === "friend" || (editorial && tab === "reference"))}>
+              {editorial && tab === "reference" ? (
+                <div ref={setGuideRail} style={{ position: "sticky", top: 24, marginTop: 28 }} />
+              ) : (<>
               {/* The editorial rail (checkpoint 5): scrolls on its own, the
                   legend pinned at its foot on a cream fill. */}
               <div style={editorial ? { position: "sticky", top: 24, maxHeight: "calc(100vh - 48px)", overflowY: "auto", display: "flex", flexDirection: "column", scrollbarWidth: "none" } : { position: "sticky", top: 24 }}>
@@ -1691,6 +1698,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               {editorial && <MapLegend pinned style={{ marginTop: "auto" }} />}
               </>)}
               </div>
+              </>)}
             </div>
           )}
         </div>
