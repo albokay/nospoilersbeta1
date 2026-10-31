@@ -13,7 +13,7 @@ import StickyNote from "../StickyNote";
 import { CANON } from "../../styles/canon";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord } from "../editorial/Chrome";
-import { CastRow, SelectWord } from "../editorial/ShowRoom";
+import { SelectWord } from "../editorial/ShowRoom";
 import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
@@ -356,7 +356,31 @@ export default function ShowReference({
 
   if (editorial) {
     const seasonsVisible = [...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => a.n - b.n);
-    const castList = castExpanded ? (episodeCast ?? visiblePeople) : foldedCast;
+    // The cast as polaroids (the guide redesign, 2026-10-31, his canvas):
+    // the episode's whole cast in a strip that scrolls sideways (the phone's
+    // bleeds to the screen's edges; 14px under the cards keeps a drawn
+    // scrollbar off them), each card tilted a little and sat a little
+    // lower or higher; "See whole cast →" spreads them into rows (three on
+    // the phone, five on desktop) and "Show fewer" folds them back. The
+    // folded-8 rule stays for the classic guide only.
+    const castAll = episodeCast ?? visiblePeople;
+    const TILT = [-2.5, 2, -1.5, 2.5, -2, 1.5];
+    const DROP = [0, 10, 0, 8, 4, 10];
+    const polaroid = (p: (typeof visiblePeople)[number], n: number, small: boolean) => (
+      <button
+        key={p.name}
+        type="button"
+        onClick={() => openActorImdb(p)}
+        title={`${p.name} on IMDb`}
+        style={{ flex: small ? undefined : "0 0 108px", width: small ? "100%" : 108, boxSizing: "border-box", padding: small ? "7px 7px 10px" : "8px 8px 12px", background: E.color.cream, border: `1px solid ${E.color.ink}`, transform: `rotate(${TILT[n % TILT.length]}deg)`, marginTop: DROP[n % DROP.length], textAlign: "left", cursor: "pointer", color: E.color.ink, fontFamily: E.font.interface }}
+      >
+        {p.img
+          ? <img src={`https://image.tmdb.org/t/p/w185${p.img}`} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block" }} />
+          : <span aria-hidden="true" style={{ display: "block", width: "100%", aspectRatio: "1 / 1", background: E.color.draft }} />}
+        <span style={{ display: "block", marginTop: small ? 8 : 9, fontSize: 13, lineHeight: 1.25, fontWeight: 600 }}>{p.name}</span>
+        {roleOf(p) && <span style={{ display: "block", marginTop: 3, fontSize: small ? 12 : 13, lineHeight: 1.3, color: E.color.inkMuted }}>{roleOf(p)}</span>}
+      </button>
+    );
     const roleOf = (p: (typeof visiblePeople)[number]) => {
       const since = idx(p.firstS, p.firstE) > idx(1, 1) ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`) : null;
       return [p.character, since].filter(Boolean).join(" · ") || null;
@@ -506,11 +530,17 @@ export default function ShowReference({
                 ))}
               </SelectWord>
             ) : null}>{episodeCast || vIdx < idx(1, 1) ? "Cast" : "Cast so far"}</SectionHead>
-            {castList.map((p) => (
-              <CastRow key={p.name} img={p.img ? `https://image.tmdb.org/t/p/w185${p.img}` : null} name={p.name} role={roleOf(p)} onClick={() => openActorImdb(p)} />
-            ))}
-            {(episodeCast ?? visiblePeople).length > 8 && (
-              <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+            {castExpanded ? (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${mobile ? 3 : 5}, minmax(0, 1fr))`, gap: "22px 20px", alignItems: "start", padding: "26px 4px 0" }}>
+                {castAll.map((p, n) => polaroid(p, n, mobile))}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: mobile ? 18 : 24, alignItems: "flex-start", overflowX: "auto", scrollbarWidth: "thin", ...(mobile ? { margin: `0 -${E.space.gutter}px`, padding: `24px ${E.space.gutter + 4}px 14px` } : { padding: "24px 6px 14px" }) }}>
+                {castAll.map((p, n) => polaroid(p, n, false))}
+              </div>
+            )}
+            {castAll.length > 3 && (
+              <div style={{ paddingTop: 10, display: "flex", justifyContent: "flex-end" }}>
                 <UnderlineWord onClick={() => setCastExpanded((v) => !v)}>{castExpanded ? "Show fewer" : "See whole cast →"}</UnderlineWord>
               </div>
             )}
