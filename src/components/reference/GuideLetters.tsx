@@ -46,17 +46,18 @@ const JOIN_BLOCK: React.CSSProperties = { ...E.type.button16, height: 56, backgr
 
 /** Follow an anchor on scroll (any scroller — the room pages scroll inside a
  *  fixed container) and resize, as the note writer does. */
-function useAnchorRect(anchorEl: HTMLElement | null | undefined): DOMRect | null {
+function useAnchorRect(anchorEl: HTMLElement | null | undefined, track = true): DOMRect | null {
   const [rect, setRect] = useState<DOMRect | null>(anchorEl ? anchorEl.getBoundingClientRect() : null);
   useEffect(() => {
     if (!anchorEl) { setRect(null); return; }
     setRect(anchorEl.getBoundingClientRect());
+    if (!track) return;   // the reader keeps its place once drawn (his note, 11-02)
     let raf = 0;
     const follow = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setRect(anchorEl.getBoundingClientRect())); };
     window.addEventListener("scroll", follow, true);
     window.addEventListener("resize", follow);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", follow, true); window.removeEventListener("resize", follow); };
-  }, [anchorEl]);
+  }, [anchorEl, track]);
   return rect;
 }
 
@@ -158,7 +159,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
  *  here (his call): before the read link, and on an unread letter's byline. */
 export const UNREAD_DOT: React.CSSProperties = { display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 };
 
-export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, startAtLast = false, unreadSince, onClose, onDelete, onJoin }: {
+export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, startAtLast = false, unreadSince, joinLabel = "Join the conversation", onClose, onDelete, onJoin }: {
   mobile: boolean;
   letters: GuideLetter[];
   nameOf: (userId: string) => string;
@@ -169,6 +170,9 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   unreadSince?: string | null;
   /** Open on the newest letter (after you've just written one). */
   startAtLast?: boolean;
+  /** "Join the conversation" once a friend has written; "Write another
+   *  letter" while every letter here is yours (his note, 11-02). */
+  joinLabel?: string;
   onClose: () => void;
   onDelete: (id: string) => Promise<void>;
   onJoin: () => void;
@@ -177,7 +181,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const paperRef = useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(mobile ? null : anchorEl);
+  const rect = useAnchorRect(mobile ? null : anchorEl, false);
   useDismiss(paperRef, onClose, !mobile);
   useEffect(() => { if (letters.length === 0) onClose(); }, [letters.length, onClose]);
 
@@ -230,7 +234,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
           </div>
         </div>
         <div style={{ position: "fixed", left: E.space.gutter, right: E.space.gutter, bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)", zIndex: 1201 }} onClick={(e) => e.stopPropagation()}>
-          <button type="button" onClick={onJoin} style={{ ...JOIN_BLOCK, width: "100%" }}>Join the conversation</button>
+          <button type="button" onClick={onJoin} style={{ ...JOIN_BLOCK, width: "100%" }}>{joinLabel}</button>
         </div>
       </div>,
       document.body,
@@ -276,7 +280,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
         </div>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 41 }}>
-        <button type="button" onClick={onJoin} style={{ ...JOIN_BLOCK, width: 240 }}>Join the conversation</button>
+        <button type="button" onClick={onJoin} style={{ ...JOIN_BLOCK, width: 240 }}>{joinLabel}</button>
       </div>
     </div>,
     document.body,

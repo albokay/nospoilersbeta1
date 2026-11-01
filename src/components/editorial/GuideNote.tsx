@@ -83,7 +83,8 @@ export function useGuideLetterNote({ userId, contactNames, mobile }: { userId: s
     if (note.relation === "none") { setAsk({ showId: note.showId, showName: note.showName, writers: note.writers }); return; }
     holdSeen(note.showId);
     const prefix = mobile ? "/m/show-room/private" : "/show-room/private";
-    navigate(`${prefix}/${note.showId}`, { state: { openReference: true, ...(note.relation === "past" ? { guideLetterAt: { s: note.season, e: note.episode } } : {}) } });
+    // Past: the guide opens the letters; behind: it scrolls to the sealed row.
+    navigate(`${prefix}/${note.showId}`, { state: { openReference: true, guideLetterAt: { s: note.season, e: note.episode } } });
   }, [note, userId, mobile, navigate, holdSeen]);
 
   /** The ask's end: I've seen it (then the picker) / I want to watch it /

@@ -6343,17 +6343,17 @@ export async function fetchBrowseLists(): Promise<BrowseList[]> {
 // read one is the database's rule (guide_letters RLS): the writer, and every
 // friend (anyone sharing a live group) at or past the episode. So a plain
 // select returns exactly what this viewer may see.
-export type GuideLetter = { id: string; userId: string; showId: string; season: number; episode: number; body: string; createdAt: string };
+export type GuideLetter = { id: string; userId: string; showId: string; season: number; episode: number; fromSeason: number; fromEpisode: number; body: string; createdAt: string };
 
 export async function fetchGuideLetters(showId: string): Promise<GuideLetter[]> {
   const { data, error } = await supabase
     .from("guide_letters")
-    .select("id, user_id, show_id, season, episode, body, created_at")
+    .select("id, user_id, show_id, season, episode, from_season, from_episode, body, created_at")
     .eq("show_id", showId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ id: r.id, userId: r.user_id, showId: r.show_id, season: r.season, episode: r.episode, body: r.body, createdAt: r.created_at }));
+  return (data ?? []).map((r: any) => ({ id: r.id, userId: r.user_id, showId: r.show_id, season: r.season, episode: r.episode, fromSeason: r.from_season ?? r.season, fromEpisode: r.from_episode ?? r.episode, body: r.body, createdAt: r.created_at }));
 }
 
 export async function createGuideLetter(userId: string, showId: string, season: number, episode: number, body: string): Promise<GuideLetter> {
@@ -6362,10 +6362,12 @@ export async function createGuideLetter(userId: string, showId: string, season: 
   const { data, error } = await supabase
     .from("guide_letters")
     .insert({ user_id: userId, show_id: showId, season, episode, body: text })
-    .select("id, user_id, show_id, season, episode, body, created_at")
+    .select("id, user_id, show_id, season, episode, from_season, from_episode, body, created_at")
     .single();
   if (error) throw error;
-  return { id: data.id, userId: data.user_id, showId: data.show_id, season: data.season, episode: data.episode, body: data.body, createdAt: data.created_at };
+  // The from position (where you are, stamped by the database at insert —
+  // the rooms' rule, 2026-11-02): a friend reads it once they're there.
+  return { id: data.id, userId: data.user_id, showId: data.show_id, season: data.season, episode: data.episode, fromSeason: data.from_season ?? data.season, fromEpisode: data.from_episode ?? data.episode, body: data.body, createdAt: data.created_at };
 }
 
 /** Your own letter only (RLS): the soft delete. */
@@ -6420,6 +6422,8 @@ export async function markGuideLettersSeen(userId: string, showId: string, seaso
  *  since a friend behind can't see the letter rows themselves. */
 export type GuideLetterSignal = {
   showId: string; showName: string; season: number; episode: number;
+  /** Where the letters were written from (the rooms' rule, 2026-11-02): the seal. */
+  fromSeason: number; fromEpisode: number;
   writerIds: string[]; letterCount: number; latestAt: string;
   relation: "past" | "behind" | "none";
   seenAt: string | null; holdSeenAt: string | null; notForMe: boolean;
@@ -6429,6 +6433,7 @@ export async function fetchGuideLetterSignals(showId: string | null = null): Pro
   if (error) throw error;
   return ((data ?? []) as any[]).map((r) => ({
     showId: r.show_id, showName: r.show_name, season: r.season, episode: r.episode,
+    fromSeason: r.from_season ?? r.season, fromEpisode: r.from_episode ?? r.episode,
     writerIds: (r.writer_ids ?? []) as string[], letterCount: r.letter_count ?? 0, latestAt: r.latest_at,
     relation: r.relation, seenAt: r.seen_at ?? null, holdSeenAt: r.hold_seen_at ?? null, notForMe: !!r.not_for_me,
   }));

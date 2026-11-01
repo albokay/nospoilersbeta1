@@ -955,7 +955,7 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
   const out = new Map<string, GuideLetterRaw[]>();
   const { data: letterRows } = await admin
     .from("guide_letters")
-    .select("user_id, show_id, season, episode, created_at")
+    .select("user_id, show_id, season, episode, from_season, from_episode, created_at")
     .is("deleted_at", null)
     .gte("created_at", since);
   const letters = (letterRows ?? []) as any[];
@@ -992,12 +992,15 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
     }
   }
   const showName = new Map<string, string>(((showRows ?? []) as any[]).map((sh) => [sh.id, String(sh.name ?? sh.id)]));
-  const byKey = new Map<string, { recipient: string; showId: string; season: number; episode: number; writers: Set<string>; latest: string }>();
+  // Sealed by where it was WRITTEN FROM (the rooms' rule, 2026-11-02): the
+  // relation is to the from position; one row per (show, episode, from).
+  const byKey = new Map<string, { recipient: string; showId: string; season: number; episode: number; fromS: number; fromE: number; writers: Set<string>; latest: string }>();
   for (const l of letters) {
+    const fromS = Number(l.from_season ?? l.season), fromE = Number(l.from_episode ?? l.episode);
     for (const r of friendsOf.get(l.user_id) ?? []) {
       if (onlyUserId && r !== onlyUserId) continue;
-      const key = `${r}|${l.show_id}|${l.season}|${l.episode}`;
-      const cur = byKey.get(key) ?? { recipient: r, showId: l.show_id, season: l.season, episode: l.episode, writers: new Set<string>(), latest: l.created_at };
+      const key = `${r}|${l.show_id}|${l.season}|${l.episode}|${fromS}|${fromE}`;
+      const cur = byKey.get(key) ?? { recipient: r, showId: l.show_id, season: l.season, episode: l.episode, fromS, fromE, writers: new Set<string>(), latest: l.created_at };
       cur.writers.add(l.user_id);
       if (new Date(l.created_at).getTime() > new Date(cur.latest).getTime()) cur.latest = l.created_at;
       byKey.set(key, cur);
@@ -1019,7 +1022,7 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
     if (h?.seen_at && new Date(h.seen_at).getTime() >= new Date(x.latest).getTime()) continue;   // tapped the note since
     const p = prog.get(`${x.recipient}|${x.showId}`);
     const eff = p ? effectiveProgress(p) : { s: 0, e: 0 };
-    const relation: GuideLetterRaw["relation"] = eff.s === 0 ? "none" : (eff.s > x.season || (eff.s === x.season && eff.e >= x.episode)) ? "past" : "behind";
+    const relation: GuideLetterRaw["relation"] = eff.s === 0 ? "none" : (eff.s > x.fromS || (eff.s === x.fromS && eff.e >= x.fromE)) ? "past" : "behind";
     if (relation === "past") {
       const seen = views.get(`${x.recipient}|${x.showId}|${x.season}|${x.episode}`);
       if (seen && new Date(seen).getTime() >= new Date(x.latest).getTime()) continue;                // opened the letters since

@@ -225,6 +225,7 @@ export default function ShowReference({
   const [guideSealed, setGuideSealed] = useState<GuideLetterSignal[]>([]);
   const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean; since?: string | null } | null>(null);
   const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
+  const sealedAnchors = useRef<Record<string, HTMLElement | null>>({});
   const closeGuide = useCallback(() => setGuideOpen(null), []);
   useEffect(() => {
     if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); setGuideSealed([]); return; }
@@ -399,16 +400,24 @@ export default function ShowReference({
   useEffect(() => {
     if (!openLetterAt || !user || !editorial) return;
     const key = `${openLetterAt.s}-${openLetterAt.e}`;
-    if (openedLetterAtRef.current === key || !(guideByEp.get(key)?.length)) return;
+    if (openedLetterAtRef.current === key) return;
+    const readable = !!guideByEp.get(key)?.length;
+    const sealed = guideSealed.some((sg) => sg.season === openLetterAt.s && sg.episode === openLetterAt.e);
+    if (!readable && !sealed) return;
     openedLetterAtRef.current = key;
-    setOpenPlotSeason(openLetterAt.s);
+    // The letters live on their episode's season; a sealed row ends YOUR season's sheet.
+    setOpenPlotSeason(readable ? openLetterAt.s : prog.s);
     const t = window.setTimeout(() => {
-      guideAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
-      openGuideReader(key);
+      if (readable) {
+        guideAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
+        openGuideReader(key);
+      } else {
+        sealedAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
     }, 350);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openLetterAt, guideByEp, user?.id, editorial]);
+  }, [openLetterAt, guideByEp, guideSealed, user?.id, editorial]);
   useEffect(() => { setOpenPlotSeason(prog.s); }, [prog.s]);
   const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : prog;
   const selEpData = useMemo(
@@ -565,18 +574,19 @@ export default function ShowReference({
     // "Write about this episode →" until there's writing, then "Adam and Sam
     // wrote about this episode →" — the letters open from there, and writing
     // more is Join the conversation inside the reader (his call: one path).
+    // The act sits on the title line, at its right (his note, 11-02); when
+    // the title needs the width it drops to a line of its own under the
+    // title, still right-aligned, its words never wrapping.
     const guideActs = (ep: { s: number; e: number }) => {
       if (!user) return null;
       const key = `${ep.s}-${ep.e}`;
       const eps = guideByEp.get(key) ?? [];
       const label = eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
       return (
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, height: RULE }}>
+        <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ marginLeft: "auto", flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, height: RULE }}>
           {eps.length > 0 && guideUnread(key) && <span aria-label="New letters" style={UNREAD_DOT} />}
-          <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ display: "inline-flex" }}>
-            <UnderlineWord onClick={() => { if (eps.length) openGuideReader(key); else setGuideOpen({ key, mode: "write" }); }} style={{ whiteSpace: "normal" }}>{label}</UnderlineWord>
-          </span>
-        </div>
+          <UnderlineWord onClick={() => { if (eps.length) openGuideReader(key); else setGuideOpen({ key, mode: "write" }); }}>{label}</UnderlineWord>
+        </span>
       );
     };
     const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null; still?: string | null }, first: boolean) => {
@@ -594,10 +604,12 @@ export default function ShowReference({
               words — on desktop hanging out beyond the column's edge, on the
               phone inline before "Ep. 2 · Title", where the line also sits on
               a cream band so no rule runs directly above or below the words. */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
+          <div style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 10px", minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
             {ratingAllowed && mobile && circleBtn}
-            <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0 }}>Ep. {ep.e} · {ep.title}</span>
+            {/* The title keeps its own line (flex 1 0 auto, capped at the row): a long one wraps within itself, a short one leaves room for the act beside it. */}
+            <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0, flex: "1 0 auto", maxWidth: "100%" }}>Ep. {ep.e} · {ep.title}</span>
             {starAllowed && !ep.still && starBtn(ep, false)}
+            {guideActs(ep)}
             {ratingAllowed && !mobile && <span style={{ position: "absolute", left: -36, top: 2, display: "inline-flex" }}>{circleBtn}</span>}
           </div>
           {open && (
@@ -625,7 +637,6 @@ export default function ShowReference({
             {ep.summary && summaryParagraphs(ep.summary).map((para, i) => (
               <div key={i} style={{ ...E.type.letterBody15, ...onRule, marginTop: i === 0 ? 0 : RULE }}>{para}</div>
             ))}
-            {guideActs(ep)}
           </div>
         </div>
       );
@@ -645,13 +656,16 @@ export default function ShowReference({
         {season.n === prog.s && guideSealed.map((sg) => {
           const names = sg.writerIds.map(guideNameOf);
           const who = joinNames(names);
+          const key = `${sg.season}-${sg.episode}`;
+          // Sealed by where it was WRITTEN FROM (the rooms' rule, 11-02); the line names the episode it's about.
+          const about = sg.fromSeason === sg.season && sg.fromEpisode === sg.episode ? "an episode ahead of you" : `S${sg.season} E${sg.episode} from S${sg.fromSeason} E${sg.fromEpisode}`;
           return (
-            <div key={`sealed-${sg.season}-${sg.episode}`} style={{ marginTop: RULE, background: E.color.cream }}>
+            <div key={`sealed-${key}-${sg.fromSeason}-${sg.fromEpisode}`} ref={(el) => { sealedAnchors.current[key] = el; }} style={{ marginTop: RULE, background: E.color.cream }}>
               <SealedEntry
                 from={who}
-                until={`S${sg.season} E${sg.episode}`}
-                line={`${who} wrote about an episode ahead of you. It opens when you get there.`}
-                stamp={<Stamp spec={stampSpecFor(sg.writerIds[0] ?? "")} label={stampLabelFor(sg.season, sg.episode)} initial={(names[0] ?? "").trim().charAt(0).toUpperCase()} scale={mobile ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
+                until={`S${sg.fromSeason} E${sg.fromEpisode}`}
+                line={`${who} wrote about ${about}. It opens when you get there.`}
+                stamp={<Stamp spec={stampSpecFor(sg.writerIds[0] ?? "")} label={stampLabelFor(sg.fromSeason, sg.fromEpisode)} initial={(names[0] ?? "").trim().charAt(0).toUpperCase()} scale={mobile ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
               />
             </div>
           );
@@ -850,13 +864,15 @@ export default function ShowReference({
             return (
               <GuideReader
                 mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} startAtLast={!!guideOpen.atLast} unreadSince={guideOpen.since}
+                joinLabel={eps.some((l) => l.userId !== user.id) ? "Join the conversation" : "Write another letter"}
                 onClose={closeGuide}
                 onDelete={async (id) => { await deleteGuideLetter(id); setGuideLetters((prev) => prev.filter((l) => l.id !== id)); }}
                 onJoin={() => setGuideOpen({ key: guideOpen.key, mode: "join" })}
               />
             );
           }
-          const writers = guideWriters(eps);
+          // Join = a friend has written; with only your own letters here the box is the first one's (his note, 11-02).
+          const writers = guideWriters(eps.filter((l) => l.userId !== user.id));
           const join = guideOpen.mode === "join" && writers.length > 0;
           return (
             <GuideWriter
