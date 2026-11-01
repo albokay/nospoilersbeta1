@@ -74,35 +74,18 @@ export function summaryParagraphs(text: string): string[] {
   return out;
 }
 
-/** The sheet's margin counts (2026-10-31): the room's letters and the
- *  viewer's journal entries by the episode they're stamped on — a binge
- *  letter counts on the episode it's sealed at (the range's end). */
-export function episodeWritingCounts(
-  letters: { s: number; e: number; isDeleted?: boolean; isInstructional?: boolean }[],
-  journal: { season: number; episode: number; isDeleted?: boolean }[],
-): Map<string, { letters: number; journal: number }> {
-  const out = new Map<string, { letters: number; journal: number }>();
-  const at = (s: number, e: number) => { const k = `${s}-${e}`; let c = out.get(k); if (!c) { c = { letters: 0, journal: 0 }; out.set(k, c); } return c; };
-  for (const l of letters) if (!l.isDeleted && !l.isInstructional) at(l.s, l.e).letters += 1;
-  for (const j of journal) if (!j.isDeleted) at(j.season, j.episode).journal += 1;
-  return out;
-}
 const CREAM = CANON.cream;
 const idx = (s: number, e: number) => s * 10000 + e;
 type RefSeasonLike = { n: number; episodes: { s: number; e: number }[] };
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, episodeCounts, railHost,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost,
 }: {
   /** The desktop rail (the guide redesign, 2026-10-31): the room page hands
    *  the guide its right pane, and the trailers (first, so a long-running
    *  show never pushes them down — his call) and the season strips render
    *  there instead of under the sheet. */
   railHost?: HTMLElement | null;
-  /** The sheet's margin counts (the guide redesign, 2026-10-31): the room's
-   *  letters and the viewer's journal entries by the episode they're stamped
-   *  on, "s-e" → counts; see episodeWritingCounts. */
-  episodeCounts?: Map<string, { letters: number; journal: number }>;
   /** Rating from the guide (2026-10-22): fires after a rating lands (null =
    *  cleared), so the room can patch its own map cell in place — no reload,
    *  the viewer keeps rating and scrolling. */
@@ -458,9 +441,10 @@ export default function ShowReference({
     // stars; unrated = the ring with a grey "?"; open = the filled ring),
     // then the still and the summary at the column's full width (the phone:
     // the still as a block six rules tall; desktop: a third of the column,
-    // floated right, the words wrapping it), and a mono line counting the
-    // letters and journal entries stamped on it (the pinned counts ride
-    // along, his call). The still isn't tappable; the essentials star sits
+    // floated right, the words wrapping it). The counts line that followed
+    // the summary (letters · journal entries) came out 2026-11-01 — the
+    // open-letters arc puts the episode's acts there. The still isn't
+    // tappable; the essentials star sits
     // on its top-left corner (outline only until starred — the still shows
     // through). The picker spans the column, 112px = four rules so the
     // lines under it keep their rhythm.
@@ -490,14 +474,6 @@ export default function ShowReference({
         {starAllowed && starBtn(ep, true)}
       </div>
     );
-    const countsLine = (ep: { s: number; e: number }) => {
-      const c = episodeCounts?.get(`${ep.s}-${ep.e}`);
-      if (!c || (!c.letters && !c.journal)) return null;
-      const parts: string[] = [];
-      if (c.letters) parts.push(`${c.letters} ${c.letters === 1 ? "letter" : "letters"}`);
-      if (c.journal) parts.push(`${c.journal} journal ${c.journal === 1 ? "entry" : "entries"}`);
-      return <div style={{ ...E.type.label10, ...onRule, color: E.color.inkMuted }}>{parts.join(" · ")}</div>;
-    };
     const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null; still?: string | null }, first: boolean) => {
       const rKey = `${ep.s}-${ep.e}`;
       const r = ratings.get(rKey) ?? 0;
@@ -544,7 +520,6 @@ export default function ShowReference({
             {ep.summary && summaryParagraphs(ep.summary).map((para, i) => (
               <div key={i} style={{ ...E.type.letterBody15, ...onRule, marginTop: i === 0 ? 0 : RULE }}>{para}</div>
             ))}
-            {countsLine(ep)}
           </div>
         </div>
       );
