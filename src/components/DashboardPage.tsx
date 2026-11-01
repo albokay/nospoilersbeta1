@@ -2211,9 +2211,10 @@ export default function DashboardPage() {
               <div style={{ position: "relative" }}>
                 <EditorialTitle desktop>Your watch groups</EditorialTitle>
                 {/* 88px further left (Alborz 2026-10-13): halfway from where it hung to the look-up band's left edge, so it reads as placed on the page rather than off it. */}
-                {user && (guideLetter.note
-                  ? <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -122, top: -19, width: 320 }} />
-                  : dashNote && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />)}
+                {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest); the guide's note only when nothing of the rooms' waits. */}
+                {user && (dashNote
+                  ? <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />
+                  : guideLetter.note && <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -122, top: -19, width: 320 }} />)}
               </div>
             ) : null)}
           </EditorialColumn>

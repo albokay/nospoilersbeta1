@@ -115,7 +115,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
         {head}
         <textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LETTER_MAX))} maxLength={LETTER_MAX} rows={8} placeholder="Write…" style={NOTE_FIELD} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={save} disabled={!canSave} style={{ ...INK_SMALL, height: 48, padding: "0 20px", opacity: canSave ? 1 : 0.6 }}>{saving ? "Saving…" : "Save"}</button>
+          <button type="button" onClick={save} disabled={!canSave} style={{ ...INK_SMALL, height: 48, padding: "0 20px", opacity: canSave ? 1 : 0.6 }}>{saving ? "Sending…" : "Send"}</button>
           <button type="button" onClick={onClose} disabled={saving} style={{ ...FRAME_SMALL, height: 48, padding: "0 20px" }}>Cancel</button>
           <span style={{ ...E.type.label10, marginLeft: "auto", opacity: 0.8 }}>{draft.length}/{LETTER_MAX}</span>
         </div>
@@ -144,7 +144,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
       <textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LETTER_MAX))} maxLength={LETTER_MAX} rows={9} placeholder="Write…" style={NOTE_FIELD} />
       <div style={{ textAlign: "right", marginTop: 4, fontSize: 11, color: TEXT_MUTED, marginBottom: 12 }}>{draft.length}/{LETTER_MAX}</div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexDirection: "row-reverse", justifyContent: "flex-start" }}>
-        <button type="button" onClick={save} disabled={!canSave} style={{ ...INK_SMALL, opacity: canSave ? 1 : 0.6, cursor: canSave ? "pointer" : "not-allowed" }}>{saving ? "Saving…" : "Save"}</button>
+        <button type="button" onClick={save} disabled={!canSave} style={{ ...INK_SMALL, opacity: canSave ? 1 : 0.6, cursor: canSave ? "pointer" : "not-allowed" }}>{saving ? "Sending…" : "Send"}</button>
         <button type="button" onClick={onClose} disabled={saving} style={{ ...MONO_WORD, padding: "0 10px", height: 34 }}>Cancel</button>
         {error && <span style={{ ...E.type.note13, color: E.color.alert, fontStyle: "italic", marginRight: "auto" }}>{error}</span>}
       </div>

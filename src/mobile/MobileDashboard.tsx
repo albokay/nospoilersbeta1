@@ -526,9 +526,10 @@ export default function MobileDashboard() {
         <>
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
-            {user && (guideLetter.note
-              ? <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 48, width: 234 }} />
-              : dashNote && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />)}
+            {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest). */}
+            {user && (dashNote
+              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />
+              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 48, width: 234 }} />)}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>
