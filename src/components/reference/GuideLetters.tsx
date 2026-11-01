@@ -154,12 +154,19 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
 }
 
 // ── The reader ────────────────────────────────────────────────────────────
-export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, startAtLast = false, onClose, onDelete, onJoin }: {
+/** The letter-blue dot (the group row's new-letters blue), a little bigger
+ *  here (his call): before the read link, and on an unread letter's byline. */
+export const UNREAD_DOT: React.CSSProperties = { display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 };
+
+export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, startAtLast = false, unreadSince, onClose, onDelete, onJoin }: {
   mobile: boolean;
   letters: GuideLetter[];
   nameOf: (userId: string) => string;
   currentUserId: string | null;
   anchorEl?: HTMLElement | null;
+  /** The seen stamp from BEFORE this open (undefined = never): a friend's
+   *  letter newer than it carries the dot while the reader is open. */
+  unreadSince?: string | null;
   /** Open on the newest letter (after you've just written one). */
   startAtLast?: boolean;
   onClose: () => void;
@@ -174,7 +181,13 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   useDismiss(paperRef, onClose, !mobile);
   useEffect(() => { if (letters.length === 0) onClose(); }, [letters.length, onClose]);
 
-  const byline = (l: GuideLetter) => `${nameOf(l.userId)} · S${l.season} E${l.episode} · ${timeAgo(new Date(l.createdAt).getTime())}`;
+  const isUnread = (l: GuideLetter) => !!currentUserId && l.userId !== currentUserId && (unreadSince == null || Date.parse(l.createdAt) > Date.parse(unreadSince));
+  const byline = (l: GuideLetter) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {isUnread(l) && <span aria-label="New" style={UNREAD_DOT} />}
+      <span style={NOTE_BYLINE}>{nameOf(l.userId)} · S{l.season} E{l.episode} · {timeAgo(new Date(l.createdAt).getTime())}</span>
+    </div>
+  );
   async function del(id: string) {
     if (busy) return;
     setBusy(true);
@@ -209,7 +222,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
           <div data-float-gap="1" style={{ minHeight: "100%", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "12vh 16px calc(env(safe-area-inset-bottom, 0px) + 112px)" }}>
             {letters.map((l, i) => (
               <div key={l.id} style={paperStyle(i % 2 === 0 ? -1.5 : 1.2, { margin: "0 4px 14px" })}>
-                <div style={NOTE_BYLINE}>{byline(l)}</div>
+                {byline(l)}
                 <div style={NOTE_TEXT}>{l.body}</div>
                 {deleteRow(l)}
               </div>
@@ -250,7 +263,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
           <div aria-hidden style={{ position: "absolute", left: 7, top: 9, right: -7, bottom: -9, background: E.color.cream, boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, transform: "rotate(1.6deg)", transformOrigin: "bottom center" }} />
         )}
         <div role="dialog" aria-label={`Letter from ${nameOf(l.userId)}`} style={{ position: "relative", zIndex: 1, minHeight: 0, maxHeight: "inherit", boxSizing: "border-box", background: E.color.cream, boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, padding: "14px 16px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={NOTE_BYLINE}>{byline(l)}</div>
+          {byline(l)}
           <div style={{ ...NOTE_TEXT, marginTop: 0, overflowY: "auto", minHeight: 0 }}>{l.body}</div>
           {deleteRow(l)}
           {(prev || next) && (

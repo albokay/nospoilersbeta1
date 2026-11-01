@@ -6385,3 +6385,29 @@ export async function fetchProfileNames(ids: string[]): Promise<Record<string, {
   for (const p of (profs.data ?? []) as any[]) out[p.id] = { username: p.username, displayName: p.display_name ?? null };
   return out;
 }
+
+/** The viewer's per-episode "seen" stamps for a show's guide letters
+ *  ("s-e" → seen_at): a friend's letter newer than the stamp (or with no
+ *  stamp) is unread — the guide's dot. */
+export async function fetchGuideLetterViews(userId: string, showId: string): Promise<Record<string, string>> {
+  const { data, error } = await supabase
+    .from("guide_letter_views")
+    .select("season, episode, seen_at")
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  if (error) throw error;
+  const out: Record<string, string> = {};
+  for (const r of (data ?? []) as any[]) out[`${r.season}-${r.episode}`] = r.seen_at;
+  return out;
+}
+
+/** Opening an episode's letters stamps them seen (the room's rule: a signal
+ *  clears only by opening the thing). Returns the stamp. */
+export async function markGuideLettersSeen(userId: string, showId: string, season: number, episode: number): Promise<string> {
+  const seenAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("guide_letter_views")
+    .upsert({ user_id: userId, show_id: showId, season, episode, seen_at: seenAt }, { onConflict: "user_id,show_id,season,episode" });
+  if (error) throw error;
+  return seenAt;
+}

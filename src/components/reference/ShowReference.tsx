@@ -19,9 +19,9 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen } from "../../lib/db";
 import type { GuideLetter } from "../../lib/db";
-import { GuideWriter, GuideReader, writeContext, joinContext } from "./GuideLetters";
+import { GuideWriter, GuideReader, UNREAD_DOT, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
 import { RATING_LABELS } from "../RatingCaptureModal";
 import type { Show } from "../../lib/db";
@@ -213,18 +213,22 @@ export default function ShowReference({
   // button. Hooks sit above the loading returns.
   const [guideLetters, setGuideLetters] = useState<GuideLetter[]>([]);
   const [guideNames, setGuideNames] = useState<Record<string, string>>({});
-  const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean } | null>(null);
+  const [guideViews, setGuideViews] = useState<Record<string, string>>({});
+  const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean; since?: string | null } | null>(null);
   const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
   const closeGuide = useCallback(() => setGuideOpen(null), []);
   useEffect(() => {
-    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); return; }
+    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); return; }
     let cancelled = false;
-    setGuideLetters([]); setGuideOpen(null);
+    setGuideLetters([]); setGuideViews({}); setGuideOpen(null);
     (async () => {
       try {
-        const rows = await fetchGuideLetters(showId);
+        const [rows, views] = await Promise.all([
+          fetchGuideLetters(showId),
+          fetchGuideLetterViews(user.id, showId).catch(() => ({} as Record<string, string>)),
+        ]);
         if (cancelled) return;
-        setGuideLetters(rows);
+        setGuideLetters(rows); setGuideViews(views);
         const ids = Array.from(new Set(rows.map((r) => r.userId).filter((id) => id !== user.id)));
         if (!ids.length) { setGuideNames({}); return; }
         const [profs, contact] = await Promise.all([
@@ -246,6 +250,18 @@ export default function ShowReference({
   }, [guideLetters]);
   const guideNameOf = (id: string) => (user && id === user.id ? "You" : guideNames[id] ?? "A friend");
   const guideWriters = (eps: GuideLetter[]) => { const out: string[] = []; for (const l of eps) { const n = guideNameOf(l.userId); if (!out.includes(n)) out.push(n); } return out; };
+  // Unread = a friend's letter newer than your seen stamp for that episode
+  // (none = never opened). Opening the reader stamps it (the room's rule:
+  // cleared only by opening); the reader keeps the earlier stamp so the
+  // dots stay on the new letters while you read.
+  const guideUnread = (key: string) => { const since = guideViews[key]; return (guideByEp.get(key) ?? []).some((l) => !!user && l.userId !== user.id && (!since || Date.parse(l.createdAt) > Date.parse(since))); };
+  const openGuideReader = (key: string, atLast = false) => {
+    const since = guideViews[key] ?? null;
+    setGuideOpen({ key, mode: "read", atLast, since });
+    if (!user) return;
+    const [s, e] = key.split("-").map(Number);
+    markGuideLettersSeen(user.id, showId, s, e).then((seenAt) => setGuideViews((v) => ({ ...v, [key]: seenAt }))).catch(() => {});
+  };
   const [progressOverride, setProgressOverride] = useState<{ s: number; e: number } | null>(null);
   // Finished (Alborz, round 5 follow-up): the band's rule — at the show's
   // last catalog episode; the catalog row carries the aired counts.
@@ -529,8 +545,9 @@ export default function ShowReference({
       const label = eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
       return (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, height: RULE }}>
+          {eps.length > 0 && guideUnread(key) && <span aria-label="New letters" style={UNREAD_DOT} />}
           <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ display: "inline-flex" }}>
-            <UnderlineWord onClick={() => setGuideOpen({ key, mode: eps.length ? "read" : "write" })} style={{ whiteSpace: "normal" }}>{label}</UnderlineWord>
+            <UnderlineWord onClick={() => { if (eps.length) openGuideReader(key); else setGuideOpen({ key, mode: "write" }); }} style={{ whiteSpace: "normal" }}>{label}</UnderlineWord>
           </span>
         </div>
       );
@@ -783,12 +800,12 @@ export default function ShowReference({
           const save = async (body: string) => {
             const row = await createGuideLetter(user.id, showId, gs, ge, body);
             setGuideLetters((prev) => [...prev, row]);
-            setGuideOpen({ key: guideOpen.key, mode: "read", atLast: true });
+            openGuideReader(guideOpen.key, true);
           };
           if (guideOpen.mode === "read") {
             return (
               <GuideReader
-                mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} startAtLast={!!guideOpen.atLast}
+                mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} startAtLast={!!guideOpen.atLast} unreadSince={guideOpen.since}
                 onClose={closeGuide}
                 onDelete={async (id) => { await deleteGuideLetter(id); setGuideLetters((prev) => prev.filter((l) => l.id !== id)); }}
                 onJoin={() => setGuideOpen({ key: guideOpen.key, mode: "join" })}
