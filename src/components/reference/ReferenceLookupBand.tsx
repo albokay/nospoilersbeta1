@@ -36,6 +36,7 @@ import { SectionHead, UnderlineWord, EditorialColumn } from "../editorial/Chrome
 import { EditorialDialog, EditorialSheet, NumbersPicker } from "../editorial/GroupRoom";
 import { Block, Frame, FORM_CSS, FIELD_BOX } from "../editorial/Onboarding";
 import { NOTE_FIELD } from "../editorial/MapNotes";
+import type { GuideAsk, GuideAskOutcome } from "../editorial/GuideNote";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -64,8 +65,15 @@ function EdShell({ mobile, children, onClose, label }: { mobile: boolean; childr
     : <EditorialDialog onClose={onClose} width={480} label={label} align="left">{children}</EditorialDialog>;
 }
 
-export default function ReferenceLookupBand({ mobile = false, editorial = false, groupsColumn }: {
+export default function ReferenceLookupBand({ mobile = false, editorial = false, groupsColumn, guideAsk = null, onGuideAskDone }: {
   mobile?: boolean;
+  /** A friend's guide letter on a show you have no position on (open
+   *  letters, 2026-11-01, CP4): the dashboard's note opens this ask —
+   *  the look-up card's shell with the poster at the left: Have you
+   *  watched it? I've seen it (then the picker, at the end of what's aired,
+   *  with the waiting-letter line) · I want to watch it · Not for me. */
+  guideAsk?: GuideAsk | null;
+  onGuideAskDone?: (outcome: GuideAskOutcome) => void;
   /** The editorial skin (checkpoint 2, 2026-10-12; the E3Dash / D3Dash
    *  boards): the same data and cards drawn as the look-up band (an accent
    *  swath with the mono head and the Show field), the three poster shelves
@@ -259,6 +267,17 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     ensureShowReference(show.id).then((r) => setShareRef(r)).catch(() => {});
   }
   const [posters, setPosters] = useState<Record<string, string | null>>({});
+  // The guide-letter ask (CP4): its show from the catalog, its step.
+  const [askStep, setAskStep] = useState<"ask" | "picker">("ask");
+  const askShow = useMemo(() => (guideAsk ? shows.find((sh) => sh.id === guideAsk.showId) ?? null : null), [guideAsk, shows]);
+  useEffect(() => { setAskStep("ask"); }, [guideAsk?.showId]);
+  useEffect(() => {
+    if (!askShow?.tvmazeId || posters[askShow.id] !== undefined) return;
+    let cancelled = false;
+    fetchTvmazePoster(askShow.tvmazeId).then((url) => { if (!cancelled) setPosters((prev) => ({ ...prev, [askShow.id]: url })); }).catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askShow?.id]);
 
   // Search lives in an OVERLAY card (rev 2026-09-05 — the group room's
   // search grammar; inline results were pushing the page around). "canon"
@@ -400,11 +419,12 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
   // at all once the show was on the want shelf — so the zero never
   // registered. Zero logs as S0 E0 like any position.
   const [logBusy, setLogBusy] = useState(false);
-  async function justLogIt() {
-    if (!user || !cardShow || logBusy || confirmBusy) return;
+  async function justLogIt() { return justLogItFor(cardShow); }
+  async function justLogItFor(show: Show | null, after?: () => void) {
+    if (!user || !show || logBusy || confirmBusy) return;
     setLogBusy(true);
     try {
-      const existing = progress[cardShow.id];
+      const existing = progress[show.id];
       const exHS = existing?.highestS ?? 0;
       const exHE = existing?.highestE ?? 0;
       const keepCeiling = exHS > picked.s || (exHS === picked.s && exHE >= picked.e);
@@ -413,25 +433,27 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         highestS: keepCeiling ? exHS : picked.s,
         highestE: keepCeiling ? exHE : picked.e,
       };
-      await upsertRewatchStatus(user.id, cardShow.id, entry);
-      stampReferenceLookup(user.id, cardShow.id); // freshness + un-hide, fire-and-forget
+      await upsertRewatchStatus(user.id, show.id, entry);
+      stampReferenceLookup(user.id, show.id); // freshness + un-hide, fire-and-forget
       setProgress((prev) => ({
         ...prev,
-        [cardShow.id]: { ...(prev[cardShow.id] ?? {}), ...entry, lastLookedUpAt: Date.now(), shelfHiddenAt: undefined },
+        [show.id]: { ...(prev[show.id] ?? {}), ...entry, lastLookedUpAt: Date.now(), shelfHiddenAt: undefined },
       }));
       setCardShow(null);
       setCardPending(null);
+      after?.();
     } catch (e) { console.error("[ref-band] just-log failed", e); }
     finally { setLogBusy(false); }
   }
 
-  async function lookItUp() {
-    if (!user || !cardShow || !pickedReady || confirmBusy) return;
+  async function lookItUp() { return lookItUpFor(cardShow); }
+  async function lookItUpFor(show: Show | null, after?: () => void) {
+    if (!user || !show || !pickedReady || confirmBusy) return;
     setConfirmBusy(true);
     try {
       // Progress only — never a proposal. Highest never lowers for a show
       // that already has a row (the reading ceiling stays).
-      const existing = progress[cardShow.id];
+      const existing = progress[show.id];
       const exHS = existing?.highestS ?? 0;
       const exHE = existing?.highestE ?? 0;
       const keepCeiling = exHS > picked.s || (exHS === picked.s && exHE >= picked.e);
@@ -440,9 +462,10 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         highestS: keepCeiling ? exHS : picked.s,
         highestE: keepCeiling ? exHE : picked.e,
       };
-      await upsertRewatchStatus(user.id, cardShow.id, entry);
-      stampReferenceLookup(user.id, cardShow.id); // fire-and-forget
-      navigate(`${pathPrefix}/${cardShow.id}`, { state: { openReference: true } });
+      await upsertRewatchStatus(user.id, show.id, entry);
+      stampReferenceLookup(user.id, show.id); // fire-and-forget
+      after?.();
+      navigate(`${pathPrefix}/${show.id}`, { state: { openReference: true } });
     } catch (e) {
       console.error("[ref-band] look-it-up failed", e);
       setConfirmBusy(false);
@@ -794,6 +817,67 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
           </div>
         </EdShell>
       )}
+      {/* ── A friend's guide letter, a show you have no position on (open
+            letters, CP4): the card's shell with the poster at the LEFT and
+            the words beside it (his call: tidier). Step one asks; "I've seen
+            it" opens the picker at the end of what's aired with only the
+            waiting-letter line under it, then the card's own two acts. ── */}
+      {guideAsk && askShow && (() => {
+        const pw = mobile ? 64 : 72, ph = mobile ? 92 : 104;
+        const poster = posters[askShow.id];
+        const seasons = ((askShow as any).seasons as number[] | undefined) ?? [];
+        const several = /\band\b/.test(guideAsk.writers);
+        const waiting = several
+          ? `Letters from ${guideAsk.writers} are waiting. They open once you’re past the episodes they’re about.`
+          : `${guideAsk.writers}’s letter is waiting. It opens once you’re past the episode it’s about.`;
+        const head = (q: string, line: string) => (
+          <div style={{ display: "flex", gap: 20, alignItems: "flex-start", textAlign: "left", marginTop: mobile ? 22 : 4, paddingRight: mobile ? 0 : 20 }}>
+            {poster
+              ? <img src={poster} alt="" draggable={false} style={{ width: pw, height: ph, objectFit: "cover", display: "block", flexShrink: 0 }} />
+              : <div aria-hidden="true" style={{ width: pw, height: ph, background: E.color.draft, flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: mobile ? 28 : 30, lineHeight: 1.1, letterSpacing: "-0.01em" }}>{askShow.name}</div>
+              <div style={{ ...E.type.label11, marginTop: 14 }}>{q}</div>
+              <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 6 }}>{line}</div>
+            </div>
+          </div>
+        );
+        const done = (o: GuideAskOutcome) => onGuideAskDone?.(o);
+        return (
+          <EdShell mobile={mobile} onClose={() => { if (!confirmBusy && !logBusy && !wantBusy) done("close"); }} label={askShow.name}>
+            <div style={{ textAlign: "center" }}>
+              {askStep === "ask" ? (
+                <>
+                  {head("Have you watched it?", `${guideAsk.writers} wrote about it in the show guide. The letter opens for friends who’ve seen the episode it’s about.`)}
+                  <Block onClick={() => { const ls = seasons.length; setPicked(ls ? { s: ls, e: seasons[ls - 1] ?? 1 } : { s: 0, e: 0 }); setAskStep("picker"); }} style={{ marginTop: 22 }}>I’ve seen it</Block>
+                  <Frame
+                    onClick={async () => {
+                      if (!user || wantBusy) return;
+                      setWantBusy(true);
+                      try {
+                        await markWantToWatch(user.id, askShow.id);
+                        setProgress((prev) => ({ ...prev, [askShow.id]: { ...(prev[askShow.id] ?? { s: 0, e: 0 }), wantedAt: Date.now() } }));
+                      } catch (e) { console.error("[ref-band] want-to-watch failed", e); }
+                      finally { setWantBusy(false); }
+                      done("want");
+                    }}
+                    disabled={wantBusy} style={{ marginTop: 10 }}
+                  >{wantBusy ? <>one moment<LoadingDots /></> : "I want to watch it"}</Frame>
+                  <div style={{ marginTop: 14 }}><UnderlineWord onClick={() => done("notForMe")} style={{ padding: "8px 0" }}>Not for me</UnderlineWord></div>
+                </>
+              ) : (
+                <>
+                  {head("How far in are you?", waiting)}
+                  <NumbersPicker show={askShow} value={picked} onChange={(v) => setPicked(v)} allowZero={false} />
+                  <Block onClick={() => lookItUpFor(askShow, () => done("seen"))} disabled={confirmBusy || logBusy || !pickedReady} style={{ marginTop: 24 }}>{confirmBusy ? <>one moment<LoadingDots /></> : "Open show guide"}</Block>
+                  <Frame onClick={() => justLogItFor(askShow, () => done("seen"))} disabled={confirmBusy || logBusy || !pickedReady} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
+                </>
+              )}
+              <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={askShow.id} tvmazeId={askShow.tvmazeId ?? null} bleed={mobile ? E.space.gutter : 32} /></div>
+            </div>
+          </EdShell>
+        );
+      })()}
     </>
   );
 

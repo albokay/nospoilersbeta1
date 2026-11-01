@@ -126,6 +126,7 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord, FittedTitle } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
+import { useGuideLetterNote } from "./editorial/GuideNote";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
 import { Drawer, Confirm, FinishedTiles, FinishedHead, ChatMessages, ChatComposer, type ChatRow } from "./editorial/Overlays";
@@ -342,6 +343,8 @@ export default function DashboardPage() {
   // invitee names now ride the rail's per-group fetchGroupPendingInvites read
   // (help-system arc CP2 — group-wide, any inviter), not an own-invites read.
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
+  // A friend's guide letter (open letters, 2026-11-01, CP4): the note and the ask.
+  const guideLetter = useGuideLetterNote({ userId: user?.id ?? null, contactNames, mobile: false });
 
   // CP5: leave-a-room confirm (the X on an active-room button).
   const [leaveConfirm, setLeaveConfirm] = useState<{ roomId: string; showId: string; name: string } | null>(null);
@@ -2208,7 +2211,9 @@ export default function DashboardPage() {
               <div style={{ position: "relative" }}>
                 <EditorialTitle desktop>Your watch groups</EditorialTitle>
                 {/* 88px further left (Alborz 2026-10-13): halfway from where it hung to the look-up band's left edge, so it reads as placed on the page rather than off it. */}
-                {dashNote && user && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />}
+                {user && (guideLetter.note
+                  ? <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -122, top: -19, width: 320 }} />
+                  : dashNote && <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />)}
               </div>
             ) : null)}
           </EditorialColumn>
@@ -2606,7 +2611,7 @@ export default function DashboardPage() {
             );
             return socialOnbActive
               ? <EditorialColumn style={{ marginTop: 64 }}>{groupsEl}</EditorialColumn>
-              : <ReferenceLookupBand editorial groupsColumn={groupsEl} />;
+              : <ReferenceLookupBand editorial groupsColumn={groupsEl} guideAsk={guideLetter.ask} onGuideAskDone={guideLetter.settleAsk} />;
           })()}
         </div>
       ) : (

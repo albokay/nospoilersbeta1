@@ -6411,3 +6411,36 @@ export async function markGuideLettersSeen(userId: string, showId: string, seaso
   if (error) throw error;
   return seenAt;
 }
+
+/** The dashboard's signal for friends' guide letters (CP4): one row per
+ *  (show, season, episode) with friends' letters — who, how many, when the
+ *  newest landed, and the caller's relation to the episode ('past' = the
+ *  letters are readable, 'behind' = a position below it, 'none' = no
+ *  position). Never a body. The database computes it (SECURITY DEFINER),
+ *  since a friend behind can't see the letter rows themselves. */
+export type GuideLetterSignal = {
+  showId: string; showName: string; season: number; episode: number;
+  writerIds: string[]; letterCount: number; latestAt: string;
+  relation: "past" | "behind" | "none";
+  seenAt: string | null; holdSeenAt: string | null; notForMe: boolean;
+};
+export async function fetchGuideLetterSignals(showId: string | null = null): Promise<GuideLetterSignal[]> {
+  const { data, error } = await supabase.rpc("get_guide_letter_signals", { p_show_id: showId });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map((r) => ({
+    showId: r.show_id, showName: r.show_name, season: r.season, episode: r.episode,
+    writerIds: (r.writer_ids ?? []) as string[], letterCount: r.letter_count ?? 0, latestAt: r.latest_at,
+    relation: r.relation, seenAt: r.seen_at ?? null, holdSeenAt: r.hold_seen_at ?? null, notForMe: !!r.not_for_me,
+  }));
+}
+
+/** The viewer's hold on a show's guide-letter note: `seen` = the note was
+ *  tapped (a newer letter raises it again); `notForMe` = never again for
+ *  this show. Only the given columns change (an upsert on the own row). */
+export async function holdGuideLetters(userId: string, showId: string, patch: { seen?: boolean; notForMe?: boolean }): Promise<void> {
+  const row: Record<string, unknown> = { user_id: userId, show_id: showId };
+  if (patch.seen) row.seen_at = new Date().toISOString();
+  if (patch.notForMe != null) row.not_for_me = patch.notForMe;
+  const { error } = await supabase.from("guide_letter_holds").upsert(row, { onConflict: "user_id,show_id" });
+  if (error) throw error;
+}

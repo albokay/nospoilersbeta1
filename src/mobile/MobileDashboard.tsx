@@ -21,6 +21,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, AccountWord, wordStyle, EditorialTitle } from "../components/editorial/Chrome";
 import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
+import { useGuideLetterNote } from "../components/editorial/GuideNote";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
 import MobileGhostRow from "./MobileGhostRow";
@@ -115,6 +116,8 @@ export default function MobileDashboard() {
   const [railGroups, setRailGroups] = useState<RailGroup[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingGroupInvite[]>([]);
   const [contactNames, setContactNames] = useState<Record<string, string>>({});
+  // A friend's guide letter (open letters, 2026-11-01, CP4): the note and the ask.
+  const guideLetter = useGuideLetterNote({ userId: user?.id ?? null, contactNames, mobile: true });
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
   const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
@@ -523,7 +526,9 @@ export default function MobileDashboard() {
         <>
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
-            {dashNote && user && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />}
+            {user && (guideLetter.note
+              ? <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 48, width: 234 }} />
+              : dashNote && <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />)}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>
@@ -551,7 +556,7 @@ export default function MobileDashboard() {
             );
             return showSocialOnb
               ? <div style={{ padding: `0 ${E.space.gutter}px` }}>{groupsEl}</div>
-              : <ReferenceLookupBand mobile editorial groupsColumn={groupsEl} />;
+              : <ReferenceLookupBand mobile editorial groupsColumn={groupsEl} guideAsk={guideLetter.ask} onGuideAskDone={guideLetter.settleAsk} />;
           })()}
         </>
       ) : (loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (

@@ -19,8 +19,11 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen } from "../../lib/db";
-import type { GuideLetter } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen, fetchGuideLetterSignals } from "../../lib/db";
+import type { GuideLetter, GuideLetterSignal } from "../../lib/db";
+import { SealedEntry } from "../editorial/ShowRoom";
+import Stamp, { stampSpecFor } from "../Stamp";
+import { stampLabelFor } from "../../lib/letterRange";
 import { GuideWriter, GuideReader, UNREAD_DOT, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
 import { RATING_LABELS } from "../RatingCaptureModal";
@@ -81,8 +84,11 @@ const idx = (s: number, e: number) => s * 10000 + e;
 type RefSeasonLike = { n: number; episodes: { s: number; e: number }[] };
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost,
+  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost, openLetterAt = null,
 }: {
+  /** Arriving from the dashboard's "Read it →" note (open letters, CP4):
+   *  the episode whose letters open once they've loaded. */
+  openLetterAt?: { s: number; e: number } | null;
   /** The desktop rail (the guide redesign, 2026-10-31): the room page hands
    *  the guide its right pane, and the trailers (first, so a long-running
    *  show never pushes them down — his call) and the season strips render
@@ -214,22 +220,27 @@ export default function ShowReference({
   const [guideLetters, setGuideLetters] = useState<GuideLetter[]>([]);
   const [guideNames, setGuideNames] = useState<Record<string, string>>({});
   const [guideViews, setGuideViews] = useState<Record<string, string>>({});
+  // Friends' letters AHEAD of you (the signal, never a body): the sealed row
+  // at the end of your season's sheet, as the room's sealed letter.
+  const [guideSealed, setGuideSealed] = useState<GuideLetterSignal[]>([]);
   const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean; since?: string | null } | null>(null);
   const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
   const closeGuide = useCallback(() => setGuideOpen(null), []);
   useEffect(() => {
-    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); return; }
+    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); setGuideSealed([]); return; }
     let cancelled = false;
-    setGuideLetters([]); setGuideViews({}); setGuideOpen(null);
+    setGuideLetters([]); setGuideViews({}); setGuideSealed([]); setGuideOpen(null);
     (async () => {
       try {
-        const [rows, views] = await Promise.all([
+        const [rows, views, signals] = await Promise.all([
           fetchGuideLetters(showId),
           fetchGuideLetterViews(user.id, showId).catch(() => ({} as Record<string, string>)),
+          fetchGuideLetterSignals(showId).catch(() => [] as GuideLetterSignal[]),
         ]);
         if (cancelled) return;
-        setGuideLetters(rows); setGuideViews(views);
-        const ids = Array.from(new Set(rows.map((r) => r.userId).filter((id) => id !== user.id)));
+        const sealed = signals.filter((sg) => sg.relation === "behind").sort((a, b) => a.season - b.season || a.episode - b.episode);
+        setGuideLetters(rows); setGuideViews(views); setGuideSealed(sealed);
+        const ids = Array.from(new Set([...rows.map((r) => r.userId), ...sealed.flatMap((sg) => sg.writerIds)].filter((id) => id !== user.id)));
         if (!ids.length) { setGuideNames({}); return; }
         const [profs, contact] = await Promise.all([
           fetchProfileNames(ids),
@@ -382,6 +393,22 @@ export default function ShowReference({
   // watched, each season folds; the season you're in starts open and opening
   // one closes the other.
   const [openPlotSeason, setOpenPlotSeason] = useState<number | null>(null);
+  // "Read it →" from the dashboard: once that episode's letters are here,
+  // show its season, scroll its link into view and open the reader (once).
+  const openedLetterAtRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!openLetterAt || !user || !editorial) return;
+    const key = `${openLetterAt.s}-${openLetterAt.e}`;
+    if (openedLetterAtRef.current === key || !(guideByEp.get(key)?.length)) return;
+    openedLetterAtRef.current = key;
+    setOpenPlotSeason(openLetterAt.s);
+    const t = window.setTimeout(() => {
+      guideAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
+      openGuideReader(key);
+    }, 350);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openLetterAt, guideByEp, user?.id, editorial]);
   useEffect(() => { setOpenPlotSeason(prog.s); }, [prog.s]);
   const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : prog;
   const selEpData = useMemo(
@@ -612,6 +639,23 @@ export default function ShowReference({
             phone the strip right above already names it). */}
         {!mobile && <div style={{ ...E.type.letterTitle22, fontSize: 18, ...onRule, color: E.color.ink }}>Season {season.n}</div>}
         {season.eps.map((ep, n) => plotEntry(ep, n === 0 && mobile))}
+        {/* Friends' letters ahead of you (open letters, CP4): the room's
+            sealed-letter row at the end of YOUR season's sheet — From ·
+            Sealed until, one dim line, the writer's stamp with its lock. */}
+        {season.n === prog.s && guideSealed.map((sg) => {
+          const names = sg.writerIds.map(guideNameOf);
+          const who = joinNames(names);
+          return (
+            <div key={`sealed-${sg.season}-${sg.episode}`} style={{ marginTop: RULE, background: E.color.cream }}>
+              <SealedEntry
+                from={who}
+                until={`S${sg.season} E${sg.episode}`}
+                line={`${who} wrote about an episode ahead of you. It opens when you get there.`}
+                stamp={<Stamp spec={stampSpecFor(sg.writerIds[0] ?? "")} label={stampLabelFor(sg.season, sg.episode)} initial={(names[0] ?? "").trim().charAt(0).toUpperCase()} scale={mobile ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
+              />
+            </div>
+          );
+        })}
       </div>
     );
     // The seasons (his notes, 2026-10-31). Every season up to the next

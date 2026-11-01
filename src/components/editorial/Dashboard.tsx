@@ -374,7 +374,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
  *  is the right one's mirror on every front: the accent strip at its
  *  right, the words right-aligned with the strip's 16px inset, the tilt
  *  the other way, and it swipes LEFT — off its own edge. */
-export function PaperNote({ text, at, uid, desktop = false, side = "right", style, onClick }: { text: string; at: number; uid: string; desktop?: boolean; side?: "left" | "right"; style?: React.CSSProperties; /** A tappable note (the nudge's, 2026-10-22): a press that isn't a swipe opens it. */ onClick?: () => void }) {
+export function PaperNote({ text, at, uid, desktop = false, side = "right", style, onClick, byline, tone = "accent" }: { text: string; at: number; uid: string; desktop?: boolean; side?: "left" | "right"; style?: React.CSSProperties; /** A tappable note (the nudge's, 2026-10-22): a press that isn't a swipe opens it. */ onClick?: () => void; /** A friend's guide letter (open letters, 2026-11-01): a letter card's byline over the sentence, and the sliver in the letter blue (the LetterDisc's) instead of the accent. */ byline?: string; tone?: "accent" | "letter" }) {
   const key = `ns_dash_note_${uid}`;
   const isDismissed = () => {
     try {
@@ -419,7 +419,8 @@ export function PaperNote({ text, at, uid, desktop = false, side = "right", styl
       style={{ position: "absolute", zIndex: 3, transform: `rotate(${leftward ? 3 : -3}deg)`, overflow: "hidden", background: revealed ? E.color.accent : "transparent", touchAction: "pan-y", ...style }}
     >
       {revealed && <span aria-hidden="true" style={{ position: "absolute", ...(leftward ? { right: 14 } : { left: 14 }), top: "50%", transform: "translateY(-50%)", color: E.color.cream, fontSize: 22, lineHeight: 1 }}>×</span>}
-      <div className="e-note" onClick={desktop && onClick ? onClick : undefined} style={{ position: "relative", boxSizing: "border-box", cursor: onClick ? "pointer" : undefined, padding: desktop ? "12px 100px 13px 16px" : leftward ? "12px 16px 13px 60px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, ...(leftward ? { borderRight: `5px solid ${E.color.accent}`, textAlign: "right" as const } : { borderLeft: `5px solid ${E.color.accent}` }), ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
+      <div className="e-note" onClick={desktop && onClick ? onClick : undefined} style={{ position: "relative", boxSizing: "border-box", cursor: onClick ? "pointer" : undefined, padding: desktop ? "12px 100px 13px 16px" : leftward ? "12px 16px 13px 60px" : "12px 60px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, ...(leftward ? { borderRight: `5px solid ${tone === "letter" ? E.color.identity : E.color.accent}`, textAlign: "right" as const } : { borderLeft: `5px solid ${tone === "letter" ? E.color.identity : E.color.accent}` }), ...E.type.note13, color: E.color.ink, transform: `translateX(${shift}px)`, transition: dragging ? "none" : "transform 220ms ease" }}>
+        {byline && <div style={{ ...E.type.label10, color: "rgba(26,58,74,0.7)", marginBottom: 4 }}>{byline}</div>}
         {text}
         {desktop && (
           <button type="button" className="e-nx" aria-label="Dismiss" title="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(); }} style={{ position: "absolute", right: 46, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, lineHeight: 1, color: E.color.ink, background: "transparent", border: 0, padding: 0, cursor: "pointer" }}>×</button>

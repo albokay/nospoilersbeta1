@@ -1564,7 +1564,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
           <div style={editorial ? { marginTop: 18 } : undefined}>
-            <ShowReference showId={show.id} viewerProgress={refEff} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+            <ShowReference showId={show.id} viewerProgress={refEff} openLetterAt={(location.state as { guideLetterAt?: { s: number; e: number } } | null)?.guideLetterAt ?? null} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
                   if (m.userId !== user?.id) return m;
                   if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
                   const i = m.ratings.findIndex((x) => x.s === s && x.e === e);
