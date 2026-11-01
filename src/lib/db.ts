@@ -6336,3 +6336,52 @@ export async function fetchBrowseLists(): Promise<BrowseList[]> {
     return [];
   }
 }
+
+
+// ── Open letters in the show guide (2026-11-01, CP2) ──────────────────────
+// A letter on an episode written FROM the guide, outside any room. Who can
+// read one is the database's rule (guide_letters RLS): the writer, and every
+// friend (anyone sharing a live group) at or past the episode. So a plain
+// select returns exactly what this viewer may see.
+export type GuideLetter = { id: string; userId: string; showId: string; season: number; episode: number; body: string; createdAt: string };
+
+export async function fetchGuideLetters(showId: string): Promise<GuideLetter[]> {
+  const { data, error } = await supabase
+    .from("guide_letters")
+    .select("id, user_id, show_id, season, episode, body, created_at")
+    .eq("show_id", showId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({ id: r.id, userId: r.user_id, showId: r.show_id, season: r.season, episode: r.episode, body: r.body, createdAt: r.created_at }));
+}
+
+export async function createGuideLetter(userId: string, showId: string, season: number, episode: number, body: string): Promise<GuideLetter> {
+  const text = body.trim();
+  validateLength("Letter", text, 1, 1000);
+  const { data, error } = await supabase
+    .from("guide_letters")
+    .insert({ user_id: userId, show_id: showId, season, episode, body: text })
+    .select("id, user_id, show_id, season, episode, body, created_at")
+    .single();
+  if (error) throw error;
+  return { id: data.id, userId: data.user_id, showId: data.show_id, season: data.season, episode: data.episode, body: data.body, createdAt: data.created_at };
+}
+
+/** Your own letter only (RLS): the soft delete. */
+export async function deleteGuideLetter(id: string): Promise<void> {
+  const { error } = await supabase.from("guide_letters").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Names for a set of people by id (display_name, falling back to the
+ *  handle) — the guide's bylines; the viewer's contact names layer on top. */
+export async function fetchProfileNames(ids: string[]): Promise<Record<string, { username: string; displayName: string | null }>> {
+  const out: Record<string, { username: string; displayName: string | null }> = {};
+  const uniq = Array.from(new Set(ids)).filter(Boolean);
+  if (!uniq.length) return out;
+  let profs: any = await supabase.from("profiles").select("id, username, display_name").in("id", uniq);
+  if (profs.error) profs = await supabase.from("profiles").select("id, username").in("id", uniq);
+  for (const p of (profs.data ?? []) as any[]) out[p.id] = { username: p.username, displayName: p.display_name ?? null };
+  return out;
+}

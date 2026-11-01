@@ -6,7 +6,7 @@
 // by Alborz 2026-09-05. Never rendered below S1E1 (the tab is hidden until
 // the dial reaches it — "no 0-state reference page").
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Lock, Star } from "lucide-react";
@@ -19,7 +19,9 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames } from "../../lib/db";
+import type { GuideLetter } from "../../lib/db";
+import { GuideWriter, GuideReader, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
 import { RATING_LABELS } from "../RatingCaptureModal";
 import type { Show } from "../../lib/db";
@@ -202,6 +204,48 @@ export default function ShowReference({
   // PROGRESS to the latest catalog episode — canon means you've seen it all
   // (as of now). This local override reflects the jump immediately; the
   // host page's own copy refreshes on its next load.
+  // ── Open letters in the show guide (2026-11-01, CP2 of 5) ──
+  // The show's letters this viewer may see (the database's rule: yours, and
+  // a friend's once you're at or past its episode), the writers' names
+  // (your contact names over their display names), and which episode's
+  // writer or reader is open. The acts hang from the link at the end of
+  // each summary (`guideAnchors`), as the room's note box hangs from its
+  // button. Hooks sit above the loading returns.
+  const [guideLetters, setGuideLetters] = useState<GuideLetter[]>([]);
+  const [guideNames, setGuideNames] = useState<Record<string, string>>({});
+  const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean } | null>(null);
+  const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
+  const closeGuide = useCallback(() => setGuideOpen(null), []);
+  useEffect(() => {
+    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); return; }
+    let cancelled = false;
+    setGuideLetters([]); setGuideOpen(null);
+    (async () => {
+      try {
+        const rows = await fetchGuideLetters(showId);
+        if (cancelled) return;
+        setGuideLetters(rows);
+        const ids = Array.from(new Set(rows.map((r) => r.userId).filter((id) => id !== user.id)));
+        if (!ids.length) { setGuideNames({}); return; }
+        const [profs, contact] = await Promise.all([
+          fetchProfileNames(ids),
+          fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
+        ]);
+        if (cancelled) return;
+        const m: Record<string, string> = {};
+        for (const id of ids) m[id] = contact[id] ?? profs[id]?.displayName ?? profs[id]?.username ?? "A friend";
+        setGuideNames(m);
+      } catch { if (!cancelled) setGuideLetters([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [showId, user?.id, editorial]);
+  const guideByEp = useMemo(() => {
+    const m = new Map<string, GuideLetter[]>();
+    for (const l of guideLetters) { const k = `${l.season}-${l.episode}`; const a = m.get(k); if (a) a.push(l); else m.set(k, [l]); }
+    return m;
+  }, [guideLetters]);
+  const guideNameOf = (id: string) => (user && id === user.id ? "You" : guideNames[id] ?? "A friend");
+  const guideWriters = (eps: GuideLetter[]) => { const out: string[] = []; for (const l of eps) { const n = guideNameOf(l.userId); if (!out.includes(n)) out.push(n); } return out; };
   const [progressOverride, setProgressOverride] = useState<{ s: number; e: number } | null>(null);
   // Finished (Alborz, round 5 follow-up): the band's rule — at the show's
   // last catalog episode; the catalog row carries the aired counts.
@@ -474,6 +518,23 @@ export default function ShowReference({
         {starAllowed && starBtn(ep, true)}
       </div>
     );
+    // The episode's one act, right-aligned on a rule (open letters, 2026-11-01):
+    // "Write about this episode →" until there's writing, then "Adam and Sam
+    // wrote about this episode →" — the letters open from there, and writing
+    // more is Join the conversation inside the reader (his call: one path).
+    const guideActs = (ep: { s: number; e: number }) => {
+      if (!user) return null;
+      const key = `${ep.s}-${ep.e}`;
+      const eps = guideByEp.get(key) ?? [];
+      const label = eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
+      return (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, height: RULE }}>
+          <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ display: "inline-flex" }}>
+            <UnderlineWord onClick={() => setGuideOpen({ key, mode: eps.length ? "read" : "write" })} style={{ whiteSpace: "normal" }}>{label}</UnderlineWord>
+          </span>
+        </div>
+      );
+    };
     const plotEntry = (ep: { s: number; e: number; title: string; summary?: string | null; still?: string | null }, first: boolean) => {
       const rKey = `${ep.s}-${ep.e}`;
       const r = ratings.get(rKey) ?? 0;
@@ -520,6 +581,7 @@ export default function ShowReference({
             {ep.summary && summaryParagraphs(ep.summary).map((para, i) => (
               <div key={i} style={{ ...E.type.letterBody15, ...onRule, marginTop: i === 0 ? 0 : RULE }}>{para}</div>
             ))}
+            {guideActs(ep)}
           </div>
         </div>
       );
@@ -710,6 +772,41 @@ export default function ShowReference({
           </div>,
           railHost,
         )}
+        {/* The open letters' writer / reader, floating over the page from the
+            episode's link (GuideLetters.tsx). */}
+        {guideOpen && user && (() => {
+          const [gs, ge] = guideOpen.key.split("-").map(Number);
+          const epTitle = ref.seasons.find((se) => se.n === gs)?.episodes.find((x) => x.e === ge)?.title ?? "";
+          const epLine = `Ep. ${ge}${epTitle ? ` · ${epTitle}` : ""}`;
+          const eps = guideByEp.get(guideOpen.key) ?? [];
+          const anchor = guideAnchors.current[guideOpen.key];
+          const save = async (body: string) => {
+            const row = await createGuideLetter(user.id, showId, gs, ge, body);
+            setGuideLetters((prev) => [...prev, row]);
+            setGuideOpen({ key: guideOpen.key, mode: "read", atLast: true });
+          };
+          if (guideOpen.mode === "read") {
+            return (
+              <GuideReader
+                mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} startAtLast={!!guideOpen.atLast}
+                onClose={closeGuide}
+                onDelete={async (id) => { await deleteGuideLetter(id); setGuideLetters((prev) => prev.filter((l) => l.id !== id)); }}
+                onJoin={() => setGuideOpen({ key: guideOpen.key, mode: "join" })}
+              />
+            );
+          }
+          const writers = guideWriters(eps);
+          const join = guideOpen.mode === "join" && writers.length > 0;
+          return (
+            <GuideWriter
+              mobile={mobile}
+              title={join ? "Join the conversation" : "Write about this episode"}
+              epLine={epLine}
+              context={join ? joinContext(joinNames(writers), ref.showName) : writeContext(ref.showName)}
+              anchorEl={anchor} onClose={closeGuide} onSave={save}
+            />
+          );
+        })()}
         <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 48, maxWidth: 620 }}>
           Episode and cast data from{" "}
           <a href="https://www.tvmaze.com" target="_blank" rel="noreferrer" style={{ color: E.color.ink }}>TVMaze</a>{" "}

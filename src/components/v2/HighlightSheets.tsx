@@ -187,7 +187,7 @@ export function HighlightNoteSheet({ readable, sealed, currentUserId, displayNam
  *  scrolling and answering taps behind it. With `dim`, a veil over the page
  *  that lets every touch through. Swipe down, or the panel's own act,
  *  closes it — never a tap outside. */
-function NoteDrawer({ label, dim = false, onClose, enabled = true, children }: { label: string; dim?: boolean; onClose: () => void; enabled?: boolean; children: React.ReactNode }) {
+export function NoteDrawer({ label, dim = false, onClose, enabled = true, children }: { label: string; dim?: boolean; onClose: () => void; enabled?: boolean; children: React.ReactNode }) {
   const kb = useKeyboardInset();
   const swipe = useSheetSwipeDown(onClose, { enabled });
   return (
