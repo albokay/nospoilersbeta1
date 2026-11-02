@@ -44,21 +44,25 @@ export function joinContext(writers: string, showName: string): string {
 /** The room's Write a letter block (ShowRoom's WriteBlock, as a style). */
 const JOIN_BLOCK: React.CSSProperties = { ...E.type.button16, height: 56, background: E.color.ink, color: E.color.cream, border: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", WebkitTapHighlightColor: "transparent" };
 
-/** Follow an anchor on scroll (any scroller — the room pages scroll inside a
- *  fixed container) and resize, as the note writer does. */
-function useAnchorRect(anchorEl: HTMLElement | null | undefined, track = true): DOMRect | null {
-  const [rect, setRect] = useState<DOMRect | null>(anchorEl ? anchorEl.getBoundingClientRect() : null);
-  useEffect(() => {
-    if (!anchorEl) { setRect(null); return; }
-    setRect(anchorEl.getBoundingClientRect());
-    if (!track) return;   // the reader keeps its place once drawn (his note, 11-02)
-    let raf = 0;
-    const follow = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setRect(anchorEl.getBoundingClientRect())); };
-    window.addEventListener("scroll", follow, true);
-    window.addEventListener("resize", follow);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("scroll", follow, true); window.removeEventListener("resize", follow); };
-  }, [anchorEl, track]);
-  return rect;
+/** Where a card sits, decided ONCE when it opens (his note, 11-02): inside
+ *  the episode's block, so it scrolls with the page and never flips. Below
+ *  the link when the screen has room there, above it otherwise; its
+ *  height capped to that room, scrolling inside as a last resort. */
+type Placement = { left: number; top?: number; bottom?: number; maxHeight: number; width: number; below: boolean };
+function placeOnce(anchorEl: HTMLElement | null | undefined, host: HTMLElement | null | undefined, width: number, align: "center" | "right", reserve: number): Placement | null {
+  if (!anchorEl || !host) return null;
+  const a = anchorEl.getBoundingClientRect(), h = host.getBoundingClientRect();
+  const w = Math.min(width, Math.max(240, h.width));
+  const rawLeft = align === "center" ? a.left + a.width / 2 - w / 2 : a.right - w;
+  const left = Math.max(0, Math.min(rawLeft - h.left, h.width - w));
+  const vh = window.innerHeight;
+  const spaceBelow = vh - a.bottom - 10 - reserve, spaceAbove = a.top - 10 - reserve;
+  const want = Math.min(520, vh - 24 - reserve);
+  const below = spaceBelow >= Math.min(want, 320) || spaceBelow >= spaceAbove;
+  const maxHeight = Math.max(180, Math.min(want, (below ? spaceBelow : spaceAbove) - 8));
+  return below
+    ? { left, top: a.bottom - h.top + 10, maxHeight, width: w, below }
+    : { left, bottom: h.bottom - a.top + 10, maxHeight, width: w, below };
 }
 
 /** Click outside the box (deferred a tick so the opening click doesn't close
@@ -75,12 +79,14 @@ function useDismiss(ref: React.RefObject<HTMLElement | null>, onClose: () => voi
 }
 
 // ── The writer ────────────────────────────────────────────────────────────
-export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose, onSave }: {
+export function GuideWriter({ mobile, title, epLine, context, anchorEl, host, onClose, onSave }: {
   mobile: boolean;
   title: string;
   epLine: string;
   context: string;
   anchorEl?: HTMLElement | null;
+  /** The episode's block the card sits in (desktop). */
+  host?: HTMLElement | null;
   onClose: () => void;
   onSave: (body: string) => Promise<void>;
 }) {
@@ -89,7 +95,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
   const [error, setError] = useState<string | null>(null);
   const fieldRef = useRef<HTMLTextAreaElement | null>(null);
   const boxRef = useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(mobile ? null : anchorEl);
+  const [place] = useState<Placement | null>(() => (mobile ? null : placeOnce(anchorEl, host, WRITER_W, "right", 0)));
   useDismiss(boxRef, onClose, !mobile && !saving);
   useEffect(() => { const t = setTimeout(() => fieldRef.current?.focus(), mobile ? 60 : 0); return () => clearTimeout(t); }, [mobile]);
 
@@ -125,21 +131,11 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
     );
   }
 
-  // Desktop: under the link, right-aligned to it; above it when the screen
-  // runs out below; scrolls inside as a last resort — never off screen.
-  if (!rect) return null;
-  const vh = window.innerHeight;
-  const spaceBelow = vh - rect.bottom - 8 - 12;
-  const flipUp = spaceBelow < 420 && rect.top - 8 - 12 > spaceBelow;
-  const place: React.CSSProperties = {
-    position: "fixed",
-    right: Math.max(14, window.innerWidth - rect.right),
-    width: Math.min(WRITER_W, window.innerWidth - 28),
-    ...(flipUp ? { bottom: vh - rect.top + 8, maxHeight: rect.top - 8 - 12 } : { top: rect.bottom + 8, maxHeight: spaceBelow }),
-    overflowY: "auto",
-  };
+  // Desktop: in the episode's block, under the link and right-aligned to
+  // it (above it when the screen had no room below), placed once.
+  if (!place || !host) return null;
   return createPortal(
-    <div ref={boxRef} role="dialog" aria-label={title} style={{ ...place, background: E.color.cream, boxSizing: "border-box", padding: "16px 18px 18px", boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, zIndex: 70, fontFamily: E.font.interface, color: E.color.ink }}>
+    <div ref={boxRef} role="dialog" aria-label={title} style={{ position: "absolute", left: place.left, top: place.top, bottom: place.bottom, width: place.width, maxHeight: place.maxHeight, overflowY: "auto", background: E.color.cream, boxSizing: "border-box", padding: "16px 18px 18px", boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, zIndex: 70, fontFamily: E.font.interface, color: E.color.ink }}>
       <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 6, right: 8, background: "transparent", border: "none", width: 36, height: 36, padding: 0, color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={16} /></button>
       {head}
       <textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LETTER_MAX))} maxLength={LETTER_MAX} rows={9} placeholder="Write…" style={NOTE_FIELD} />
@@ -150,7 +146,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
         {error && <span style={{ ...E.type.note13, color: E.color.alert, fontStyle: "italic", marginRight: "auto" }}>{error}</span>}
       </div>
     </div>,
-    document.body,
+    host,
   );
 }
 
@@ -159,12 +155,14 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, onClose,
  *  here (his call): before the read link, and on an unread letter's byline. */
 export const UNREAD_DOT: React.CSSProperties = { display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 };
 
-export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, startAtLast = false, unreadSince, joinLabel = "Join the conversation", onClose, onDelete, onJoin }: {
+export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, host, startAtLast = false, unreadSince, joinLabel = "Join the conversation", onClose, onDelete, onJoin }: {
   mobile: boolean;
   letters: GuideLetter[];
   nameOf: (userId: string) => string;
   currentUserId: string | null;
   anchorEl?: HTMLElement | null;
+  /** The episode's block the card sits in (desktop). */
+  host?: HTMLElement | null;
   /** The seen stamp from BEFORE this open (undefined = never): a friend's
    *  letter newer than it carries the dot while the reader is open. */
   unreadSince?: string | null;
@@ -181,7 +179,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const paperRef = useRef<HTMLDivElement | null>(null);
-  const rect = useAnchorRect(mobile ? null : anchorEl, false);
+  const [place] = useState<Placement | null>(() => (mobile ? null : placeOnce(anchorEl, host, PAPER_W, "center", 56 + 41)));
   useDismiss(paperRef, onClose, !mobile);
   useEffect(() => { if (letters.length === 0) onClose(); }, [letters.length, onClose]);
 
@@ -241,27 +239,18 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
     );
   }
 
-  // Desktop: the note paper, centred under the link, below it when there's
-  // room (above it otherwise), the act below right of the cards.
-  if (!rect) return null;
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const width = Math.min(PAPER_W, vw - 24);
-  const cx = rect.left + rect.width / 2;
-  const left = Math.max(12, Math.min(cx - width / 2, vw - width - 12));
-  const ACT_H = 56 + 41;
-  const spaceBelow = vh - rect.bottom - 10 - ACT_H;
-  const spaceAbove = rect.top - 10 - ACT_H;
-  const want = Math.min(520, vh - 24 - ACT_H);
-  const below = spaceBelow >= Math.min(want, 320) || spaceBelow >= spaceAbove;
-  const maxHeight = Math.max(180, Math.min(want, (below ? spaceBelow : spaceAbove) - 8));
-  const place: React.CSSProperties = below ? { top: rect.bottom + 10 } : { bottom: vh - rect.top + 10 };
+  // Desktop: the note paper in the episode's block, centred under the link
+  // (above it when the screen had no room below), placed once; the act
+  // below right of the cards.
+  if (!place || !host) return null;
+  const { width, maxHeight, below } = place;
   const i = Math.min(page, letters.length - 1);
   const l = letters[i];
   const prev = i > 0 ? letters[i - 1] : null;
   const next = i < letters.length - 1 ? letters[i + 1] : null;
 
   return createPortal(
-    <div ref={paperRef} style={{ position: "fixed", left, width, ...place, zIndex: 9999, display: "flex", flexDirection: "column", fontFamily: E.font.interface, color: E.color.ink }}>
+    <div ref={paperRef} style={{ position: "absolute", left: place.left, top: place.top, bottom: place.bottom, width, zIndex: 70, display: "flex", flexDirection: "column", fontFamily: E.font.interface, color: E.color.ink }}>
       <div style={{ position: "relative", transform: `rotate(${PAPER_TILT}deg)`, transformOrigin: below ? "top center" : "bottom center", maxHeight, display: "flex", flexDirection: "column" }}>
         {letters.length > 1 && (
           <div aria-hidden style={{ position: "absolute", left: 7, top: 9, right: -7, bottom: -9, background: E.color.cream, boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, transform: "rotate(1.6deg)", transformOrigin: "bottom center" }} />
@@ -283,6 +272,6 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
         <button type="button" onClick={onJoin} style={{ ...JOIN_BLOCK, width: 240 }}>{joinLabel}</button>
       </div>
     </div>,
-    document.body,
+    host,
   );
 }

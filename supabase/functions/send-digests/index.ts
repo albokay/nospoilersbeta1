@@ -962,30 +962,31 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
   if (!letters.length) return out;
   const writerIds = [...new Set(letters.map((l) => l.user_id as string))];
   const showIds = [...new Set(letters.map((l) => l.show_id as string))];
-  // The writers' groups, everyone in them (with each room's email switch).
-  const { data: wm } = await admin.from("friend_group_members").select("group_id, user_id").in("user_id", writerIds);
+  // The writers' WATCH GROUPS (people_groups — the dashboard's groups, as the
+  // chats; not the show rooms inside them, his 11-02 catch) and everyone in
+  // them. No per-room email switch applies here, as for the chats.
+  const { data: wm } = await admin.from("people_group_members").select("group_id, user_id").in("user_id", writerIds);
   const groupIds = [...new Set(((wm ?? []) as any[]).map((m) => m.group_id as string))];
   if (!groupIds.length) return out;
   const [{ data: groupRows }, { data: memRows }, { data: showRows }] = await Promise.all([
-    admin.from("friend_groups").select("id, deleted_at").in("id", groupIds),
-    admin.from("friend_group_members").select("group_id, user_id, digest_opt_out").in("group_id", groupIds),
+    admin.from("people_groups").select("id, deleted_at").in("id", groupIds),
+    admin.from("people_group_members").select("group_id, user_id").in("group_id", groupIds),
     admin.from("shows").select("id, name").in("id", showIds),
   ]);
   const live = new Set(((groupRows ?? []) as any[]).filter((g) => !g.deleted_at).map((g) => g.id as string));
-  const membersByGroup = new Map<string, { userId: string; optOut: boolean }[]>();
+  const membersByGroup = new Map<string, { userId: string }[]>();
   for (const m of (memRows ?? []) as any[]) {
     if (!live.has(m.group_id)) continue;
     if (!membersByGroup.has(m.group_id)) membersByGroup.set(m.group_id, []);
-    membersByGroup.get(m.group_id)!.push({ userId: m.user_id, optOut: !!m.digest_opt_out });
+    membersByGroup.get(m.group_id)!.push({ userId: m.user_id });
   }
-  // A writer's friends = the co-members of their live groups; a friend counts
-  // when at least one shared room still has their emails on.
+  // A writer's friends = the co-members of their live watch groups.
   const friendsOf = new Map<string, Set<string>>();
   for (const members of membersByGroup.values()) {
     for (const w of members) {
       if (!writerIds.includes(w.userId)) continue;
       for (const r of members) {
-        if (r.userId === w.userId || r.optOut) continue;
+        if (r.userId === w.userId) continue;
         if (!friendsOf.has(w.userId)) friendsOf.set(w.userId, new Set());
         friendsOf.get(w.userId)!.add(r.userId);
       }

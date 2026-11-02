@@ -225,6 +225,7 @@ export default function ShowReference({
   const [guideSealed, setGuideSealed] = useState<GuideLetterSignal[]>([]);
   const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean; since?: string | null } | null>(null);
   const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
+  const guideHosts = useRef<Record<string, HTMLElement | null>>({});
   const sealedAnchors = useRef<Record<string, HTMLElement | null>>({});
   const closeGuide = useCallback(() => setGuideOpen(null), []);
   useEffect(() => {
@@ -574,16 +575,18 @@ export default function ShowReference({
     // "Write about this episode →" until there's writing, then "Adam and Sam
     // wrote about this episode →" — the letters open from there, and writing
     // more is Join the conversation inside the reader (his call: one path).
-    // The act sits on the title line, at its right (his note, 11-02); when
-    // the title needs the width it drops to a line of its own under the
-    // title, still right-aligned, its words never wrapping.
+    // The act follows the title directly, after a dot (his note, 11-02):
+    // "Ep. 3 · Title · Write about this episode →". When the title needs
+    // the width (the phone) it drops to a line of its own under the title,
+    // its words never wrapping.
     const guideActs = (ep: { s: number; e: number }) => {
       if (!user) return null;
       const key = `${ep.s}-${ep.e}`;
       const eps = guideByEp.get(key) ?? [];
       const label = eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
       return (
-        <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ marginLeft: "auto", flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, height: RULE }}>
+        <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, height: RULE }}>
+          <span aria-hidden="true" style={{ ...E.type.letterBody16, fontWeight: 700, color: E.color.inkMuted }}>·</span>
           {eps.length > 0 && guideUnread(key) && <span aria-label="New letters" style={UNREAD_DOT} />}
           <UnderlineWord onClick={() => { if (eps.length) openGuideReader(key); else setGuideOpen({ key, mode: "write" }); }}>{label}</UnderlineWord>
         </span>
@@ -599,7 +602,7 @@ export default function ShowReference({
         </button>
       );
       return (
-        <div key={rKey} style={{ marginTop: first ? 0 : RULE }}>
+        <div key={rKey} ref={(el) => { guideHosts.current[rKey] = el; }} style={{ marginTop: first ? 0 : RULE, position: "relative" }}>
           {/* The title line (his notes, round 2): the circle to the LEFT of the
               words — on desktop hanging out beyond the column's edge, on the
               phone inline before "Ep. 2 · Title", where the line also sits on
@@ -607,9 +610,9 @@ export default function ShowReference({
           <div style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 10px", minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
             {ratingAllowed && mobile && circleBtn}
             {/* The title keeps its own line (flex 1 0 auto, capped at the row): a long one wraps within itself, a short one leaves room for the act beside it. */}
-            <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0, flex: "1 0 auto", maxWidth: "100%" }}>Ep. {ep.e} · {ep.title}</span>
-            {starAllowed && !ep.still && starBtn(ep, false)}
+            <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0, flex: "0 0 auto", maxWidth: "100%" }}>Ep. {ep.e} · {ep.title}</span>
             {guideActs(ep)}
+            {starAllowed && !ep.still && starBtn(ep, false)}
             {ratingAllowed && !mobile && <span style={{ position: "absolute", left: -36, top: 2, display: "inline-flex" }}>{circleBtn}</span>}
           </div>
           {open && (
@@ -855,6 +858,7 @@ export default function ShowReference({
           const epLine = `Ep. ${ge}${epTitle ? ` · ${epTitle}` : ""}`;
           const eps = guideByEp.get(guideOpen.key) ?? [];
           const anchor = guideAnchors.current[guideOpen.key];
+          const host = guideHosts.current[guideOpen.key];
           const save = async (body: string) => {
             const row = await createGuideLetter(user.id, showId, gs, ge, body);
             setGuideLetters((prev) => [...prev, row]);
@@ -863,7 +867,7 @@ export default function ShowReference({
           if (guideOpen.mode === "read") {
             return (
               <GuideReader
-                mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} startAtLast={!!guideOpen.atLast} unreadSince={guideOpen.since}
+                mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} host={host} startAtLast={!!guideOpen.atLast} unreadSince={guideOpen.since}
                 joinLabel={eps.some((l) => l.userId !== user.id) ? "Join the conversation" : "Write another letter"}
                 onClose={closeGuide}
                 onDelete={async (id) => { await deleteGuideLetter(id); setGuideLetters((prev) => prev.filter((l) => l.id !== id)); }}
@@ -880,7 +884,7 @@ export default function ShowReference({
               title={join ? "Join the conversation" : "Write about this episode"}
               epLine={epLine}
               context={join ? joinContext(joinNames(writers), ref.showName) : writeContext(ref.showName)}
-              anchorEl={anchor} onClose={closeGuide} onSave={save}
+              anchorEl={anchor} host={host} onClose={closeGuide} onSave={save}
             />
           );
         })()}
