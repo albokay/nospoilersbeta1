@@ -867,16 +867,15 @@ export default function ShowReference({
               <button
                 type="button"
                 disabled={!watched}
-                onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+                onClick={() => { if (on) return; setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
                 aria-pressed={on}
                 aria-label={watched ? `Season ${season.n}, ${stripCount(season)}${wt ? `, ${wt}` : ""}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-                title={watched ? `Season ${season.n} · ${stripCount(season)}${wt ? ` · ${wt}` : ""}` : `Sealed until you finish season ${season.n - 1}`}
-                style={{ position: "relative", width: "100%", height: 36, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...E.type.label11, background: on ? E.color.cream : E.color.draft, border: `1px solid ${on ? E.color.ink : "transparent"}`, color: on ? E.color.ink : watched ? E.color.inkMuted : E.color.inkFaint, cursor: watched ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}
+                style={{ position: "relative", width: "100%", height: 36, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...E.type.label11, background: on ? E.color.cream : E.color.draft, border: `1px solid ${on ? E.color.ink : "transparent"}`, color: on ? E.color.ink : watched ? E.color.inkMuted : E.color.inkFaint, cursor: watched && !on ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}
               >
                 {season.n}
                 {sig && <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, width: 10, height: 10, borderRadius: "50%", background: SEASON_COLOR[sig], border: `2px solid ${E.color.cream}`, boxSizing: "content-box" }} />}
               </button>
-              {seasonHover === season.n && seasonList(season.n, { position: "absolute", top: "calc(100% + 8px)", width: 300, ...(col >= 4 ? { right: 0 } : col >= 2 ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }) })}
+              {seasonHover === season.n && <div style={{ position: "absolute", top: "100%", paddingTop: 8, width: 300, zIndex: 5, ...(col >= 4 ? { right: 0 } : col >= 2 ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }) }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
             </div>
           );
         })}
@@ -894,11 +893,10 @@ export default function ShowReference({
               <button
                 type="button"
                 disabled={!watched}
-                onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+                onClick={() => { if (on) return; setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
                 aria-pressed={on}
                 aria-label={watched ? `Season ${season.n}${wt ? `, ${wt}` : ""}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-                title={wt}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched ? "pointer" : "default", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched && !on ? "pointer" : "default", textAlign: "left" }}
               >
                 <span>Season {season.n}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 12, color: E.color.inkMuted }}>
@@ -907,7 +905,7 @@ export default function ShowReference({
                   {!watched && <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />}
                 </span>
               </button>
-              {seasonHover === season.n && seasonList(season.n, { position: "absolute", right: -22, top: "calc(100% + 8px)", width: 300 })}
+              {seasonHover === season.n && <div style={{ position: "absolute", right: -22, top: "100%", paddingTop: 8, width: 300, zIndex: 5 }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
             </div>
           );
         })}
