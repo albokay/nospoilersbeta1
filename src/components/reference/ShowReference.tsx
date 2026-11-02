@@ -766,10 +766,40 @@ export default function ShowReference({
         </button>
       );
     };
+    // Past 14 seasons (his call, 2026-11-02; Survivor at 51): the rail draws
+    // the seasons as a grid of numbered chips, six to a row, so the whole set
+    // stays pinned — the open one cream with the ink outline, the others
+    // draft, the sealed next season faint; the episode count moves to the
+    // chip's hover title; the season's dot (blue / red) sits on its corner.
+    // The click is the tabs': opens that season, or closes the open one.
+    const railChips = (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, marginTop: 14 }}>
+        {strips.map((season) => {
+          const watched = plotSeasons.find((x) => x.n === season.n);
+          const on = sheetSeason?.n === season.n;
+          const sig = seasonSignal(season.n);
+          return (
+            <button
+              key={season.n}
+              type="button"
+              disabled={!watched}
+              onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+              aria-pressed={on}
+              aria-label={watched ? `Season ${season.n}, ${stripCount(season)}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
+              title={watched ? `Season ${season.n} · ${stripCount(season)}` : `Sealed until you finish season ${season.n - 1}`}
+              style={{ position: "relative", height: 36, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...E.type.label11, background: on ? E.color.cream : E.color.draft, border: `1px solid ${on ? E.color.ink : "transparent"}`, color: on ? E.color.ink : watched ? E.color.inkMuted : E.color.inkFaint, cursor: watched ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}
+            >
+              {season.n}
+              {sig && <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, width: 10, height: 10, borderRadius: "50%", background: sig === "new" ? E.color.identity : E.color.alert, border: `2px solid ${E.color.cream}`, boxSizing: "content-box" }} />}
+            </button>
+          );
+        })}
+      </div>
+    );
     const railTabs = plotEpisodes.length > 0 && strips.length > 1 ? (
       <div>
         <SectionHead>Seasons</SectionHead>
-        {strips.map((season, i) => {
+        {strips.length > 14 ? railChips : strips.map((season, i) => {
           const watched = plotSeasons.find((x) => x.n === season.n);
           const on = sheetSeason?.n === season.n;
           return (
