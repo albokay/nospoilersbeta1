@@ -971,7 +971,8 @@ export default function ShowReference({
           return (
             <GuideWriter
               mobile={mobile}
-              title={join ? "Join the conversation" : "Write about this episode"}
+              title={join ? <>Join the conversation – <em>all your friends</em></> : <>Write for <em>all your friends</em></>}
+              label={join ? "Join the conversation – all your friends" : "Write for all your friends"}
               epLine={epLine}
               context={join ? joinContext(joinNames(writers), ref.showName) : writeContext(ref.showName)}
               anchorEl={anchor} host={host} onClose={closeGuide} onSave={save}

@@ -82,9 +82,12 @@ function useDismiss(ref: React.RefObject<HTMLElement | null>, onClose: () => voi
 }
 
 // ── The writer ────────────────────────────────────────────────────────────
-export function GuideWriter({ mobile, title, epLine, context, anchorEl, host, onClose, onSave }: {
+export function GuideWriter({ mobile, title, label, epLine, context, anchorEl, host, onClose, onSave }: {
   mobile: boolean;
-  title: string;
+  /** The headline (his 11-02 copy: "Write for *all your friends*" / "Join the conversation – *all your friends*"). */
+  title: React.ReactNode;
+  /** The same in plain words, for the dialog's name. */
+  label: string;
   epLine: string;
   context: string;
   anchorEl?: HTMLElement | null;
@@ -121,7 +124,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, host, on
 
   if (mobile) {
     return (
-      <NoteDrawer label={title} dim onClose={onClose} enabled={!saving}>
+      <NoteDrawer label={label} dim onClose={onClose} enabled={!saving}>
         {head}
         <textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LETTER_MAX))} maxLength={LETTER_MAX} rows={8} placeholder="Write…" style={NOTE_FIELD} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
@@ -138,7 +141,7 @@ export function GuideWriter({ mobile, title, epLine, context, anchorEl, host, on
   // it (above it when the screen had no room below), placed once.
   if (!place || !host) return null;
   return createPortal(
-    <div ref={boxRef} role="dialog" aria-label={title} style={{ position: "absolute", left: place.left, top: place.top, bottom: place.bottom, width: place.width, maxHeight: place.maxHeight, overflowY: "auto", background: E.color.cream, boxSizing: "border-box", padding: "16px 18px 18px", boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, zIndex: 70, fontFamily: E.font.interface, color: E.color.ink }}>
+    <div ref={boxRef} role="dialog" aria-label={label} style={{ position: "absolute", left: place.left, top: place.top, bottom: place.bottom, width: place.width, maxHeight: place.maxHeight, overflowY: "auto", background: E.color.cream, boxSizing: "border-box", padding: "16px 18px 18px", boxShadow: "0 1px 0 rgba(26,58,74,0.35)", border: `1px solid ${E.color.ink}`, zIndex: 70, fontFamily: E.font.interface, color: E.color.ink }}>
       <button type="button" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 6, right: 8, background: "transparent", border: "none", width: 36, height: 36, padding: 0, color: TEXT_MUTED, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><X size={16} /></button>
       {head}
       <textarea ref={fieldRef} value={draft} onChange={(e) => setDraft(e.target.value.slice(0, LETTER_MAX))} maxLength={LETTER_MAX} rows={9} placeholder="Write…" style={NOTE_FIELD} />
