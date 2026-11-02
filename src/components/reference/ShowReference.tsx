@@ -268,6 +268,20 @@ export default function ShowReference({
   // cleared only by opening); the reader keeps the earlier stamp so the
   // dots stay on the new letters while you read.
   const guideUnread = (key: string) => { const since = guideViews[key]; return (guideByEp.get(key) ?? []).some((l) => !!user && l.userId !== user.id && (!since || Date.parse(l.createdAt) > Date.parse(since))); };
+  // A season out of view still says what it holds (his 11-02 catch: a
+  // letter on S1 with the viewer on S6): its strip / tab carries the dot —
+  // the identity blue while a friend's letter in it is unread, the alert
+  // red while a friend wrote in it from ahead of you; nothing once seen.
+  const seasonSignal = (n: number): "new" | "sealed" | null => {
+    for (const key of guideByEp.keys()) if (key.startsWith(`${n}-`) && guideUnread(key)) return "new";
+    if (guideSealed.some((sg) => sg.season === n)) return "sealed";
+    return null;
+  };
+  const seasonDot = (n: number) => {
+    const sig = seasonSignal(n);
+    if (!sig) return null;
+    return <span aria-label={sig === "new" ? "New letters in this season" : "A letter from ahead in this season"} style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: sig === "new" ? E.color.identity : E.color.alert, flexShrink: 0 }} />;
+  };
   const openGuideReader = (key: string, atLast = false) => {
     const since = guideViews[key] ?? null;
     setGuideOpen({ key, mode: "read", atLast, since });
@@ -725,7 +739,7 @@ export default function ShowReference({
           aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, ...E.type.label11, color: E.color.ink, cursor: watched ? "pointer" : "default", textAlign: "left" }}
         >
-          <span>Season {season.n}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Season {season.n}{seasonDot(season.n)}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
             {stripCount(season)}
             {!watched
@@ -751,7 +765,7 @@ export default function ShowReference({
               aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched && !on ? "pointer" : "default", textAlign: "left" }}
             >
-              <span>Season {season.n}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Season {season.n}{seasonDot(season.n)}</span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
                 {stripCount(season)}
                 {!watched && <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />}
