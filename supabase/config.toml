@@ -34,6 +34,13 @@ verify_jwt = false
 # to provision. Rebuilds the group room's auto poster rows from TVMaze.
 verify_jwt = false
 
+[functions.refresh-shows]
+# Not user-invoked — called nightly by pg_cron (run_refresh_shows) and
+# manually for testing. Gates on the SAME shared secret as send-digests
+# (DIGEST_CRON_SECRET via x-digest-secret). Refreshes every non-Ended show's
+# episode counts from TVMaze (his Survivor catch, 2026-11-02).
+verify_jwt = false
+
 [functions.delete-account]
 # Self-serve account deletion. Same ES256 reason as the others — the function
 # verifies the JWT itself via admin.auth.getUser(jwt), then anonymizes via a
