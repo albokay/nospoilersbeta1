@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Lock, Star } from "lucide-react";
 import StickyNote from "../StickyNote";
+import LetterDisc from "../LetterDisc";
 import { CANON } from "../../styles/canon";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord } from "../editorial/Chrome";
@@ -269,16 +270,47 @@ export default function ShowReference({
   // letter on S1 with the viewer on S6): its strip / tab carries the dot —
   // the identity blue while a friend's letter in it is unread, the alert
   // red while a friend wrote in it from ahead of you; nothing once seen.
-  const seasonSignal = (n: number): "new" | "sealed" | null => {
-    for (const key of guideByEp.keys()) if (key.startsWith(`${n}-`) && guideUnread(key)) return "new";
-    if (guideSealed.some((sg) => sg.season === n)) return "sealed";
-    return null;
+  // A season's writing, summed (his 11-02 pick, option 3): the episodes with
+  // letters — readable (new until opened, then seen) and sealed from ahead —
+  // one state for the season by priority (new over sealed over seen), the
+  // count, and the rows a hover card or tapped list shows.
+  type SeasonRow = { s: number; e: number; state: "new" | "sealed" | "seen"; info: string };
+  const seasonWriting = (n: number): { rows: SeasonRow[]; count: number; fresh: number; state: "new" | "sealed" | "seen" | null } => {
+    const rows: SeasonRow[] = [];
+    let count = 0, fresh = 0;
+    for (const [key, eps] of guideByEp) {
+      const [s, e] = key.split("-").map(Number);
+      if (s !== n) continue;
+      const since = guideViews[key];
+      const newer = eps.filter((l) => !!user && l.userId !== user.id && (!since || Date.parse(l.createdAt) > Date.parse(since))).length;
+      count += eps.length; fresh += newer;
+      rows.push({ s, e, state: newer ? "new" : "seen", info: newer ? `${newer} new` : `${eps.length} letter${eps.length === 1 ? "" : "s"}` });
+    }
+    for (const sg of guideSealed) {
+      if (sg.season !== n) continue;
+      count += sg.letterCount;
+      rows.push({ s: sg.season, e: sg.episode, state: "sealed", info: `sealed until S${sg.fromSeason} E${sg.fromEpisode}` });
+    }
+    rows.sort((a, b) => a.e - b.e);
+    const state = rows.some((r) => r.state === "new") ? "new" : rows.some((r) => r.state === "sealed") ? "sealed" : rows.length ? "seen" : null;
+    return { rows, count, fresh, state };
   };
-  const seasonDot = (n: number) => {
-    const sig = seasonSignal(n);
-    if (!sig) return null;
-    return <span aria-label={sig === "new" ? "New letters in this season" : "A letter from ahead in this season"} style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: sig === "new" ? E.color.identity : E.color.alert, flexShrink: 0 }} />;
+  const seasonSignal = (n: number) => seasonWriting(n).state;
+  const SEASON_COLOR = { new: E.color.identity, sealed: E.color.alert, seen: E.color.accent } as const;
+  // The hovered season (desktop: the tab or the chip) and the tapped one (the
+  // phone: the envelope on the strip) whose list is open.
+  const [seasonHover, setSeasonHover] = useState<number | null>(null);
+  const [seasonListOpen, setSeasonListOpen] = useState<number | null>(null);
+  // A row in the list jumps to its episode: open its season and scroll to
+  // the row (a sealed episode ahead sits at the end of YOUR season's sheet).
+  const jumpToEpisode = (s: number, e: number) => {
+    const key = `${s}-${e}`;
+    setSeasonHover(null); setSeasonListOpen(null);
+    const onSheet = plotSeasonsRef.current.some((x) => x.n === s && x.eps.some((ep) => ep.e === e));
+    setOpenPlotSeason(onSheet ? s : prog.s);
+    window.setTimeout(() => { (onSheet ? guideHosts.current[key] : sealedAnchors.current[key])?.scrollIntoView({ block: "center", behavior: "smooth" }); }, 300);
   };
+  const plotSeasonsRef = useRef<{ n: number; eps: { e: number }[] }[]>([]);
   const openGuideReader = (key: string, atLast = false) => {
     const since = guideViews[key] ?? null;
     setGuideOpen({ key, mode: "read", atLast, since });
@@ -532,6 +564,7 @@ export default function ShowReference({
     };
     const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx));
     const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx) })).filter((season) => season.eps.length > 0);
+    plotSeasonsRef.current = plotSeasons;
     // The star on the plot (Alborz, round 5 follow-up): a line and a star
     // after each episode's label, for a show you've FINISHED that's in your
     // canon — the essentials live where their plot sits.
@@ -761,9 +794,10 @@ export default function ShowReference({
           aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "13px 0", background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, ...E.type.label11, color: E.color.ink, cursor: watched ? "pointer" : "default", textAlign: "left" }}
         >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Season {season.n}{seasonDot(season.n)}</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
+          <span>Season {season.n}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 12, color: E.color.inkMuted }}>
             {stripCount(season)}
+            {seasonEnvelope(season.n, () => setSeasonListOpen((cur) => (cur === season.n ? null : season.n)))}
             {!watched
               ? <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />
               : open ? <ChevronUp size={14} color={E.color.ink} strokeWidth={2.25} aria-hidden="true" /> : <ChevronDown size={14} color={E.color.ink} strokeWidth={2.25} aria-hidden="true" />}
@@ -771,32 +805,79 @@ export default function ShowReference({
         </button>
       );
     };
+    // The phone's tapped list sits inline under its strip (no hover there).
+    const phoneSeasonList = (n: number) => (seasonListOpen === n ? seasonList(n, { position: "relative", margin: "8px 0 10px", width: "100%" }) : null);
     // Past 14 seasons (his call, 2026-11-02; Survivor at 51): the rail draws
     // the seasons as a grid of numbered chips, six to a row, so the whole set
     // stays pinned — the open one cream with the ink outline, the others
     // draft, the sealed next season faint; the episode count moves to the
     // chip's hover title; the season's dot (blue / red) sits on its corner.
     // The click is the tabs': opens that season, or closes the open one.
+    // The season's list (option 3): the hover card under a tab or chip on
+    // desktop, the inline list under the strip on the phone — a head line,
+    // then one row per episode with writing: its dot, "Ep. 11 · Chinese
+    // Wall", what's there. A row jumps to the episode.
+    const epTitle = (sn: number, en: number) => ref.seasons.find((se) => se.n === sn)?.episodes.find((x) => x.e === en)?.title ?? "";
+    const seasonList = (n: number, place: React.CSSProperties) => {
+      const w = seasonWriting(n);
+      if (!w.rows.length) return null;
+      const head = w.state === "sealed" && w.rows.every((r) => r.state === "sealed")
+        ? `Season ${n} · ${w.count} letter${w.count === 1 ? "" : "s"} from ahead`
+        : `Season ${n} · ${w.count} letter${w.count === 1 ? "" : "s"}${w.fresh ? ` · ${w.fresh} new` : ""}`;
+      return (
+        <div role="dialog" aria-label={head} style={{ ...place, zIndex: 5, background: E.color.cream, border: `1px solid ${E.color.ink}`, boxShadow: "0 1px 0 rgba(26,58,74,0.35)", padding: "10px 12px 4px", boxSizing: "border-box", textAlign: "left" }}>
+          <div style={{ ...E.type.label10, color: E.color.inkMuted, paddingBottom: 8 }}>{head}</div>
+          {w.rows.map((r) => (
+            <button key={`${r.s}-${r.e}`} type="button" onClick={(ev) => { ev.stopPropagation(); jumpToEpisode(r.s, r.e); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "7px 0", background: "transparent", border: 0, borderTop: `1px solid ${E.color.hairline}`, cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
+              <span aria-hidden="true" style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: SEASON_COLOR[r.state], flexShrink: 0 }} />
+              <span style={{ ...E.type.label11, color: E.color.ink, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Ep. {r.e}{epTitle(r.s, r.e) ? ` · ${epTitle(r.s, r.e)}` : ""}</span>
+              <span style={{ ...E.type.label10, color: r.state === "seen" ? E.color.inkMuted : SEASON_COLOR[r.state], flexShrink: 0 }}>{r.info}</span>
+            </button>
+          ))}
+        </div>
+      );
+    };
+    const seasonTitle = (n: number) => {
+      const w = seasonWriting(n);
+      if (!w.rows.length) return undefined;
+      return w.state === "sealed" && w.rows.every((r) => r.state === "sealed") ? `${w.count} letter${w.count === 1 ? "" : "s"} from ahead, sealed` : `${w.count} letter${w.count === 1 ? "" : "s"} in here${w.fresh ? ` · ${w.fresh} new` : ""}`;
+    };
+    // The envelope + the count (the dashboard's LetterDisc, coloured by the
+    // season's state): the tab's and the strip's right slot.
+    const seasonEnvelope = (n: number, onTap?: () => void) => {
+      const w = seasonWriting(n);
+      if (!w.state) return null;
+      return (
+        <span role={onTap ? "button" : undefined} aria-label={seasonTitle(n)} onClick={onTap ? (ev) => { ev.stopPropagation(); onTap(); } : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: E.color.ink, cursor: onTap ? "pointer" : undefined, padding: onTap ? "6px 0 6px 6px" : 0 }}>
+          <LetterDisc kind={w.state === "sealed" ? "sealed" : "open"} size={18} style={{ background: SEASON_COLOR[w.state] }} />
+          <span style={{ ...E.type.label11 }}>{w.count}</span>
+        </span>
+      );
+    };
     const railChips = (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8, marginTop: 14 }}>
-        {strips.map((season) => {
+        {strips.map((season, i) => {
           const watched = plotSeasons.find((x) => x.n === season.n);
           const on = sheetSeason?.n === season.n;
           const sig = seasonSignal(season.n);
+          const col = i % 6;
+          const wt = seasonTitle(season.n);
           return (
-            <button
-              key={season.n}
-              type="button"
-              disabled={!watched}
-              onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
-              aria-pressed={on}
-              aria-label={watched ? `Season ${season.n}, ${stripCount(season)}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-              title={watched ? `Season ${season.n} · ${stripCount(season)}` : `Sealed until you finish season ${season.n - 1}`}
-              style={{ position: "relative", height: 36, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...E.type.label11, background: on ? E.color.cream : E.color.draft, border: `1px solid ${on ? E.color.ink : "transparent"}`, color: on ? E.color.ink : watched ? E.color.inkMuted : E.color.inkFaint, cursor: watched ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}
-            >
-              {season.n}
-              {sig && <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, width: 10, height: 10, borderRadius: "50%", background: sig === "new" ? E.color.identity : E.color.alert, border: `2px solid ${E.color.cream}`, boxSizing: "content-box" }} />}
-            </button>
+            <div key={season.n} style={{ position: "relative" }} onMouseEnter={() => setSeasonHover(season.n)} onMouseLeave={() => setSeasonHover((h) => (h === season.n ? null : h))}>
+              <button
+                type="button"
+                disabled={!watched}
+                onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+                aria-pressed={on}
+                aria-label={watched ? `Season ${season.n}, ${stripCount(season)}${wt ? `, ${wt}` : ""}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
+                title={watched ? `Season ${season.n} · ${stripCount(season)}${wt ? ` · ${wt}` : ""}` : `Sealed until you finish season ${season.n - 1}`}
+                style={{ position: "relative", width: "100%", height: 36, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, ...E.type.label11, background: on ? E.color.cream : E.color.draft, border: `1px solid ${on ? E.color.ink : "transparent"}`, color: on ? E.color.ink : watched ? E.color.inkMuted : E.color.inkFaint, cursor: watched ? "pointer" : "default", WebkitTapHighlightColor: "transparent" }}
+              >
+                {season.n}
+                {sig && <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, width: 10, height: 10, borderRadius: "50%", background: SEASON_COLOR[sig], border: `2px solid ${E.color.cream}`, boxSizing: "content-box" }} />}
+              </button>
+              {seasonHover === season.n && seasonList(season.n, { position: "absolute", top: "calc(100% + 8px)", width: 300, ...(col >= 4 ? { right: 0 } : col >= 2 ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }) })}
+            </div>
           );
         })}
       </div>
@@ -807,22 +888,27 @@ export default function ShowReference({
         {strips.length > 14 ? railChips : strips.map((season, i) => {
           const watched = plotSeasons.find((x) => x.n === season.n);
           const on = sheetSeason?.n === season.n;
+          const wt = seasonTitle(season.n);
           return (
-            <button
-              key={season.n}
-              type="button"
-              disabled={!watched}
-              onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
-              aria-pressed={on}
-              aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched ? "pointer" : "default", textAlign: "left" }}
-            >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Season {season.n}{seasonDot(season.n)}</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
-                {stripCount(season)}
-                {!watched && <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />}
-              </span>
-            </button>
+            <div key={season.n} style={{ position: "relative" }} onMouseEnter={() => setSeasonHover(season.n)} onMouseLeave={() => setSeasonHover((h) => (h === season.n ? null : h))}>
+              <button
+                type="button"
+                disabled={!watched}
+                onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+                aria-pressed={on}
+                aria-label={watched ? `Season ${season.n}${wt ? `, ${wt}` : ""}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
+                title={wt}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched ? "pointer" : "default", textAlign: "left" }}
+              >
+                <span>Season {season.n}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 12, color: E.color.inkMuted }}>
+                  {stripCount(season)}
+                  {seasonEnvelope(season.n)}
+                  {!watched && <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />}
+                </span>
+              </button>
+              {seasonHover === season.n && seasonList(season.n, { position: "absolute", right: -22, top: "calc(100% + 8px)", width: 300 })}
+            </div>
           );
         })}
       </div>
@@ -922,6 +1008,7 @@ export default function ShowReference({
                   return (
                     <React.Fragment key={season.n}>
                       {phoneStrip(season)}
+                      {phoneSeasonList(season.n)}
                       {watched && openPlotSeason === season.n && <div style={{ marginBottom: 28 }}>{sheetFor(watched)}</div>}
                     </React.Fragment>
                   );
