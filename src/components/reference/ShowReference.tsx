@@ -24,7 +24,7 @@ import type { GuideLetter, GuideLetterSignal } from "../../lib/db";
 import { SealedEntry } from "../editorial/ShowRoom";
 import Stamp, { stampSpecFor } from "../Stamp";
 import { stampLabelFor } from "../../lib/letterRange";
-import { GuideWriter, GuideReader, UNREAD_DOT, writeContext, joinContext } from "./GuideLetters";
+import { GuideWriter, GuideReader, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
 import { RATING_LABELS } from "../RatingCaptureModal";
 import type { Show } from "../../lib/db";
@@ -578,17 +578,38 @@ export default function ShowReference({
     // The act follows the title directly, after a dot (his note, 11-02):
     // "Ep. 3 · Title · Write about this episode →". When the title needs
     // the width (the phone) it drops to a line of its own under the title,
-    // its words never wrapping.
+    // its words never wrapping. Its label paints like a noted stretch in the
+    // room (his 11-02 call, blue over red over yellow — the thing left to
+    // do): identity with cream words while a friend's letter here is unread
+    // (the dot's job, so no dot), the alert red with cream words while a
+    // friend wrote about this episode from AHEAD of you (sealed; the label
+    // names them and leads to the sealed row), the accent once the writing
+    // here is seen — yours included.
     const guideActs = (ep: { s: number; e: number }) => {
       if (!user) return null;
       const key = `${ep.s}-${ep.e}`;
       const eps = guideByEp.get(key) ?? [];
-      const label = eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
+      const sealedHere = guideSealed.filter((sg) => sg.season === ep.s && sg.episode === ep.e);
+      const state: "new" | "sealed" | "seen" | null = eps.length && guideUnread(key) ? "new" : sealedHere.length ? "sealed" : eps.length ? "seen" : null;
+      const label = state === "sealed" && !eps.length
+        ? `${joinNames(Array.from(new Set(sealedHere.flatMap((sg) => sg.writerIds))).map(guideNameOf))} wrote from ahead →`
+        : eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
+      const paint: React.CSSProperties = state === "new"
+        ? { background: E.color.identity, color: E.color.cream, padding: "1px 5px" }
+        : state === "sealed"
+          ? { background: E.color.alert, color: E.color.cream, padding: "1px 5px" }
+          : state === "seen"
+            ? { background: E.color.accent, color: E.color.ink, padding: "1px 5px" }
+            : {};
+      const act = () => {
+        if (eps.length) openGuideReader(key);
+        else if (state === "sealed") sealedAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
+        else setGuideOpen({ key, mode: "write" });
+      };
       return (
         <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, height: RULE }}>
           <span aria-hidden="true" style={{ ...E.type.letterBody16, fontWeight: 700, color: E.color.inkMuted }}>·</span>
-          {eps.length > 0 && guideUnread(key) && <span aria-label="New letters" style={UNREAD_DOT} />}
-          <UnderlineWord onClick={() => { if (eps.length) openGuideReader(key); else setGuideOpen({ key, mode: "write" }); }}>{label}</UnderlineWord>
+          <UnderlineWord onClick={act} style={paint}>{label}</UnderlineWord>
         </span>
       );
     };

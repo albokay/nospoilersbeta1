@@ -15,8 +15,13 @@ const PROMPT_TOKEN_RE = /\[PROMPT:([\s\S]*?)\]/g;
 // One fill everywhere (Alborz 2026-10-07): yellow on letters AND on
 // responses — Friend blue now means SEALED: a stretch whose notes you can't
 // read yet. The hovered or open stretch turns cream (his 10-07 note).
+// The editorial skin (his 11-02 call): a sealed stretch is the ALERT red
+// with cream words — red means "watch on" everywhere (the envelope, the
+// map, the guide's act), blue means "new to read"; the classic keeps Friend.
 const DEFAULT_HIGHLIGHT_COLOR = CANON.accent;
 const SEALED_COLOR = CANON.friend;
+const SEALED_EDITORIAL: React.CSSProperties = { background: CANON.alert, color: CANON.cream };
+const SEALED_EDITORIAL_HOVER: React.CSSProperties = { background: "rgba(244,80,40,0.72)", color: CANON.cream };
 
 /** A shade darker (multiply by 0.86) for the hovered / open stretch. */
 export function darken(hex: string, f = 0.86): string {
@@ -198,11 +203,14 @@ function HighlightableSegment({
         // vanished, Alborz 2026-10-08): there it's a pale cream wash with the
         // sealed-letter dashed underline; on a cream response card it stays
         // Friend blue.
-        // The editorial letter sits on cream, so a sealed stretch takes the
-        // friend-blue fill there (the cream wash is the classic sky card's).
-        const sealedStyle: React.CSSProperties = sealedTone === "sky" && !editorialScope
-          ? { background: "rgba(254,248,236,0.45)", borderBottom: "2px dashed rgba(254,248,236,0.9)" }
-          : { background: SEALED_COLOR };
+        // The editorial letter sits on cream, so a sealed stretch takes a
+        // fill there: the alert red with cream words since 11-02 (the cream
+        // wash is the classic sky card's; Friend blue the classic cream card's).
+        const sealedStyle: React.CSSProperties = editorialScope
+          ? SEALED_EDITORIAL
+          : sealedTone === "sky"
+            ? { background: "rgba(254,248,236,0.45)", borderBottom: "2px dashed rgba(254,248,236,0.9)" }
+            : { background: SEALED_COLOR };
         const restStyle: React.CSSProperties = readable ? { background: color } : sealedStyle;
         // The editorial skin (Alborz's notes, round 4): a stretch with a note
         // you haven't opened fills identity with cream words; the hovered or
@@ -211,7 +219,7 @@ function HighlightableSegment({
         const fresh = !!unseen && p.covering.some((h) => unseen.has(h.id));
         const paint: React.CSSProperties = editorialScope
           ? (active
-            ? (fresh ? { background: "rgba(53,94,184,0.72)", color: CANON.cream } : readable ? { background: "rgba(222,168,56,0.55)" } : { background: "rgba(173,200,215,0.6)" })
+            ? (fresh ? { background: "rgba(53,94,184,0.72)", color: CANON.cream } : readable ? { background: "rgba(222,168,56,0.55)" } : SEALED_EDITORIAL_HOVER)
             : (fresh ? { background: CANON.identity, color: CANON.cream } : restStyle))
           : (active ? { background: CANON.cream } : restStyle);
         return (
