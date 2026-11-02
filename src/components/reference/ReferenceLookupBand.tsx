@@ -22,7 +22,7 @@ import { tvmazeSearch, tvmazeEpisodes, networkLabel, slugify, fetchTvmazePoster,
 import { ensureCatalogShow } from "../../lib/browseCatalog";
 import type { BrowseShow } from "../../lib/db";
 import { ensureShowReference, stampReferenceLookup, hideFromWatchingShelf, markWantToWatch, clearWantToWatch, type ShowReferenceData } from "../../lib/reference";
-import { upsertRewatchStatus, setCanonPin, setShelfBlurb } from "../../lib/db";
+import { upsertRewatchStatus, setCanonPin, setShelfBlurb, refreshShowIfStale } from "../../lib/db";
 import BrowseRows from "../BrowseRows";
 import MobileBrowseRows from "../../mobile/MobileBrowseRows";
 import { EditorialStrips } from "../editorial/Onboarding";
@@ -271,6 +271,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
   const [askStep, setAskStep] = useState<"ask" | "picker">("ask");
   const askShow = useMemo(() => (guideAsk ? shows.find((sh) => sh.id === guideAsk.showId) ?? null : null), [guideAsk, shows]);
   useEffect(() => { setAskStep("ask"); }, [guideAsk?.showId]);
+  useEffect(() => { if (askShow) keepFresh(askShow); }, [askShow?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!askShow?.tvmazeId || posters[askShow.id] !== undefined) return;
     let cancelled = false;
@@ -354,6 +355,18 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     return out;
   }, [tvResults, shows]);
 
+  // A show's catalog row can be weeks old when nobody has it in a pool (his
+  // Survivor catch, 2026-11-02: season 51 showed one episode, six had aired).
+  // The card's picker reads show.seasons, so the card refreshes the show on
+  // open (the 12-hour cadence; a no-op when fresh) and swaps the new counts
+  // in while it's up.
+  function keepFresh(show: Show) {
+    refreshShowIfStale(show).then((u) => {
+      if (!u) return;
+      setShows((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+      setCardShow((cur) => (cur && cur.id === u.id ? u : cur));
+    }).catch(() => { /* the stored counts, then */ });
+  }
   function openCard(show: Show) {
     const existing = progress[show.id];
     setPicked(existing ? { s: existing.s, e: existing.e } : { s: 0, e: 0 });
@@ -362,6 +375,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     setSearchOpen(false);
     setQuery("");
     setTvResults([]);
+    keepFresh(show);
     // Warm the reference blob NOW — by "look it up" it's already in the
     // module cache, so the reference tab paints without its own wait.
     ensureShowReference(show.id).catch(() => { /* the tab retries */ });
