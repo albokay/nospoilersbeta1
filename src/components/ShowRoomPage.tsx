@@ -1291,7 +1291,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <div style={{ position: "relative" }}>
                 {/* The poster carries the trailer (Alborz 2026-10-13): a play
                     mark once one resolves, opening the trailer band in a dialog. */}
-                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={96} h={136} /></span>
+                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={96} h={136} season={refEff?.s ?? null} /></span>
                 <div style={{ width: E.measure.desktop.letters - 120 }}>
                   {/* The fitted title (Alborz 2026-10-13): a word that would reach
                       the poster shrinks the size to fit; the gear (beside the name

@@ -13,20 +13,34 @@ import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { BottomSheet } from "./editorial/Overlays";
 import TrailerCard from "./TrailerCard";
 import { getTrailerKeyCached } from "../lib/trailers";
+import { ensureShowReference } from "../lib/reference";
 import { E } from "../styles/editorial";
 
-export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile = false }: {
+export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile = false, season = null }: {
   showId?: string | null; showName?: string | null; tvmazeId?: string | null; w: number; h: number; mobile?: boolean;
+  /** The season the viewer is on (his note, 2026-11-02): the play mark opens
+   *  THAT season's trailer from the show's guide data when it has one
+   *  (season 2 on; its first-season trailer is the launch trailer), else
+   *  the launch trailer as before. */
+  season?: number | null;
 }) {
   const [hasTrailer, setHasTrailer] = useState(false);
+  // The season's own key, when the guide data has one for the season you're on.
+  const [seasonKey, setSeasonKey] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    setHasTrailer(false);
+    setHasTrailer(false); setSeasonKey(null);
     if (!showId || !tvmazeId) return;
     getTrailerKeyCached(showId, tvmazeId).then((k) => { if (!cancelled) setHasTrailer(!!k); }).catch(() => { /* no mark */ });
+    if (season && season >= 2) {
+      ensureShowReference(showId)
+        .then((r) => { if (cancelled) return; const k = r?.seasons?.find((x) => x.n === season)?.trailerKey ?? null; if (k) { setSeasonKey(k); setHasTrailer(true); } })
+        .catch(() => { /* the launch trailer, then */ });
+    }
     return () => { cancelled = true; };
-  }, [showId, tvmazeId]);
+  }, [showId, tvmazeId, season]);
+  const title = seasonKey && season ? `${showName ?? "Trailer"} · season ${season}` : (showName ?? "Trailer");
   const poster = <RowPoster tvmazeId={tvmazeId} w={w} h={h} />;
   if (!hasTrailer || !showId) return poster;
   const disc = mobile ? 24 : 28;
@@ -42,13 +56,13 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile
         </span>
       </button>
       {open && (mobile ? (
-        <BottomSheet onClose={() => setOpen(false)} title={showName ?? "Trailer"} pad={false} label="Trailer">
-          <div style={{ marginTop: 14 }}><TrailerCard showId={showId} tvmazeId={tvmazeId} bleed={0} foot="calc(env(safe-area-inset-bottom, 0px) + 24px)" /></div>
+        <BottomSheet onClose={() => setOpen(false)} title={title} pad={false} label="Trailer">
+          <div style={{ marginTop: 14 }}><TrailerCard showId={showId} tvmazeId={tvmazeId} trailerKey={seasonKey} bleed={0} foot="calc(env(safe-area-inset-bottom, 0px) + 24px)" /></div>
         </BottomSheet>
       ) : (
         <EditorialDialog onClose={() => setOpen(false)} width={560} label="Trailer" align="left">
-          <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{showName ?? "Trailer"}</div>
-          <div style={{ marginTop: 18 }}><TrailerCard showId={showId} tvmazeId={tvmazeId} bleed={32} foot="32px" /></div>
+          <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{title}</div>
+          <div style={{ marginTop: 18 }}><TrailerCard showId={showId} tvmazeId={tvmazeId} trailerKey={seasonKey} bleed={32} foot="32px" /></div>
         </EditorialDialog>
       ))}
     </>

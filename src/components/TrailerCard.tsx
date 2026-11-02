@@ -21,9 +21,13 @@ export default function TrailerCard({
   tvmazeId,
   bleed = 0,
   foot,
+  trailerKey,
 }: {
   showId: string;
   tvmazeId: number | string | null | undefined;
+  /** A YouTube key to play instead of resolving the show's launch trailer
+   *  (the poster's play mark, 2026-11-02: the season you're on). */
+  trailerKey?: string | null;
   /** The editorial skin (round 3): the host's side inset the band bleeds past, so it runs edge to edge. */
   bleed?: number;
   /** The host's bottom inset as a CSS length (round 5): the band runs through it to the host's bottom edge. */
@@ -38,11 +42,12 @@ export default function TrailerCard({
     let cancelled = false;
     setKey(undefined);
     setPlaying(false);
+    if (trailerKey) { setKey(trailerKey); return; }
     getTrailerKeyCached(showId, tvmazeId)
       .then((k) => { if (!cancelled) setKey(k); })
       .catch(() => { if (!cancelled) setKey(null); });
     return () => { cancelled = true; };
-  }, [showId, tvmazeId]);
+  }, [showId, tvmazeId, trailerKey]);
 
   // Resolving (undefined) or miss (null) → render nothing.
   if (!key) return null;

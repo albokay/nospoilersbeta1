@@ -766,7 +766,7 @@ export default function ShowReference({
     };
     const railTabs = sheetSeason && strips.length > 1 ? (
       <div>
-        <SectionHead style={{ marginTop: 44 }}>Seasons</SectionHead>
+        <SectionHead>Seasons</SectionHead>
         {strips.map((season, i) => {
           const watched = plotSeasons.find((x) => x.n === season.n);
           const on = sheetSeason.n === season.n;
@@ -792,7 +792,7 @@ export default function ShowReference({
     ) : null;
     const trailersNode = (ref.launchTrailerKey || ref.seasons.some((season) => season.n >= 2 && season.trailerKey)) ? (
       <>
-        <SectionHead style={railHost ? undefined : { marginTop: 28 }}>Trailers</SectionHead>
+        <SectionHead style={{ marginTop: railHost ? 48 : 28 }}>Trailers</SectionHead>
         <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560, marginTop: 14 }}>
           {ref.launchTrailerKey && <RefTrailer label="the launch trailer" trailerKey={ref.launchTrailerKey} editorial />}
           {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
@@ -892,10 +892,13 @@ export default function ShowReference({
               ) : sheetSeason && sheetFor(sheetSeason)}
             </>
         )}
-        {!railHost && trailersNode}
+        {/* The trailers sit in the column under the sheet on both platforms
+            (his note, 2026-11-02: the poster's play mark now carries the season
+            you're on, so the rail holds the seasons alone and they stay in
+            reach while you scroll). */}
+        {trailersNode}
         {railHost && createPortal(
           <div style={{ color: E.color.ink, fontFamily: E.font.interface }}>
-            {trailersNode}
             {railTabs}
           </div>,
           railHost,
