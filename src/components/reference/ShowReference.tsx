@@ -21,9 +21,6 @@ import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
 import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen, fetchGuideLetterSignals } from "../../lib/db";
 import type { GuideLetter, GuideLetterSignal } from "../../lib/db";
-import { SealedEntry } from "../editorial/ShowRoom";
-import Stamp, { stampSpecFor } from "../Stamp";
-import { stampLabelFor } from "../../lib/letterRange";
 import { GuideWriter, GuideReader, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
 import { RATING_LABELS } from "../RatingCaptureModal";
@@ -688,26 +685,39 @@ export default function ShowReference({
             phone the strip right above already names it). */}
         {!mobile && <div style={{ ...E.type.letterTitle22, fontSize: 18, ...onRule, color: E.color.ink }}>Season {season.n}</div>}
         {season.eps.map((ep, n) => plotEntry(ep, n === 0 && mobile))}
-        {/* Friends' letters ahead of you (open letters, CP4): the room's
-            sealed-letter row at the end of YOUR season's sheet — From ·
-            Sealed until, one dim line, the writer's stamp with its lock. */}
-        {season.n === prog.s && guideSealed.map((sg) => {
-          const names = sg.writerIds.map(guideNameOf);
-          const who = joinNames(names);
-          const key = `${sg.season}-${sg.episode}`;
-          // Sealed by where it was WRITTEN FROM (the rooms' rule, 11-02); the line names the episode it's about.
-          const about = sg.fromSeason === sg.season && sg.fromEpisode === sg.episode ? "an episode ahead of you" : `S${sg.season} E${sg.episode} from S${sg.fromSeason} E${sg.fromEpisode}`;
-          return (
-            <div key={`sealed-${key}-${sg.fromSeason}-${sg.fromEpisode}`} ref={(el) => { sealedAnchors.current[key] = el; }} style={{ marginTop: RULE, background: E.color.cream }}>
-              <SealedEntry
-                from={who}
-                until={`S${sg.fromSeason} E${sg.fromEpisode}`}
-                line={`${who} wrote about ${about}. It opens when you get there.`}
-                stamp={<Stamp spec={stampSpecFor(sg.writerIds[0] ?? "")} label={stampLabelFor(sg.fromSeason, sg.fromEpisode)} initial={(names[0] ?? "").trim().charAt(0).toUpperCase()} scale={mobile ? 0.78 : 0.9} ink={E.color.ink} lineWidth={1.4} sealed />}
-              />
-            </div>
-          );
-        })}
+        {/* A friend's letter about an episode AHEAD of you (open letters; his
+            11-02 notes): a row of the sheet's own kind — the red locked circle
+            where the rating circle sits, "Ep. N" as the title (the title
+            itself stays held back), and the sentence as a red-highlighted
+            stretch. Letters about an episode you've reached have no row here:
+            their episode's act already says it in red. Sealed by where it was
+            written FROM. */}
+        {season.n === prog.s && guideSealed
+          .filter((sg) => sg.season > prog.s || (sg.season === prog.s && sg.episode > prog.e))
+          .map((sg) => {
+            const names = sg.writerIds.map(guideNameOf);
+            const who = joinNames(names);
+            const key = `${sg.season}-${sg.episode}`;
+            const same = sg.fromSeason === sg.season && sg.fromEpisode === sg.episode;
+            const line = `${who} wrote about S${sg.season} E${sg.episode}${same ? "" : ` from S${sg.fromSeason} E${sg.fromEpisode}`}. It unseals when you get there.`;
+            const lockCircle = (
+              <span aria-label={`Sealed until S${sg.fromSeason} E${sg.fromEpisode}`} style={{ width: 24, height: 24, borderRadius: "50%", background: E.color.alert, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Lock size={12} color={E.color.cream} strokeWidth={2.4} aria-hidden="true" />
+              </span>
+            );
+            return (
+              <div key={`sealed-${key}-${sg.fromSeason}-${sg.fromEpisode}`} ref={(el) => { sealedAnchors.current[key] = el; }} style={{ marginTop: RULE, position: "relative" }}>
+                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
+                  {mobile && lockCircle}
+                  <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule }}>Ep. {sg.episode}</span>
+                  {!mobile && <span style={{ position: "absolute", left: -36, top: 2, display: "inline-flex" }}>{lockCircle}</span>}
+                </div>
+                <div style={{ ...E.type.letterBody15, ...onRule }}>
+                  <span style={{ background: E.color.alert, color: E.color.cream, padding: "1px 5px", WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone" }}>{line}</span>
+                </div>
+              </div>
+            );
+          })}
       </div>
     );
     // The seasons (his notes, 2026-10-31). Every season up to the next
