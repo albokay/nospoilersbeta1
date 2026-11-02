@@ -875,7 +875,7 @@ export default function ShowReference({
                 {season.n}
                 {sig && <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, width: 10, height: 10, borderRadius: "50%", background: SEASON_COLOR[sig], border: `2px solid ${E.color.cream}`, boxSizing: "content-box" }} />}
               </button>
-              {seasonHover === season.n && <div style={{ position: "absolute", top: "100%", paddingTop: 8, width: 300, zIndex: 5, ...(col >= 4 ? { right: 0 } : col >= 2 ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }) }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
+              {seasonHover === season.n && <div style={{ position: "absolute", top: "100%", width: 300, zIndex: 5, ...(col >= 4 ? { right: 0 } : col >= 2 ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }) }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
             </div>
           );
         })}
@@ -905,7 +905,7 @@ export default function ShowReference({
                   {!watched && <Lock size={14} color={E.color.alert} strokeWidth={1.8} aria-hidden="true" />}
                 </span>
               </button>
-              {seasonHover === season.n && <div style={{ position: "absolute", right: -22, top: "100%", paddingTop: 8, width: 300, zIndex: 5 }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
+              {seasonHover === season.n && <div style={{ position: "absolute", left: on ? 0 : 40, right: 0, top: "100%", marginTop: on ? -1 : 0, zIndex: 5 }}>{seasonList(season.n, { position: "relative", width: "100%" })}</div>}
             </div>
           );
         })}
