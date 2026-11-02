@@ -734,8 +734,10 @@ export default function ShowReference({
     // (one is always in view). A one-season show gets no strips.
     const strips = [...ref.seasons].filter((season) => season.n <= prog.s + 1 && season.episodes.length > 0).sort((a, b) => a.n - b.n);
     const openSeason = plotSeasons.find((x) => x.n === openPlotSeason) ?? null;
-    // The sheet in view on desktop (always one): the opened season, else the latest watched.
-    const sheetSeason = plotEpisodes.length === 0 ? null : (openSeason ?? plotSeasons[plotSeasons.length - 1]);
+    // The sheet in view on desktop: the opened season, else the latest
+    // watched; 0 = the viewer closed the open tab (his note, 2026-11-02: the
+    // tabs close like the phone's strips), so no sheet until a tab is picked.
+    const sheetSeason = plotEpisodes.length === 0 || openPlotSeason === 0 ? null : (openSeason ?? plotSeasons[plotSeasons.length - 1]);
     const stripCount = (season: RefSeasonLike) => {
       const watched = plotSeasons.find((x) => x.n === season.n);
       const total = season.episodes.length;
@@ -764,21 +766,21 @@ export default function ShowReference({
         </button>
       );
     };
-    const railTabs = sheetSeason && strips.length > 1 ? (
+    const railTabs = plotEpisodes.length > 0 && strips.length > 1 ? (
       <div>
         <SectionHead>Seasons</SectionHead>
         {strips.map((season, i) => {
           const watched = plotSeasons.find((x) => x.n === season.n);
-          const on = sheetSeason.n === season.n;
+          const on = sheetSeason?.n === season.n;
           return (
             <button
               key={season.n}
               type="button"
-              disabled={!watched || on}
-              onClick={() => { setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
+              disabled={!watched}
+              onClick={() => { if (on) { setOpenPlotSeason(0); return; } setOpenPlotSeason(season.n); scrollToPlotHead(0.04); }}
               aria-pressed={on}
               aria-label={watched ? `Season ${season.n}` : `Season ${season.n}, sealed until you finish season ${season.n - 1}`}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched && !on ? "pointer" : "default", textAlign: "left" }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxSizing: "border-box", width: on ? "100%" : "calc(100% - 40px)", marginLeft: on ? 0 : 40, padding: "13px 12px 13px 16px", background: on ? E.color.cream : E.color.draft, border: 0, borderLeft: on ? `1px solid ${E.color.ink}` : 0, borderBottom: on ? `1px solid ${E.color.ink}` : 0, borderTop: on && i > 0 ? `1px solid ${E.color.ink}` : 0, ...E.type.label11, color: on ? E.color.ink : E.color.inkMuted, cursor: watched ? "pointer" : "default", textAlign: "left" }}
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Season {season.n}{seasonDot(season.n)}</span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: E.color.inkMuted }}>
