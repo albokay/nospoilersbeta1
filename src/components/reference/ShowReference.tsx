@@ -705,15 +705,20 @@ export default function ShowReference({
                 <Lock size={12} color={E.color.cream} strokeWidth={2.4} aria-hidden="true" />
               </span>
             );
+            const title = ref.seasons.find((se) => se.n === sg.season)?.episodes.find((x) => x.e === sg.episode)?.title ?? "";
             return (
               <div key={`sealed-${key}-${sg.fromSeason}-${sg.fromEpisode}`} ref={(el) => { sealedAnchors.current[key] = el; }} style={{ marginTop: RULE, position: "relative" }}>
-                <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
+                {/* The regular row's title line (his note): the circle, "Ep. N · Title",
+                    the dot, then the sentence as the act's mono label in red — not a
+                    link, so no underline; it may wrap. */}
+                <div style={{ position: "relative", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 10px", minHeight: RULE, ...(mobile ? { background: E.color.cream, boxShadow: `0 -1px 0 ${E.color.cream}` } : {}) }}>
                   {mobile && lockCircle}
-                  <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule }}>Ep. {sg.episode}</span>
+                  <span style={{ ...E.type.letterBody16, fontWeight: 700, ...onRule, minWidth: 0, flex: "0 0 auto", maxWidth: "100%" }}>Ep. {sg.episode}{title ? ` · ${title}` : ""}</span>
+                  <span style={{ flex: "0 1 auto", display: "inline-flex", alignItems: "center", gap: 8, minHeight: RULE }}>
+                    <span aria-hidden="true" style={{ ...E.type.letterBody16, fontWeight: 700, color: E.color.inkMuted }}>·</span>
+                    <span style={{ ...E.type.label11, background: E.color.alert, color: E.color.cream, padding: "1px 5px", WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", lineHeight: 1.6 }}>{line}</span>
+                  </span>
                   {!mobile && <span style={{ position: "absolute", left: -36, top: 2, display: "inline-flex" }}>{lockCircle}</span>}
-                </div>
-                <div style={{ ...E.type.letterBody15, ...onRule }}>
-                  <span style={{ background: E.color.alert, color: E.color.cream, padding: "1px 5px", WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone" }}>{line}</span>
                 </div>
               </div>
             );
