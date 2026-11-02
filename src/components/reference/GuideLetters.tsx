@@ -32,13 +32,16 @@ const WRITER_W = 420;
 const PAPER_W = 400;
 const PAPER_TILT = 2.5;
 
-/** The writing box's explanation (his copy, 11-01). */
-export function writeContext(showName: string): string {
-  return `This is a way to have conversations about shows you’ve already watched without having to start a room for it. Friends who’ve watched this far can open it from their own show guide and write back. Friends who haven’t will only hear that you wrote about ${showName}.`;
+/** The writing box's explanation (his copy, 11-02: the audience is every
+ *  friend across every watch group — the thing a writer inside a room must
+ *  not mistake). */
+const HOW_IT_WORKS = "Writing from the show guide pings your friends across all your watch groups. This is a way to write about shows you’ve already watched without opening a new room — any friend, in all your groups who has also watched this show can read and write back.";
+export function writeContext(_showName: string): string {
+  return HOW_IT_WORKS;
 }
-/** Join the conversation's explanation (his copy, 11-01). */
+/** Join the conversation's explanation (his copy, 11-02). */
 export function joinContext(writers: string, showName: string): string {
-  return `${writers} wrote about ${showName}. What’s your take? (Writing here is a way to have conversations about things you’ve already watched without having to start a room for it.)`;
+  return `${writers} wrote about ${showName}. What’s your take? ${HOW_IT_WORKS}`;
 }
 
 /** The room's Write a letter block (ShowRoom's WriteBlock, as a style). */

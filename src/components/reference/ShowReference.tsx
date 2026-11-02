@@ -602,8 +602,12 @@ export default function ShowReference({
       const eps = guideByEp.get(key) ?? [];
       const sealedHere = guideSealed.filter((sg) => sg.season === ep.s && sg.episode === ep.e);
       const state: "new" | "sealed" | "seen" | null = eps.length && guideUnread(key) ? "new" : sealedHere.length ? "sealed" : eps.length ? "seen" : null;
-      const label = state === "sealed" && !eps.length
-        ? `${joinNames(Array.from(new Set(sealedHere.flatMap((sg) => sg.writerIds))).map(guideNameOf))} wrote from ahead →`
+      // Sealed and nothing readable here: the label IS the sentence (his note,
+      // 11-02) — who, where they wrote from, when it unseals — not a link.
+      const sealedOnly = state === "sealed" && !eps.length;
+      const froms = Array.from(new Set(sealedHere.map((sg) => `S${sg.fromSeason} E${sg.fromEpisode}`)));
+      const label = sealedOnly
+        ? `${joinNames(Array.from(new Set(sealedHere.flatMap((sg) => sg.writerIds))).map(guideNameOf))} wrote from ${joinNames(froms)}. It unseals when you get there.`
         : eps.length ? `${joinNames(guideWriters(eps))} wrote about this episode →` : "Write about this episode →";
       const paint: React.CSSProperties = state === "new"
         ? { background: E.color.identity, color: E.color.cream, padding: "1px 5px" }
@@ -614,13 +618,14 @@ export default function ShowReference({
             : {};
       const act = () => {
         if (eps.length) openGuideReader(key);
-        else if (state === "sealed") sealedAnchors.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
         else setGuideOpen({ key, mode: "write" });
       };
       return (
-        <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, height: RULE }}>
+        <span ref={(el) => { guideAnchors.current[key] = el; }} style={{ flex: sealedOnly ? "0 1 auto" : "0 0 auto", display: "inline-flex", alignItems: "center", gap: 8, minHeight: RULE }}>
           <span aria-hidden="true" style={{ ...E.type.letterBody16, fontWeight: 700, color: E.color.inkMuted }}>·</span>
-          <UnderlineWord onClick={act} style={paint}>{label}</UnderlineWord>
+          {sealedOnly
+            ? <span style={{ ...E.type.label11, ...paint, WebkitBoxDecorationBreak: "clone", boxDecorationBreak: "clone", lineHeight: 1.6 }}>{label}</span>
+            : <UnderlineWord onClick={act} style={paint}>{label}</UnderlineWord>}
         </span>
       );
     };
