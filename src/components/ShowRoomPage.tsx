@@ -191,20 +191,19 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // The dashboard band arrives ON the reference tab (nav state, CP2).
   // A group's room always opens on its letters (Option B, CP1, 11-03): it has no
   // tab row now, so an older link asking for the guide lands on the show's own page's business, not here.
-  const [tab, setTab] = useState<Tab>(() =>
-    privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
-      ? "reference"
-      : (privateOnly ? "private" : "friend"));
+  const [tab, setTab] = useState<Tab>(() => (privateOnly ? "reference" : "friend"));
   // Cross-room navigation reuses this mounted page (the guide's room pills
   // navigate /show-room/private/... → /show-room/{roomId}) — the tab state
   // survives, so re-derive it whenever the path actually changes (2026-09-08:
   // arriving from a guide should land on the friend room).
   useEffect(() => {
-    setTab(privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
-      ? "reference"
-      : (privateOnly ? "private" : "friend"));
+    setTab(privateOnly ? "reference" : "friend");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+  // A show the guide can't cover (no catalogue entry) opens its page on the journal instead (Option B, CP2, 11-03).
+  useEffect(() => {
+    if (privateOnly && tab === "reference" && show && !show.tvmazeId) setTab("private");
+  }, [privateOnly, tab, show]);
   // Help-system arc CP3: the sample-room tour, reopened on demand.
   const [tourOpen, setTourOpen] = useState(false);
   // The letter from Sidebar (2026-09-26; replaced the progress-picker
@@ -1315,7 +1314,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             friend = green header / sky body, private = sky header / green
             body (the inactive tab shows through). ── */}
       {/* The green runs to the top of a group's room (Option B, CP1, his pick 11-03): head and band one colour; the show's own page keeps its cream head until CP2. */}
-      <div style={{ background: editorial ? (privateOnly ? "transparent" : E.color.personal) : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
+      <div style={{ background: editorial ? (privateOnly ? E.color.accent : E.color.personal) : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
           //    the landing-rule arc, 11-02): the blue corner is the way out,
@@ -1324,7 +1323,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    the headline is the way up to the group room. ──
           <>
             <CornerTab desktop kind="back" label={backLabel} onClick={closeRoom} />
-            <Wordmark desktop tint="ink" alignRight={!privateOnly} onClick={() => navigate("/dashboard")} />
+            <Wordmark desktop tint="ink" alignRight onClick={() => navigate("/dashboard")} />
             <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
@@ -1343,8 +1342,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   <div style={{ width: 464 }}>
                     <FittedTitle desktop shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
 
-                  {tab === "reference" && refCreatedBy.length > 0 ? (
-                    <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
+                  {privateOnly ? (
+                    // The show's own page (Option B, CP2, 11-03): what the page is, then the way to each room you share the show in.
+                    <>
+                      <EditorialSub desktop>Show guide &amp; journal</EditorialSub>
+                      {journalPlaces.map((pl) => (
+                        <div key={pl.roomId} style={{ marginTop: 14 }}>
+                          <UnderlineWord onClick={() => navigate(`/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} style={{ whiteSpace: "normal", lineHeight: 1.5 }}>In {pl.name} →</UnderlineWord>
+                        </div>
+                      ))}
+                    </>
                   ) : groupPeople?.length ? (
                     <EditorialSub desktop>
                       With {joinNameNodes(groupPeople.map((p) => (
@@ -1443,18 +1450,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    picker; the band runs off the window's right edge. ──
           <>
             {/* A group's room has NO tab row (Option B, CP1, 11-03): the room is the letters; the guide and the journal live on the show's own page behind the door in the band. The show's own page keeps its tabs (reworked in CP2). */}
-            {privateOnly && (
-              <EditorialColumn wide style={{ marginTop: E.measure.desktop.artTabsGap }}>
-                <FolderTabs
-                  width={E.measure.desktop.letters}
-                  tabs={["private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
-                  active={tab}
-                  onChange={(t) => setTab(t)}
-                />
-              </EditorialColumn>
-            )}
-            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto", ...(privateOnly ? {} : { marginTop: E.measure.desktop.artTabsGap }) }}>
-              <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))", position: "relative" }}>
+            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto", marginTop: E.measure.desktop.artTabsGap }}>
+              {/* The show's own page's band stays its yellow on both tabs (his yes, 11-03). */}
+              <RoomBand tab={privateOnly ? "reference" : tab} style={{ marginRight: "min(0px, calc(540px - 50vw))", position: "relative" }}>
                 {/* The chat fold (CP2, 11-02; flush in the band's bottom-right corner since Option B's CP1, 11-03): the group room's yellow corner at the window's right edge; opens the group's chat drawer here. */}
                 {!privateOnly && parentGroupId && user && (
                   <ChatCorner desktop countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => setChatOpen(true)} style={{ bottom: 0 }} />
@@ -1473,6 +1471,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
                   </div>
                 ) : null}
+                {/* The show's own page (Option B, CP2, his sketch 11-03): Show guide | Journal hang from the band's bottom edge, under the picker, Show guide first. */}
+                {privateOnly && (
+                  <div style={{ marginTop: 22, marginBottom: -20 }}>
+                    <FolderTabs hang bandColour={E.color.accent} width={E.measure.desktop.letters} tabs={[...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]} active={tab} onChange={(t) => setTab(t)} />
+                  </div>
+                )}
               </RoomBand>
             </div>
           </>

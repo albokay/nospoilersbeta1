@@ -202,20 +202,19 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // The dashboard band arrives ON the reference tab (nav state, CP2).
   // A group's room always opens on its letters (Option B, CP1, 11-03): it has no
   // tab row now, so an older link asking for the guide lands on the show's own page's business, not here.
-  const [tab, setTab] = useState<Tab>(() =>
-    privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
-      ? "reference"
-      : (privateOnly ? "private" : "friend"));
+  const [tab, setTab] = useState<Tab>(() => (privateOnly ? "reference" : "friend"));
   // Cross-room navigation reuses this mounted page (the guide's room pills
   // navigate /show-room/private/... → /show-room/{roomId}) — the tab state
   // survives, so re-derive it whenever the path actually changes (2026-09-08:
   // arriving from a guide should land on the friend room).
   useEffect(() => {
-    setTab(privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
-      ? "reference"
-      : (privateOnly ? "private" : "friend"));
+    setTab(privateOnly ? "reference" : "friend");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+  // A show the guide can't cover (no catalogue entry) opens its page on the journal instead (Option B, CP2, 11-03).
+  useEffect(() => {
+    if (privateOnly && tab === "reference" && show && !show.tvmazeId) setTab("private");
+  }, [privateOnly, tab, show]);
   const [loading, setLoading] = useState(true);
   const [composeOpen, setComposeOpen] = useState(false);
   // Compose minimize (Alborz 2026-09-08): hide the sheet WITHOUT unmounting
@@ -1361,7 +1360,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       {/* The green runs to the top of a group's room (Option B, CP1, his pick 11-03): head and band one colour; the show's own page keeps its cream head until CP2. */}
-      <div ref={headRef} style={{ background: editorial ? (privateOnly ? "transparent" : E.color.personal) : (tab === "private" ? C.sky : C.green) }}>
+      <div ref={headRef} style={{ background: editorial ? (privateOnly ? E.color.accent : E.color.personal) : (tab === "private" ? C.sky : C.green) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
           //    the landing-rule arc, 11-02): the blue corner is the way out,
@@ -1384,8 +1383,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                     line and jumped on a tap). */}
                 <FittedTitle shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} style={{ fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties} />
 
-              {tab === "reference" && refCreatedBy.length > 0 ? (
-                <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
+              {privateOnly ? (
+                // The show's own page (Option B, CP2, 11-03): what the page is, then the way to each room you share the show in.
+                <>
+                  <EditorialSub>Show guide &amp; journal</EditorialSub>
+                  {journalPlaces.map((pl) => (
+                    <div key={pl.roomId} style={{ marginTop: 14 }}>
+                      <UnderlineWord onClick={() => navigate(`/m/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} style={{ whiteSpace: "normal", lineHeight: 1.5 }}>In {pl.name} →</UnderlineWord>
+                    </div>
+                  ))}
+                </>
               ) : groupPeople?.length ? (
                 <EditorialSub>
                   With {joinNameNodes(groupPeople.map((p) => (
@@ -1467,16 +1474,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    picker. ──
           <>
             {/* A group's room has NO tab row (Option B, CP1, 11-03): the room is the letters; the guide and the journal live on the show's own page behind the door in the band. The show's own page keeps its tabs (reworked in CP2). */}
-            {privateOnly && (
-              <div style={{ padding: `${E.measure.phone.artTabsGap}px ${E.space.gutter}px 0` }}>
-                <FolderTabs
-                  tabs={["private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
-                  active={tab}
-                  onChange={(t) => setTab(t)}
-                />
-              </div>
-            )}
-            <RoomBand tab={tab} style={privateOnly ? undefined : { marginTop: E.measure.phone.artTabsGap }}>
+            {/* The show's own page's band stays its yellow on both tabs (his yes, 11-03). */}
+            <RoomBand tab={privateOnly ? "reference" : tab} style={{ marginTop: E.measure.phone.artTabsGap }}>
               {/* The door (Option B, CP1, his mockup 11-03): a yellow strip above the picker running off the page's right edge, its left edge past the poster's. */}
               {!privateOnly && show && (
                 <div style={{ display: "flex", justifyContent: "flex-end", margin: `0 -${E.space.gutter}px 22px 0` }}>
@@ -1488,6 +1487,12 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               {show && progressForShow ? (
                 <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
               ) : null}
+              {/* The show's own page (Option B, CP2, his sketch 11-03): Show guide | Journal hang from the band's bottom edge, under the picker, Show guide first. */}
+              {privateOnly && (
+                <div style={{ marginTop: 22, marginBottom: -20 }}>
+                  <FolderTabs hang bandColour={E.color.accent} tabs={[...(referenceAvailable ? ["reference"] : []), "private"] as RoomTabKey[]} active={tab} onChange={(t) => setTab(t)} />
+                </div>
+              )}
             </RoomBand>
           </>
         ) : (
@@ -1742,7 +1747,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       )}
       {editorial && pinned && (
         <PinnedBand
-          tab={tab}
+          tab={privateOnly ? "reference" : tab}
           show={show?.name ?? "Show"}
           position={progressForShow ? (() => { const p = effectiveProgress(progressForShow); return p && (p.s > 0 || p.e > 0) ? `S${p.s} E${p.e}` : null; })() : null}
           onBack={closeRoom}
