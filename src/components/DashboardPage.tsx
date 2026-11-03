@@ -2950,7 +2950,7 @@ export default function DashboardPage() {
         if (editorial) {
           const pick = inviteShows[0];
           return (
-            <InviteDialog onClose={closeInviteModal} label={inviteLinks ? "Invites sent" : "Invite friends"}>
+            <InviteDialog onClose={closeInviteModal} label={inviteLinks ? "Invites sent" : creating ? "Start a new watch group" : "Invite friends"}>
               {inviteLinks ? (
                 <InvitesSentBody links={inviteLinks} onDone={closeInviteModal} inset={28} />
               ) : (

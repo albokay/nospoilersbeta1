@@ -334,7 +334,7 @@ export default function MobileInviteSheet({
         {!links ? (
           <>
             <h1 style={title}>
-              {targetGroupId ? <>Connect more friends<br />to this group</> : <>Email friends to<br />start a watch group</>}
+              {targetGroupId ? <>Connect more friends<br />to this group</> : <>Start a new<br />watch group</>}
             </h1>
             <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, textAlign: "center", margin: "0 0 24px" }}>
               Their name is how they&rsquo;ll show up for you.

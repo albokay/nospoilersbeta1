@@ -3,7 +3,7 @@
  * the E3Dash / D3Dash boards). Rendered under the editorial skin only, by
  * MobileDashboard and DashboardPage; the classic dashboards are untouched.
  *
- *   EditorialGroups  "Groups" on a rule with "Invite new watch group →" (was "…friend group", Alborz 2026-10-17);
+ *   EditorialGroups  the Show rooms shelf, then "Groups" on a rule with a green + beside the tab (was "Invite new watch group →" until 11-03);
  *                    hairline rows — the members' initials, the group's
  *                    name, a mono second line (new letters · a sealed
  *                    letter · new in chat · the room with the latest
@@ -24,10 +24,10 @@
  *   DrawerTab        the docked "How I watch TV" tab at the foot.
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, SquarePen } from "lucide-react";
+import { GripVertical, Plus, SquarePen } from "lucide-react";
 import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
-import { SectionHead, UnderlineWord } from "./Chrome";
+import { SectionHead } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
   fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, fetchRoomMemberIds, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
@@ -361,6 +361,17 @@ function RoomRow({ desktop, row, onEnter }: { desktop: boolean; row: RoomShelfRo
   );
 }
 
+/** The Groups shelf's +: a green disc with a cream plus, a 44px hit on the phone. */
+function PlusDisc({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" aria-label="Start a new watch group" title="Start a new watch group" onClick={onClick} style={{ width: 44, height: 44, margin: "-8px 0 -8px -8px", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", border: 0, padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+      <span aria-hidden="true" style={{ width: 28, height: 28, borderRadius: "50%", background: E.color.personal, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+        <Plus size={18} strokeWidth={2.4} color={E.color.cream} />
+      </span>
+    </button>
+  );
+}
+
 function GhostRow() {
   return (
     <div aria-hidden="true" style={{ ...rowBase, cursor: "default" }}>
@@ -516,7 +527,8 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
           ))}
         </div>
       )}
-      <div data-tip-anchor="groups-head"><SectionHead big tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new watch group →</UnderlineWord> : null}>Groups</SectionHead></div>
+      {/* The green + beside the tab (his note, 11-03) replaces "Invite new watch group →": it opens the same invite modal, now headed "Start a new watch group". */}
+      <div data-tip-anchor="groups-head"><SectionHead big tab={E.color.personal} after={!hideNewGroup && !loading ? <PlusDisc onClick={onNewGroup} /> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);

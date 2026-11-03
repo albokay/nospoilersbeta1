@@ -204,25 +204,27 @@ export function TopRight({ items, right, textTop, gap, hit, zIndex = 4, safe = f
 
 /** A section head: mono caps on a 1px ink rule, with an optional count or
  *  underlined link at the right end. */
-export function SectionHead({ children, right, tab, tabText, big = false, style }: {
+export function SectionHead({ children, right, tab, tabText, big = false, after, style }: {
   children: React.ReactNode; right?: React.ReactNode;
   /** A filled tab on the rule (Alborz 2026-10-14, his mockup): the label in
    *  cream on this colour, flush with the rule's left end, the words inset 8px. */
   tab?: string;
   /** The tab's text colour when cream won't do (the sky "Show rooms" tab reads in ink, 11-03). */
   tabText?: string;
-  /** The dashboard's shelf heads carry the page (no headline, 11-03): the tab's word in the display serif. */
+  /** The dashboard's shelf heads carry the page (no headline, 11-03): the tab's word in the display serif, at 20 (28 read too big to him). */
   big?: boolean;
+  /** Something that sits right beside the tab (the Groups shelf's green +, 11-03). */
+  after?: React.ReactNode;
   style?: React.CSSProperties;
 }) {
   const tabStyle: React.CSSProperties | undefined = tab
     ? big
-      ? { display: "inline-block", background: tab, color: tabText ?? E.color.cream, padding: "9px 16px 10px", fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1, letterSpacing: "-0.01em", textTransform: "none" }
+      ? { display: "inline-block", background: tab, color: tabText ?? E.color.cream, padding: "8px 12px 9px", fontFamily: E.font.display, fontWeight: 700, fontSize: 20, lineHeight: 1, letterSpacing: "-0.01em", textTransform: "none" }
       : { display: "inline-block", background: tab, color: tabText ?? E.color.cream, padding: "7px 8px" }
     : undefined;
   return (
     <div style={{ display: "flex", alignItems: tab ? "flex-end" : "baseline", justifyContent: "space-between", gap: 12, paddingBottom: tab ? 0 : 9, borderBottom: `1px solid ${E.color.ink}`, ...E.type.label11, color: E.color.ink, ...style }}>
-      <span style={tabStyle}>{children}</span>
+      {after ? <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}><span style={tabStyle}>{children}</span>{after}</span> : <span style={tabStyle}>{children}</span>}
       {tab && right ? <span style={{ paddingBottom: big ? 9 : 7 }}>{right}</span> : right}
     </div>
   );
