@@ -24,6 +24,22 @@ import { fetchAskSignal } from "../../lib/groupAsks";
 
 export type DiscSignal = "blue" | "red" | null;
 
+/** The + at the end of the With line (his ask, 11-03): a small ink disc with
+ *  a cream plus — the Groups shelf's + at a smaller size — that opens the
+ *  group's add-friends flow from inside the room. A 44px hit on the phone. */
+export function WithPlus({ onClick, desktop = false }: { onClick: () => void; desktop?: boolean }) {
+  const d = desktop ? 20 : 18;
+  const hit = desktop ? 36 : 44;
+  const m = (hit - d) / 2;
+  return (
+    <button type="button" aria-label="Invite more friends" title="Invite more friends" onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", verticalAlign: "middle", width: hit, height: hit, margin: `-${m}px -${m}px -${m}px ${8 - m}px`, background: "transparent", border: 0, padding: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+      <span aria-hidden="true" style={{ width: d, height: d, borderRadius: "50%", background: E.color.ink, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={d - 8} height={d - 8} viewBox="0 0 24 24" fill="none" stroke={E.color.cream} strokeWidth={3} strokeLinecap="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+      </span>
+    </button>
+  );
+}
+
 export function GroupRoomDisc({ desktop = false, signal = null, label = "Group room", onClick, style }: { desktop?: boolean; signal?: DiscSignal; /** The group's name (the lobby's: custom, else "Group N"). */ label?: string; onClick: () => void; style?: React.CSSProperties }) {
   const size = desktop ? E.measure.desktop.groupDisc : E.measure.phone.groupDisc;
   const arrow = desktop ? 32 : 24;

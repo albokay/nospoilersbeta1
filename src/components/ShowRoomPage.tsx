@@ -58,9 +58,10 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark } from "./editorial/Chrome";
-import { GroupRoomDisc, useGroupSignals } from "./editorial/RoomHead";
+import { GroupRoomDisc, WithPlus, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
+import AddFriendsDialog from "./editorial/AddFriendsDialog";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
@@ -129,6 +130,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const [lobbyName, setLobbyName] = useState<string | null>(null);
   // The group's chat drawer, opened from the band's fold (CP2).
   const [chatOpen, setChatOpen] = useState(false);
+  // The With line's + (his ask, 11-03): the group's add-friends dialog, in the room.
+  const [inviteOpen, setInviteOpen] = useState(false);
   const signals = useGroupSignals(user?.id, privateOnly ? null : parentGroupId, roomId);
   // Send is a copy (2026-10-28): the groups a journal entry can go to, and
   // the rooms already holding a copy of each entry.
@@ -1340,6 +1343,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                               {p.label}
                             </span>
                           )))}
+                      {!privateOnly && parentGroupId && <WithPlus desktop onClick={() => setInviteOpen(true)} />}
                     </EditorialSub>
                   ) : !privateOnly && parentGroupId ? (
                     // A room of one (his words, 11-03): in place of the With line.
@@ -1481,6 +1485,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       {/* The group's chat, in the room (CP2, 11-02). Closing it refreshes the disc's dot and the fold's count. */}
       {chatOpen && parentGroupId && user && (
         <GroupChatDrawer groupId={parentGroupId} userId={user.id} onClose={() => { setChatOpen(false); signals.reload(); }} />
+      )}
+      {inviteOpen && parentGroupId && user && (
+        <AddFriendsDialog groupId={parentGroupId} onClose={() => setInviteOpen(false)} />
       )}
 
       {/* ── Two-pane body — mirrors the live room (V2FriendRoomPage): a 672px

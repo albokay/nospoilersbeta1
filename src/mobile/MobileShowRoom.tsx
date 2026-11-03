@@ -19,7 +19,8 @@ import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark } from "../components/editorial/Chrome";
-import { GroupRoomDisc, useGroupSignals } from "../components/editorial/RoomHead";
+import { GroupRoomDisc, WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
+import MobileInviteSheet from "./MobileInviteSheet";
 import { ChatCorner } from "../components/editorial/GroupRoom";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
@@ -164,6 +165,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // the custom name, else "Group N" as the group room says it; null = no group.
   const [lobbyName, setLobbyName] = useState<string | null>(null);
   const signals = useGroupSignals(user?.id, privateOnly ? null : parentGroupId, roomId);
+  // The With line's + (his ask, 11-03): the group's add-friends sheet, in the room.
+  const [inviteOpen, setInviteOpen] = useState(false);
   // Send is a copy (2026-10-28): the groups a journal entry can go to, and
   // the rooms already holding a copy of each entry.
   const [journalPlaces, setJournalPlaces] = useState<JournalPlace[]>([]);
@@ -1380,6 +1383,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   With {joinNameNodes(groupPeople.map((p) => (
                         <span key={p.username} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openPool(p.username)}>{p.label}</span>
                       )))}
+                  {!privateOnly && parentGroupId && <WithPlus onClick={() => setInviteOpen(true)} />}
                 </EditorialSub>
               ) : !privateOnly && parentGroupId ? (
                 // A room of one (his words, 11-03): in place of the With line.
@@ -1388,6 +1392,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               </div>
               {/* The disc carries the group's name; nudged left of the chat fold on the banner's corner (his note, 11-02). */}
               {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -1, marginRight: 36 }} />}
+              {/* The With line's + (his ask, 11-03): the group's add-friends sheet, in the room. */}
+              {inviteOpen && parentGroupId && <MobileInviteSheet targetGroupId={parentGroupId} onClose={() => setInviteOpen(false)} onSent={() => {}} />}
             </div>
             {/* The banner (CP2 + his notes, 11-02): the show's art across the whole
                 page, the play mark at the top near the left, the group room's chat

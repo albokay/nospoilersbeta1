@@ -333,8 +333,9 @@ export default function MobileInviteSheet({
       <div style={inner}>
         {!links ? (
           <>
-            <h1 style={title}>
-              {targetGroupId ? <>Connect more friends<br />to this group</> : <>Start a new<br />watch group</>}
+            {/* Balanced wrap (his rule, 11-03): the width does the breaking, not a <br>. */}
+            <h1 className="sb-balance" style={{ ...title, maxWidth: 300, marginLeft: "auto", marginRight: "auto" }}>
+              {targetGroupId ? "Connect more friends to this group" : "Start a new watch group"}
             </h1>
             <p style={{ fontFamily: "Inter, sans-serif", fontWeight: 400, fontSize: 13, lineHeight: 1.45, color: C.cream, textAlign: "center", margin: "0 0 24px" }}>
               Their name is how they&rsquo;ll show up for you.

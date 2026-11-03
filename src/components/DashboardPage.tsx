@@ -2405,7 +2405,7 @@ export default function DashboardPage() {
                       )}
                       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 28 : groupShelves.watching.length === 0 ? 44 : 0 }}>
                         <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
-                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite</button>
+                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite more friends</button>
                       </div>
                     </div>
                     {/* The rooms rail: the finished row stays attached to the masthead's bottom edge, "You're watching:" under it. */}
@@ -2956,8 +2956,9 @@ export default function DashboardPage() {
               ) : (
                 <div style={{ padding: "30px 32px 4px" }}>
                   <style>{FORM_CSS}</style>
-                  <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", paddingRight: 8 }}>
-                    {inviteTargetGroupId ? "Connect more friends to this group" : "Email friends to start a watch group"}
+                  {/* The heading wraps balanced (his rule, 11-03): no hand-placed break. */}
+                  <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 28, lineHeight: 1.15, letterSpacing: "-0.01em", paddingRight: 8, textWrap: "balance" as const }}>
+                    {inviteTargetGroupId ? "Connect more friends to this group" : "Start a new watch group"}
                   </div>
                   <div style={{ marginTop: 28 }}>
                     <FriendRows desktop rows={inviteRows} onChange={(i, f, v) => setInviteRows((prev) => prev.map((r, j) => (j === i ? { ...r, [f]: v } : r)))} onAdd={() => setInviteRows((prev) => [...prev, { name: "", email: "" }])} />
