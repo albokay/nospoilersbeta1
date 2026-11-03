@@ -34,11 +34,13 @@ import {
   type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass, type GroupDashboardShow,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
+import { linearIndex } from "../../lib/groupPills";
+import { roadOthers, summarizeGap } from "../../lib/letters";
 import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
 
-type GroupLine = { line: string; envelope: "open" | "sealed" | null; /** A friend's new pitch (round 3): the identity dot. */ dot?: boolean; /** The line's tail drawn in alert red ("pitch a new show" — his note, 11-03). */ redTail?: string };
+type GroupLine = { line: string; /** Something new in the group room (a pitch, an answer to yours, chat): the identity dot. */ dot?: boolean; /** The line's tail drawn in alert red ("pitch a new show" — his note, 11-03). */ redTail?: string };
 
 /** "Sam pitched The Sopranos" — the newest pitch by someone else in a group,
  *  when the viewer hasn't seen it (Alborz's notes, round 3). */
@@ -49,54 +51,54 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
   return { text: `${who} pitched ${a.latestPitchShowName ?? "a show"}`, at: a.latestPitchAt ?? 0 };
 }
 
-/** THE LANDING RULE (the landing-rule arc's CP4, 2026-11-02; his notes the
- *  same evening): tapping a group opens it at its newest activity, and the
- *  rows TEND TO NEW WRITING. (1) The room with the newest writing you can
- *  read wins. (2) Else a friend's latest pitch you haven't answered — a yes,
- *  a pass, or clearing it from your shelf — pulls you to the group room
- *  (their later answers don't; answers unknown yet count as none). (3) Else
- *  the room written in last; (4) else the newest of your rooms; (5) else the
- *  group room. A show you CLEARED from your shelf never counts: the group
- *  room hides its room for you, so the tap never lands there and the line
- *  never names it (his note 7). Returns the room, or null for the group room. */
-export function landingFor(
-  gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: MyStances | null, selfUserId: string,
-  /** A friend's fresh answer to the viewer's own pitch, per group (his ask, 11-03): it pulls to the group room after an unanswered pitch. */
-  answers: Map<string, PitchAnswer> = new Map(),
-  /** THE ONE BRAIN (his yes, 11-03): the group room's own rows for this group — in it, left, cleared — so the dashboard can't disagree with the room. */
-  brain?: GroupDashboardShow[],
-  /** Rooms finished together or parked (yours): they compete only while they hold writing you haven't read (his yes, 11-03). */
-  finished: Set<string> = new Set(),
-  /** Each room's current members: a room of ONE is nobody's conversation, so it never wins the tap (his yes, 11-03). Unknown yet → treated as a room. */
-  roomMembers: Record<string, string[]> = {},
-): { roomId: string; showId: string } | null {
-  const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
-  const byShow = new Map((brain ?? []).map((b) => [b.showId, b]));
-  const mine = roomVis.filter((v) => {
-    if (v.parentGroupId !== gid) return false;
-    if (stances && stances.departedRooms.has(v.groupId)) return false;
-    const r = roomsById.get(v.groupId);
-    if (stances && r && stances.cleared.has(`${gid}:${r.showId}`)) return false;
-    const b = r ? byShow.get(r.showId) : undefined;
-    if (b && (!b.inRoom || b.viewerLeft || b.viewerDismissed)) return false;
-    if (finished.has(v.groupId) && !roomHasNewActivity(v) && !roomHasNewInvisibleActivity(v)) return false;
-    const mem = roomMembers[v.groupId];
-    if (mem && mem.length < 2) return false;
-    return true;
-  });
-  const best = (at: (v: RoomVisibility) => number): { roomId: string; showId: string } | null => {
-    let b: { roomId: string; at: number } | null = null;
-    for (const v of mine) { const a = at(v); if (a > 0 && (!b || a > b.at)) b = { roomId: v.groupId, at: a }; }
-    const r = b ? roomsById.get(b.roomId) : undefined;
-    return r ? { roomId: r.roomId, showId: r.showId } : null;
-  };
-  const fresh = best((v) => (roomHasNewActivity(v) ? (v.latestVisibleActivityAt ?? 1) : 0));
-  if (fresh) return fresh;
-  const p = pitchActivity.find((a) => a.groupId === gid);
-  if (p?.latestPitchShowId && pitchUnanswered(gid, p, rooms, stances, selfUserId, byShow.get(p.latestPitchShowId))) return null;
-  if (answers.has(gid)) return null;
-  if (!mine.length) return null;
-  return best((v) => v.latestVisibleActivityAt ?? 0) ?? best((v) => roomsById.get(v.groupId)?.createdAt ?? 0);
+/** THE ROOMS SHELF (two shelves, his yes 11-03): every room the viewer is
+ *  in with two or more people, across all their groups, newest activity
+ *  first — a letter, a note, a progress move, else the room's creation. A
+ *  row opens its room; its line is the group, then what's new (new letters ·
+ *  a sealed letter · you're N behind / ahead of the nearest friend), and the
+ *  envelope sits at the end. Rooms of one, rooms you left or cleared, and
+ *  finished or parked rooms with nothing unread stay off it. Group rows
+ *  always open the group room now, so the two shelves can't disagree. */
+export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number };
+export function roomShelfRows(
+  groups: DashboardGroup[], rooms: ShowRoomOfGroup[], roomVis: RoomVisibility[], roomMembers: Record<string, string[]>,
+  brain: Map<string, GroupDashboardShow[]>, finished: Set<string>, stances: MyStances | null,
+  showsById: Record<string, Show>, contactNames: Record<string, string>, groupNumberById: Record<string, number>, selfUserId: string,
+): RoomShelfRow[] {
+  const out: RoomShelfRow[] = [];
+  for (const r of rooms) {
+    const g = groups.find((x) => x.group.id === r.groupId);
+    if (!g) continue;
+    const mem = roomMembers[r.roomId];
+    if (!mem || mem.length < 2) continue;
+    if (stances?.departedRooms.has(r.roomId) || stances?.cleared.has(`${r.groupId}:${r.showId}`)) continue;
+    const b = brain.get(r.groupId)?.find((x) => x.showId === r.showId);
+    if (b && (!b.inRoom || b.viewerLeft || b.viewerDismissed)) continue;
+    const v = roomVis.find((x) => x.groupId === r.roomId);
+    const fresh = !!v && roomHasNewActivity(v);
+    const sealed = !!v && roomHasNewInvisibleActivity(v);
+    if (finished.has(r.roomId) && !fresh && !sealed) continue;
+    let reason = fresh ? "new letters" : sealed ? "a sealed letter" : "";
+    if (!reason && b) {
+      // The quiet line's one bit of news (his yes, 11-03): the gap to the
+      // nearest friend, the letters-in-transit arithmetic the group room uses.
+      const seasons = showsById[r.showId]?.seasons;
+      const members = b.members.filter((m) => m.s != null && m.e != null && mem.includes(m.userId)).map((m) => ({ userId: m.userId, s: m.s as number, e: m.e as number }));
+      const self = members.find((m) => m.userId === selfUserId);
+      const gap = summarizeGap(self ? linearIndex(self.s, self.e, seasons) : 0, roadOthers(members, selfUserId, seasons));
+      if (gap.nearestAhead) reason = `you\u2019re ${gap.nearestAhead.gap} behind`;
+      else if (gap.nearestBehind) reason = `you\u2019re ${gap.nearestBehind.gap} ahead`;
+    }
+    const others = g.members.filter((m) => m.userId !== selfUserId);
+    const group = groupDisplayName(g.group, others, contactNames, g.pendingInvites.map((pi) => pi.name || "a friend"), groupNumberById[g.group.id]);
+    out.push({
+      roomId: r.roomId, showId: r.showId, groupId: r.groupId,
+      show: showsById[r.showId]?.name ?? "A show", group, reason,
+      envelope: fresh ? "open" : sealed ? "sealed" : null,
+      at: Math.max(v?.latestVisibleActivityAt ?? 0, v?.latestInvisibleActivityAt ?? 0, b?.lastActivityAt ?? 0, r.createdAt),
+    });
+  }
+  return out.sort((x, y) => y.at - x.at);
 }
 
 /** A friend's answer to one of the viewer's OWN pitches (in, sitting this
@@ -166,99 +168,58 @@ export function pitchUnanswered(gid: string, p: GroupPitchActivity, rooms: ShowR
 }
 
 function computeLines(
-  groups: DashboardGroup[], roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
+  groups: DashboardGroup[], chatActivity: GroupChatActivity[],
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
   stances: MyStances | null = null, selfUserId = "", answers: Map<string, PitchAnswer> = new Map(),
-  brain: Map<string, GroupDashboardShow[]> = new Map(), finished: Set<string> = new Set(), roomMembers: Record<string, string[]> = {},
+  brain: Map<string, GroupDashboardShow[]> = new Map(), roomMembers: Record<string, string[]> = {},
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
-  const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
-  const showOf = (roomId: string): string | null => {
-    const r = roomsById.get(roomId);
-    return r ? (showsById[r.showId]?.name ?? null) : null;
-  };
   const out: Record<string, GroupLine> = {};
   for (const g of groups) {
     const gid = g.group.id;
-    let newest: { at: number; roomId: string } | null = null;
-    let sealed: { at: number; roomId: string } | null = null;
-    let latest: { at: number; roomId: string } | null = null;
-    for (const v of roomVis) {
-      if (v.parentGroupId !== gid) continue;
-      if (roomHasNewActivity(v)) {
-        const at = v.latestVisibleActivityAt ?? 0;
-        if (!newest || at > newest.at) newest = { at, roomId: v.groupId };
-      } else if (roomHasNewInvisibleActivity(v)) {
-        const at = v.latestInvisibleActivityAt ?? 0;
-        if (!sealed || at > sealed.at) sealed = { at, roomId: v.groupId };
-      }
-      const at = v.latestVisibleActivityAt ?? 0;
-      if (at && (!latest || at > latest.at)) latest = { at, roomId: v.groupId };
-    }
-    // A group whose rooms have no activity yet: its newest room.
-    if (!latest) {
-      for (const r of rooms) if (r.groupId === gid && (!latest || r.createdAt > latest.at)) latest = { at: r.createdAt, roomId: r.roomId };
-    }
     const chat = chatNew.has(gid);
-    // A friend's new pitch (round 3): after new letters, before a sealed one.
+    // A friend's new pitch (round 3): the dot.
     const pa = pitches.find((a) => a.groupId === gid);
     const pitch = pitchSentence(g, pa, contactNames);
-    const envelope: GroupLine["envelope"] = newest || chat ? "open" : (!pitch && sealed) ? "sealed" : null;
     const roomCount = rooms.filter((r) => r.groupId === gid).length;
-    // THE LINE (his dashboard note, 11-02, after the landing rule): where the
-    // tap lands, then why — "→ The Diplomat’s room · new letters", "→ The
-    // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
-    // room · written in last". The same rule as the tap (landingFor).
-    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers, brain.get(gid), finished, roomMembers);
-    const pulled = !landing && !!pa && !!pa.latestPitchShowId && pitchUnanswered(gid, pa, rooms, stances, selfUserId, brain.get(gid)?.find((b) => b.showId === pa.latestPitchShowId));
-    let dest: string; let reason: string | null = null; let red = false;
-    if (landing) {
-      const show = showOf(landing.roomId);
-      dest = show ? `${show}’s room` : "The show room";
-      const v = roomVis.find((x) => x.groupId === landing.roomId);
-      if (v && roomHasNewActivity(v)) reason = "new letters";
-      else if (v && roomHasNewInvisibleActivity(v)) reason = "a sealed letter";
-      else if (chat) reason = "new in chat";
-      else if (roomCount > 1 && v?.latestVisibleActivityAt) reason = "written in last";
-    } else {
-      dest = "The group room";
-      const ans = answers.get(gid);
-      if (pulled && pa) {
-        const m = g.members.find((x) => x.userId === pa.latestPitchUserId);
-        const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
-        reason = `${who} pitched ${pa.latestPitchShowName ?? "a show"}`;
-      } else if (ans) {
-        // A friend answered your pitch (his ask, 11-03): the daily email's words.
-        const m = g.members.find((x) => x.userId === ans.userId);
-        const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
-        const show = showsById[ans.showId]?.name;
-        reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
-      } else if (chat) reason = "new in chat";
-      else if (roomCount === 0) reason = "no shows yet";
-      else {
-        // A room of yours nobody has joined (his yes, 11-03): the newest one,
-        // named, with the ask in red — the tap lands in the group room where
-        // the show waits on a friend's "I'm in".
-        let solo: ShowRoomOfGroup | null = null;
-        for (const r of rooms) {
-          if (r.groupId !== gid) continue;
-          const mem = roomMembers[r.roomId];
-          if (!mem || mem.length !== 1 || mem[0] !== selfUserId) continue;
-          if (stances?.cleared.has(`${gid}:${r.showId}`) || stances?.departedRooms.has(r.roomId)) continue;
-          if (!solo || r.createdAt > solo.createdAt) solo = r;
-        }
-        const show = solo ? showsById[solo.showId]?.name : undefined;
-        // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
-        if (show) reason = `just you in ${show} so far`;
-        else { reason = "pitch a new show"; red = true; }
+    // THE LINE (two shelves, his yes 11-03): a group row always opens the
+    // group room, so it carries only the group room's reason — a friend's
+    // pitch, an answer to yours, new in chat, "just you in X so far", "pitch
+    // a new show" in red, "no shows yet" — and nothing when quiet. Letters
+    // live on the rooms shelf now.
+    const pulled = !!pa && !!pa.latestPitchShowId && pitchUnanswered(gid, pa, rooms, stances, selfUserId, brain.get(gid)?.find((b) => b.showId === pa.latestPitchShowId));
+    let reason: string | null = null; let red = false;
+    const ans = answers.get(gid);
+    if (pulled && pa) {
+      const m = g.members.find((x) => x.userId === pa.latestPitchUserId);
+      const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
+      reason = `${who} pitched ${pa.latestPitchShowName ?? "a show"}`;
+    } else if (ans) {
+      // A friend answered your pitch (his ask, 11-03): the daily email's words.
+      const m = g.members.find((x) => x.userId === ans.userId);
+      const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
+      const show = showsById[ans.showId]?.name;
+      reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
+    } else if (chat) reason = "new in chat";
+    else if (roomCount === 0) reason = "no shows yet";
+    else {
+      // A room of yours nobody has joined (his yes, 11-03): the newest one,
+      // named — the show waits on a friend's "I'm in" in the group room.
+      let solo: ShowRoomOfGroup | null = null;
+      for (const r of rooms) {
+        if (r.groupId !== gid) continue;
+        const mem = roomMembers[r.roomId];
+        if (!mem || mem.length !== 1 || mem[0] !== selfUserId) continue;
+        if (stances?.cleared.has(`${gid}:${r.showId}`) || stances?.departedRooms.has(r.roomId)) continue;
+        if (!solo || r.createdAt > solo.createdAt) solo = r;
       }
+      const show = solo ? showsById[solo.showId]?.name : undefined;
+      // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
+      if (show) reason = `just you in ${show} so far`;
+      else if (roomCount > 0 && !rooms.some((r) => r.groupId === gid && (roomMembers[r.roomId]?.length ?? 0) >= 2 && !stances?.departedRooms.has(r.roomId) && !stances?.cleared.has(`${gid}:${r.showId}`))) { reason = "pitch a new show"; red = true; }
     }
-    // A row that opens the group room carries only its reason (his note, 11-03:
-    // "→ The group room ·" read as redundant); a row that opens a show room
-    // still names the room first.
-    const line = landing ? (reason ? `→ ${dest} · ${reason}` : `→ ${dest}`) : (reason ?? "");
-    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))), redTail: red && reason ? reason : undefined };
+    out[gid] = { line: reason ?? "", dot: !!pitch || answers.has(gid) || chat, redTail: red && reason ? reason : undefined };
   }
   return out;
 }
@@ -300,8 +261,8 @@ const rowBase: React.CSSProperties = {
 };
 const textCol: React.CSSProperties = { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 };
 const nameStyle: React.CSSProperties = { ...E.type.row17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-// The line is where the tap lands (his dashboard note, 11-02): the arrow line in identity blue.
-const lineStyle: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.identity, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+// The row's second line (two shelves, 11-03): the reason in the muted mono, as on his boards.
+const lineStyle: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 function Avatar({ initial, first, pending = false }: { initial: string; first: boolean; pending?: boolean }) {
   return (
@@ -375,6 +336,31 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
   );
 }
 
+/** A rooms-shelf row: the show, the group · what's new, the envelope flush
+ *  right (no pen, no grip — settings live in the room, the order is the
+ *  activity's). The phone row spans the gutters like the group rows. */
+function RoomRow({ desktop, row, onEnter }: { desktop: boolean; row: RoomShelfRow; onEnter: () => void }) {
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
+  const inner = (
+    <>
+      <span style={textCol}>
+        <span style={nameStyle}>{row.show}</span>
+        <span style={lineStyle}>{row.group}{row.reason ? ` \u00b7 ${row.reason}` : ""}</span>
+      </span>
+      {row.envelope && <LetterDisc kind={row.envelope} className="m-dot-in" />}
+    </>
+  );
+  if (desktop) {
+    return <div className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, background: E.color.cream }}>{inner}</div>;
+  }
+  const gutter = E.space.gutter;
+  return (
+    <div style={{ margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+      <div role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, borderBottom: 0, padding: `18px ${gutter}px` }}>{inner}</div>
+    </div>
+  );
+}
+
 function GhostRow() {
   return (
     <div aria-hidden="true" style={{ ...rowBase, cursor: "default" }}>
@@ -399,7 +385,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   pitchActivity?: GroupPitchActivity[];
   loading?: boolean;
   onEnter: (groupId: string) => void;
-  /** The landing rule (CP4, 11-02): a tap that lands in a show room goes here; without it every tap enters the group room. */
+  /** A rooms-shelf row's tap (two shelves, 11-03); without it the row enters the room's group. */
   onEnterRoom?: (roomId: string, showId: string, groupId: string) => void;
   onInvite: (inv: PendingGroupInvite) => void;
   onNewGroup: () => void;
@@ -465,7 +451,8 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms, roomMembers), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms, roomMembers]);
+  const lines = useMemo(() => computeLines(groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers), [groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers]);
+  const roomRows = useMemo(() => roomShelfRows(groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId), [groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId]);
 
   // Your own order (round 5): the groups you've dragged first, in that
   // order, then the rest newest-joined first. A drag this session is the
@@ -521,6 +508,14 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
 
   return (
     <div>
+      {roomRows.length > 0 && (
+        <div style={{ marginBottom: desktop ? 56 : 44 }}>
+          <SectionHead tab={E.color.friend} tabText={E.color.ink}>Show rooms</SectionHead>
+          {roomRows.map((r) => (
+            <RoomRow key={r.roomId} desktop={desktop} row={r} onEnter={() => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} />
+          ))}
+        </div>
+      )}
       <div data-tip-anchor="groups-head"><SectionHead tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new watch group →</UnderlineWord> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
@@ -534,10 +529,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             desktop={desktop}
             lift={drag?.id === id ? drag.dy : null}
             rowRef={(el) => { rowRefs.current[id] = el; }}
-            onEnter={() => {
-              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId, answerByGroup, brain.get(id), finishedRooms, roomMembers) : null;
-              if (t && onEnterRoom) onEnterRoom(t.roomId, t.showId, id); else onEnter(id);
-            }}
+            onEnter={() => onEnter(id)}
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
             grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
           >
@@ -551,7 +543,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
               <span style={nameStyle}>{name}</span>
               <span style={lineStyle}>{l?.redTail ? <>{l.line.slice(0, -l.redTail.length)}<span style={{ color: E.color.alert }}>{l.redTail}</span></> : (l?.line ?? "")}</span>
             </span>
-            {l?.envelope ? <LetterDisc kind={l.envelope} className="m-dot-in" /> : l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
+            {l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
           </GroupRow>
         );
       })}
