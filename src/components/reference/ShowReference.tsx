@@ -931,15 +931,7 @@ export default function ShowReference({
     ) : null;
     return (
       <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
-        {/* The room link above the stop line, the group's name in quotes
-            (Alborz's notes, round 5). */}
-        {user && roomLinks.length > 0 && (
-          <div style={{ marginBottom: 14, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
-            {roomLinks.map((r) => (
-              <UnderlineWord key={r.roomId} onClick={() => navigate(`${mobile ? "/m" : ""}/show-room/${r.roomId}`)} title={`Open your show room with ${r.label}`}>Open your room with &ldquo;{r.label}&rdquo; →</UnderlineWord>
-            ))}
-          </div>
-        )}
+        {/* The room links left the guide's body (his call, 11-03): the show's own page carries them in its band, green strips mirroring the room's yellow door. */}
         <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>{vIdx < idx(1, 1) ? "Nothing watched yet. Everything below is safe before S1 E1." : `Everything below stops at S${prog.s} E${prog.e}. Nothing past it.`}</div>
         {user && canonOn && (
           <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>

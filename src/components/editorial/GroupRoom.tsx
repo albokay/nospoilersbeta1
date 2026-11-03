@@ -336,7 +336,9 @@ export function AnswerRow<T extends string | boolean>({ options, value, onChange
   );
 }
 
-export function NumbersPicker({ show, value, onChange, allowZero = true }: {
+export function NumbersPicker({ show, value, onChange, allowZero = true, align = "center" }: {
+  /** The desktop show room (his catch, 11-03): the picker sits at the band's left so it wraps before the door at the right. */
+  align?: "center" | "start";
   show: { seasons?: number[] } | null | undefined;
   value: { s: number; e: number };
   onChange: (v: { s: number; e: number }) => void;
@@ -358,7 +360,7 @@ export function NumbersPicker({ show, value, onChange, allowZero = true }: {
   // its content) while it is narrower than the band; once the numbers wrap
   // it runs the band's width.
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+    <div style={{ display: "flex", justifyContent: align === "start" ? "flex-start" : "center", marginTop: 12 }}>
     <div style={{ display: "grid", gridTemplateColumns: "max-content minmax(0, 1fr)", columnGap: 12, rowGap: 6, alignItems: "baseline", maxWidth: "100%", minWidth: 0, textAlign: "left" }}>
       {/* On the phone the label stacks — "You've" over "watched:" — so the numbers get the
           width (his note, 10-14); the lines sit tighter than the season and episode rows.

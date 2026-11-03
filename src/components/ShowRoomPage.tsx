@@ -1343,15 +1343,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     <FittedTitle desktop shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
 
                   {privateOnly ? (
-                    // The show's own page (Option B, CP2, 11-03): what the page is, then the way to each room you share the show in.
-                    <>
-                      <EditorialSub desktop>Show guide &amp; journal</EditorialSub>
-                      {journalPlaces.map((pl) => (
-                        <div key={pl.roomId} style={{ marginTop: 14 }}>
-                          <UnderlineWord onClick={() => navigate(`/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} style={{ whiteSpace: "normal", lineHeight: 1.5 }}>In {pl.name} →</UnderlineWord>
-                        </div>
-                      ))}
-                    </>
+                    // The show's own page (Option B, CP2, 11-03): what the page is. The way back to each room is the guide's own green link (his call, 11-03).
+                    <EditorialSub desktop>Show guide &amp; journal</EditorialSub>
                   ) : groupPeople?.length ? (
                     <EditorialSub desktop>
                       With {joinNameNodes(groupPeople.map((p) => (
@@ -1366,9 +1359,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     <EditorialSub desktop>(just you so far)</EditorialSub>
                   ) : null}
                   </div>
-                  {/* 415, not 476 (his nudge on the board, 11-03): the arrow no longer points at the wordmark. */}
+                  {/* 476 again (his catch, 11-03: at 415 the disc crowded the title; the wordmark sits right of the letters column now, so the arrow no longer points at it). */}
                   {!privateOnly && parentGroupId && (
-                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 415, top: -1 }} />
+                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 476, top: -1 }} />
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
@@ -1457,6 +1450,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                 {!privateOnly && parentGroupId && user && (
                   <ChatCorner desktop countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => setChatOpen(true)} style={{ bottom: 0 }} />
                 )}
+                {/* The show's own page (his call, 11-03): the way back to each room you share the show in sits where the room's door sits — green blocks, one per room, stacked. */}
+                {privateOnly && journalPlaces.length > 0 && (
+                  <div style={{ position: "absolute", left: 632, top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, zIndex: 1 }}>
+                    {journalPlaces.map((pl) => (
+                      <span key={pl.roomId} style={{ background: E.color.personal, padding: "10px 14px", lineHeight: 1, display: "inline-flex" }}>
+                        <UnderlineWord onClick={() => navigate(`/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} title={`Open your room with ${pl.name}`}>In {pl.name} →</UnderlineWord>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {/* The door (Option B, CP1, his board 11-03): a yellow block centred between the poster and the cream, its & on the poster's left edge. */}
                 {!privateOnly && show && (
                   <span style={{ position: "absolute", left: 632, top: "50%", transform: "translateY(-50%)", background: E.color.accent, padding: "10px 14px", lineHeight: 1, display: "inline-flex", zIndex: 1 }}>
@@ -1467,8 +1470,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   // The picker centres on the COLUMN, not on the band that runs
                   // off the window's right edge (his catch, 10-14): a box the
                   // column's inner width holds it.
-                  <div style={{ width: E.measure.desktop.wide - 2 * E.space.gutter, maxWidth: "100%" }}>
-                    <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
+                  // A group's room (his catch, 11-03): the picker sits at the band's left in a box that ends before the door (632), so the numbers wrap before they meet it.
+                  <div style={{ width: 596, maxWidth: "100%" }}>
+                    <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} align="start" />
                   </div>
                 ) : null}
                 {/* The show's own page (Option B, CP2, his sketch 11-03): Show guide | Journal hang from the band's bottom edge, under the picker, Show guide first. */}

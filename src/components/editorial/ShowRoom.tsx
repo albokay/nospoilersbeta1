@@ -77,12 +77,13 @@ export function FolderTabs({ tabs, active, onChange, width, openLeft = false, ha
 /** The band's picker with the live room's commit rules: a forward pick goes
  *  to `onForwardPick` (the rating flow) when the host has one, else to the
  *  confirm; a backward pick asks the live question first. */
-export function RoomPicker({ show, value, onConfirm, onForwardPick, allowZero = true }: {
+export function RoomPicker({ show, value, onConfirm, onForwardPick, allowZero = true, align }: {
   show: { seasons?: number[] } | null | undefined;
   value: { s: number; e: number };
   onConfirm: (v: { s: number; e: number }) => void;
   onForwardPick?: (v: { s: number; e: number }) => void;
   allowZero?: boolean;
+  align?: "center" | "start";
 }) {
   const [pending, setPending] = useState<{ s: number; e: number; backwards: boolean } | null>(null);
   const pick = (v: { s: number; e: number }) => {
@@ -93,7 +94,7 @@ export function RoomPicker({ show, value, onConfirm, onForwardPick, allowZero = 
   };
   return (
     <>
-      <NumbersPicker show={show} value={value} onChange={pick} allowZero={allowZero} />
+      <NumbersPicker show={show} value={value} onChange={pick} allowZero={allowZero} align={align} />
       {pending && (
         <EditorialDialog onClose={() => setPending(null)} width={360} label="Change your progress?" align="left">
           <div style={{ ...E.type.letterTitle22, paddingRight: 28 }}>{pending.backwards ? "Are you sure?" : (pending.s === 0 ? "Haven't started" : `Finished S${pending.s} E${pending.e}`)}</div>

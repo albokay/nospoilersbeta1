@@ -1384,15 +1384,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 <FittedTitle shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} style={{ fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties} />
 
               {privateOnly ? (
-                // The show's own page (Option B, CP2, 11-03): what the page is, then the way to each room you share the show in.
-                <>
-                  <EditorialSub>Show guide &amp; journal</EditorialSub>
-                  {journalPlaces.map((pl) => (
-                    <div key={pl.roomId} style={{ marginTop: 14 }}>
-                      <UnderlineWord onClick={() => navigate(`/m/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} style={{ whiteSpace: "normal", lineHeight: 1.5 }}>In {pl.name} →</UnderlineWord>
-                    </div>
-                  ))}
-                </>
+                // The show's own page (Option B, CP2, 11-03): what the page is. The way back to each room is the guide's own green link (his call, 11-03).
+                <EditorialSub>Show guide &amp; journal</EditorialSub>
               ) : groupPeople?.length ? (
                 <EditorialSub>
                   With {joinNameNodes(groupPeople.map((p) => (
@@ -1476,6 +1469,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             {/* A group's room has NO tab row (Option B, CP1, 11-03): the room is the letters; the guide and the journal live on the show's own page behind the door in the band. The show's own page keeps its tabs (reworked in CP2). */}
             {/* The show's own page's band stays its yellow on both tabs (his yes, 11-03). */}
             <RoomBand tab={privateOnly ? "reference" : tab} style={{ marginTop: E.measure.phone.artTabsGap }}>
+              {/* The show's own page (his call, 11-03): the way back to each room you share the show in sits where the room's door sits — green strips running off the right edge, one per room. */}
+              {privateOnly && journalPlaces.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, margin: `0 -${E.space.gutter}px 22px 0` }}>
+                  {journalPlaces.map((pl) => (
+                    <span key={pl.roomId} style={{ background: E.color.personal, minWidth: 230, maxWidth: "100%", boxSizing: "border-box", padding: "8px 14px", display: "inline-flex", justifyContent: "flex-end" }}>
+                      <UnderlineWord onClick={() => navigate(`/m/show-room/${pl.roomId}`, { state: { roomShowId: show?.id, roomParentGroupId: pl.groupId } })} title={`Open your room with ${pl.name}`} style={{ whiteSpace: "normal", textAlign: "right", lineHeight: 1.4 }}>In {pl.name} →</UnderlineWord>
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* The door (Option B, CP1, his mockup 11-03): a yellow strip above the picker running off the page's right edge, its left edge past the poster's. */}
               {!privateOnly && show && (
                 <div style={{ display: "flex", justifyContent: "flex-end", margin: `0 -${E.space.gutter}px 22px 0` }}>
