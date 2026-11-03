@@ -2405,20 +2405,15 @@ export default function DashboardPage() {
                       })}
                         </>
                       )}
-                      {/* Side by side on desktop, stacked on the phone (his swap, 11-03). */}
-                      <div style={{ display: "flex", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 28 : groupShelves.watching.length === 0 ? 44 : 0 }}>
-                        <button type="button" onClick={openSearch} style={{ ...blockBtn, flex: 1, width: "auto" }}>Pitch a show</button>
-                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={{ ...frameBtn, flex: 1, width: "auto" }}>Invite more friends</button>
-                      </div>
-                    </div>
-                    {/* The rooms rail: the finished row stays attached to the masthead's bottom edge, "You're watching:" under it. */}
-                    <div style={{ width: W.railCol, flexShrink: 0, marginTop: settledCount > 0 ? -64 : 0 }}>
-                      {/* The finished row (Alborz's notes, 2026-10-12): attached to
-                          the masthead's bottom edge, above "You're watching:". */}
+                      {/* The rooms in the main column (his note, 11-03: the two
+                          buttons weren't enough for it): the finished row, then
+                          "You're watching:", under the pitches. The buttons went
+                          to the rail, stacked at its width. */}
                       {settledCount > 0 && (
                         <FinishedRow
                           desktop
                           count={settledCount}
+                          style={{ marginTop: groupShelves.notStarted.length > 0 ? 36 : 0 }}
                           onClick={openFinishedDrawer}
                           signal={finishedWriting
                             ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} />
@@ -2427,7 +2422,7 @@ export default function DashboardPage() {
                       )}
                       {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
                         <>
-                          <SectionHead tab={E.color.personal} style={{ marginTop: settledCount > 0 ? 36 : 0 }}>You&rsquo;re watching:</SectionHead>
+                          <SectionHead tab={E.color.personal} style={{ marginTop: settledCount > 0 || groupShelves.notStarted.length > 0 ? 36 : 0 }}>You&rsquo;re watching:</SectionHead>
                           {celebrating.map((c) => (
                             <ShowRow desktop key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
                           ))}
@@ -2450,6 +2445,10 @@ export default function DashboardPage() {
                           })}
                         </>
                       )}
+                    </div>
+                    <div style={{ width: W.railCol, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                      <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
+                      <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite more friends</button>
                     </div>
                   </div>
                 )}

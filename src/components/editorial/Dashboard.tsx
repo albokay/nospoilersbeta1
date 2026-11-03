@@ -59,7 +59,7 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
  *  envelope sits at the end. Rooms of one, rooms you left or cleared, and
  *  finished or parked rooms with nothing unread stay off it. Group rows
  *  always open the group room now, so the two shelves can't disagree. */
-export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number };
+export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number; /** The friends in the room, as the row's initials (his swap, 11-03). */ people: string[] };
 export function roomShelfRows(
   groups: DashboardGroup[], rooms: ShowRoomOfGroup[], roomVis: RoomVisibility[], roomMembers: Record<string, string[]>,
   brain: Map<string, GroupDashboardShow[]>, finished: Set<string>, stances: MyStances | null,
@@ -91,9 +91,10 @@ export function roomShelfRows(
     }
     const others = g.members.filter((m) => m.userId !== selfUserId);
     const group = groupDisplayName(g.group, others, contactNames, g.pendingInvites.map((pi) => pi.name || "a friend"), groupNumberById[g.group.id]);
+    const people = others.filter((m) => mem.includes(m.userId)).map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?");
     out.push({
       roomId: r.roomId, showId: r.showId, groupId: r.groupId,
-      show: showsById[r.showId]?.name ?? "A show", group, reason,
+      show: showsById[r.showId]?.name ?? "A show", group, reason, people,
       envelope: fresh ? "open" : sealed ? "sealed" : null,
       at: Math.max(v?.latestVisibleActivityAt ?? 0, v?.latestInvisibleActivityAt ?? 0, b?.lastActivityAt ?? 0, r.createdAt),
     });
@@ -202,6 +203,12 @@ function computeLines(
       const show = showsById[ans.showId]?.name;
       reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
     } else if (chat) reason = "new in chat";
+    else if (g.pendingInvites.length > 0) {
+      // A friend who hasn't accepted yet (his swap, 11-03: the dashed circle
+      // left the group row with the initials, so the line says it).
+      const names = g.pendingInvites.map((p) => p.name || "a friend");
+      reason = `${joinNames(names)} ${names.length === 1 ? "hasn\u2019t" : "haven\u2019t"} joined yet`;
+    }
     else if (roomCount === 0) reason = "no shows yet";
     else {
       // A room of yours nobody has joined (his yes, 11-03): the newest one,
@@ -343,6 +350,11 @@ function RoomRow({ desktop, row, onEnter }: { desktop: boolean; row: RoomShelfRo
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
   const inner = (
     <>
+      {row.people.length > 0 && (
+        <span style={{ display: "inline-flex", flexShrink: 0 }}>
+          {row.people.map((p, i) => <Avatar key={i} initial={p} first={i === 0} />)}
+        </span>
+      )}
       <span style={textCol}>
         <span style={nameStyle}>{row.show}</span>
         <span style={lineStyle}>{row.group}{row.reason ? ` \u00b7 ${row.reason}` : ""}</span>
@@ -545,12 +557,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
             grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
           >
-            {(others.length > 0 || gp.length > 0) && (
-              <span style={{ display: "inline-flex", flexShrink: 0 }}>
-                {others.map((m, i) => <Avatar key={m.userId} initial={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?"} first={i === 0} />)}
-                {gp.map((p, i) => <Avatar key={`p${i}`} initial={(p.name || "?")[0]} first={others.length === 0 && i === 0} pending />)}
-              </span>
-            )}
+            {/* No initials on a group row (his swap, 11-03): the room rows carry who's in; a friend who hasn't joined is named on the line. */}
             <span style={textCol}>
               <span style={nameStyle}>{name}</span>
               <span style={lineStyle}>{l?.redTail ? <>{l.line.slice(0, -l.redTail.length)}<span style={{ color: E.color.alert }}>{l.redTail}</span></> : (l?.line ?? "")}</span>
