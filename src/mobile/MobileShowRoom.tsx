@@ -1395,8 +1395,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                   name, then the show's poster under it with the play mark on
                   its bottom corner — the thumbnail is back, the banner and the
                   chat fold are gone (the chat lives in the group room). */}
-              <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -1 }} />}
+              <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 20 }}>
+                {/* The disc rides 16px higher than the title's top (his mockup, 11-03); the gap below grows by the same so the poster keeps its seat on the With line. */}
+                {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -17 }} />}
                 {/* The poster sits left of the disc's edge and up on the With line (his mockup vs the live render, 11-03). */}
                 <div style={{ marginRight: 56 }}>
                   <TrailerPoster mobile w={112} h={160} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
