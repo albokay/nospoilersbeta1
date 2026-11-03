@@ -19,7 +19,7 @@ import { joinNames, joinNameNodes, groupGenericName } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark, UnderlineWord } from "../components/editorial/Chrome";
 import { GroupRoomDisc, WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
 import MobileInviteSheet from "./MobileInviteSheet";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
@@ -200,8 +200,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const unlockRef = useRef<{ idx: number; gated: Set<string>; hidden: Record<string, number> } | null>(null);
   const [privateEntries, setPrivateEntries] = useState<Thread[]>([]);
   // The dashboard band arrives ON the reference tab (nav state, CP2).
+  // A group's room always opens on its letters (Option B, CP1, 11-03): it has no
+  // tab row now, so an older link asking for the guide lands on the show's own page's business, not here.
   const [tab, setTab] = useState<Tab>(() =>
-    (location.state as { openReference?: boolean } | null)?.openReference
+    privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
   // Cross-room navigation reuses this mounted page (the guide's room pills
@@ -209,7 +211,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // survives, so re-derive it whenever the path actually changes (2026-09-08:
   // arriving from a guide should land on the friend room).
   useEffect(() => {
-    setTab((location.state as { openReference?: boolean } | null)?.openReference
+    setTab(privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -748,6 +750,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // The corner goes where you came from (his note, 11-03): the previous
   // in-app page, else the group room (the dashboard for a private room).
   const backLabel = "Back";
+  // The door (Option B, CP1, 11-03): the show's own page — guide and journal — opening on the guide.
+  function openShowPage() {
+    if (show) navigate(`/m/show-room/private/${show.id}`, { state: { openReference: true } });
+  }
   function closeRoom() {
     goBack(navigate, location, parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard");
   }
@@ -1354,7 +1360,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         .m-progress-cell--left select { text-align: left; text-align-last: left; }
       `}</style>
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
-      <div ref={headRef} style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green) }}>
+      {/* The green runs to the top of a group's room (Option B, CP1, his pick 11-03): head and band one colour; the show's own page keeps its cream head until CP2. */}
+      <div ref={headRef} style={{ background: editorial ? (privateOnly ? "transparent" : E.color.personal) : (tab === "private" ? C.sky : C.green) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
           //    the landing-rule arc, 11-02): the blue corner is the way out,
@@ -1459,16 +1466,25 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    its section's colour, the band under it the same, carrying the
           //    picker. ──
           <>
-            <div style={{ padding: `${E.measure.phone.artTabsGap}px ${E.space.gutter}px 0` }}>
-              <FolderTabs
-                // Letters · Journal · Show guide (his call, 10-30): the journal
-                // sits second, ahead of the guide.
-                tabs={[...(!privateOnly ? ["friend"] : []), "private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
-                active={tab}
-                onChange={(t) => setTab(t)}
-              />
-            </div>
-            <RoomBand tab={tab}>
+            {/* A group's room has NO tab row (Option B, CP1, 11-03): the room is the letters; the guide and the journal live on the show's own page behind the door in the band. The show's own page keeps its tabs (reworked in CP2). */}
+            {privateOnly && (
+              <div style={{ padding: `${E.measure.phone.artTabsGap}px ${E.space.gutter}px 0` }}>
+                <FolderTabs
+                  tabs={["private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
+                  active={tab}
+                  onChange={(t) => setTab(t)}
+                />
+              </div>
+            )}
+            <RoomBand tab={tab} style={privateOnly ? undefined : { marginTop: E.measure.phone.artTabsGap }}>
+              {/* The door (Option B, CP1, his mockup 11-03): a yellow strip above the picker running off the page's right edge, its left edge past the poster's. */}
+              {!privateOnly && show && (
+                <div style={{ display: "flex", justifyContent: "flex-end", margin: `0 -${E.space.gutter}px 22px 0` }}>
+                  <span style={{ background: E.color.accent, width: 230, boxSizing: "border-box", padding: "8px 14px", display: "inline-flex", justifyContent: "flex-end" }}>
+                    <UnderlineWord onClick={openShowPage} title="The show guide and your journal">Show guide &amp; journal →</UnderlineWord>
+                  </span>
+                </div>
+              )}
               {show && progressForShow ? (
                 <RoomPicker show={show} value={effectiveProgress(progressForShow) || { s: 1, e: 1 }} onConfirm={onProgressConfirm} onForwardPick={onForwardPick} />
               ) : null}

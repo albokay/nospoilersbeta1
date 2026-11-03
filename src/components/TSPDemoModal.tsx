@@ -29,7 +29,7 @@ import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { INK_BLOCK_M, MapLegend } from "./editorial/MapNotes";
 import { SectionHead } from "./editorial/Chrome";
-import { FolderTabs, RoomBand, MapButton } from "./editorial/ShowRoom";
+import { RoomBand, MapButton } from "./editorial/ShowRoom";
 import { NumbersPicker } from "./editorial/GroupRoom";
 import { CornerTab } from "./editorial/Chrome";
 import { BottomSheet } from "./editorial/Overlays";
@@ -287,7 +287,7 @@ export default function TSPDemoModal({ onClose, reentry, mobile = false }: {
           //    together, the map sticky. ──
           <div style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", color: E.color.ink }}>
             <div style={{ flex: "0 0 auto", marginLeft: `max(24px, calc(50% - ${E.measure.desktop.wide / 2}px))`, marginTop: 8 }}>
-              <FolderTabs width={E.measure.desktop.letters} tabs={["friend"]} active="friend" onChange={() => {}} />
+              {/* No tab row (Option B, CP1, 11-03): a real room has none now. */}
               <RoomBand tab="friend">
                 <NumbersPicker show={TSP_DEMO_SHOW} value={pickerValue} onChange={pickEpisode} />
               </RoomBand>

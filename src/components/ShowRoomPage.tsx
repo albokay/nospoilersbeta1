@@ -58,7 +58,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark, UnderlineWord } from "./editorial/Chrome";
 import { GroupRoomDisc, WithPlus, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
@@ -189,8 +189,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // ShowReference — so the solo room gets the pane too, on that tab only.
   const [guideRail, setGuideRail] = useState<HTMLDivElement | null>(null);
   // The dashboard band arrives ON the reference tab (nav state, CP2).
+  // A group's room always opens on its letters (Option B, CP1, 11-03): it has no
+  // tab row now, so an older link asking for the guide lands on the show's own page's business, not here.
   const [tab, setTab] = useState<Tab>(() =>
-    (location.state as { openReference?: boolean } | null)?.openReference
+    privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
   // Cross-room navigation reuses this mounted page (the guide's room pills
@@ -198,7 +200,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // survives, so re-derive it whenever the path actually changes (2026-09-08:
   // arriving from a guide should land on the friend room).
   useEffect(() => {
-    setTab((location.state as { openReference?: boolean } | null)?.openReference
+    setTab(privateOnly && (location.state as { openReference?: boolean } | null)?.openReference
       ? "reference"
       : (privateOnly ? "private" : "friend"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -683,6 +685,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // The corner goes where you came from (his note, 11-03): the previous
   // in-app page, else the group room (the dashboard for a private room).
   const backLabel = "Back";
+  // The door (Option B, CP1, 11-03): the show's own page — guide and journal — opening on the guide.
+  function openShowPage() {
+    if (show) navigate(`/show-room/private/${show.id}`, { state: { openReference: true } });
+  }
   function closeRoom() {
     goBack(navigate, location, parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
   }
@@ -1308,7 +1314,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             positioned 104px strip). Header + body colors still swap by mode:
             friend = green header / sky body, private = sky header / green
             body (the inactive tab shows through). ── */}
-      <div style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
+      {/* The green runs to the top of a group's room (Option B, CP1, his pick 11-03): head and band one colour; the show's own page keeps its cream head until CP2. */}
+      <div style={{ background: editorial ? (privateOnly ? "transparent" : E.color.personal) : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
         {editorial ? (
           // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
           //    the landing-rule arc, 11-02): the blue corner is the way out,
@@ -1317,7 +1324,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    the headline is the way up to the group room. ──
           <>
             <CornerTab desktop kind="back" label={backLabel} onClick={closeRoom} />
-            <Wordmark desktop tint="ink" onClick={() => navigate("/dashboard")} />
+            <Wordmark desktop tint="ink" alignRight={!privateOnly} onClick={() => navigate("/dashboard")} />
             <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
@@ -1352,8 +1359,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     <EditorialSub desktop>(just you so far)</EditorialSub>
                   ) : null}
                   </div>
+                  {/* 415, not 476 (his nudge on the board, 11-03): the arrow no longer points at the wordmark. */}
                   {!privateOnly && parentGroupId && (
-                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 476, top: -1 }} />
+                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 415, top: -1 }} />
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
@@ -1434,21 +1442,28 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    its section's colour, the band under it the same, carrying the
           //    picker; the band runs off the window's right edge. ──
           <>
-            <EditorialColumn wide style={{ marginTop: E.measure.desktop.artTabsGap }}>
-              <FolderTabs
-                width={E.measure.desktop.letters}
-                // Letters · Journal · Show guide (his call, 10-30): the journal
-                // sits second, ahead of the guide.
-                tabs={[...(!privateOnly ? ["friend"] : []), "private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
-                active={tab}
-                onChange={(t) => setTab(t)}
-              />
-            </EditorialColumn>
-            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto" }}>
+            {/* A group's room has NO tab row (Option B, CP1, 11-03): the room is the letters; the guide and the journal live on the show's own page behind the door in the band. The show's own page keeps its tabs (reworked in CP2). */}
+            {privateOnly && (
+              <EditorialColumn wide style={{ marginTop: E.measure.desktop.artTabsGap }}>
+                <FolderTabs
+                  width={E.measure.desktop.letters}
+                  tabs={["private", ...(referenceAvailable ? ["reference"] : [])] as RoomTabKey[]}
+                  active={tab}
+                  onChange={(t) => setTab(t)}
+                />
+              </EditorialColumn>
+            )}
+            <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto", ...(privateOnly ? {} : { marginTop: E.measure.desktop.artTabsGap }) }}>
               <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))", position: "relative" }}>
-                {/* The chat fold (CP2, 11-02): the group room's yellow corner at the window's right edge, its foot on the band's top edge; opens the group's chat drawer here. */}
+                {/* The chat fold (CP2, 11-02; flush in the band's bottom-right corner since Option B's CP1, 11-03): the group room's yellow corner at the window's right edge; opens the group's chat drawer here. */}
                 {!privateOnly && parentGroupId && user && (
-                  <ChatCorner desktop countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => setChatOpen(true)} style={{ top: -E.measure.desktop.corner }} />
+                  <ChatCorner desktop countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => setChatOpen(true)} style={{ bottom: 0 }} />
+                )}
+                {/* The door (Option B, CP1, his board 11-03): a yellow block centred between the poster and the cream, its & on the poster's left edge. */}
+                {!privateOnly && show && (
+                  <span style={{ position: "absolute", left: 632, top: "50%", transform: "translateY(-50%)", background: E.color.accent, padding: "10px 14px", lineHeight: 1, display: "inline-flex", zIndex: 1 }}>
+                    <UnderlineWord onClick={openShowPage} title="The show guide and your journal">Show guide &amp; journal →</UnderlineWord>
+                  </span>
                 )}
                 {show && progressForShow ? (
                   // The picker centres on the COLUMN, not on the band that runs

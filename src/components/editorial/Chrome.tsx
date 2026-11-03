@@ -144,13 +144,17 @@ export function GearWord({ onClick, hit, label, title, dot = false }: { onClick:
  *  so the box is placed by the wordmark's own centre (left 45 + 165 / 2 of
  *  the 280 base); on the phone the box's empty top rides under the status
  *  bar. The host wraps its chrome in a `position: relative` block. */
-export function Wordmark({ desktop = false, tint, onClick }: { desktop?: boolean; tint: "ink" | "cream"; onClick: () => void }) {
+export function Wordmark({ desktop = false, tint, onClick, alignRight = false }: { desktop?: boolean; tint: "ink" | "cream"; onClick: () => void;
+  /** The show room (his nudge on the board, 11-03): the wordmark's RIGHT edge on the letters column's right edge (the wide column centred: 50% − 540 + 672 = 50% + 132; the wordmark ends 105px into its 140px box at this scale), instead of centred, so the group disc's arrow no longer points at it. */
+  alignRight?: boolean;
+}) {
   const scale = desktop ? 0.5 : 0.4;
   // Level with the ? and account words (his note, 11-02): the wordmark is the
   // box's bottom 52 of 148, so the box's top sits above the page edge.
   const top = desktop ? -22 : -17;
+  const marginLeft = alignRight && desktop ? 132 - 105 : -127.5 * scale;
   return (
-    <div role="button" aria-label="Home" title="Home" onClick={onClick} style={{ position: "absolute", left: "50%", top: desktop ? top : E.safe.plus(top), marginLeft: -127.5 * scale, cursor: "pointer", zIndex: 5 }}>
+    <div role="button" aria-label="Home" title="Home" onClick={onClick} style={{ position: "absolute", left: "50%", top: desktop ? top : E.safe.plus(top), marginLeft, cursor: "pointer", zIndex: 5 }}>
       <SidebarLogo scale={scale} blocksOpacity={0} wordmarkTint={tint === "ink" ? E.color.ink : E.color.cream} />
     </div>
   );
