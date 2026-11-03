@@ -30,7 +30,7 @@ import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
-  fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
+  fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, fetchRoomMemberIds, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
   type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass, type GroupDashboardShow,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
@@ -100,19 +100,25 @@ export function landingFor(
  *  room's own fresh-answer rule (useFreshPitches), read for every group at
  *  once. Per group, the newest such answer. */
 export type PitchAnswer = { showId: string; userId: string; at: number };
-/** Rooms finished together (every member in the room at the show's end —
- *  the group room's own rule) or parked, from the brain's rows. */
-export function finishedRoomsFrom(brain: Map<string, GroupDashboardShow[]>, showsById: Record<string, Show>, dnf: Record<string, number>): Set<string> {
+/** Rooms finished together (every CURRENT member of the room at the show's
+ *  end — the group room's own rule, with the room's real member list: a
+ *  finished room's votes are gone, so the vote flag can't stand in for
+ *  membership — his Bear/Paradise catch, 11-03) or parked. */
+export function finishedRoomsFrom(brain: Map<string, GroupDashboardShow[]>, showsById: Record<string, Show>, dnf: Record<string, number>, roomMembers: Record<string, string[]>): Set<string> {
   const out = new Set<string>();
   for (const rows of brain.values()) {
     for (const gs of rows) {
       if (!gs.roomId) continue;
       if (dnf[gs.roomId]) { out.add(gs.roomId); continue; }
-      const inRoom = gs.members.filter((m) => m.voted);
+      const memberIds = roomMembers[gs.roomId];
       const seasons = showsById[gs.showId]?.seasons;
-      if (!inRoom.length || !seasons?.length) continue;
+      if (!memberIds?.length || !seasons?.length) continue;
       const ls = seasons.length, le = seasons[ls - 1] ?? 1;
-      if (inRoom.every((m) => (m.s ?? 0) > ls || ((m.s ?? 0) === ls && (m.e ?? 0) >= le))) out.add(gs.roomId);
+      const all = memberIds.every((uid) => {
+        const m = gs.members.find((mm) => mm.userId === uid);
+        return !!m && ((m.s ?? 0) > ls || ((m.s ?? 0) === ls && (m.e ?? 0) >= le));
+      });
+      if (all) out.add(gs.roomId);
     }
   }
   return out;
@@ -413,16 +419,19 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     })();
     return () => { cancelled = true; };
   }, [idsKey, selfUserId]);
-  // Parked rooms ("we're done with this one"), yours only.
+  // Parked rooms ("we're done with this one") and each room's CURRENT members, yours only.
   const roomIdsKey = useMemo(() => roomVis.map((v) => v.groupId).sort().join(","), [roomVis]);
   const [dnf, setDnf] = useState<Record<string, number>>({});
+  const [roomMembers, setRoomMembers] = useState<Record<string, string[]>>({});
   useEffect(() => {
-    if (!roomIdsKey) { setDnf({}); return; }
+    if (!roomIdsKey) { setDnf({}); setRoomMembers({}); return; }
     let cancelled = false;
-    fetchRoomDnfMap(roomIdsKey.split(",")).then((m) => { if (!cancelled) setDnf(m); }).catch(() => { /* none parked, then */ });
+    const ids = roomIdsKey.split(",");
+    fetchRoomDnfMap(ids).then((m) => { if (!cancelled) setDnf(m); }).catch(() => { /* none parked, then */ });
+    fetchRoomMemberIds(ids).then((m) => { if (!cancelled) setRoomMembers(m); }).catch(() => { /* no room counts as finished, then */ });
     return () => { cancelled = true; };
   }, [roomIdsKey]);
-  const finishedRooms = useMemo(() => finishedRoomsFrom(brain, showsById, dnf), [brain, showsById, dnf]);
+  const finishedRooms = useMemo(() => finishedRoomsFrom(brain, showsById, dnf, roomMembers), [brain, showsById, dnf, roomMembers]);
   useEffect(() => {
     let cancelled = false;
     fetchShows().then((rows) => { if (!cancelled) setShowsById(Object.fromEntries(rows.map((s) => [s.id, s]))); }).catch(() => { /* names stay off the lines */ });

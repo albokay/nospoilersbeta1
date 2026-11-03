@@ -2765,6 +2765,18 @@ export async function setRoomDnf(roomId: string, dnf: boolean): Promise<void> {
   if (!data || data.ok === false) throw new Error(data?.error || "set_room_dnf failed");
 }
 
+/** Each room's CURRENT members, for the given room ids, in one read (the
+ *  dashboard's finished rule, 2026-11-03: a room's votes vanish once it's
+ *  finished, so the vote flag can't stand in for membership). */
+export async function fetchRoomMemberIds(roomIds: string[]): Promise<Record<string, string[]>> {
+  if (roomIds.length === 0) return {};
+  const { data, error } = await supabase.from("friend_group_members").select("group_id, user_id").in("group_id", roomIds);
+  if (error) throw error;
+  const out: Record<string, string[]> = {};
+  for (const r of (data ?? []) as Array<{ group_id: string; user_id: string }>) (out[r.group_id] ??= []).push(r.user_id);
+  return out;
+}
+
 /** dnf_at per room (ms) for the given room ids. Tolerant — returns {} if
  *  the dnf column isn't present yet (migration not applied). */
 export async function fetchRoomDnfMap(roomIds: string[]): Promise<Record<string, number>> {
