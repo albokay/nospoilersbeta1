@@ -510,13 +510,13 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     <div>
       {roomRows.length > 0 && (
         <div style={{ marginBottom: desktop ? 56 : 44 }}>
-          <SectionHead tab={E.color.friend} tabText={E.color.ink}>Show rooms</SectionHead>
+          <SectionHead big tab={E.color.friend} tabText={E.color.ink}>Show rooms</SectionHead>
           {roomRows.map((r) => (
             <RoomRow key={r.roomId} desktop={desktop} row={r} onEnter={() => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} />
           ))}
         </div>
       )}
-      <div data-tip-anchor="groups-head"><SectionHead tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new watch group →</UnderlineWord> : null}>Groups</SectionHead></div>
+      <div data-tip-anchor="groups-head"><SectionHead big tab={E.color.personal} right={!hideNewGroup && !loading ? <UnderlineWord onClick={onNewGroup}>Invite new watch group →</UnderlineWord> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);

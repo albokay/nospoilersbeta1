@@ -19,7 +19,7 @@ import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, AccountWord, wordStyle, EditorialTitle } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, AccountWord, wordStyle } from "../components/editorial/Chrome";
 import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
 import { useGuideLetterNote } from "../components/editorial/GuideNote";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
@@ -524,12 +524,14 @@ export default function MobileDashboard() {
         //    on a yellow band, the drawer tab at the foot. Same data, same
         //    cards and sheets as the classic page. ──
         <>
-          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
-            <EditorialTitle style={{ marginTop: 52, maxWidth: 250, textWrap: "balance" as const }}>Your watch groups</EditorialTitle>
+          {/* No headline (two shelves, CP3, 11-03): the shelf heads carry the
+              page. The paper note sits under the logo, above the shelves, off
+              the right edge as it always has, tilted the other way. */}
+          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px`, height: 108 }}>
             {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest). */}
             {user && (dashNote
-              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 48, width: 234 }} />
-              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 48, width: 234 }} />)}
+              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 18, width: 234, transform: "rotate(3deg)" }} />
+              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 18, width: 234, transform: "rotate(3deg)" }} />)}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>
@@ -541,7 +543,7 @@ export default function MobileDashboard() {
             </div>
           ) : (() => {
             const groupsEl = (
-              <div style={{ marginTop: 70 }}>
+              <div>
                 <EditorialGroups
                   groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
                   roomVis={roomVis} chatActivity={chatActivity} pitchActivity={pitchActivity}

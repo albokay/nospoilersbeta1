@@ -2219,13 +2219,16 @@ export default function DashboardPage() {
                 {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
               </div>
             )) : (!socialOnbActive && !postAccept ? (
-              <div style={{ position: "relative" }}>
-                <EditorialTitle desktop>Your watch groups</EditorialTitle>
-                {/* 88px further left (Alborz 2026-10-13): halfway from where it hung to the look-up band's left edge, so it reads as placed on the page rather than off it. */}
+              // No headline (two shelves, CP3, 11-03): the shelf heads carry the
+              // page and the centred logo is the masthead. The paper note sits
+              // just above the "Show rooms" tab, over its right half, tilted the
+              // other way, its right edge clear of the logo; a longer note may
+              // reach down onto the tab, a two-line one doesn't (his rule).
+              <div style={{ position: "relative", height: 0 }}>
                 {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest); the guide's note only when nothing of the rooms' waits. */}
                 {user && (dashNote
-                  ? <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -122, top: -19, width: 320 }} />
-                  : guideLetter.note && <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -122, top: -19, width: 320 }} />)}
+                  ? <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />
+                  : guideLetter.note && <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />)}
               </div>
             ) : null)}
           </EditorialColumn>

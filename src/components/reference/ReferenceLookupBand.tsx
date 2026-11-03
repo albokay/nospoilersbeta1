@@ -1042,7 +1042,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         ) : (
           <>
             <EditorialColumn>
-              <div style={{ display: "flex", gap: 64, alignItems: "flex-start", marginTop: 64 }}>
+              <div style={{ display: "flex", gap: 64, alignItems: "flex-start", marginTop: groupsColumn ? 0 : 64 }}>
                 <div style={{ width: 560, flexShrink: 0 }}>{groupsColumn}</div>
                 {band}
               </div>
