@@ -33,13 +33,18 @@ export function GroupRoomDisc({ desktop = false, signal = null, label = "Group r
   return (
     <button
       type="button" aria-label="Group room" title="Group room" onClick={onClick}
-      style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: E.color.friend, color: E.color.ink, border: 0, padding: 0, cursor: "pointer", display: "inline-block", flexShrink: 0, WebkitTapHighlightColor: "transparent", ...style }}
+      style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: E.color.friend, color: E.color.ink, border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, WebkitTapHighlightColor: "transparent", ...style }}
     >
       {/* The group's name, underlined, with the arrow under it pointing UP at it
-          (his notes, 11-03): the regular mono on both platforms (the With line's),
-          and the pair centred in the disc as one block. */}
-      <span style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: desktop ? 10 : 8, padding: desktop ? "0 12px" : "0 8px", boxSizing: "border-box" }}>
-        <span style={{ ...E.type.label11, fontSize: desktop ? 10 : 8, letterSpacing: desktop ? "0.1em" : "0.08em", lineHeight: 1.3, textAlign: "center", maxWidth: "100%", display: "-webkit-box", WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], WebkitLineClamp: 3, overflow: "hidden", textDecoration: "underline", textUnderlineOffset: 2 }}>{label}</span>
+          (his notes, 11-03): the regular mono on both platforms (the With line's).
+          The pair is one block centred by auto margins (an absolutely placed
+          block inside a button isn't reliable on WebKit), and the underline
+          sits on an INLINE span so every wrapped line carries it (a clamped
+          box underlined only its first line on the phone). */}
+      <span style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: desktop ? 10 : 8, padding: desktop ? "0 12px" : "0 8px", boxSizing: "border-box", maxWidth: "100%" }}>
+        <span style={{ ...E.type.label11, fontSize: desktop ? 10 : 8, letterSpacing: desktop ? "0.1em" : "0.08em", lineHeight: 1.3, textAlign: "center", maxHeight: Math.round((desktop ? 10 : 8) * 1.3 * 3), overflow: "hidden" }}>
+          <span style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{label}</span>
+        </span>
         <svg width={arrow} height={arrow} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: "block", flexShrink: 0 }}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
       </span>
       {signal && (
