@@ -30,8 +30,8 @@ import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
-  fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
-  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass,
+  fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
+  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass, type GroupDashboardShow,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
@@ -63,13 +63,22 @@ export function landingFor(
   gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: MyStances | null, selfUserId: string,
   /** A friend's fresh answer to the viewer's own pitch, per group (his ask, 11-03): it pulls to the group room after an unanswered pitch. */
   answers: Map<string, PitchAnswer> = new Map(),
+  /** THE ONE BRAIN (his yes, 11-03): the group room's own rows for this group — in it, left, cleared — so the dashboard can't disagree with the room. */
+  brain?: GroupDashboardShow[],
+  /** Rooms finished together or parked (yours): they compete only while they hold writing you haven't read (his yes, 11-03). */
+  finished: Set<string> = new Set(),
 ): { roomId: string; showId: string } | null {
   const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
+  const byShow = new Map((brain ?? []).map((b) => [b.showId, b]));
   const mine = roomVis.filter((v) => {
     if (v.parentGroupId !== gid) return false;
     if (stances && stances.departedRooms.has(v.groupId)) return false;
     const r = roomsById.get(v.groupId);
-    return !(stances && r && stances.cleared.has(`${gid}:${r.showId}`));
+    if (stances && r && stances.cleared.has(`${gid}:${r.showId}`)) return false;
+    const b = r ? byShow.get(r.showId) : undefined;
+    if (b && (!b.inRoom || b.viewerLeft || b.viewerDismissed)) return false;
+    if (finished.has(v.groupId) && !roomHasNewActivity(v) && !roomHasNewInvisibleActivity(v)) return false;
+    return true;
   });
   const best = (at: (v: RoomVisibility) => number): { roomId: string; showId: string } | null => {
     let b: { roomId: string; at: number } | null = null;
@@ -80,7 +89,7 @@ export function landingFor(
   const fresh = best((v) => (roomHasNewActivity(v) ? (v.latestVisibleActivityAt ?? 1) : 0));
   if (fresh) return fresh;
   const p = pitchActivity.find((a) => a.groupId === gid);
-  if (p?.latestPitchShowId && pitchUnanswered(gid, p, rooms, stances, selfUserId)) return null;
+  if (p?.latestPitchShowId && pitchUnanswered(gid, p, rooms, stances, selfUserId, byShow.get(p.latestPitchShowId))) return null;
   if (answers.has(gid)) return null;
   if (!mine.length) return null;
   return best((v) => v.latestVisibleActivityAt ?? 0) ?? best((v) => roomsById.get(v.groupId)?.createdAt ?? 0);
@@ -91,6 +100,24 @@ export function landingFor(
  *  room's own fresh-answer rule (useFreshPitches), read for every group at
  *  once. Per group, the newest such answer. */
 export type PitchAnswer = { showId: string; userId: string; at: number };
+/** Rooms finished together (every member in the room at the show's end —
+ *  the group room's own rule) or parked, from the brain's rows. */
+export function finishedRoomsFrom(brain: Map<string, GroupDashboardShow[]>, showsById: Record<string, Show>, dnf: Record<string, number>): Set<string> {
+  const out = new Set<string>();
+  for (const rows of brain.values()) {
+    for (const gs of rows) {
+      if (!gs.roomId) continue;
+      if (dnf[gs.roomId]) { out.add(gs.roomId); continue; }
+      const inRoom = gs.members.filter((m) => m.voted);
+      const seasons = showsById[gs.showId]?.seasons;
+      if (!inRoom.length || !seasons?.length) continue;
+      const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+      if (inRoom.every((m) => (m.s ?? 0) > ls || ((m.s ?? 0) === ls && (m.e ?? 0) >= le))) out.add(gs.roomId);
+    }
+  }
+  return out;
+}
+
 export function answersToMyPitches(
   groupIds: string[], votes: GroupShowVote[], passes: GroupShowPass[], pitchActivity: GroupPitchActivity[], selfUserId: string,
 ): Map<string, PitchAnswer> {
@@ -119,8 +146,10 @@ export function answersToMyPitches(
 /** A friend's latest pitch the viewer hasn't answered: no yes, no pass, not
  *  cleared, and not a room they LEFT (leaving is an answer — his Ted Lasso
  *  catch, 11-02); answers unknown yet count as none. */
-export function pitchUnanswered(gid: string, p: GroupPitchActivity, rooms: ShowRoomOfGroup[], stances: MyStances | null, selfUserId: string): boolean {
+export function pitchUnanswered(gid: string, p: GroupPitchActivity, rooms: ShowRoomOfGroup[], stances: MyStances | null, selfUserId: string, brainRow?: GroupDashboardShow): boolean {
   if (!p.latestPitchShowId || !p.latestPitchUserId || p.latestPitchUserId === selfUserId) return false;
+  // The group room's own row knows a left, cleared or joined show (the rooms table hides a room you left from you).
+  if (brainRow && (brainRow.inRoom || brainRow.viewerLeft || brainRow.viewerDismissed)) return false;
   if (!stances) return true;
   if (stances.answered.has(`${gid}:${p.latestPitchShowId}`)) return false;
   return !rooms.some((r) => r.groupId === gid && r.showId === p.latestPitchShowId && stances.departedRooms.has(r.roomId));
@@ -131,6 +160,7 @@ function computeLines(
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
   stances: MyStances | null = null, selfUserId = "", answers: Map<string, PitchAnswer> = new Map(),
+  brain: Map<string, GroupDashboardShow[]> = new Map(), finished: Set<string> = new Set(),
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -170,8 +200,8 @@ function computeLines(
     // tap lands, then why — "→ The Diplomat’s room · new letters", "→ The
     // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
     // room · written in last". The same rule as the tap (landingFor).
-    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers);
-    const pulled = !landing && !!pa && pitchUnanswered(gid, pa, rooms, stances, selfUserId);
+    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers, brain.get(gid), finished);
+    const pulled = !landing && !!pa && !!pa.latestPitchShowId && pitchUnanswered(gid, pa, rooms, stances, selfUserId, brain.get(gid)?.find((b) => b.showId === pa.latestPitchShowId));
     let dest: string; let reason: string | null = null;
     if (landing) {
       const show = showOf(landing.roomId);
@@ -366,35 +396,33 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchAllGroupAnswers().then((a) => { if (!cancelled) setGroupAnswers(a); }).catch(() => { /* no answer marks this time */ });
     return () => { cancelled = true; };
   }, [selfUserId]);
-  // A room you LEFT is hidden from you by the rooms table's access rules, so
-  // the cheap departed check can miss it (his Ted Lasso row, 11-03). For the
-  // few groups where a friend's pitch still reads as unanswered, ask the
-  // group room's own data (the member-gated RPC), which knows "viewer left".
-  const [extraAnswered, setExtraAnswered] = useState<Set<string>>(new Set());
-  const stancesPlus = useMemo<MyStances | null>(() => stances ? { ...stances, answered: new Set([...stances.answered, ...extraAnswered]) } : null, [stances, extraAnswered]);
-  const todoKey = useMemo(() => {
-    if (!stances) return "";
-    const ids = new Set(groups.map((g) => g.group.id));
-    return pitchActivity.filter((a) => ids.has(a.groupId) && !!a.latestPitchShowId && pitchUnanswered(a.groupId, a, rooms, stancesPlus, selfUserId)).map((a) => `${a.groupId}:${a.latestPitchShowId}`).join(",");
-  }, [stances, stancesPlus, pitchActivity, rooms, groups, selfUserId]);
-  useEffect(() => {
-    if (!todoKey) return;
-    let cancelled = false;
-    (async () => {
-      const found = new Set<string>();
-      await Promise.all(todoKey.split(",").map(async (key) => {
-        const [gid, showId] = key.split(":");
-        try {
-          const row = (await fetchGroupDashboard(gid)).find((s) => s.showId === showId);
-          if (row && (row.viewerLeft || row.viewerDismissed || row.inRoom)) found.add(key);
-        } catch { /* the cheap data decides */ }
-      }));
-      if (!cancelled && found.size) setExtraAnswered((prev) => new Set([...prev, ...found]));
-    })();
-    return () => { cancelled = true; };
-  }, [todoKey]);
   const answerByGroup = useMemo(() => groupAnswers ? answersToMyPitches(groups.map((g) => g.group.id), groupAnswers.votes, groupAnswers.passes, pitchActivity, selfUserId) : new Map<string, PitchAnswer>(), [groupAnswers, groups, pitchActivity, selfUserId]);
   const idsKey = useMemo(() => groups.map((g) => g.group.id).sort().join(","), [groups]);
+  // THE ONE BRAIN (his yes, 11-03): the group room's own data per group — the
+  // member-gated RPC its shelves read — decides which rooms are yours (in
+  // it, not left, not cleared) and which are finished; the rows and the tap
+  // can't disagree with the room again. One call per group.
+  const [brain, setBrain] = useState<Map<string, GroupDashboardShow[]>>(new Map());
+  useEffect(() => {
+    if (!idsKey || !selfUserId) { setBrain(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const next = new Map<string, GroupDashboardShow[]>();
+      await Promise.all(idsKey.split(",").map(async (gid) => { try { next.set(gid, await fetchGroupDashboard(gid)); } catch { /* that group's rows fall back to the raw data */ } }));
+      if (!cancelled) setBrain(next);
+    })();
+    return () => { cancelled = true; };
+  }, [idsKey, selfUserId]);
+  // Parked rooms ("we're done with this one"), yours only.
+  const roomIdsKey = useMemo(() => roomVis.map((v) => v.groupId).sort().join(","), [roomVis]);
+  const [dnf, setDnf] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!roomIdsKey) { setDnf({}); return; }
+    let cancelled = false;
+    fetchRoomDnfMap(roomIdsKey.split(",")).then((m) => { if (!cancelled) setDnf(m); }).catch(() => { /* none parked, then */ });
+    return () => { cancelled = true; };
+  }, [roomIdsKey]);
+  const finishedRooms = useMemo(() => finishedRoomsFrom(brain, showsById, dnf), [brain, showsById, dnf]);
   useEffect(() => {
     let cancelled = false;
     fetchShows().then((rows) => { if (!cancelled) setShowsById(Object.fromEntries(rows.map((s) => [s.id, s]))); }).catch(() => { /* names stay off the lines */ });
@@ -406,7 +434,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stancesPlus, selfUserId, answerByGroup), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stancesPlus, selfUserId, answerByGroup]);
+  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms]);
 
   // Your own order (round 5): the groups you've dragged first, in that
   // order, then the rest newest-joined first. A drag this session is the
@@ -476,7 +504,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             lift={drag?.id === id ? drag.dy : null}
             rowRef={(el) => { rowRefs.current[id] = el; }}
             onEnter={() => {
-              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stancesPlus, selfUserId, answerByGroup) : null;
+              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId, answerByGroup, brain.get(id), finishedRooms) : null;
               if (t && onEnterRoom) onEnterRoom(t.roomId, t.showId, id); else onEnter(id);
             }}
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
