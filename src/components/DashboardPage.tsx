@@ -2075,7 +2075,7 @@ export default function DashboardPage() {
                 <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
               </div>
             </EditorialColumn>
-            <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>
+            {/* No headline (CP3, 11-03): the loading page shows the logo alone, as the loaded one does. */}
           </>
         ) : (
         <div style={topBar}>

@@ -15,7 +15,7 @@ import { GhostCluster } from "./DashboardGhosts";
  * (Alborz 2026-08-15 — the "sign out" text was appearing mid-sign-in).
  *
  * Under the editorial look (his notes, 10-14) the bridge paints the
- * dashboard's own cold-open state — the centred logo, "Your watch groups",
+ * dashboard's own cold-open state — the centred logo (no headline since 11-03),
  * the two ghost clusters, the loading line — so the way in reads as one load
  * instead of the old green screen followed by the new one.
  */
@@ -42,7 +42,7 @@ export default function StuckSessionLoader({ onSignOut }: { onSignOut: () => voi
             <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
           </div>
         </EditorialColumn>
-        <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>
+        {/* No headline since the two-shelf dashboard (CP3, 11-03): the logo alone, as the dashboard's own cold-open state. */}
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap", gap: 56, padding: "16px 80px 36px" }}>
           <GhostCluster barWidth={96} />

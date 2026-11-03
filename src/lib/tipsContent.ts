@@ -130,7 +130,8 @@ export type InviteeTipsCtx = { inviter: string; showName: string };
 export function inviteeDashboardTips(w: InviteeTipsCtx): Tip[] {
   return [
     { body: "Welcome in. Your watch groups live here." },
-    { body: `Your watch group with ${w.inviter} opens on their letter about ${w.showName}.` },
+    // Two shelves (his copy, 11-03): the room sits at the top of the dashboard; the group row opens the group room.
+    { body: `Your room with ${w.inviter} is at the top. Find their letter inside.` },
   ];
 }
 export function inviteeGroupRoomTips(w: InviteeTipsCtx): GroupRoomTipSticky[] {
