@@ -1391,7 +1391,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 the group's chat page, which comes back here). */}
             <div style={{ position: "relative", margin: `33px -${E.space.gutter}px 0`, display: "flex", alignItems: "stretch" }}>
               <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <TrailerPoster mobile banner={E.measure.phone.banner} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
+                <TrailerPoster mobile banner={E.measure.phone.banner} bannerUrl={show?.backdropUrl ?? null} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
               </div>
               {lobbyName && <RotatedLabel name={show?.name ?? "Show"} height={E.measure.phone.banner} />}
               {!privateOnly && parentGroupId && user && (

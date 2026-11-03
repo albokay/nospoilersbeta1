@@ -13,6 +13,13 @@
 //
 // Cost: about 70 shows × 2 small TVMaze reads × 1 row update, once a day.
 //
+// + THE BACKDROPS (the landing-rule arc's CP5, 2026-11-02): a second pass over
+// shows with no backdrop_url yet (Ended ones too, up to 100 a night) resolves
+// the show's TMDB backdrop through the trailers bridge (externals → /find →
+// /tv/{id}) and stores its w1280 URL for the phone room's banner. A miss
+// stays NULL and is tried again the next night. Needs TMDB_READ_TOKEN (the
+// secret build-show-reference already uses); without it the pass is skipped.
+//
 // Auth: the shared cron secret (x-digest-secret = DIGEST_CRON_SECRET), as
 // send-digests and build-browse-rows — called by pg_cron (run_refresh_shows)
 // or by hand. Body: { dry_run?: boolean, only_show_id?: string, all?: boolean }
@@ -80,6 +87,36 @@ async function refreshOne(admin: any, show: ShowRow, dryRun: boolean): Promise<{
   return { id: show.id, ok: true, seasons };
 }
 
+const TMDB_BASE = "https://api.themoviedb.org/3";
+async function tmdbGet(path: string, token: string): Promise<any | null> {
+  try {
+    const res = await fetch(`${TMDB_BASE}${path}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+// tvmaze_id → TVMaze externals (imdb, then thetvdb) → TMDB tv id → backdrop_path. No name search.
+async function resolveBackdropUrl(tvmazeId: string | number, token: string): Promise<string | null> {
+  let externals: { imdb?: string | null; thetvdb?: number | string | null } = {};
+  try {
+    const res = await fetch(`https://api.tvmaze.com/shows/${tvmazeId}`);
+    if (res.ok) externals = (await res.json())?.externals ?? {};
+  } catch { /* no bridge */ }
+  const attempts: Array<{ id: string; source: string }> = [];
+  if (externals.imdb) attempts.push({ id: String(externals.imdb), source: "imdb_id" });
+  if (externals.thetvdb) attempts.push({ id: String(externals.thetvdb), source: "tvdb_id" });
+  let tvId: number | null = null;
+  for (const { id, source } of attempts) {
+    const data = await tmdbGet(`/find/${encodeURIComponent(id)}?external_source=${source}`, token);
+    const found = data?.tv_results?.[0]?.id;
+    if (typeof found === "number") { tvId = found; break; }
+  }
+  if (tvId == null) return null;
+  const tv = await tmdbGet(`/tv/${tvId}`, token);
+  const path = tv?.backdrop_path;
+  return typeof path === "string" && path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+}
+
 serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   const secret = Deno.env.get("DIGEST_CRON_SECRET");
@@ -113,5 +150,30 @@ serve(async (req) => {
   }
   await Promise.all(Array.from({ length: Math.min(4, shows.length) }, worker));
   const refreshed = results.filter((r) => r.ok).length;
-  return json({ ok: true, dryRun, candidates: shows.length, refreshed, failed: results.filter((r) => !r.ok) });
+
+  // The backdrops pass (CP5): shows with no landscape art yet, any status.
+  const backdrops: { tried: number; filled: number; skipped?: string } = { tried: 0, filled: 0 };
+  const tmdbToken = Deno.env.get("TMDB_READ_TOKEN");
+  if (!tmdbToken) backdrops.skipped = "no_tmdb_token";
+  else {
+    let bq = admin.from("shows").select("id, tvmaze_id").is("backdrop_url", null).not("tvmaze_id", "is", null).limit(100);
+    if (body.only_show_id) bq = admin.from("shows").select("id, tvmaze_id").eq("id", body.only_show_id).not("tvmaze_id", "is", null);
+    const { data: bare } = await bq;
+    const todo = (bare ?? []) as { id: string; tvmaze_id: string | number }[];
+    let bi = 0;
+    async function bworker() {
+      while (bi < todo.length) {
+        const s = todo[bi++];
+        backdrops.tried += 1;
+        try {
+          const url = await resolveBackdropUrl(s.tvmaze_id, tmdbToken!);
+          if (!url || dryRun) continue;
+          const { error: be } = await admin.from("shows").update({ backdrop_url: url }).eq("id", s.id);
+          if (!be) backdrops.filled += 1;
+        } catch { /* next night */ }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(3, todo.length) }, bworker));
+  }
+  return json({ ok: true, dryRun, candidates: shows.length, refreshed, failed: results.filter((r) => !r.ok), backdrops });
 });

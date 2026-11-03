@@ -17,12 +17,15 @@ import { fetchTvmazeArt, type TvmazeArt } from "../lib/tvmaze";
 import { ensureShowReference } from "../lib/reference";
 import { E } from "../styles/editorial";
 
-export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0, mobile = false, season = null, banner = null }: {
+export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0, mobile = false, season = null, banner = null, bannerUrl = null }: {
   showId?: string | null; showName?: string | null; tvmazeId?: string | null; w?: number; h?: number; mobile?: boolean;
   /** The phone room's banner (the landing-rule arc's CP2, 2026-11-02): the
    *  show's ORIGINAL art this many px tall across its box, cropped to the
    *  top third, the play mark at the top near the left. */
   banner?: number | null;
+  /** The show's landscape art (shows.backdrop_url, CP5 2026-11-02): the banner
+   *  shows it when it's there, else the TVMaze original poster cropped. */
+  bannerUrl?: string | null;
   /** The season the viewer is on (his note, 2026-11-02): the play mark opens
    *  THAT season's trailer from the show's guide data when it has one
    *  (season 2 on; its first-season trailer is the launch trailer), else
@@ -37,10 +40,10 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0
   useEffect(() => {
     let cancelled = false;
     setArt(null);
-    if (!banner || !tvmazeId) return;
+    if (!banner || !tvmazeId || bannerUrl) return;
     fetchTvmazeArt(tvmazeId).then((a) => { if (!cancelled) setArt(a); }).catch(() => { /* the draft block, then */ });
     return () => { cancelled = true; };
-  }, [banner, tvmazeId]);
+  }, [banner, tvmazeId, bannerUrl]);
   useEffect(() => {
     let cancelled = false;
     setHasTrailer(false); setSeasonKey(null);
@@ -54,10 +57,12 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0
     return () => { cancelled = true; };
   }, [showId, tvmazeId, season]);
   const title = seasonKey && season ? `${showName ?? "Trailer"} · season ${season}` : (showName ?? "Trailer");
-  const bannerUrl = banner ? (art?.original ?? art?.medium ?? null) : null;
+  // The landscape art centred a little high; a portrait poster shows its upper part.
+  const landscape = !!(banner && bannerUrl);
+  const bannerSrc = banner ? (bannerUrl ?? art?.original ?? art?.medium ?? null) : null;
   const poster = banner
-    ? (bannerUrl
-      ? <img src={bannerUrl} alt="" draggable={false} style={{ width: "100%", height: banner, objectFit: "cover", objectPosition: "50% 22%", display: "block" }} />
+    ? (bannerSrc
+      ? <img src={bannerSrc} alt="" draggable={false} style={{ width: "100%", height: banner, objectFit: "cover", objectPosition: landscape ? "50% 40%" : "50% 22%", display: "block" }} />
       : <span aria-hidden="true" style={{ display: "block", width: "100%", height: banner, background: E.color.draft }} />)
     : <RowPoster tvmazeId={tvmazeId} w={w} h={h} />;
   if (!hasTrailer || !showId) return poster;

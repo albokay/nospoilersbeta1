@@ -60,6 +60,10 @@ export type Show = {
    *  season isn't over" signal for the finale rule. */
   nextAirAt?: string | null;
   nextAirSeason?: number | null;
+  /** The show's landscape art (TMDB backdrop, full URL) for the phone room's
+   *  banner — filled by the nightly refresh-shows run (2026-11-02); null or
+   *  absent → the TVMaze original poster, cropped. */
+  backdropUrl?: string | null;
 };
 
 // ── Shows catalog cache (egress) ────────────────────────────────────────────
@@ -88,6 +92,7 @@ const _rowToShow = (row: any): Show => ({
   seasonsPlanned: row.seasons_planned ?? null,
   nextAirAt: row.next_air_at ?? null,
   nextAirSeason: row.next_air_season ?? null,
+  backdropUrl: row.backdrop_url ?? null,
 });
 const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
 
@@ -122,12 +127,13 @@ export async function fetchShows(): Promise<Show[]> {
   if (_showsCache) return _showsCache;
   if (_showsInflight) return _showsInflight; // dedupe concurrent first-loads
   _showsInflight = (async () => {
-    const { data, error } = await supabase
-      .from("shows")
-      .select("id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type, seasons_planned, next_air_at, next_air_season")
-      .order("name");
-    if (error) throw error;
-    _showsCache = (data ?? []).map(_rowToShow);
+    const cols = "id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type, seasons_planned, next_air_at, next_air_season";
+    let r = await supabase.from("shows").select(`${cols}, backdrop_url`).order("name");
+    // Column-tolerant (CP5, 2026-11-02): until 20261102_show_backdrop.sql has
+    // run, the select without the banner's column — nothing else waits on it.
+    if (r.error && /backdrop_url/i.test(r.error.message ?? "")) r = await supabase.from("shows").select(cols).order("name") as typeof r;
+    if (r.error) throw r.error;
+    _showsCache = ((r.data ?? []) as any[]).map(_rowToShow);
     ensureShowsRealtime();
     return _showsCache;
   })();
