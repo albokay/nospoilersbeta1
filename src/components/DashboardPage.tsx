@@ -2405,9 +2405,10 @@ export default function DashboardPage() {
                       })}
                         </>
                       )}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 28 : groupShelves.watching.length === 0 ? 44 : 0 }}>
-                        <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
-                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite more friends</button>
+                      {/* Side by side on desktop, stacked on the phone (his swap, 11-03). */}
+                      <div style={{ display: "flex", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 28 : groupShelves.watching.length === 0 ? 44 : 0 }}>
+                        <button type="button" onClick={openSearch} style={{ ...blockBtn, flex: 1, width: "auto" }}>Pitch a show</button>
+                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={{ ...frameBtn, flex: 1, width: "auto" }}>Invite more friends</button>
                       </div>
                     </div>
                     {/* The rooms rail: the finished row stays attached to the masthead's bottom edge, "You're watching:" under it. */}

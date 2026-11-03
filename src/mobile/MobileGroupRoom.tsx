@@ -1400,7 +1400,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   })}
                 </>
               )}
-              <div style={{ display: "flex", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 24 : 44 }}>
+              {/* Stacked on the phone, side by side on desktop (his swap, 11-03). */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 24 : 44 }}>
                 <button type="button" onClick={() => setSearchOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" }}>Pitch a show</button>
                 <button type="button" onClick={() => setInviteOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Invite more friends</button>
               </div>
