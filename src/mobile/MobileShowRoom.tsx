@@ -3,6 +3,7 @@ import { type SidebarLetterKind } from "../lib/sidebarLetters";
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
+import { goBack } from "../lib/back";
 import { ArrowLeft, ChevronDown, LayoutGrid, Minus, Settings, SquarePen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -21,7 +22,6 @@ import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark } from "../components/editorial/Chrome";
 import { GroupRoomDisc, WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
 import MobileInviteSheet from "./MobileInviteSheet";
-import { ChatCorner } from "../components/editorial/GroupRoom";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
 import { RowPoster } from "../components/editorial/GroupRoom";
@@ -745,10 +745,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // so back doesn't reveal a group room you never passed through. Without a
   // note (an email link, a bare URL) it pops one level: room → its group (or
   // the dashboard when private-only / groupless).
-  const backTo = (location.state as { back?: string } | null)?.back ?? null;
-  const backLabel = privateOnly || backTo === "/m/dashboard" ? "Back to dashboard" : "Back to group";
+  // The corner goes where you came from (his note, 11-03): the previous
+  // in-app page, else the group room (the dashboard for a private room).
+  const backLabel = "Back";
   function closeRoom() {
-    navigate(backTo ?? (parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard"));
+    goBack(navigate, location, parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard");
   }
   // The disc is the way UP, always the group room (his catch, 11-03: it had
   // shared the corner's handler and followed its back note to the dashboard).
@@ -1359,8 +1360,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    the landing-rule arc, 11-02): the blue corner is the way out,
           //    the "sidebar" wordmark centred at the top in ink is home,
           //    `? [account]` at the top right; the sky disc beside the
-          //    headline is the way up to the group room; the show's art is a
-          //    banner across the page. ──
+          //    headline is the way up to the group room, the show's poster
+          //    under it (his mockup, 11-03: the banner and the chat fold went). ──
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <CornerTab kind="back" label={backLabel} onClick={closeRoom} />
             <Wordmark tint="ink" onClick={() => navigate("/m/dashboard")} />
@@ -1390,22 +1391,18 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 <EditorialSub>(just you so far)</EditorialSub>
               ) : null}
               </div>
-              {/* The disc carries the group's name; nudged left of the chat fold on the banner's corner (his note, 11-02). */}
-              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -1, marginRight: 36 }} />}
+              {/* The right column (his mockup, 11-03): the disc with the group's
+                  name, then the show's poster under it with the play mark on
+                  its bottom corner — the thumbnail is back, the banner and the
+                  chat fold are gone (the chat lives in the group room). */}
+              <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 18 }}>
+                {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -1 }} />}
+                <div style={{ marginRight: 10 }}>
+                  <TrailerPoster mobile w={112} h={160} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
+                </div>
+              </div>
               {/* The With line's + (his ask, 11-03): the group's add-friends sheet, in the room. */}
               {inviteOpen && parentGroupId && <MobileInviteSheet targetGroupId={parentGroupId} onClose={() => setInviteOpen(false)} onSent={() => {}} />}
-            </div>
-            {/* The banner (CP2 + his notes, 11-02): the show's art across the whole
-                page, the play mark at the top near the left, the group room's chat
-                fold on its top-right corner (it opens the group's chat page, which
-                comes back here). */}
-            <div style={{ position: "relative", margin: `33px -${E.space.gutter}px 0`, display: "flex", alignItems: "stretch" }}>
-              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <TrailerPoster mobile banner={E.measure.phone.banner} bannerUrl={show?.backdropUrl ?? null} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
-              </div>
-              {!privateOnly && parentGroupId && user && (
-                <ChatCorner countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => navigate(`/m/group/${parentGroupId}/chat`, { state: { back: location.pathname } })} style={{ top: -E.measure.phone.corner }} />
-              )}
             </div>
           </div>
         ) : (

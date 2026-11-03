@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { goBack } from "../lib/back";
 import { X, ArrowLeft, Settings, MessageCircle, Search, SquarePen } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { M, OVERLAY } from "./m";
@@ -132,6 +133,7 @@ const C = {
 export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const selfUserId = user?.id ?? "";
 
   const [group, setGroup] = useState<PeopleGroup | null>(null);
@@ -1242,7 +1244,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    `? [account]` as mono words at the top right, the group's name in
         //    Lora at the title line with the members under it. ──
         <div ref={titleBlockRef} style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px 40px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
-          <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
+          {/* The corner goes where you came from (his note, 11-03): a show room's disc brought you here → back to that room; else the dashboard. */}
+          <CornerTab kind="back" label="Back" onClick={() => goBack(navigate, location, "/m/dashboard")} />
           <Wordmark tint="cream" onClick={() => navigate("/m/dashboard")} />
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" groupId={groupId} tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
@@ -1259,7 +1262,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
              sits right beside the name, desktop-style (Alborz 2026-08-13;
              it used to hang at the bar's far right). ── */}
       <div style={topBar}>
-        <button style={iconBtn} title="back to dashboard" onClick={() => navigate("/m/dashboard")}>
+        <button style={iconBtn} title="back" onClick={() => goBack(navigate, location, "/m/dashboard")}>
           <ArrowLeft size={20} color={C.cream} />
         </button>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>

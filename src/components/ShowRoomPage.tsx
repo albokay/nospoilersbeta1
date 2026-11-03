@@ -16,6 +16,7 @@ import { type SidebarLetterKind } from "../lib/sidebarLetters";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
+import { goBack } from "../lib/back";
 import { ArrowLeft, ChevronDown, Minus, Settings, SquarePen, UserPen, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabaseClient";
@@ -679,10 +680,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // the landing rule, so back doesn't reveal a group room you never passed
   // through. Without a note (an email link, a typed address) it's the group
   // room the show belongs to, as before.
-  const backTo = (location.state as { back?: string } | null)?.back ?? null;
-  const backLabel = privateOnly || backTo === "/dashboard" ? "Back to dashboard" : "Back to group";
+  // The corner goes where you came from (his note, 11-03): the previous
+  // in-app page, else the group room (the dashboard for a private room).
+  const backLabel = "Back";
   function closeRoom() {
-    navigate(backTo ?? (parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard"));
+    goBack(navigate, location, parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
   }
   // The disc is the way UP, always the group room (his catch, 11-03: it had
   // shared the corner's handler and followed its back note to the dashboard).

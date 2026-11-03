@@ -30,6 +30,7 @@ import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan, positionLabel } from "../lib/utils";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
+import { goBack } from "../lib/back";
 import { supabase } from "../lib/supabaseClient";
 import { X, Settings, Triangle, ArrowUp, ArrowDown, ArrowLeft, MessageCircle, Plus, Search, UserPen } from "lucide-react";
 import { useAuth } from "../lib/auth";
@@ -2185,7 +2186,8 @@ export default function DashboardPage() {
         //    dashboard's title; in a group the "sidebar" wordmark centred at
         //    the top, in cream on the sky, is the way home. ──
         <div style={{ position: "relative", ...(socialOnbActive ? { zIndex: 1001 } : {}) }}>
-          <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back to dashboard" : "Feedback"} onClick={inGroup ? () => navigate("/dashboard") : () => setFeedbackOpen(true)} />
+          {/* The group room's corner goes where you came from (his note, 11-03): a show room's disc brought you here → back to that room; else the dashboard. */}
+          <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back" : "Feedback"} onClick={inGroup ? () => goBack(navigate, location, "/dashboard") : () => setFeedbackOpen(true)} />
           {inGroup && <Wordmark desktop tint="cream" onClick={() => navigate("/dashboard")} />}
           <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
             <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
