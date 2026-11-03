@@ -95,8 +95,8 @@ export function tipsFor(page: TipsPage, idiom: "desktop" | "mobile", editorial =
         { body: "This is your dashboard, where your watch groups live." },
         // The 10-17 refresh (Alborz's copy): nudge a slow friend in your own
         // words, a letter waits for whoever arrives, and more friends.
-        // His swap, 11-03: the initials moved to the room rows; a group row names a friend who hasn't joined.
-        { body: `Each show room lists who's in it by their initials. A group row tells you when a friend hasn't joined yet. Sidebar has emailed their invite. If they're slow to respond, nudge them ${idiom === "mobile" ? "by swiping on the row" : "from the pen at the end of the row"}. Your nudge goes out in your own words.` },
+        // 11-03: the initials sit on the room rows too now; the group row's dashed circle came back the same day.
+        { body: `Each group lists your friends by their initials. A dashed circle is a friend who hasn't joined yet. Sidebar has emailed their invite. If they're slow to respond, nudge them ${idiom === "mobile" ? "by swiping on the row" : "from the pen at the end of the row"}. Your nudge goes out in your own words.` },
         { body: "While you wait, go inside to pitch more shows or write a letter. Whatever you write will be waiting for your friends when they arrive." },
         { body: "Have other friends you watch TV with? Start a group with them from “Invite new watch group.”" },
       ];

@@ -203,12 +203,6 @@ function computeLines(
       const show = showsById[ans.showId]?.name;
       reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
     } else if (chat) reason = "new in chat";
-    else if (g.pendingInvites.length > 0) {
-      // A friend who hasn't accepted yet (his swap, 11-03: the dashed circle
-      // left the group row with the initials, so the line says it).
-      const names = g.pendingInvites.map((p) => p.name || "a friend");
-      reason = `${joinNames(names)} ${names.length === 1 ? "hasn\u2019t" : "haven\u2019t"} joined yet`;
-    }
     else if (roomCount === 0) reason = "no shows yet";
     else {
       // A room of yours nobody has joined (his yes, 11-03): the newest one,
@@ -557,7 +551,13 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
             grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
           >
-            {/* No initials on a group row (his swap, 11-03): the room rows carry who's in; a friend who hasn't joined is named on the line. */}
+            {/* The initials on the group row too (restored at his ask, 11-03, hours after moving them to the room rows): a dashed circle is a friend who hasn't joined yet. */}
+            {(others.length > 0 || gp.length > 0) && (
+              <span style={{ display: "inline-flex", flexShrink: 0 }}>
+                {others.map((m, i) => <Avatar key={m.userId} initial={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?"} first={i === 0} />)}
+                {gp.map((p, i) => <Avatar key={`p${i}`} initial={(p.name || "?")[0]} first={others.length === 0 && i === 0} pending />)}
+              </span>
+            )}
             <span style={textCol}>
               <span style={nameStyle}>{name}</span>
               <span style={lineStyle}>{l?.redTail ? <>{l.line.slice(0, -l.redTail.length)}<span style={{ color: E.color.alert }}>{l.redTail}</span></> : (l?.line ?? "")}</span>
