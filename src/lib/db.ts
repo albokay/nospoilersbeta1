@@ -2680,6 +2680,20 @@ export async function fetchMyStances(userId: string): Promise<MyStances> {
   for (const r of (x.data ?? []) as any[]) departedRooms.add(r.group_id);
   return { answered, cleared, departedRooms };
 }
+/** Every vote and pass the viewer can see, across their groups (member-gated
+ *  by RLS): the dashboard reads a friend's answer to the viewer's OWN pitch
+ *  from them (his ask, 2026-11-03). */
+export async function fetchAllGroupAnswers(): Promise<{ votes: GroupShowVote[]; passes: GroupShowPass[] }> {
+  const [v, p] = await Promise.all([
+    supabase.from("group_show_votes").select("group_id, user_id, show_id, created_at"),
+    supabase.from("group_show_passes").select("group_id, user_id, show_id, kind, created_at"),
+  ]);
+  const votes: GroupShowVote[] = ((v.data ?? []) as any[]).map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, createdAt: new Date(r.created_at).getTime() }));
+  const passes: GroupShowPass[] = ((p.data ?? []) as any[])
+    .filter((r) => r.kind === "out" || r.kind === "seen")
+    .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind, createdAt: r.created_at ? new Date(r.created_at).getTime() : null }));
+  return { votes, passes };
+}
 /** null clears the caller's pass (an "I'm in", or entering the room). */
 export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {
   if (kind === null) {

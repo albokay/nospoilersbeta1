@@ -30,11 +30,11 @@ import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
-  fetchShows, fetchShowRoomsForGroups, fetchMyStances, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
-  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances,
+  fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
+  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
-import type { PeopleGroup, PeopleGroupMember } from "../../types";
+import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
 
@@ -61,6 +61,8 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
  *  never names it (his note 7). Returns the room, or null for the group room. */
 export function landingFor(
   gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: MyStances | null, selfUserId: string,
+  /** A friend's fresh answer to the viewer's own pitch, per group (his ask, 11-03): it pulls to the group room after an unanswered pitch. */
+  answers: Map<string, PitchAnswer> = new Map(),
 ): { roomId: string; showId: string } | null {
   const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
   const mine = roomVis.filter((v) => {
@@ -79,8 +81,39 @@ export function landingFor(
   if (fresh) return fresh;
   const p = pitchActivity.find((a) => a.groupId === gid);
   if (p?.latestPitchShowId && pitchUnanswered(gid, p, rooms, stances, selfUserId)) return null;
+  if (answers.has(gid)) return null;
   if (!mine.length) return null;
   return best((v) => v.latestVisibleActivityAt ?? 0) ?? best((v) => roomsById.get(v.groupId)?.createdAt ?? 0);
+}
+
+/** A friend's answer to one of the viewer's OWN pitches (in, sitting this
+ *  out, seen it) newer than the viewer's pitches-seen stamp — the group
+ *  room's own fresh-answer rule (useFreshPitches), read for every group at
+ *  once. Per group, the newest such answer. */
+export type PitchAnswer = { showId: string; userId: string; at: number };
+export function answersToMyPitches(
+  groupIds: string[], votes: GroupShowVote[], passes: GroupShowPass[], pitchActivity: GroupPitchActivity[], selfUserId: string,
+): Map<string, PitchAnswer> {
+  const out = new Map<string, PitchAnswer>();
+  for (const gid of groupIds) {
+    const seen = pitchActivity.find((a) => a.groupId === gid)?.pitchesLastSeenAt ?? null;
+    const earliest = new Map<string, { userId: string; at: number }>();
+    for (const v of votes) {
+      if (v.groupId !== gid) continue;
+      const cur = earliest.get(v.showId);
+      if (!cur || v.createdAt < cur.at) earliest.set(v.showId, { userId: v.userId, at: v.createdAt });
+    }
+    let newest: PitchAnswer | null = null;
+    const consider = (showId: string, userId: string, at: number | null) => {
+      if (at == null || userId === selfUserId || earliest.get(showId)?.userId !== selfUserId) return;
+      if (seen != null && at <= seen) return;
+      if (!newest || at > newest.at) newest = { showId, userId, at };
+    };
+    for (const v of votes) if (v.groupId === gid) consider(v.showId, v.userId, v.createdAt);
+    for (const p of passes) if (p.groupId === gid) consider(p.showId, p.userId, p.createdAt);
+    if (newest) out.set(gid, newest);
+  }
+  return out;
 }
 
 /** A friend's latest pitch the viewer hasn't answered: no yes, no pass, not
@@ -97,7 +130,7 @@ function computeLines(
   groups: DashboardGroup[], roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
-  stances: MyStances | null = null, selfUserId = "",
+  stances: MyStances | null = null, selfUserId = "", answers: Map<string, PitchAnswer> = new Map(),
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -137,7 +170,7 @@ function computeLines(
     // tap lands, then why — "→ The Diplomat’s room · new letters", "→ The
     // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
     // room · written in last". The same rule as the tap (landingFor).
-    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId);
+    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers);
     const pulled = !landing && !!pa && pitchUnanswered(gid, pa, rooms, stances, selfUserId);
     let dest: string; let reason: string | null = null;
     if (landing) {
@@ -150,17 +183,24 @@ function computeLines(
       else if (roomCount > 1 && v?.latestVisibleActivityAt) reason = "written in last";
     } else {
       dest = "The group room";
+      const ans = answers.get(gid);
       if (pulled && pa) {
         const m = g.members.find((x) => x.userId === pa.latestPitchUserId);
         const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
         reason = `${who} pitched ${pa.latestPitchShowName ?? "a show"}`;
+      } else if (ans) {
+        // A friend answered your pitch (his ask, 11-03): the daily email's words.
+        const m = g.members.find((x) => x.userId === ans.userId);
+        const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
+        const show = showsById[ans.showId]?.name;
+        reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
       } else if (chat) reason = "new in chat";
       else if (roomCount === 0) reason = "no shows yet";
       // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
       else reason = "pitch a new show";
     }
     const line = reason ? `→ ${dest} · ${reason}` : `→ ${dest}`;
-    out[gid] = { line, envelope, dot: !newest && !!pitch };
+    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))) };
   }
   return out;
 }
@@ -317,12 +357,43 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   const [rooms, setRooms] = useState<ShowRoomOfGroup[]>([]);
   // The viewer's answers to pitches (the landing rule): null until loaded.
   const [stances, setStances] = useState<MyStances | null>(null);
+  // Friends' answers to the viewer's own pitches, every group at once (11-03).
+  const [groupAnswers, setGroupAnswers] = useState<{ votes: GroupShowVote[]; passes: GroupShowPass[] } | null>(null);
   useEffect(() => {
     if (!selfUserId) return;
     let cancelled = false;
     fetchMyStances(selfUserId).then((s) => { if (!cancelled) setStances(s); }).catch(() => { /* unknown answers → the group room, as before */ });
+    fetchAllGroupAnswers().then((a) => { if (!cancelled) setGroupAnswers(a); }).catch(() => { /* no answer marks this time */ });
     return () => { cancelled = true; };
   }, [selfUserId]);
+  // A room you LEFT is hidden from you by the rooms table's access rules, so
+  // the cheap departed check can miss it (his Ted Lasso row, 11-03). For the
+  // few groups where a friend's pitch still reads as unanswered, ask the
+  // group room's own data (the member-gated RPC), which knows "viewer left".
+  const [extraAnswered, setExtraAnswered] = useState<Set<string>>(new Set());
+  const stancesPlus = useMemo<MyStances | null>(() => stances ? { ...stances, answered: new Set([...stances.answered, ...extraAnswered]) } : null, [stances, extraAnswered]);
+  const todoKey = useMemo(() => {
+    if (!stances) return "";
+    const ids = new Set(groups.map((g) => g.group.id));
+    return pitchActivity.filter((a) => ids.has(a.groupId) && !!a.latestPitchShowId && pitchUnanswered(a.groupId, a, rooms, stancesPlus, selfUserId)).map((a) => `${a.groupId}:${a.latestPitchShowId}`).join(",");
+  }, [stances, stancesPlus, pitchActivity, rooms, groups, selfUserId]);
+  useEffect(() => {
+    if (!todoKey) return;
+    let cancelled = false;
+    (async () => {
+      const found = new Set<string>();
+      await Promise.all(todoKey.split(",").map(async (key) => {
+        const [gid, showId] = key.split(":");
+        try {
+          const row = (await fetchGroupDashboard(gid)).find((s) => s.showId === showId);
+          if (row && (row.viewerLeft || row.viewerDismissed || row.inRoom)) found.add(key);
+        } catch { /* the cheap data decides */ }
+      }));
+      if (!cancelled && found.size) setExtraAnswered((prev) => new Set([...prev, ...found]));
+    })();
+    return () => { cancelled = true; };
+  }, [todoKey]);
+  const answerByGroup = useMemo(() => groupAnswers ? answersToMyPitches(groups.map((g) => g.group.id), groupAnswers.votes, groupAnswers.passes, pitchActivity, selfUserId) : new Map<string, PitchAnswer>(), [groupAnswers, groups, pitchActivity, selfUserId]);
   const idsKey = useMemo(() => groups.map((g) => g.group.id).sort().join(","), [groups]);
   useEffect(() => {
     let cancelled = false;
@@ -335,7 +406,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId]);
+  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stancesPlus, selfUserId, answerByGroup), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stancesPlus, selfUserId, answerByGroup]);
 
   // Your own order (round 5): the groups you've dragged first, in that
   // order, then the rest newest-joined first. A drag this session is the
@@ -405,7 +476,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             lift={drag?.id === id ? drag.dy : null}
             rowRef={(el) => { rowRefs.current[id] = el; }}
             onEnter={() => {
-              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId) : null;
+              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stancesPlus, selfUserId, answerByGroup) : null;
               if (t && onEnterRoom) onEnterRoom(t.roomId, t.showId, id); else onEnter(id);
             }}
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
