@@ -5,17 +5,17 @@
  *
  *   CornerTab   the folded corner: an 88px 45° triangle at the page's top-left
  *               (112px, fixed in the window's corner, on desktop) holding one
- *               control — `identity` with a back arrow in sheets, on the map,
- *               in onboarding and while writing (the show room's goes with
- *               the landing-rule arc's CP2); `alert` with the feedback mark
- *               only on the signed-out homepage now. The triangle is the
- *               whole target (clip-path), no hairline, no shadow.
- *   FeedbackDisc / HomeLogo   the landing-rule arc (11-02): the red feedback
- *               disc leading the top-right row on every page, and the logo in
- *               the page's top-left corner as home.
+ *               control — `identity` with a back arrow inside rooms, on the
+ *               map, in onboarding and while writing; `alert` with the
+ *               feedback mark on the dashboard (and the homepage). The
+ *               triangle is the whole target (clip-path), no hairline, no
+ *               shadow. (The 11-02 feedback disc + corner logo came and went
+ *               the same day — his call: the corners are the chrome.)
+ *   Wordmark    the "sidebar" wordmark alone, centred at the top of a room,
+ *               the way home (11-02).
  *   TopRight    the row of mono words and small ink glyphs at the top right:
- *               `[feedback] ? [account]`. Positioned by its text line as the
- *               boards measure it; each word carries a taller hit.
+ *               `? [account]`. Positioned by its text line as the boards
+ *               measure it; each word carries a taller hit.
  *   EditorialTitle / EditorialSub   a page's title (Lora 46 / 64 on desktop)
  *               and the mono "With …" line under it.
  *   EditorialColumn   the desktop page column (1040 centred, 64 inside; 1080
@@ -138,31 +138,18 @@ export function GearWord({ onClick, hit, label, title, dot = false }: { onClick:
   );
 }
 
-/** The red feedback disc (the landing-rule arc, 11-02, his boards): the
- *  folded corner's mark in a 32px disc (28 on the phone) at the START of the
- *  top-right row, on every page of both platforms — the corner is retired. */
-export function FeedbackDisc({ onClick, hit, desktop = false }: { onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; hit: number; desktop?: boolean }) {
-  const size = desktop ? E.measure.desktop.feedbackDisc : 28;
-  const glyph = desktop ? 18 : 16;
+/** The "sidebar" wordmark alone, centred at the top of a room (his notes
+ *  after the landing-rule arc, 11-02): ink on the show room's cream, cream on
+ *  the group room's sky; it links to the dashboard. The blocks are hidden,
+ *  so the box is placed by the wordmark's own centre (left 45 + 165 / 2 of
+ *  the 280 base); on the phone the box's empty top rides under the status
+ *  bar. The host wraps its chrome in a `position: relative` block. */
+export function Wordmark({ desktop = false, tint, onClick }: { desktop?: boolean; tint: "ink" | "cream"; onClick: () => void }) {
+  const scale = desktop ? 0.5 : 0.4;
+  const top = desktop ? 14 : -14;
   return (
-    <Word onClick={onClick} label="Feedback" hit={hit}>
-      <span style={{ width: size, height: size, borderRadius: "50%", background: E.color.alert, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <svg width={glyph} height={glyph} viewBox="0 0 24 24" fill="none" stroke={E.color.cream} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{FEEDBACK}</svg>
-      </span>
-    </Word>
-  );
-}
-
-/** The logo in the page's top-left corner — home (the landing-rule arc,
- *  11-02): 140 × 74 at 48/22 on desktop, 0.72 of that at 32/19 under the
- *  status-bar inset on the phone. Absolute in the page's own box, so the
- *  host wraps its chrome in a full-width `position: relative` block. */
-export function HomeLogo({ desktop = false, bg = "cream", onClick, zIndex = 5 }: { desktop?: boolean; bg?: "green" | "sky" | "cream" | "accent"; onClick?: () => void; zIndex?: number }) {
-  const m = desktop ? E.measure.desktop.logo : E.measure.phone.logo;
-  return (
-    <div role={onClick ? "button" : undefined} aria-label={onClick ? "Home" : undefined} title={onClick ? "Home" : undefined} onClick={onClick}
-      style={{ position: "absolute", left: m.left, top: desktop ? m.top : E.safe.plus(m.top), cursor: onClick ? "pointer" : undefined, zIndex }}>
-      <SidebarLogo scale={desktop ? 0.5 : E.measure.phone.logo.scale} blocksOpacity={1} bg={bg} betaBadge />
+    <div role="button" aria-label="Home" title="Home" onClick={onClick} style={{ position: "absolute", left: "50%", top: desktop ? top : E.safe.plus(top), marginLeft: -127.5 * scale, cursor: "pointer", zIndex: 5 }}>
+      <SidebarLogo scale={scale} blocksOpacity={0} wordmarkTint={tint === "ink" ? E.color.ink : E.color.cream} />
     </div>
   );
 }

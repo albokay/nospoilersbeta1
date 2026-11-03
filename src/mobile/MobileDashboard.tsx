@@ -19,7 +19,7 @@ import MobileDeckCard from "../components/deck/MobileDeckCard";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { TopRight, AccountWord, wordStyle, EditorialTitle, FeedbackDisc } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, AccountWord, wordStyle, EditorialTitle } from "../components/editorial/Chrome";
 import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
 import { useGuideLetterNote } from "../components/editorial/GuideNote";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
@@ -455,15 +455,15 @@ export default function MobileDashboard() {
   return (
     <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 104px)", overflowX: "clip" as const } : {}) }}>
       {editorial ? (
-        // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
-        //    arc's CP1, 11-02): the red feedback disc leads `? [account]` at
-        //    the top right (the red corner is gone), the logo centred under
-        //    them (its move to the corner waits for the dashboard scope). ──
+        // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
+        //    the landing-rule arc, 11-02): the feedback corner at the top-left,
+        //    `? [account]` as mono words at the top right, the logo centred
+        //    under them. ──
         <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
           {!showSocialOnb && !postAccept && (
             <>
+              <CornerTab kind="feedback" onClick={() => setFeedbackOpen(true)} />
               <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.dashboard} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
-                <FeedbackDisc key="feedback" hit={E.measure.phone.wordHit} onClick={() => setFeedbackOpen(true)} />,
                 ...(user && onbResolved ? [<MobileTipsSheet key="tips" page="dashboard" tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
                 <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
               ]} />

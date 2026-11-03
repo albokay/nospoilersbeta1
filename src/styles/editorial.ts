@@ -97,10 +97,7 @@ export const E_MEASURE = {
     wordsTop: { dashboard: 22, room: 26 },  // the top-right words' text line
     wordsGap: 18,
     wordHit: 44,                // the touch height of a word
-    logoTop: 62,                // the dashboard's centred logo (held for the dashboard scope)
-    logo: { left: 32, top: 19, scale: 0.36 },  // the logo in the page's top-left corner: home (the landing-rule arc, 11-02)
-    lobbyTitleTop: 108,         // a group room's title block, under the corner logo
-    roomTitleTop: 110,          // a show room's head (the group's name), under the corner logo
+    logoTop: 62,                // the dashboard's centred logo
     groupDisc: 88,              // the show room's GROUP ROOM disc
     banner: 124,                // the show room's art banner across the page
     artTabsGap: 18,             // from the show room's art to the folder tabs
@@ -118,13 +115,9 @@ export const E_MEASURE = {
     corner: 112,                // the folded corner in the window's corner
     titleTop: 96,               // a room's title block
     dashboardTitleTop: 168,     // the dashboard's title, under the centred logo
-    logoTop: 44,                // (retired 11-02: the logo sits in the window's corner)
-    logo: { left: 48, top: 22 },  // the logo in the window's top-left corner: home (the landing-rule arc, 11-02)
-    lobbyTitleTop: 112,         // a group room's title block, under the corner logo
-    roomTitleTop: 140,          // a show room's head (the group's name), under the corner logo
+    logoTop: 44,                // the dashboard's centred logo
     groupDisc: 128,             // the show room's GROUP ROOM disc
     artTabsGap: 18,             // from the show room's poster to the folder tabs
-    feedbackDisc: 32,           // the red feedback disc in the top-right row (28 on the phone)
     wordsTop: 34,
     wordsGap: 20,
     wordHit: 32,

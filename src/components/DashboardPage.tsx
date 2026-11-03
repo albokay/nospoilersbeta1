@@ -123,7 +123,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, FeedbackDisc, HomeLogo } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, Wordmark } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { useGuideLetterNote } from "./editorial/GuideNote";
@@ -932,7 +932,7 @@ export default function DashboardPage() {
   // The masthead grows with a long name (round 5): the title block's height.
   const titleBlockRef = useRef<HTMLDivElement>(null);
   const titleBlockH = useBlockHeight(titleBlockRef);
-  const mastH = E.measure.desktop.lobbyTitleTop + Math.max(E.measure.desktop.masthead - E.measure.desktop.lobbyTitleTop, titleBlockH ?? 0);
+  const mastH = E.measure.desktop.titleTop + Math.max(E.measure.desktop.masthead - E.measure.desktop.titleTop, titleBlockH ?? 0);
   const memberNameById = useMemo(() => {
     const m: Record<string, string> = {};
     const ag = railGroups.find((r) => r.group.id === activeGroupId);
@@ -2057,9 +2057,11 @@ export default function DashboardPage() {
       <div style={{ ...pageStyle, background: C.green, display: "flex", flexDirection: "column" }} aria-busy="true">
         {editorial ? (
           <>
-            <div style={{ position: "relative", height: E.measure.desktop.dashboardTitleTop }}>
-              <HomeLogo desktop bg="cream" />
-            </div>
+            <EditorialColumn style={{ height: E.measure.desktop.dashboardTitleTop }}>
+              <div style={{ position: "absolute", left: "50%", top: E.measure.desktop.logoTop, marginLeft: -70 }}>
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
+              </div>
+            </EditorialColumn>
             <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>
           </>
         ) : (
@@ -2163,29 +2165,33 @@ export default function DashboardPage() {
       {editorial && <RowHoverStyle />}
 
       {editorial ? (
-        // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
-        //    arc's CP1, 11-02): the logo in the window's top-left corner is
-        //    home on every page (the blue back corner is gone from the group
-        //    room), the red feedback disc leads the mono words at the column's
-        //    top right (the red corner is gone), the title in Lora at the
-        //    column. ──
+        // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
+        //    the landing-rule arc, 11-02): the folded corner in the window's
+        //    corner (feedback on the dashboard, back in a group), the mono
+        //    words at the column's top right, the logo centred over the
+        //    dashboard's title; in a group the "sidebar" wordmark centred at
+        //    the top, in cream on the sky, is the way home. ──
         <div style={{ position: "relative", ...(socialOnbActive ? { zIndex: 1001 } : {}) }}>
-          <HomeLogo desktop bg={inGroup ? "sky" : "cream"} onClick={() => navigate("/dashboard")} />
-          <EditorialColumn style={{ height: inGroup ? W.lobbyTitleTop : W.dashboardTitleTop }}>
+          <CornerTab desktop kind={inGroup ? "back" : "feedback"} label={inGroup ? "Back to dashboard" : "Feedback"} onClick={inGroup ? () => navigate("/dashboard") : () => setFeedbackOpen(true)} />
+          {inGroup && <Wordmark desktop tint="cream" onClick={() => navigate("/dashboard")} />}
+          <EditorialColumn style={{ height: inGroup ? W.titleTop : W.dashboardTitleTop }}>
             <TopRight right={W.inside} textTop={W.wordsTop} gap={W.wordsGap} hit={W.wordHit} items={inGroup ? [
-              <FeedbackDisc key="feedback" desktop hit={W.wordHit} onClick={() => setFeedbackOpen(true)} />,
               <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : openTips())} />,
               <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
             ] : [
-              <FeedbackDisc key="feedback" desktop hit={W.wordHit} onClick={() => setFeedbackOpen(true)} />,
               <HelpWord key="help" hit={W.wordHit} open={tipsOpen} onClick={() => (tipsOpen ? closeTips() : openTips())} />,
               <AccountWord key="account" hit={W.wordHit} onClick={() => setShowAccount(true)} />,
               ...(profile?.is_admin ? [<Word key="admin" hit={W.wordHit} label="Admin" onClick={() => navigate("/?admin")}>Admin</Word>] : []),
             ]} />
+            {!inGroup && (
+              <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", left: "50%", top: W.logoTop, marginLeft: -70, cursor: "pointer" }}>
+                <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
+              </div>
+            )}
           </EditorialColumn>
           <EditorialColumn>
             {inGroup ? (editorialGroup && (
-              <div ref={titleBlockRef} style={{ position: "relative", paddingRight: 160, paddingBottom: 40, minHeight: W.masthead - W.lobbyTitleTop, boxSizing: "border-box" }}>
+              <div ref={titleBlockRef} style={{ position: "relative", paddingRight: 160, paddingBottom: 40, minHeight: W.masthead - W.titleTop, boxSizing: "border-box" }}>
                 {/* Over the pitched rail but a touch off it (Alborz 2026-10-13): the rail's width, shifted 32px left — halfway to the finished row's arrow — so it reads as slightly misaligned on purpose, and higher, so the sky/cream edge doesn't split it evenly. */}
                 {roomNote && user && <PaperNote desktop text={roomNote.text} at={roomNote.at} uid={`${user.id}:${activeGroupId}`} style={{ right: 32, top: 92, width: E.measure.desktop.railCol }} />}
                 {/* The gear beside the name (Alborz's notes, round 2) — it left the top-right words. */}

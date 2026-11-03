@@ -57,7 +57,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, FeedbackDisc, HomeLogo } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark } from "./editorial/Chrome";
 import { GroupRoomDisc, RotatedLabel, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
@@ -89,8 +89,6 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // Account circle in the header bar (polish pass 2026-09-15 — this page
   // had no account chrome before).
   const [showAccount, setShowAccount] = useState(false);
-  // The red feedback disc in the top-right row (the landing-rule arc's CP1, 11-02).
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the
   // chrome branches on it — the corner, the top-right words, the headline
   // with the logo. The tabs and the body stay classic until checkpoint 4.
@@ -1296,17 +1294,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             body (the inactive tab shows through). ── */}
       <div style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
         {editorial ? (
-          // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
-          //    arc's CP2, 11-02): the logo in the window's corner is home (the
-          //    blue back corner is gone), the feedback disc leads `? [account]`
-          //    at the column's top right; the GROUP's name is the headline with
-          //    the sky GROUP ROOM disc beside it as the way up, the show's name
-          //    up the side of its poster in the rail. ──
+          // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
+          //    the landing-rule arc, 11-02): the blue corner is the way out,
+          //    the "sidebar" wordmark centred at the top in ink is home,
+          //    `? [account]` at the column's top right; the sky disc beside
+          //    the headline is the way up to the group room. ──
           <>
-            <HomeLogo desktop bg="cream" onClick={() => navigate("/dashboard")} />
-            <EditorialColumn wide style={{ height: E.measure.desktop.roomTitleTop }}>
+            <CornerTab desktop kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <Wordmark desktop tint="ink" onClick={() => navigate("/dashboard")} />
+            <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
-                <FeedbackDisc key="feedback" desktop hit={E.measure.desktop.wordHit} onClick={() => setFeedbackOpen(true)} />,
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
                 <AccountWord key="account" hit={E.measure.desktop.wordHit} onClick={() => setShowAccount(true)} />,
               ]} />
@@ -1902,7 +1899,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* Feedback tab — left-edge widget on every live desktop surface
           (2026-07-03). Sits at 85% height; the back tab lives at 18%. */}
-      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} hideTrigger={editorial} forcedOpen={feedbackOpen} onForcedClose={() => setFeedbackOpen(false)} />
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} hideTrigger={editorial} />
 
       {/* Swipe-deck arc CP4 — the drip / catch-up modal fires wherever the
           user is (once per session; self-skipping when nothing is owed). */}
