@@ -38,7 +38,7 @@ import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types"
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
 
-type GroupLine = { line: string; envelope: "open" | "sealed" | null; /** A friend's new pitch (round 3): the identity dot. */ dot?: boolean };
+type GroupLine = { line: string; envelope: "open" | "sealed" | null; /** A friend's new pitch (round 3): the identity dot. */ dot?: boolean; /** The line's tail drawn in alert red ("pitch a new show" — his note, 11-03). */ redTail?: string };
 
 /** "Sam pitched The Sopranos" — the newest pitch by someone else in a group,
  *  when the viewer hasn't seen it (Alborz's notes, round 3). */
@@ -236,7 +236,7 @@ function computeLines(
       else reason = "pitch a new show";
     }
     const line = reason ? `→ ${dest} · ${reason}` : `→ ${dest}`;
-    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))) };
+    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))), redTail: reason === "pitch a new show" ? reason : undefined };
   }
   return out;
 }
@@ -527,7 +527,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             )}
             <span style={textCol}>
               <span style={nameStyle}>{name}</span>
-              <span style={lineStyle}>{l?.line ?? ""}</span>
+              <span style={lineStyle}>{l?.redTail ? <>{l.line.slice(0, -l.redTail.length)}<span style={{ color: E.color.alert }}>{l.redTail}</span></> : (l?.line ?? "")}</span>
             </span>
             {l?.envelope ? <LetterDisc kind={l.envelope} className="m-dot-in" /> : l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
           </GroupRow>

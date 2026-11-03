@@ -35,8 +35,9 @@ export function GroupRoomDisc({ desktop = false, signal = null, label = "Group r
       type="button" aria-label="Group room" title="Group room" onClick={onClick}
       style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: E.color.friend, color: E.color.ink, border: 0, padding: 0, cursor: "pointer", display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: desktop ? 10 : 8, flexShrink: 0, WebkitTapHighlightColor: "transparent", ...style }}
     >
-      <span style={{ ...E.type.label11, fontSize: desktop ? 10 : 8, letterSpacing: "0.1em", lineHeight: 1.25, textAlign: "center", padding: desktop ? "0 12px" : "0 8px", boxSizing: "border-box", maxWidth: "100%", display: "-webkit-box", WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], WebkitLineClamp: 3, overflow: "hidden" }}>{label}</span>
-      <svg width={arrow} height={arrow} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+      {/* The group's name, underlined, with the arrow under it pointing UP at it (his note, 11-03); on the phone in the progress picker's weight. */}
+      <span style={{ ...(desktop ? E.type.label11 : { fontFamily: E.font.interface, fontWeight: 600, textTransform: "uppercase" as const }), fontSize: desktop ? 10 : 9, letterSpacing: desktop ? "0.1em" : "0.06em", lineHeight: 1.25, textAlign: "center", padding: desktop ? "0 12px" : "0 8px", boxSizing: "border-box", maxWidth: "100%", display: "-webkit-box", WebkitBoxOrient: "vertical" as React.CSSProperties["WebkitBoxOrient"], WebkitLineClamp: 3, overflow: "hidden", textDecoration: "underline", textUnderlineOffset: 2 }}>{label}</span>
+      <svg width={arrow} height={arrow} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
       {signal && (
         <span aria-hidden="true" style={{ position: "absolute", left: inset - dot / 2 - 2, top: inset - dot / 2 - 2, width: dot, height: dot, borderRadius: "50%", background: signal === "blue" ? E.color.identity : E.color.alert, border: `2px solid ${E.color.cream}` }} />
       )}
