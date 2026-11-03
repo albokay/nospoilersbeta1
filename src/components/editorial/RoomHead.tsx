@@ -57,7 +57,8 @@ export function GroupRoomDisc({ desktop = false, signal = null, label = "Group r
           block inside a button isn't reliable on WebKit), and the underline
           sits on an INLINE span so every wrapped line carries it (a clamped
           box underlined only its first line on the phone). */}
-      <span style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: desktop ? 10 : 8, padding: desktop ? "0 12px" : "0 8px", boxSizing: "border-box", maxWidth: "100%" }}>
+      {/* The phone's name gets more air from the disc's edges (his note, 11-03). */}
+      <span style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: desktop ? 10 : 8, padding: desktop ? "0 12px" : "0 14px", boxSizing: "border-box", maxWidth: "100%" }}>
         {/* 3px under the last line (his catch, 11-03): the underline sits under the text box, and the clamp's overflow clipped it — the last line lost its underline, a one-line name lost it entirely. */}
         <span style={{ ...E.type.label11, fontSize: desktop ? 10 : 8, letterSpacing: desktop ? "0.1em" : "0.08em", lineHeight: 1.3, textAlign: "center", maxHeight: Math.round((desktop ? 10 : 8) * 1.3 * 3) + 3, paddingBottom: 3, boxSizing: "border-box", overflow: "hidden" }}>
           <span style={{ textDecoration: "underline", textUnderlineOffset: 2 }}>{label}</span>
