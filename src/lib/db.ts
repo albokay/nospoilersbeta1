@@ -2653,6 +2653,19 @@ export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPa
     .filter((r) => r.kind === "out" || r.kind === "seen")
     .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind, createdAt: r.created_at ? new Date(r.created_at).getTime() : null }));
 }
+/** The viewer's answers across every group (the landing rule, 2026-11-02):
+ *  "group:show" for each yes-vote and each pass — a friend's pitch without
+ *  one is unanswered and pulls the dashboard's tap to the group room. */
+export async function fetchMyStances(userId: string): Promise<Set<string>> {
+  const [v, p] = await Promise.all([
+    supabase.from("group_show_votes").select("group_id, show_id").eq("user_id", userId),
+    supabase.from("group_show_passes").select("group_id, show_id").eq("user_id", userId),
+  ]);
+  const out = new Set<string>();
+  for (const r of (v.data ?? []) as any[]) out.add(`${r.group_id}:${r.show_id}`);
+  for (const r of (p.data ?? []) as any[]) out.add(`${r.group_id}:${r.show_id}`);
+  return out;
+}
 /** null clears the caller's pass (an "I'm in", or entering the room). */
 export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {
   if (kind === null) {

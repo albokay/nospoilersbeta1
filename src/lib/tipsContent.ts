@@ -7,7 +7,9 @@
  * old GroupRoomSticky's text) — locked; edit only with sign-off.
  * 2026-09-25 letters pass (Alborz's sign-off, his wording). 2026-09-27 (his
  * wording): the welcome aside says "write to your friends", the gear tip
- * drops "(sad)", dashboard tip 3 ends at "start writing."
+ * drops "(sad)", dashboard tip 3 ends at "start writing." 2026-11-02 (the
+ * landing rule, his yes on the proposals): the invitee's dashboard tip and
+ * group-room welcome say where the letter is now that the group opens on it.
  *
  * Behavior (locked): accounts created AFTER the feature shipped see a
  * page's tips OPEN on their first visit; dismissing closes them; the "?"
@@ -128,13 +130,13 @@ export type InviteeTipsCtx = { inviter: string; showName: string };
 export function inviteeDashboardTips(w: InviteeTipsCtx): Tip[] {
   return [
     { body: "Welcome in. Your watch groups live here." },
-    { body: `The letter ${w.inviter} wrote you about ${w.showName} is inside your watch group with them.` },
+    { body: `Your watch group with ${w.inviter} opens on their letter about ${w.showName}.` },
   ];
 }
 export function inviteeGroupRoomTips(w: InviteeTipsCtx): GroupRoomTipSticky[] {
   return [
     {
-      body: `Welcome to your watch group with ${w.inviter}. The shows you’re watching and the shows you pitch collect here. ${w.showName} is ${w.inviter}’s first pick. Open it to find their letter.`,
+      body: `Welcome to your watch group with ${w.inviter}. The shows you’re watching and the shows you pitch collect here. ${w.showName} is ${w.inviter}’s first pick. Their letter is in its show room. Pitch something back, or invite someone else who’d watch with you.`,
       tilt: -2, top: "44%", left: "24%", seat: { anchor: "invitee-show", dx: 0, dy: 14, below: true },
     },
     {

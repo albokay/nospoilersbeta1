@@ -29,7 +29,7 @@ import LetterDisc from "../LetterDisc";
 import { SectionHead, UnderlineWord } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
-  fetchShows, fetchShowRoomsForGroups, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
+  fetchShows, fetchShowRoomsForGroups, fetchMyStances, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
   type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
@@ -46,6 +46,31 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
   const m = g.members.find((x) => x.userId === a.latestPitchUserId);
   const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
   return { text: `${who} pitched ${a.latestPitchShowName ?? "a show"}`, at: a.latestPitchAt ?? 0 };
+}
+
+/** THE LANDING RULE (the landing-rule arc's CP4, 2026-11-02, the 11-02
+ *  brainstorm): tapping a group opens it at its newest activity. A friend's
+ *  latest pitch you haven't answered pulls you to the group room until you
+ *  answer (their later answers don't; an answer unknown yet counts as none).
+ *  Otherwise the show room with the newest writing you can see; with no
+ *  writing anywhere, the newest of your rooms; with no room of yours, the
+ *  group room. Returns the room to open, or null for the group room. */
+export function landingFor(
+  gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: Set<string> | null, selfUserId: string,
+): { roomId: string; showId: string } | null {
+  const p = pitchActivity.find((a) => a.groupId === gid);
+  if (p?.latestPitchShowId && p.latestPitchUserId && p.latestPitchUserId !== selfUserId && (!stances || !stances.has(`${gid}:${p.latestPitchShowId}`))) return null;
+  const mine = roomVis.filter((v) => v.parentGroupId === gid);
+  if (!mine.length) return null;
+  const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
+  let best: { roomId: string; at: number } | null = null;
+  for (const v of mine) { const at = v.latestVisibleActivityAt ?? 0; if (!best || at > best.at) best = { roomId: v.groupId, at }; }
+  if (best && best.at === 0) {
+    best = null;
+    for (const v of mine) { const at = roomsById.get(v.groupId)?.createdAt ?? 0; if (!best || at > best.at) best = { roomId: v.groupId, at }; }
+  }
+  const r = best ? roomsById.get(best.roomId) : undefined;
+  return r ? { roomId: r.roomId, showId: r.showId } : null;
 }
 
 function computeLines(
@@ -225,7 +250,7 @@ function GhostRow() {
   );
 }
 
-export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onInvite, onNewGroup, hideNewGroup = false, desktop = false, onOptions, onReorder }: {
+export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onEnterRoom, onInvite, onNewGroup, hideNewGroup = false, desktop = false, onOptions, onReorder }: {
   groups: DashboardGroup[];
   pendingInvites: PendingGroupInvite[];
   contactNames: Record<string, string>;
@@ -237,6 +262,8 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   pitchActivity?: GroupPitchActivity[];
   loading?: boolean;
   onEnter: (groupId: string) => void;
+  /** The landing rule (CP4, 11-02): a tap that lands in a show room goes here; without it every tap enters the group room. */
+  onEnterRoom?: (roomId: string, showId: string, groupId: string) => void;
   onInvite: (inv: PendingGroupInvite) => void;
   onNewGroup: () => void;
   hideNewGroup?: boolean;
@@ -249,6 +276,14 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
 }) {
   const [showsById, setShowsById] = useState<Record<string, Show>>({});
   const [rooms, setRooms] = useState<ShowRoomOfGroup[]>([]);
+  // The viewer's answers to pitches (the landing rule): null until loaded.
+  const [stances, setStances] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!selfUserId || !onEnterRoom) return;
+    let cancelled = false;
+    fetchMyStances(selfUserId).then((s) => { if (!cancelled) setStances(s); }).catch(() => { /* unknown answers → the group room, as before */ });
+    return () => { cancelled = true; };
+  }, [selfUserId, onEnterRoom]);
   const idsKey = useMemo(() => groups.map((g) => g.group.id).sort().join(","), [groups]);
   useEffect(() => {
     let cancelled = false;
@@ -330,7 +365,10 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             desktop={desktop}
             lift={drag?.id === id ? drag.dy : null}
             rowRef={(el) => { rowRefs.current[id] = el; }}
-            onEnter={() => onEnter(id)}
+            onEnter={() => {
+              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId) : null;
+              if (t && onEnterRoom) onEnterRoom(t.roomId, t.showId, id); else onEnter(id);
+            }}
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
             grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
           >

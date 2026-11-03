@@ -40,7 +40,8 @@ export type YoureInVariant =
  *  the show waits in the watch group; a sealed one says where it opens. */
 function InviteeLine({ v, mark }: { v: Extract<YoureInVariant, { kind: "invitee" }>; mark: React.CSSProperties }) {
   if (!v.showName) {
-    return <>Your friend, <span style={mark}>{v.friendName}</span> is waiting for you inside your group room. See the letters they&rsquo;ve already left you and let them know what you want to watch together.</>;
+    // The landing rule (2026-11-02, his yes): the group opens on the letters, so "in your watch group", not "inside your group room".
+    return <>Your friend, <span style={mark}>{v.friendName}</span> is waiting for you in your watch group. Read the letters they&rsquo;ve already left you and let them know what you want to watch together.</>;
   }
   return v.opensAt
     ? <><span style={mark}>{v.friendName}</span>&rsquo;s letter about <span style={mark}>{v.showName}</span> is waiting in your watch group. It opens at S{v.opensAt.s} E{v.opensAt.e}. Pitch anything else you want to watch together.</>
