@@ -58,7 +58,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark } from "./editorial/Chrome";
-import { GroupRoomDisc, RotatedLabel, useGroupSignals } from "./editorial/RoomHead";
+import { GroupRoomDisc, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
@@ -1309,17 +1309,16 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               ]} />
             </EditorialColumn>
             <EditorialColumn wide>
-              {/* The head (the landing-rule arc's CP2, 11-02, his boards): the GROUP's
+              {/* The head (the landing-rule arc's CP2 + his notes, 11-02): the SHOW's
                   name is the headline, the gear its superscript (email updates for
-                  this room), the With line under it; the sky disc beside it is the
-                  way up to the group room (its dot: something new elsewhere in the
-                  group); the show's name runs up the side of its poster in the
-                  rail, the play mark on the poster's corner. A private room keeps
-                  the show's name as its headline. */}
+                  this room), the With line under it; the sky disc beside it carries
+                  the GROUP's name and is the way up to the group room (its dot:
+                  something new elsewhere in the group); the poster sits in the
+                  rail with the play mark on its corner. */}
               <div style={{ display: "grid", gridTemplateColumns: `${E.measure.desktop.letters}px ${E.measure.desktop.rail}px`, columnGap: E.measure.desktop.railGap, alignItems: "start" }}>
                 <div style={{ position: "relative", minHeight: E.measure.desktop.groupDisc }}>
                   <div style={{ width: 464 }}>
-                    <FittedTitle desktop shrink name={lobbyName ?? show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
+                    <FittedTitle desktop shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
 
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
@@ -1334,11 +1333,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   ) : null}
                   </div>
                   {!privateOnly && parentGroupId && (
-                    <GroupRoomDisc desktop signal={signals.disc} onClick={closeRoom} style={{ position: "absolute", left: 476, top: -1 }} />
+                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={closeRoom} style={{ position: "absolute", left: 476, top: -1 }} />
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-                  {lobbyName && <RotatedLabel name={show?.name ?? "Show"} height={191} />}
                   <TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={135} h={191} season={refEff?.s ?? null} />
                 </div>
               </div>

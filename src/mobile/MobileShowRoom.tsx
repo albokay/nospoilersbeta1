@@ -19,7 +19,7 @@ import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark } from "../components/editorial/Chrome";
-import { GroupRoomDisc, RotatedLabel, useGroupSignals } from "../components/editorial/RoomHead";
+import { GroupRoomDisc, useGroupSignals } from "../components/editorial/RoomHead";
 import { ChatCorner } from "../components/editorial/GroupRoom";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
@@ -1357,13 +1357,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
             ]} />
             <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                {/* The group's name as the headline (CP2, 11-02, his board): 32px,
-                    balanced in its column, the gear as its superscript. A private
-                    room keeps the show's name. */}
-                <h1 style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", color: E.color.ink, margin: 0, textWrap: "balance" } as React.CSSProperties}>
-                  {lobbyName ?? show?.name ?? "Show"}
-                  {!privateOnly && roomId && <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}
-                </h1>
+                {/* The show's name as the headline (his notes, 11-02): the fitted
+                    title at 32px, balanced in its column, the gear seated as its
+                    superscript by measurement (an inline gear fell to the last
+                    line and jumped on a tap). */}
+                <FittedTitle shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} style={{ fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties} />
 
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
@@ -1375,17 +1373,17 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </EditorialSub>
               ) : null}
               </div>
-              {!privateOnly && parentGroupId && <GroupRoomDisc signal={signals.disc} onClick={closeRoom} style={{ marginTop: -1 }} />}
+              {/* The disc carries the group's name; nudged left of the chat fold on the banner's corner (his note, 11-02). */}
+              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={closeRoom} style={{ marginTop: -1, marginRight: 36 }} />}
             </div>
-            {/* The banner (CP2, 11-02): the show's art across the page, its name up
-                a cream strip at the right edge, the play mark at the top near the
-                left, the group room's chat fold on its top-right corner (it opens
-                the group's chat page, which comes back here). */}
+            {/* The banner (CP2 + his notes, 11-02): the show's art across the whole
+                page, the play mark at the top near the left, the group room's chat
+                fold on its top-right corner (it opens the group's chat page, which
+                comes back here). */}
             <div style={{ position: "relative", margin: `33px -${E.space.gutter}px 0`, display: "flex", alignItems: "stretch" }}>
               <div style={{ flex: "1 1 auto", minWidth: 0 }}>
                 <TrailerPoster mobile banner={E.measure.phone.banner} bannerUrl={show?.backdropUrl ?? null} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
               </div>
-              {lobbyName && <RotatedLabel name={show?.name ?? "Show"} height={E.measure.phone.banner} />}
               {!privateOnly && parentGroupId && user && (
                 <ChatCorner countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => navigate(`/m/group/${parentGroupId}/chat`, { state: { back: location.pathname } })} style={{ top: -E.measure.phone.corner }} />
               )}
