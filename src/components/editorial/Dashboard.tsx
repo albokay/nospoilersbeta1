@@ -7,7 +7,8 @@
  *                    hairline rows — the members' initials, the group's
  *                    name, a mono second line (new letters · a sealed
  *                    letter · new in chat · the room with the latest
- *                    activity · no shows yet) and the envelope at the end;
+ *                    activity · no shows yet — since 11-02 the arrow line:
+ *                    where the tap lands, then why) and the envelope at the end;
  *                    an invite row with the inviter's line in red and Join.
  *                    The envelope follows the live rule exactly (open = new
  *                    writing you can read or new chat; sealed = only writing
@@ -77,6 +78,7 @@ function computeLines(
   groups: DashboardGroup[], roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
+  stances: Set<string> | null = null, selfUserId = "",
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -108,20 +110,35 @@ function computeLines(
     }
     const chat = chatNew.has(gid);
     // A friend's new pitch (round 3): after new letters, before a sealed one.
-    const pitch = pitchSentence(g, pitches.find((a) => a.groupId === gid), contactNames);
+    const pa = pitches.find((a) => a.groupId === gid);
+    const pitch = pitchSentence(g, pa, contactNames);
     const envelope: GroupLine["envelope"] = newest || chat ? "open" : (!pitch && sealed) ? "sealed" : null;
-    const withShow = (lead: string, roomId: string) => { const n = showOf(roomId); return n ? `${lead} · ${n}` : lead; };
-    // The quiet line (Alborz's notes, round 5): the room with the latest
-    // letters (the newest room before anyone writes), led by "Latest:" once
-    // the group has more than one room.
     const roomCount = rooms.filter((r) => r.groupId === gid).length;
-    const quiet = latest ? showOf(latest.roomId) : null;
-    const line = newest ? withShow("New letters", newest.roomId)
-      : pitch ? pitch.text
-      : sealed ? withShow("A sealed letter", sealed.roomId)
-      : chat ? "New in chat"
-      : quiet ? (roomCount > 1 ? `Latest: ${quiet}` : quiet)
-      : "No shows yet";
+    // THE LINE (his dashboard note, 11-02, after the landing rule): where the
+    // tap lands, then why — "→ The Diplomat’s room · new letters", "→ The
+    // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
+    // room · written in last". The same rule as the tap (landingFor).
+    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId);
+    const pulled = !landing && !!pa?.latestPitchShowId && !!pa.latestPitchUserId && pa.latestPitchUserId !== selfUserId && (!stances || !stances.has(`${gid}:${pa.latestPitchShowId}`));
+    let dest: string; let reason: string | null = null;
+    if (landing) {
+      const show = showOf(landing.roomId);
+      dest = show ? `${show}’s room` : "The show room";
+      const v = roomVis.find((x) => x.groupId === landing.roomId);
+      if (v && roomHasNewActivity(v)) reason = "new letters";
+      else if (v && roomHasNewInvisibleActivity(v)) reason = "a sealed letter";
+      else if (chat) reason = "new in chat";
+      else if (roomCount > 1 && v?.latestVisibleActivityAt) reason = "written in last";
+    } else {
+      dest = "The group room";
+      if (pulled && pa) {
+        const m = g.members.find((x) => x.userId === pa.latestPitchUserId);
+        const who = m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "A friend";
+        reason = `${who} pitched ${pa.latestPitchShowName ?? "a show"}`;
+      } else if (chat) reason = "new in chat";
+      else if (roomCount === 0) reason = "no shows yet";
+    }
+    const line = reason ? `→ ${dest} · ${reason}` : `→ ${dest}`;
     out[gid] = { line, envelope, dot: !newest && !!pitch };
   }
   return out;
@@ -164,7 +181,8 @@ const rowBase: React.CSSProperties = {
 };
 const textCol: React.CSSProperties = { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 };
 const nameStyle: React.CSSProperties = { ...E.type.row17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-const lineStyle: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+// The line is where the tap lands (his dashboard note, 11-02): the arrow line in identity blue.
+const lineStyle: React.CSSProperties = { ...E.type.label11, letterSpacing: "0.04em", color: E.color.identity, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 function Avatar({ initial, first, pending = false }: { initial: string; first: boolean; pending?: boolean }) {
   return (
@@ -279,11 +297,11 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   // The viewer's answers to pitches (the landing rule): null until loaded.
   const [stances, setStances] = useState<Set<string> | null>(null);
   useEffect(() => {
-    if (!selfUserId || !onEnterRoom) return;
+    if (!selfUserId) return;
     let cancelled = false;
     fetchMyStances(selfUserId).then((s) => { if (!cancelled) setStances(s); }).catch(() => { /* unknown answers → the group room, as before */ });
     return () => { cancelled = true; };
-  }, [selfUserId, onEnterRoom]);
+  }, [selfUserId]);
   const idsKey = useMemo(() => groups.map((g) => g.group.id).sort().join(","), [groups]);
   useEffect(() => {
     let cancelled = false;
@@ -296,7 +314,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames]);
+  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId]);
 
   // Your own order (round 5): the groups you've dragged first, in that
   // order, then the rest newest-joined first. A drag this session is the
