@@ -93,6 +93,44 @@ export async function resolveTrailerKey(
   }
 }
 
+// ── The landscape art (his notes after the landing-rule arc, 2026-11-02) ────
+// The show's TMDB backdrop for the phone room's banner, through the same
+// bridge: a TEXTLESS backdrop first (TMDB files one with no title text under
+// no language), then one with English text, then the show's primary. The
+// nightly refresh-shows run stores the same pick in shows.backdrop_url; this
+// is for the room until that night (and for a show the run has missed).
+function pickBackdropPath(backdrops: any[]): string | null {
+  const by = (lang: string | null) => (backdrops ?? [])
+    .filter((b) => (b?.iso_639_1 ?? null) === lang && typeof b?.file_path === "string")
+    .sort((a, b) => (b?.vote_count ?? 0) - (a?.vote_count ?? 0));
+  const pick = by(null)[0] ?? by("en")[0];
+  return pick ? (pick.file_path as string) : null;
+}
+export async function resolveBackdropUrl(tvmazeId: number | string | null | undefined): Promise<string | null> {
+  const headers = tmdbHeaders();
+  if (!headers || tvmazeId == null || tvmazeId === "") return null;
+  try {
+    const tmdbId = await resolveTmdbTvId(tvmazeId, headers);
+    if (tmdbId == null) return null;
+    const res = await fetch(`${TMDB_BASE}/tv/${tmdbId}/images?include_image_language=null,en`, { headers });
+    let path: string | null = null;
+    if (res.ok) path = pickBackdropPath((await res.json())?.backdrops);
+    if (!path) {
+      const tv = await fetch(`${TMDB_BASE}/tv/${tmdbId}`, { headers });
+      if (tv.ok) { const p = (await tv.json())?.backdrop_path; if (typeof p === "string" && p) path = p; }
+    }
+    return path ? `https://image.tmdb.org/t/p/w1280${path}` : null;
+  } catch {
+    return null;
+  }
+}
+const _backdropCache = new Map<string, Promise<string | null>>();
+export function getBackdropCached(showId: string, tvmazeId: number | string | null | undefined): Promise<string | null> {
+  let p = _backdropCache.get(showId);
+  if (!p) { p = resolveBackdropUrl(tvmazeId); _backdropCache.set(showId, p); }
+  return p;
+}
+
 // ── In-memory cache (hits AND misses) ──────────────────────────────────────
 // Keyed per showId, NOT stashed on Show objects: the shared catalog cache
 // replaces whole Show objects on refresh and would clobber it. Three states:

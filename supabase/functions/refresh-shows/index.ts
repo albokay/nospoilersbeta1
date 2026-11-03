@@ -16,7 +16,8 @@
 // + THE BACKDROPS (the landing-rule arc's CP5, 2026-11-02): a second pass over
 // shows with no backdrop_url yet (Ended ones too, up to 100 a night) resolves
 // the show's TMDB backdrop through the trailers bridge (externals → /find →
-// /tv/{id}) and stores its w1280 URL for the phone room's banner. A miss
+// /tv/{id}/images, a TEXTLESS one first) and stores its w1280 URL for the
+// phone room's banner. A miss
 // stays NULL and is tried again the next night. Needs TMDB_READ_TOKEN (the
 // secret build-show-reference already uses); without it the pass is skipped.
 //
@@ -112,6 +113,14 @@ async function resolveBackdropUrl(tvmazeId: string | number, token: string): Pro
     if (typeof found === "number") { tvId = found; break; }
   }
   if (tvId == null) return null;
+  // Textless first (his note, 11-02): TMDB files a backdrop with no title
+  // text under no language; one with English text is next; the show's
+  // primary backdrop is the last resort.
+  const imgs = await tmdbGet(`/tv/${tvId}/images?include_image_language=null,en`, token);
+  const backs: any[] = Array.isArray(imgs?.backdrops) ? imgs.backdrops : [];
+  const by = (lang: string | null) => backs.filter((b) => (b?.iso_639_1 ?? null) === lang && typeof b?.file_path === "string").sort((a, b) => (b.vote_count ?? 0) - (a.vote_count ?? 0));
+  const pick = by(null)[0] ?? by("en")[0];
+  if (pick) return `https://image.tmdb.org/t/p/w1280${pick.file_path}`;
   const tv = await tmdbGet(`/tv/${tvId}`, token);
   const path = tv?.backdrop_path;
   return typeof path === "string" && path ? `https://image.tmdb.org/t/p/w1280${path}` : null;

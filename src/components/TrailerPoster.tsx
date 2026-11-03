@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { BottomSheet } from "./editorial/Overlays";
 import TrailerCard from "./TrailerCard";
-import { getTrailerKeyCached } from "../lib/trailers";
+import { getTrailerKeyCached, getBackdropCached } from "../lib/trailers";
 import { fetchTvmazeArt, type TvmazeArt } from "../lib/tvmaze";
 import { ensureShowReference } from "../lib/reference";
 import { E } from "../styles/editorial";
@@ -37,13 +37,18 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0
   const [seasonKey, setSeasonKey] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [art, setArt] = useState<TvmazeArt | null>(null);
+  // The landscape art fetched now (his note, 11-02) when the column is still
+  // empty, so the banner never waits for the night; the poster only when
+  // TMDB has nothing.
+  const [backdrop, setBackdrop] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    setArt(null);
+    setArt(null); setBackdrop(null);
     if (!banner || !tvmazeId || bannerUrl) return;
+    if (showId) getBackdropCached(showId, tvmazeId).then((u) => { if (!cancelled) setBackdrop(u); }).catch(() => { /* the poster, then */ });
     fetchTvmazeArt(tvmazeId).then((a) => { if (!cancelled) setArt(a); }).catch(() => { /* the draft block, then */ });
     return () => { cancelled = true; };
-  }, [banner, tvmazeId, bannerUrl]);
+  }, [banner, tvmazeId, bannerUrl, showId]);
   useEffect(() => {
     let cancelled = false;
     setHasTrailer(false); setSeasonKey(null);
@@ -58,8 +63,8 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0
   }, [showId, tvmazeId, season]);
   const title = seasonKey && season ? `${showName ?? "Trailer"} · season ${season}` : (showName ?? "Trailer");
   // The landscape art centred a little high; a portrait poster shows its upper part.
-  const landscape = !!(banner && bannerUrl);
-  const bannerSrc = banner ? (bannerUrl ?? art?.original ?? art?.medium ?? null) : null;
+  const landscape = !!(banner && (bannerUrl || backdrop));
+  const bannerSrc = banner ? (bannerUrl ?? backdrop ?? art?.original ?? art?.medium ?? null) : null;
   const poster = banner
     ? (bannerSrc
       ? <img src={bannerSrc} alt="" draggable={false} style={{ width: "100%", height: banner, objectFit: "cover", objectPosition: landscape ? "50% 40%" : "50% 22%", display: "block" }} />
