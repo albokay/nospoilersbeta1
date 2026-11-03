@@ -105,7 +105,7 @@ export const E_MEASURE = {
     banner: 124,                // the show room's art banner across the page
     artTabsGap: 18,             // from the show room's art to the folder tabs
     tabsGap: 26,                // from a title block to the folder tabs under it
-    masthead: 252,              // a group room's sky masthead
+    masthead: 228,              // a group room's sky masthead (252 until the landing-rule arc's CP3, 11-02)
     disc: 84,                   // the Open rooms disc
   },
   desktop: {
@@ -129,7 +129,7 @@ export const E_MEASURE = {
     wordsGap: 20,
     wordHit: 32,
     tabsGap: 26,                // from a title block to the folder tabs under it
-    masthead: 236,              // a group room's sky masthead, across the window
+    masthead: 220,              // a group room's sky masthead, across the window (236 until CP3, 11-02)
     disc: 96,                   // the Open rooms disc
     groupsCol: 560,             // a group room's watching column
     railCol: 288,               // the pitched rail / the look-up rail

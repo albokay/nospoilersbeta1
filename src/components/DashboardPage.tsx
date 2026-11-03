@@ -2329,8 +2329,65 @@ export default function DashboardPage() {
                 {groupLoading ? (
                   <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 64 }}>loading<LoadingDots /></div>
                 ) : (
-                  <div style={{ display: "flex", gap: W.railGap, alignItems: "flex-start", marginTop: settledCount > 0 ? 0 : 64 }}>
+                  <div style={{ display: "flex", gap: W.railGap, alignItems: "flex-start", marginTop: 64 }}>
                     <div style={{ width: W.groupsCol, flexShrink: 0 }}>
+                      {/* The pitches lead (the landing-rule arc's CP3, 11-02, his boards):
+                          the group room is the place you go to pitch, so "Shows pitched"
+                          takes the main column with the two acts under it; with no
+                          pitches the shelf is just the acts. The question when nothing is
+                          watched sits above them; the rooms are the rail. */}
+                      {/* The watching column's question whenever nothing is being
+                          watched — pitched shows nobody has joined don't fill it
+                          (his catch, 2026-10-14); in ink, which it inherited as
+                          cream before and vanished. */}
+                      {groupShelves.watching.length === 0 && (
+                        <div className="sb-balance" style={{ ...E.type.question30, color: E.color.ink, marginTop: 0 }}>
+                          What shows do you want to watch with {soloFriend ?? "your friends"}?
+                        </div>
+                      )}
+                      {groupShelves.notStarted.length > 0 && (
+                        <>
+                      <div data-tip-anchor="pitched-rail"><SectionHead tab={E.color.accent} style={{ marginTop: groupShelves.watching.length === 0 ? 44 : 0 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead></div>
+                      {groupShelves.notStarted.map((r) => {
+                        const st = myStanceFor(r.pill.showId);
+                        const passed = r.passed && (st === "out" || st === "seen");
+                        // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
+                        const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id || justPitched.has(r.pill.showId);
+                        return (
+                          <ShowRow
+                            desktop
+                            key={r.pill.showId}
+                            poster={false}
+                            nameSize={16}
+                            name={r.name}
+                            line={proposalLineNode(r.pill.showId, mine)}
+                            dashed={r.passed}
+                            fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
+                            mine={justPitched.has(r.pill.showId)}
+                            flash={flashShowId === r.pill.showId}
+                            domId={`pitched-${r.pill.showId}`}
+                            tipAnchor={inviteeWelcome && inviteeWelcome.groupId === activeGroupId && inviteeWelcome.showId === r.pill.showId ? "invitee-show" : undefined}
+                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
+                              : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
+                              : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
+                            onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onPillClick(r.pill, r.name); }}
+                            // Your own pitch (round 5): one act, "Cancel pitch".
+                            onOptions={mine
+                              ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelConfirm({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
+                              : r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
+                            optionsLabel={mine ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
+                          />
+                        );
+                      })}
+                        </>
+                      )}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 28 : groupShelves.watching.length === 0 ? 44 : 0 }}>
+                        <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
+                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite</button>
+                      </div>
+                    </div>
+                    {/* The rooms rail: the finished row stays attached to the masthead's bottom edge, "You're watching:" under it. */}
+                    <div style={{ width: W.railCol, flexShrink: 0, marginTop: settledCount > 0 ? -64 : 0 }}>
                       {/* The finished row (Alborz's notes, 2026-10-12): attached to
                           the masthead's bottom edge, above "You're watching:". */}
                       {settledCount > 0 && (
@@ -2368,53 +2425,6 @@ export default function DashboardPage() {
                           })}
                         </>
                       )}
-                      {/* The watching column's question whenever nothing is being
-                          watched — pitched shows nobody has joined don't fill it
-                          (his catch, 2026-10-14); in ink, which it inherited as
-                          cream before and vanished. */}
-                      {groupShelves.watching.length === 0 && (
-                        <div className="sb-balance" style={{ ...E.type.question30, color: E.color.ink, marginTop: (celebrating.length || settledCount) ? 48 : 0 }}>
-                          What shows do you want to watch with {soloFriend ?? "your friends"}?
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ width: W.railCol, flexShrink: 0, paddingTop: settledCount > 0 ? 64 : 0 }}>
-                      <div data-tip-anchor="pitched-rail"><SectionHead tab={E.color.accent}>Shows pitched({groupShelves.notStarted.length}):</SectionHead></div>
-                      {groupShelves.notStarted.map((r) => {
-                        const st = myStanceFor(r.pill.showId);
-                        const passed = r.passed && (st === "out" || st === "seen");
-                        // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
-                        const mine = freshPitches.pitcherOf.get(r.pill.showId) === user?.id || justPitched.has(r.pill.showId);
-                        return (
-                          <ShowRow
-                            desktop
-                            key={r.pill.showId}
-                            poster={false}
-                            nameSize={16}
-                            name={r.name}
-                            line={proposalLineNode(r.pill.showId, mine)}
-                            dashed={r.passed}
-                            fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
-                            mine={justPitched.has(r.pill.showId)}
-                            flash={flashShowId === r.pill.showId}
-                            domId={`pitched-${r.pill.showId}`}
-                            tipAnchor={inviteeWelcome && inviteeWelcome.groupId === activeGroupId && inviteeWelcome.showId === r.pill.showId ? "invitee-show" : undefined}
-                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
-                              : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
-                              : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
-                            onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onPillClick(r.pill, r.name); }}
-                            // Your own pitch (round 5): one act, "Cancel pitch".
-                            onOptions={mine
-                              ? () => { const gs = groupShows.find((x) => x.showId === r.pill.showId); setCancelConfirm({ showId: r.pill.showId, name: r.name, othersIn: !!gs && gs.members.some((m) => m.userId !== selfUserId), selfWrote: r.selfWrote }); }
-                              : r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : () => setClearConfirm({ showId: r.pill.showId, name: r.name })}
-                            optionsLabel={mine ? "Cancel pitch" : r.pill.inRoom ? "Leave this show room" : "Clear from my shelf"}
-                          />
-                        );
-                      })}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 28 }}>
-                        <button type="button" onClick={openSearch} style={blockBtn}>Pitch a show</button>
-                        <button type="button" onClick={() => activeGroupId && openInvite(activeGroupId)} style={frameBtn}>Invite</button>
-                      </div>
                     </div>
                   </div>
                 )}

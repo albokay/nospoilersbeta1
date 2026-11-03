@@ -1346,56 +1346,23 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         //    "Shows pitched(N):" rows with Answer, the two acts, the browse rows
         //    on a yellow band. Same data, same sheets as the classic room. ──
         <div style={{ padding: `0 ${E.space.gutter}px` }}>
-          {/* The finished row (Alborz's notes, 2026-10-12): the door to the
-              finished drawer, attached to the masthead's bottom edge — so a
-              room whose shows are all finished still has a way in. */}
-          {!loading && settledCount > 0 && (
-            <FinishedRow
-              count={settledCount}
-              onClick={openFinishedDrawer}
-              signal={finishedWriting
-                ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} className="m-dot-in" />
-                : drawerUnseen ? <span className="m-dot-in" style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, flexShrink: 0 }} /> : null}
-            />
-          )}
           {loading ? (
             <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 96 }}>loading<LoadingDots /></div>
           ) : (
             <>
-              {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
-                <>
-                  <SectionHead tab={E.color.personal} style={{ marginTop: settledCount > 0 ? 36 : 96 }}>You&rsquo;re watching:</SectionHead>
-                  {celebrating.map((c) => (
-                    <EditorialShowRow key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
-                  ))}
-                  {groupShelves.watching.map((r, i) => {
-                    const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined;
-                    const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
-                    return (
-                      <EditorialShowRow
-                        key={r.pill.showId}
-                        tvmazeId={showsById[r.pill.showId]?.tvmazeId}
-                        name={r.name}
-                        line={rowLineText(r)}
-                        end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} className="m-dot-in" /> : r.selfProg ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
-                        onOpen={() => onRowClick(r.pill, r.name)}
-                        onOptions={act}
-                        optionsLabel="Leave this show room"
-                        hint={i === 0 && !!act && swipeHint}
-                      />
-                    );
-                  })}
-                </>
-              )}
+              {/* The pitches lead (the landing-rule arc's CP3, 11-02, his boards): the
+                  question when nothing is watched, "Shows pitched" and the two acts
+                  (just the acts when nothing is pitched), then the finished row and
+                  "You're watching:" — the rooms second. */}
               {/* The question sits ABOVE the pitched shelf (his call, 2026-10-14). */}
               {empty && (
-                <div style={{ ...E.type.question30, color: E.color.ink, textAlign: "center", marginTop: (celebrating.length || settledCount) ? 48 : 96 }}>
+                <div style={{ ...E.type.question30, color: E.color.ink, textAlign: "center", marginTop: 44 }}>
                   What shows do you want to watch with {soloFriend ?? "your friends"}?
                 </div>
               )}
               {groupShelves.notStarted.length > 0 && (
                 <>
-                  <SectionHead tab={E.color.accent} style={{ marginTop: (groupShelves.watching.length || celebrating.length || empty) ? 44 : 96 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
+                  <SectionHead tab={E.color.accent} style={{ marginTop: 44 }}>Shows pitched({groupShelves.notStarted.length}):</SectionHead>
                   {groupShelves.notStarted.map((r) => {
                     // Your own pitch (round 5): one act, "Cancel pitch".
                     // Yours: the earliest vote is yours, or you pitched it this visit (no reload needed).
@@ -1428,10 +1395,48 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   })}
                 </>
               )}
-              <div style={{ display: "flex", gap: 10, marginTop: 44 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: groupShelves.notStarted.length > 0 ? 24 : 44 }}>
                 <button type="button" onClick={() => setSearchOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, background: E.color.ink, color: E.color.cream, border: 0, cursor: "pointer" }}>Pitch a show</button>
                 <button type="button" onClick={() => setInviteOpen(true)} style={{ ...E.type.button16, flex: 1, height: 54, border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, cursor: "pointer", boxSizing: "border-box" }}>Invite</button>
               </div>
+              {/* The finished row (Alborz's notes, 2026-10-12): the door to the
+                  finished drawer, attached to the masthead's bottom edge — so a
+                  room whose shows are all finished still has a way in. */}
+              {settledCount > 0 && (
+                <FinishedRow
+                  style={{ marginTop: 36 }}
+                  count={settledCount}
+                  onClick={openFinishedDrawer}
+                  signal={finishedWriting
+                    ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} className="m-dot-in" />
+                    : drawerUnseen ? <span className="m-dot-in" style={{ width: 8, height: 8, borderRadius: "50%", background: E.color.alert, flexShrink: 0 }} /> : null}
+                />
+              )}
+              {(groupShelves.watching.length > 0 || celebrating.length > 0) && (
+                <>
+                  <SectionHead tab={E.color.personal} style={{ marginTop: 36 }}>You&rsquo;re watching:</SectionHead>
+                  {celebrating.map((c) => (
+                    <EditorialShowRow key={c.roomId} tvmazeId={c.showId ? showsById[c.showId]?.tvmazeId : undefined} name={c.name} line="You all finished it!" end={<span style={{ color: E.color.accent, fontSize: 16, flexShrink: 0 }}>☆</span>} onOpen={openFinishedDrawer} />
+                  ))}
+                  {groupShelves.watching.map((r, i) => {
+                    const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined;
+                    const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
+                    return (
+                      <EditorialShowRow
+                        key={r.pill.showId}
+                        tvmazeId={showsById[r.pill.showId]?.tvmazeId}
+                        name={r.name}
+                        line={rowLineText(r)}
+                        end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} className="m-dot-in" /> : r.selfProg ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
+                        onOpen={() => onRowClick(r.pill, r.name)}
+                        onOptions={act}
+                        optionsLabel="Leave this show room"
+                        hint={i === 0 && !!act && swipeHint}
+                      />
+                    );
+                  })}
+                </>
+              )}
               <div style={{ marginTop: 60, marginLeft: -E.space.gutter, marginRight: -E.space.gutter, padding: `30px ${E.space.gutter}px 8px`, background: E.color.accent }}>
                 <SectionHead>Find something new to watch</SectionHead>
                 <div style={{ marginTop: -2, paddingBottom: 12 }}><EditorialStrips size="tile" excludeTvmazeIds={groupTvmazeIds} onPick={pickBrowseShow} /></div>
