@@ -546,7 +546,7 @@ export default function MobileDashboard() {
                   groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
                   roomVis={roomVis} chatActivity={chatActivity} pitchActivity={pitchActivity}
                   onEnter={(id) => navigate(`/m/group/${id}`)}
-                  onEnterRoom={(rid, sid, gid) => navigate(`/m/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: gid } })}
+                  onEnterRoom={(rid, sid, gid) => navigate(`/m/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: gid, back: "/m/dashboard" } })}
                   onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                   onNewGroup={() => setInviteOpen(true)}
                   hideNewGroup={showSocialOnb}

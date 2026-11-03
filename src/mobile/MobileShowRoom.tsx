@@ -737,10 +737,15 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   }, [roomId, privateOnly, user, load]);
 
 
-  // Back pops one drill-down level: room → its group (or dashboard when
-  // private-only / groupless). Constructable from a bare URL (digest links).
+  // Back goes where you came from (his ask, 11-03): the page that opened the
+  // room hands it a `back` note — the dashboard's tap under the landing rule,
+  // so back doesn't reveal a group room you never passed through. Without a
+  // note (an email link, a bare URL) it pops one level: room → its group (or
+  // the dashboard when private-only / groupless).
+  const backTo = (location.state as { back?: string } | null)?.back ?? null;
+  const backLabel = privateOnly || backTo === "/m/dashboard" ? "Back to dashboard" : "Back to group";
   function closeRoom() {
-    navigate(parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard");
+    navigate(backTo ?? (parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard"));
   }
 
   // ── Progress → rating capture (forward) / plain confirm (backward) ────────
@@ -1349,7 +1354,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    headline is the way up to the group room; the show's art is a
           //    banner across the page. ──
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
-            <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <CornerTab kind="back" label={backLabel} onClick={closeRoom} />
             <Wordmark tint="ink" onClick={() => navigate("/m/dashboard")} />
             <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
               ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),

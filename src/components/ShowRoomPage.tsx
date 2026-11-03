@@ -671,9 +671,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   }, [roomId, privateOnly, user, load]);
 
 
-  // × closes the room → back to the group it belongs to (sky group context).
+  // The corner goes back to where you came from (his ask, 11-03): the page
+  // that opened the room hands it a `back` note — the dashboard's tap under
+  // the landing rule, so back doesn't reveal a group room you never passed
+  // through. Without a note (an email link, a typed address) it's the group
+  // room the show belongs to, as before.
+  const backTo = (location.state as { back?: string } | null)?.back ?? null;
+  const backLabel = privateOnly || backTo === "/dashboard" ? "Back to dashboard" : "Back to group";
   function closeRoom() {
-    navigate(parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
+    navigate(backTo ?? (parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard"));
   }
 
   // ── CP4b: progress picker → rating-capture (forward) / confirm (backward) ──
@@ -1300,7 +1306,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    `? [account]` at the column's top right; the sky disc beside
           //    the headline is the way up to the group room. ──
           <>
-            <CornerTab desktop kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <CornerTab desktop kind="back" label={backLabel} onClick={closeRoom} />
             <Wordmark desktop tint="ink" onClick={() => navigate("/dashboard")} />
             <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[

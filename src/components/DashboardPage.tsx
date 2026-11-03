@@ -2623,7 +2623,7 @@ export default function DashboardPage() {
                 groups={railGroups} pendingInvites={pendingInvites} contactNames={contactNames} groupNumberById={groupNumberById} selfUserId={selfUserId}
                 roomVis={roomVis} chatActivity={chatActivity} pitchActivity={pitchActivity} loading={!railLoaded}
                 onEnter={(id) => navigate(`/dashboard?g=${id}`)}
-                onEnterRoom={(rid, sid, gid) => navigate(`/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: gid } })}
+                onEnterRoom={(rid, sid, gid) => navigate(`/show-room/${rid}`, { state: { roomShowId: sid, roomParentGroupId: gid, back: "/dashboard" } })}
                 onInvite={(inv) => { setInvitePrompt(inv); setAcceptError(null); }}
                 onNewGroup={() => openInvite()}
                 hideNewGroup={socialOnbActive}
