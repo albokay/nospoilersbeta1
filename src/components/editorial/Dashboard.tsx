@@ -67,6 +67,8 @@ export function landingFor(
   brain?: GroupDashboardShow[],
   /** Rooms finished together or parked (yours): they compete only while they hold writing you haven't read (his yes, 11-03). */
   finished: Set<string> = new Set(),
+  /** Each room's current members: a room of ONE is nobody's conversation, so it never wins the tap (his yes, 11-03). Unknown yet → treated as a room. */
+  roomMembers: Record<string, string[]> = {},
 ): { roomId: string; showId: string } | null {
   const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
   const byShow = new Map((brain ?? []).map((b) => [b.showId, b]));
@@ -78,6 +80,8 @@ export function landingFor(
     const b = r ? byShow.get(r.showId) : undefined;
     if (b && (!b.inRoom || b.viewerLeft || b.viewerDismissed)) return false;
     if (finished.has(v.groupId) && !roomHasNewActivity(v) && !roomHasNewInvisibleActivity(v)) return false;
+    const mem = roomMembers[v.groupId];
+    if (mem && mem.length < 2) return false;
     return true;
   });
   const best = (at: (v: RoomVisibility) => number): { roomId: string; showId: string } | null => {
@@ -166,7 +170,7 @@ function computeLines(
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
   stances: MyStances | null = null, selfUserId = "", answers: Map<string, PitchAnswer> = new Map(),
-  brain: Map<string, GroupDashboardShow[]> = new Map(), finished: Set<string> = new Set(),
+  brain: Map<string, GroupDashboardShow[]> = new Map(), finished: Set<string> = new Set(), roomMembers: Record<string, string[]> = {},
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -206,9 +210,9 @@ function computeLines(
     // tap lands, then why — "→ The Diplomat’s room · new letters", "→ The
     // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
     // room · written in last". The same rule as the tap (landingFor).
-    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers, brain.get(gid), finished);
+    const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId, answers, brain.get(gid), finished, roomMembers);
     const pulled = !landing && !!pa && !!pa.latestPitchShowId && pitchUnanswered(gid, pa, rooms, stances, selfUserId, brain.get(gid)?.find((b) => b.showId === pa.latestPitchShowId));
-    let dest: string; let reason: string | null = null;
+    let dest: string; let reason: string | null = null; let red = false;
     if (landing) {
       const show = showOf(landing.roomId);
       dest = show ? `${show}’s room` : "The show room";
@@ -232,11 +236,29 @@ function computeLines(
         reason = show ? `${who} answered your ${show} pitch` : `${who} answered your pitch`;
       } else if (chat) reason = "new in chat";
       else if (roomCount === 0) reason = "no shows yet";
-      // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
-      else reason = "pitch a new show";
+      else {
+        // A room of yours nobody has joined (his yes, 11-03): the newest one,
+        // named, with the ask in red — the tap lands in the group room where
+        // the show waits on a friend's "I'm in".
+        let solo: ShowRoomOfGroup | null = null;
+        for (const r of rooms) {
+          if (r.groupId !== gid) continue;
+          const mem = roomMembers[r.roomId];
+          if (!mem || mem.length !== 1 || mem[0] !== selfUserId) continue;
+          if (stances?.cleared.has(`${gid}:${r.showId}`) || stances?.departedRooms.has(r.roomId)) continue;
+          if (!solo || r.createdAt > solo.createdAt) solo = r;
+        }
+        const show = solo ? showsById[solo.showId]?.name : undefined;
+        // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
+        if (show) reason = `just you in ${show} so far`;
+        else { reason = "pitch a new show"; red = true; }
+      }
     }
-    const line = reason ? `→ ${dest} · ${reason}` : `→ ${dest}`;
-    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))), redTail: reason === "pitch a new show" ? reason : undefined };
+    // A row that opens the group room carries only its reason (his note, 11-03:
+    // "→ The group room ·" read as redundant); a row that opens a show room
+    // still names the room first.
+    const line = landing ? (reason ? `→ ${dest} · ${reason}` : `→ ${dest}`) : (reason ?? "");
+    out[gid] = { line, envelope, dot: !newest && (!!pitch || (!landing && answers.has(gid))), redTail: red && reason ? reason : undefined };
   }
   return out;
 }
@@ -443,7 +465,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     fetchShowRoomsForGroups(idsKey.split(",")).then((r) => { if (!cancelled) setRooms(r); }).catch(() => { /* lines fall back to the signal alone */ });
     return () => { cancelled = true; };
   }, [idsKey]);
-  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms]);
+  const lines = useMemo(() => computeLines(groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms, roomMembers), [groups, roomVis, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, finishedRooms, roomMembers]);
 
   // Your own order (round 5): the groups you've dragged first, in that
   // order, then the rest newest-joined first. A drag this session is the
@@ -513,7 +535,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
             lift={drag?.id === id ? drag.dy : null}
             rowRef={(el) => { rowRefs.current[id] = el; }}
             onEnter={() => {
-              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId, answerByGroup, brain.get(id), finishedRooms) : null;
+              const t = onEnterRoom ? landingFor(id, roomVis, rooms, pitchActivity, stances, selfUserId, answerByGroup, brain.get(id), finishedRooms, roomMembers) : null;
               if (t && onEnterRoom) onEnterRoom(t.roomId, t.showId, id); else onEnter(id);
             }}
             onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}

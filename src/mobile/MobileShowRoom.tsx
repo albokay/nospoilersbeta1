@@ -1381,6 +1381,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                         <span key={p.username} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openPool(p.username)}>{p.label}</span>
                       )))}
                 </EditorialSub>
+              ) : !privateOnly && parentGroupId ? (
+                // A room of one (his words, 11-03): in place of the With line.
+                <EditorialSub>(just you so far)</EditorialSub>
               ) : null}
               </div>
               {/* The disc carries the group's name; nudged left of the chat fold on the banner's corner (his note, 11-02). */}

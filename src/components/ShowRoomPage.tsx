@@ -1341,6 +1341,9 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                             </span>
                           )))}
                     </EditorialSub>
+                  ) : !privateOnly && parentGroupId ? (
+                    // A room of one (his words, 11-03): in place of the With line.
+                    <EditorialSub desktop>(just you so far)</EditorialSub>
                   ) : null}
                   </div>
                   {!privateOnly && parentGroupId && (
