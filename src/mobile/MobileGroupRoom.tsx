@@ -66,7 +66,7 @@ import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSelfNote, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
-import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
+import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
 import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
@@ -284,6 +284,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // The account card from the room (Alborz 2026-10-10: the account control
   // sits in every page's top-right under the editorial skin).
   const [showAccount, setShowAccount] = useState(false);
+  // Opening the group room marks its pitches SEEN (his note 8, 11-02), so the
+  // dashboard's pitch line and the room disc's pitch dot age out.
+  useEffect(() => {
+    if (!user) return;
+    markGroupPitchesSeen(groupId).catch(() => { /* tolerate */ });
+  }, [groupId, user]);
   // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
   // scrolls, so the drag only engages when it's scrolled to the top.
   const gearSwipe = useSheetSwipeDown(() => setGearOpen(false), { open: gearOpen });

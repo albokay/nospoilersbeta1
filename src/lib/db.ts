@@ -2659,18 +2659,24 @@ export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPa
     .filter((r) => r.kind === "out" || r.kind === "seen")
     .map((r) => ({ groupId: r.group_id, userId: r.user_id, showId: r.show_id, kind: r.kind, createdAt: r.created_at ? new Date(r.created_at).getTime() : null }));
 }
-/** The viewer's answers across every group (the landing rule, 2026-11-02):
- *  "group:show" for each yes-vote and each pass — a friend's pitch without
- *  one is unanswered and pulls the dashboard's tap to the group room. */
-export async function fetchMyStances(userId: string): Promise<Set<string>> {
-  const [v, p] = await Promise.all([
+/** The viewer's answers across every group (the landing rule, 2026-11-02;
+ *  his notes 7 + 8 the same evening): `answered` = "group:show" for each
+ *  yes-vote, each pass AND each show cleared from their shelf — a friend's
+ *  pitch without one is unanswered and pulls the dashboard's tap to the
+ *  group room; `cleared` = the cleared shows alone, whose rooms the group
+ *  room hides for them, so the tap and the row's line never name one. */
+export type MyStances = { answered: Set<string>; cleared: Set<string> };
+export async function fetchMyStances(userId: string): Promise<MyStances> {
+  const [v, p, d] = await Promise.all([
     supabase.from("group_show_votes").select("group_id, show_id").eq("user_id", userId),
     supabase.from("group_show_passes").select("group_id, show_id").eq("user_id", userId),
+    supabase.from("group_show_dismissals").select("group_id, show_id").eq("user_id", userId),
   ]);
-  const out = new Set<string>();
-  for (const r of (v.data ?? []) as any[]) out.add(`${r.group_id}:${r.show_id}`);
-  for (const r of (p.data ?? []) as any[]) out.add(`${r.group_id}:${r.show_id}`);
-  return out;
+  const answered = new Set<string>(), cleared = new Set<string>();
+  for (const r of (v.data ?? []) as any[]) answered.add(`${r.group_id}:${r.show_id}`);
+  for (const r of (p.data ?? []) as any[]) answered.add(`${r.group_id}:${r.show_id}`);
+  for (const r of (d.data ?? []) as any[]) { answered.add(`${r.group_id}:${r.show_id}`); cleared.add(`${r.group_id}:${r.show_id}`); }
+  return { answered, cleared };
 }
 /** null clears the caller's pass (an "I'm in", or entering the room). */
 export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {

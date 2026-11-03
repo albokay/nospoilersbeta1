@@ -95,7 +95,7 @@ import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent
 import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
-import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow } from "../lib/db";
+import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
 import { groupDisplayName, groupGenericName, joinNames, joinNameNodes, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
@@ -656,6 +656,16 @@ export default function DashboardPage() {
 
   const selfUserId = user?.id ?? "";
   const inGroup = !!activeGroupId;
+  // Opening a group room marks its pitches SEEN (his note 8, 11-02): the
+  // dashboard's "{Friend} pitched {Show}" line and the show room disc's pitch
+  // dot age out like the chat's and the rooms' — the stamp was never set
+  // before, so those lines never aged on their own.
+  useEffect(() => {
+    if (!editorial || !activeGroupId || !user) return;
+    const gid = activeGroupId;
+    markGroupPitchesSeen(gid).catch(() => { /* tolerate */ });
+    setPitchActivity((prev) => prev.map((a) => (a.groupId === gid ? { ...a, pitchesLastSeenAt: Date.now(), newCount: 0 } : a)));
+  }, [editorial, activeGroupId, user]);
 
   // Proposal answers (2026-09-29): the passes on this group's proposals,
   // showId → userId → kind. Loaded with the group; a yes-vote is still the

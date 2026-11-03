@@ -31,7 +31,7 @@ import { SectionHead, UnderlineWord } from "./Chrome";
 import { useRowSwipe } from "./GroupRoom";
 import {
   fetchShows, fetchShowRoomsForGroups, fetchMyStances, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
-  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup,
+  type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances,
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import type { PeopleGroup, PeopleGroupMember } from "../../types";
@@ -49,36 +49,44 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
   return { text: `${who} pitched ${a.latestPitchShowName ?? "a show"}`, at: a.latestPitchAt ?? 0 };
 }
 
-/** THE LANDING RULE (the landing-rule arc's CP4, 2026-11-02, the 11-02
- *  brainstorm): tapping a group opens it at its newest activity. A friend's
- *  latest pitch you haven't answered pulls you to the group room until you
- *  answer (their later answers don't; an answer unknown yet counts as none).
- *  Otherwise the show room with the newest writing you can see; with no
- *  writing anywhere, the newest of your rooms; with no room of yours, the
- *  group room. Returns the room to open, or null for the group room. */
+/** THE LANDING RULE (the landing-rule arc's CP4, 2026-11-02; his notes the
+ *  same evening): tapping a group opens it at its newest activity, and the
+ *  rows TEND TO NEW WRITING. (1) The room with the newest writing you can
+ *  read wins. (2) Else a friend's latest pitch you haven't answered — a yes,
+ *  a pass, or clearing it from your shelf — pulls you to the group room
+ *  (their later answers don't; answers unknown yet count as none). (3) Else
+ *  the room written in last; (4) else the newest of your rooms; (5) else the
+ *  group room. A show you CLEARED from your shelf never counts: the group
+ *  room hides its room for you, so the tap never lands there and the line
+ *  never names it (his note 7). Returns the room, or null for the group room. */
 export function landingFor(
-  gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: Set<string> | null, selfUserId: string,
+  gid: string, roomVis: RoomVisibility[], rooms: ShowRoomOfGroup[], pitchActivity: GroupPitchActivity[], stances: MyStances | null, selfUserId: string,
 ): { roomId: string; showId: string } | null {
-  const p = pitchActivity.find((a) => a.groupId === gid);
-  if (p?.latestPitchShowId && p.latestPitchUserId && p.latestPitchUserId !== selfUserId && (!stances || !stances.has(`${gid}:${p.latestPitchShowId}`))) return null;
-  const mine = roomVis.filter((v) => v.parentGroupId === gid);
-  if (!mine.length) return null;
   const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
-  let best: { roomId: string; at: number } | null = null;
-  for (const v of mine) { const at = v.latestVisibleActivityAt ?? 0; if (!best || at > best.at) best = { roomId: v.groupId, at }; }
-  if (best && best.at === 0) {
-    best = null;
-    for (const v of mine) { const at = roomsById.get(v.groupId)?.createdAt ?? 0; if (!best || at > best.at) best = { roomId: v.groupId, at }; }
-  }
-  const r = best ? roomsById.get(best.roomId) : undefined;
-  return r ? { roomId: r.roomId, showId: r.showId } : null;
+  const mine = roomVis.filter((v) => {
+    if (v.parentGroupId !== gid) return false;
+    const r = roomsById.get(v.groupId);
+    return !(stances && r && stances.cleared.has(`${gid}:${r.showId}`));
+  });
+  const best = (at: (v: RoomVisibility) => number): { roomId: string; showId: string } | null => {
+    let b: { roomId: string; at: number } | null = null;
+    for (const v of mine) { const a = at(v); if (a > 0 && (!b || a > b.at)) b = { roomId: v.groupId, at: a }; }
+    const r = b ? roomsById.get(b.roomId) : undefined;
+    return r ? { roomId: r.roomId, showId: r.showId } : null;
+  };
+  const fresh = best((v) => (roomHasNewActivity(v) ? (v.latestVisibleActivityAt ?? 1) : 0));
+  if (fresh) return fresh;
+  const p = pitchActivity.find((a) => a.groupId === gid);
+  if (p?.latestPitchShowId && p.latestPitchUserId && p.latestPitchUserId !== selfUserId && (!stances || !stances.answered.has(`${gid}:${p.latestPitchShowId}`))) return null;
+  if (!mine.length) return null;
+  return best((v) => v.latestVisibleActivityAt ?? 0) ?? best((v) => roomsById.get(v.groupId)?.createdAt ?? 0);
 }
 
 function computeLines(
   groups: DashboardGroup[], roomVis: RoomVisibility[], chatActivity: GroupChatActivity[],
   rooms: ShowRoomOfGroup[], showsById: Record<string, Show>,
   pitches: GroupPitchActivity[] = [], contactNames: Record<string, string> = {},
-  stances: Set<string> | null = null, selfUserId = "",
+  stances: MyStances | null = null, selfUserId = "",
 ): Record<string, GroupLine> {
   const chatNew = new Set(chatActivity.filter(chatHasNewActivity).map((a) => a.groupId));
   const roomsById = new Map(rooms.map((r) => [r.roomId, r]));
@@ -119,7 +127,7 @@ function computeLines(
     // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
     // room · written in last". The same rule as the tap (landingFor).
     const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId);
-    const pulled = !landing && !!pa?.latestPitchShowId && !!pa.latestPitchUserId && pa.latestPitchUserId !== selfUserId && (!stances || !stances.has(`${gid}:${pa.latestPitchShowId}`));
+    const pulled = !landing && !!pa?.latestPitchShowId && !!pa.latestPitchUserId && pa.latestPitchUserId !== selfUserId && (!stances || !stances.answered.has(`${gid}:${pa.latestPitchShowId}`));
     let dest: string; let reason: string | null = null;
     if (landing) {
       const show = showOf(landing.roomId);
@@ -295,7 +303,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   const [showsById, setShowsById] = useState<Record<string, Show>>({});
   const [rooms, setRooms] = useState<ShowRoomOfGroup[]>([]);
   // The viewer's answers to pitches (the landing rule): null until loaded.
-  const [stances, setStances] = useState<Set<string> | null>(null);
+  const [stances, setStances] = useState<MyStances | null>(null);
   useEffect(() => {
     if (!selfUserId) return;
     let cancelled = false;
