@@ -65,6 +65,7 @@ export function landingFor(
   const roomsById = new Map(rooms.filter((r) => r.groupId === gid).map((r) => [r.roomId, r]));
   const mine = roomVis.filter((v) => {
     if (v.parentGroupId !== gid) return false;
+    if (stances && stances.departedRooms.has(v.groupId)) return false;
     const r = roomsById.get(v.groupId);
     return !(stances && r && stances.cleared.has(`${gid}:${r.showId}`));
   });
@@ -77,9 +78,19 @@ export function landingFor(
   const fresh = best((v) => (roomHasNewActivity(v) ? (v.latestVisibleActivityAt ?? 1) : 0));
   if (fresh) return fresh;
   const p = pitchActivity.find((a) => a.groupId === gid);
-  if (p?.latestPitchShowId && p.latestPitchUserId && p.latestPitchUserId !== selfUserId && (!stances || !stances.answered.has(`${gid}:${p.latestPitchShowId}`))) return null;
+  if (p?.latestPitchShowId && pitchUnanswered(gid, p, rooms, stances, selfUserId)) return null;
   if (!mine.length) return null;
   return best((v) => v.latestVisibleActivityAt ?? 0) ?? best((v) => roomsById.get(v.groupId)?.createdAt ?? 0);
+}
+
+/** A friend's latest pitch the viewer hasn't answered: no yes, no pass, not
+ *  cleared, and not a room they LEFT (leaving is an answer — his Ted Lasso
+ *  catch, 11-02); answers unknown yet count as none. */
+export function pitchUnanswered(gid: string, p: GroupPitchActivity, rooms: ShowRoomOfGroup[], stances: MyStances | null, selfUserId: string): boolean {
+  if (!p.latestPitchShowId || !p.latestPitchUserId || p.latestPitchUserId === selfUserId) return false;
+  if (!stances) return true;
+  if (stances.answered.has(`${gid}:${p.latestPitchShowId}`)) return false;
+  return !rooms.some((r) => r.groupId === gid && r.showId === p.latestPitchShowId && stances.departedRooms.has(r.roomId));
 }
 
 function computeLines(
@@ -127,7 +138,7 @@ function computeLines(
     // group room · Yalborz pitched Deadwood", a quiet group's "→ The Bear’s
     // room · written in last". The same rule as the tap (landingFor).
     const landing = landingFor(gid, roomVis, rooms, pitches, stances, selfUserId);
-    const pulled = !landing && !!pa?.latestPitchShowId && !!pa.latestPitchUserId && pa.latestPitchUserId !== selfUserId && (!stances || !stances.answered.has(`${gid}:${pa.latestPitchShowId}`));
+    const pulled = !landing && !!pa && pitchUnanswered(gid, pa, rooms, stances, selfUserId);
     let dest: string; let reason: string | null = null;
     if (landing) {
       const show = showOf(landing.roomId);
@@ -145,6 +156,8 @@ function computeLines(
         reason = `${who} pitched ${pa.latestPitchShowName ?? "a show"}`;
       } else if (chat) reason = "new in chat";
       else if (roomCount === 0) reason = "no shows yet";
+      // Rooms exist but none of yours is left (you left or cleared them): his words, 11-02.
+      else reason = "pitch a new show";
     }
     const line = reason ? `→ ${dest} · ${reason}` : `→ ${dest}`;
     out[gid] = { line, envelope, dot: !newest && !!pitch };

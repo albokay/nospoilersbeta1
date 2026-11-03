@@ -1235,8 +1235,11 @@ export default function DashboardPage() {
         // re-enters (clears the "has left" marker) and restores the button.
         const rejoin = !!gs && !!gs.roomId && gs.viewerLeft && !gs.inRoom;
         // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
-        // selecting it brings the pill back as you left it (no new yes).
-        const restore = !!gs && !gs.roomId && gs.viewerDismissed;
+        // selecting it brings the pill back as you left it (no new yes). With
+        // or without a room (his Severance catch, 11-02): friends may have
+        // started the room after you cleared it; back on the pitched shelf
+        // you answer "I'm in" yourself.
+        const restore = !!gs && gs.viewerDismissed && !gs.inRoom && !rejoin;
         // A parked show ("we're done with this one") is findable as
         // "Restore to your room →" (Alborz's notes, round 5).
         const dnf = !!gs && !!gs.roomId && !!roomDnf[gs.roomId];

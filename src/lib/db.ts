@@ -2665,18 +2665,20 @@ export async function fetchGroupShowPasses(groupId: string): Promise<GroupShowPa
  *  pitch without one is unanswered and pulls the dashboard's tap to the
  *  group room; `cleared` = the cleared shows alone, whose rooms the group
  *  room hides for them, so the tap and the row's line never name one. */
-export type MyStances = { answered: Set<string>; cleared: Set<string> };
+export type MyStances = { answered: Set<string>; cleared: Set<string>; /** The show rooms you LEFT (friend_group_departed_members, own rows): leaving was your answer to that pitch, and the group room hides the room for you (his Ted Lasso catch, 11-02). */ departedRooms: Set<string> };
 export async function fetchMyStances(userId: string): Promise<MyStances> {
-  const [v, p, d] = await Promise.all([
+  const [v, p, d, x] = await Promise.all([
     supabase.from("group_show_votes").select("group_id, show_id").eq("user_id", userId),
     supabase.from("group_show_passes").select("group_id, show_id").eq("user_id", userId),
     supabase.from("group_show_dismissals").select("group_id, show_id").eq("user_id", userId),
+    supabase.from("friend_group_departed_members").select("group_id").eq("user_id", userId),
   ]);
-  const answered = new Set<string>(), cleared = new Set<string>();
+  const answered = new Set<string>(), cleared = new Set<string>(), departedRooms = new Set<string>();
   for (const r of (v.data ?? []) as any[]) answered.add(`${r.group_id}:${r.show_id}`);
   for (const r of (p.data ?? []) as any[]) answered.add(`${r.group_id}:${r.show_id}`);
   for (const r of (d.data ?? []) as any[]) { answered.add(`${r.group_id}:${r.show_id}`); cleared.add(`${r.group_id}:${r.show_id}`); }
-  return { answered, cleared };
+  for (const r of (x.data ?? []) as any[]) departedRooms.add(r.group_id);
+  return { answered, cleared, departedRooms };
 }
 /** null clears the caller's pass (an "I'm in", or entering the room). */
 export async function setGroupShowPass(groupId: string, showId: string, userId: string, kind: "out" | "seen" | null): Promise<void> {

@@ -1863,11 +1863,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           groupContext={{
             // A left room is findable again as "· rejoin" (CP5); everything
             // else already surfaced here reads "already in this group".
-            groupShowIds: new Set(groupShows.filter((gs) => !(gs.roomId && gs.viewerLeft && !gs.inRoom) && !(!gs.roomId && gs.viewerDismissed)).map((gs) => gs.showId)),
+            groupShowIds: new Set(groupShows.filter((gs) => !(gs.roomId && gs.viewerLeft && !gs.inRoom) && !(gs.viewerDismissed && !gs.inRoom)).map((gs) => gs.showId)),
             rejoinShowIds: new Set(groupShows.filter((gs) => !!gs.roomId && gs.viewerLeft && !gs.inRoom).map((gs) => gs.showId)),
             // Cleared proposals (2026-09-29): a proposal you "x"-ed is findable —
             // selecting it brings the row back as you left it (no new yes).
-            restoreShowIds: new Set(groupShows.filter((gs) => !gs.roomId && gs.viewerDismissed).map((gs) => gs.showId)),
+            // With or without a room (his Severance catch, 11-02): friends may
+            // have started the room after you cleared it; back on the pitched
+            // shelf you answer "I'm in" yourself.
+            restoreShowIds: new Set(groupShows.filter((gs) => gs.viewerDismissed && !gs.inRoom).map((gs) => gs.showId)),
             // A parked show ("we're done with this one") is findable as
             // "Restore to your room →" (Alborz's notes, round 5).
             dnfShowIds: new Set(groupShows.filter((gs) => !!gs.roomId && !!roomDnf[gs.roomId]).map((gs) => gs.showId)),
