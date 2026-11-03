@@ -57,7 +57,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, FeedbackDisc } from "./editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
@@ -86,6 +86,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // Account circle in the header bar (polish pass 2026-09-15 — this page
   // had no account chrome before).
   const [showAccount, setShowAccount] = useState(false);
+  // The red feedback disc in the top-right row (the landing-rule arc's CP1, 11-02).
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // The editorial skin (checkpoint 1, 2026-10-10; src/lib/skin.tsx): the
   // chrome branches on it — the corner, the top-right words, the headline
   // with the logo. The tabs and the body stay classic until checkpoint 4.
@@ -1283,6 +1285,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <CornerTab desktop kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
             <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
+                <FeedbackDisc key="feedback" desktop hit={E.measure.desktop.wordHit} onClick={() => setFeedbackOpen(true)} />,
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
                 <AccountWord key="account" hit={E.measure.desktop.wordHit} onClick={() => setShowAccount(true)} />,
               ]} />
@@ -1864,7 +1867,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
       {/* Feedback tab — left-edge widget on every live desktop surface
           (2026-07-03). Sits at 85% height; the back tab lives at 18%. */}
-      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} hideTrigger={editorial} />
+      <FeedbackWidget isMobile={typeof window !== "undefined" && window.innerWidth <= 600} hideTrigger={editorial} forcedOpen={feedbackOpen} onForcedClose={() => setFeedbackOpen(false)} />
 
       {/* Swipe-deck arc CP4 — the drip / catch-up modal fires wherever the
           user is (once per session; self-skipping when nothing is owed). */}

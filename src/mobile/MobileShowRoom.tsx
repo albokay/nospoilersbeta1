@@ -18,7 +18,7 @@ import { joinNames, joinNameNodes } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, FeedbackDisc } from "../components/editorial/Chrome";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
 import { RowPoster } from "../components/editorial/GroupRoom";
@@ -34,6 +34,7 @@ import JournalCard from "../components/editorial/JournalCard";
 import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
 import AccountModal from "../components/AccountModal";
+import MobileFeedbackSheet from "./MobileFeedbackSheet";
 import { effectiveProgress, isSeasonEnd } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
@@ -124,6 +125,8 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // The account card from the room (Alborz 2026-10-10: the account control
   // sits in every page's top-right under the editorial skin).
   const [showAccount, setShowAccount] = useState(false);
+  // The red feedback disc in the top-right row (the landing-rule arc's CP1, 11-02).
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   useEffect(() => {
     if (!user) return;
     setLetterOpen((cur) => {
@@ -1288,6 +1291,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
 
   return (
     <div ref={pageRef} style={{ ...page, background: bodyBg, ...(editorial ? { overflowX: "clip" as const } : {}) }}>
+      {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1333,6 +1337,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
             <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+              <FeedbackDisc key="feedback" hit={E.measure.phone.wordHit} onClick={() => setFeedbackOpen(true)} />,
               ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />

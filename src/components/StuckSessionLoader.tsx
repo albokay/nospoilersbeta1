@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import LoadingDots from "./LoadingDots";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import SidebarLogo from "./SidebarLogo";
-import { EditorialColumn, EditorialTitle } from "./editorial/Chrome";
+import { EditorialColumn, EditorialTitle, HomeLogo } from "./editorial/Chrome";
 import { GhostCluster } from "./DashboardGhosts";
 
 /**
@@ -15,7 +14,7 @@ import { GhostCluster } from "./DashboardGhosts";
  * (Alborz 2026-08-15 — the "sign out" text was appearing mid-sign-in).
  *
  * Under the editorial look (his notes, 10-14) the bridge paints the
- * dashboard's own cold-open state — the centred logo, "Your watch groups",
+ * dashboard's own cold-open state — the corner logo, "Your watch groups",
  * the two ghost clusters, the loading line — so the way in reads as one load
  * instead of the old green screen followed by the new one.
  */
@@ -37,11 +36,9 @@ export default function StuckSessionLoader({ onSignOut }: { onSignOut: () => voi
   if (editorial) {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 300, background: E.color.personal, color: E.color.ink, fontFamily: E.font.interface, display: "flex", flexDirection: "column", overflowY: "auto" }} aria-busy="true">
-        <EditorialColumn style={{ height: E.measure.desktop.dashboardTitleTop }}>
-          <div style={{ position: "absolute", left: "50%", top: E.measure.desktop.logoTop, marginLeft: -70 }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
-          </div>
-        </EditorialColumn>
+        <div style={{ position: "relative", height: E.measure.desktop.dashboardTitleTop }}>
+          <HomeLogo desktop bg="cream" />
+        </div>
         <EditorialColumn><EditorialTitle desktop>Your watch groups</EditorialTitle></EditorialColumn>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", flexWrap: "wrap", gap: 56, padding: "16px 80px 36px" }}>

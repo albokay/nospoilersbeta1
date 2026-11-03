@@ -74,13 +74,14 @@ import { useEditorial } from "../lib/skin";
 import { fetchAskSignal } from "../lib/groupAsks";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle } from "../components/editorial/Chrome";
+import { TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle, FeedbackDisc, HomeLogo } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
 import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow, useBlockHeight } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
+import MobileFeedbackSheet from "./MobileFeedbackSheet";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember, Thread } from "../types";
 import { fetchJournalEntries, fetchHandedOverSourceIds, handOverJournal } from "../lib/db";
 import { journalDate, journalDateLabel, journalPoints, sortJournal } from "../lib/journal";
@@ -284,6 +285,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
   // The account card from the room (Alborz 2026-10-10: the account control
   // sits in every page's top-right under the editorial skin).
   const [showAccount, setShowAccount] = useState(false);
+  // The red feedback disc in the top-right row (the landing-rule arc's CP1, 11-02).
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Swipe-down dismiss for the gear sheet (2026-07-28 rollout). The sheet
   // scrolls, so the drag only engages when it's scrolled to the top.
   const gearSwipe = useSheetSwipeDown(() => setGearOpen(false), { open: gearOpen });
@@ -1222,6 +1225,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           and the chat corner stay clear. It follows the title block's live
           height. */}
       {editorial && roomNote && user && <PaperNote side="left" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: -40, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
+      {feedbackOpen && <MobileFeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {showAccount && (
         <AccountModal
           mobile
@@ -1230,17 +1234,19 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
         />
       )}
       {editorial ? (
-        // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
-        //    the way out, `Chat ? ⚙` as mono words at the top right, the
-        //    group's name in Lora 46 at the title line with the members under
-        //    it. The shelves under it are still classic until checkpoint 3. ──
+        // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
+        //    arc's CP1, 11-02): the logo in the top-left corner is home (the
+        //    blue back corner is gone), the red feedback disc leads `? [account]`
+        //    at the top right, the group's name in Lora at the title line under
+        //    the logo with the members under it. ──
         <div ref={titleBlockRef} style={{ position: "relative", zIndex: 1, padding: `0 ${E.space.gutter}px 40px`, minHeight: E.safe.plus(E.measure.phone.masthead), boxSizing: "border-box" }}>
-          <CornerTab kind="back" label="Back to dashboard" onClick={() => navigate("/m/dashboard")} />
+          <HomeLogo bg="sky" onClick={() => navigate("/m/dashboard")} />
           <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
+            <FeedbackDisc key="feedback" hit={E.measure.phone.wordHit} onClick={() => setFeedbackOpen(true)} />,
             ...(user && groupWaveDone ? [<MobileTipsSheet key="tips" page="groupRoom" groupId={groupId} tabStyle={wordStyle(E.measure.phone.wordHit)} />] : []),
             <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
           ]} />
-          <div ref={titleInnerRef} style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
+          <div ref={titleInnerRef} style={{ paddingTop: E.safe.plus(E.measure.phone.lobbyTitleTop), paddingRight: 100 }}>
             <FittedTitle name={groupName} gear={<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />} />
             {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
           </div>
