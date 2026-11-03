@@ -1318,7 +1318,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <div style={{ display: "grid", gridTemplateColumns: `${E.measure.desktop.letters}px ${E.measure.desktop.rail}px`, columnGap: E.measure.desktop.railGap, alignItems: "start" }}>
                 <div style={{ position: "relative", minHeight: E.measure.desktop.groupDisc }}>
                   <div style={{ width: 464 }}>
-                    <FittedTitle desktop shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
+                    <FittedTitle desktop shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
 
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>

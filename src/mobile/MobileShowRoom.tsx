@@ -1361,7 +1361,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                     title at 32px, balanced in its column, the gear seated as its
                     superscript by measurement (an inline gear fell to the last
                     line and jumped on a tap). */}
-                <FittedTitle shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} style={{ fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties} />
+                <FittedTitle shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} style={{ fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties} />
 
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>

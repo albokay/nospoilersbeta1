@@ -146,7 +146,9 @@ export function GearWord({ onClick, hit, label, title, dot = false }: { onClick:
  *  bar. The host wraps its chrome in a `position: relative` block. */
 export function Wordmark({ desktop = false, tint, onClick }: { desktop?: boolean; tint: "ink" | "cream"; onClick: () => void }) {
   const scale = desktop ? 0.5 : 0.4;
-  const top = desktop ? 14 : -14;
+  // Level with the ? and account words (his note, 11-02): the wordmark is the
+  // box's bottom 52 of 148, so the box's top sits above the page edge.
+  const top = desktop ? -22 : -17;
   return (
     <div role="button" aria-label="Home" title="Home" onClick={onClick} style={{ position: "absolute", left: "50%", top: desktop ? top : E.safe.plus(top), marginLeft: -127.5 * scale, cursor: "pointer", zIndex: 5 }}>
       <SidebarLogo scale={scale} blocksOpacity={0} wordmarkTint={tint === "ink" ? E.color.ink : E.color.cream} />
@@ -241,7 +243,7 @@ export function EditorialTitle({ children, desktop = false, style }: { children:
  *  (32 on the phone, 40 on desktop), and only past the floor does the word
  *  break. Measured before paint; measured again on resize and once the
  *  webfont has landed (it moves the line ends). */
-export function FittedTitle({ name, gear, desktop = false, shrink = false, style }: { name: string; gear?: React.ReactNode; desktop?: boolean; shrink?: boolean; style?: React.CSSProperties }) {
+export function FittedTitle({ name, gear, gearAt = "first", desktop = false, shrink = false, style }: { name: string; gear?: React.ReactNode; /** Where the gear seats: after the FIRST line's last word (the group room, 10-13) or after the title's LAST word (the show room, his note 11-02). */ gearAt?: "first" | "last"; desktop?: boolean; shrink?: boolean; style?: React.CSSProperties }) {
   const ref = useRef<HTMLHeadingElement>(null);
   // 0 = full size · 1 = stepped down · 2 = stepped down and cut at three lines.
   const [fit, setFit] = useState<0 | 1 | 2>(0);
@@ -283,13 +285,14 @@ export function FittedTitle({ name, gear, desktop = false, shrink = false, style
     if (!spans.length) { setSeat(null); return; }
     const top0 = spans[0].offsetTop;
     let last = spans[0];
-    for (const w of spans) { if (Math.abs(w.offsetTop - top0) <= 2) last = w; else break; }
+    if (gearAt === "last") last = spans[spans.length - 1];
+    else for (const w of spans) { if (Math.abs(w.offsetTop - top0) <= 2) last = w; else break; }
     const fs = parseFloat(getComputedStyle(el).fontSize) || (desktop ? 64 : 46);
     // The glyph's top a tenth of the size under the line's top (the top of
     // the capitals), its left edge 1px past the word; the gear's hit box
     // (4px around the glyph, a 2px lead) is folded into the seat.
     setSeat({ left: last.offsetLeft + last.offsetWidth + 1 - 6, top: last.offsetTop + Math.round(fs * 0.1) - 4 });
-  }, [fit, scale, name, desktop, shrink, gear, floorPx, tick]);
+  }, [fit, scale, name, desktop, shrink, gear, gearAt, floorPx, tick]);
   const base = desktop ? E.type.title64 : E.type.title46;
   const small: React.CSSProperties = desktop ? { fontSize: 48, lineHeight: 1.02 } : { fontSize: 36, lineHeight: 1.04 };
   const stepSize = fit > 0 ? (small.fontSize as number) : (base.fontSize as number);
