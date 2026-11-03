@@ -475,17 +475,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       let derivedGroupName: string | null = null;
       let derivedPeople: { username: string; label: string }[] | null = null;
       if (pg) {
-        if (pg.name) derivedGroupName = pg.name;
-        else {
-          const opted = roomMapData
-            .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
-            .map((m) => ({ username: m.username as string, label: cn[m.userId] ?? m.displayName ?? (m.username as string) }));
-          const optedNames = opted.map((o) => o.label);
-          // No one else in the room yet → no "with" line at all (cleaner than
-          // "with Group N" for a solo/awaiting-accept room).
-          derivedGroupName = optedNames.length ? joinNames(optedNames) : null;
-          derivedPeople = opted.length ? opted : null;
-        }
+        // The With line is the friends in the room as links WHATEVER the group
+        // is called (his catch, 2026-11-02: the headline carries the group's
+        // name now, so "With Everybody's A Critic" read twice). No one else in
+        // the room yet → no With line at all.
+        const opted = roomMapData
+          .filter((m) => !m.isDeparted && m.userId !== user.id && m.username)
+          .map((m) => ({ username: m.username as string, label: cn[m.userId] ?? m.displayName ?? (m.username as string) }));
+        derivedPeople = opted.length ? opted : null;
+        derivedGroupName = pg.name ? pg.name : (opted.length ? joinNames(opted.map((o) => o.label)) : null);
       }
 
       const departed = new Set(roomMapData.filter((m) => m.isDeparted).map((m) => m.username ?? "").filter(Boolean));
@@ -1328,15 +1326,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
-                  ) : groupName ? (
+                  ) : groupPeople?.length ? (
                     <EditorialSub desktop>
-                      With {groupPeople?.length
-                        ? joinNameNodes(groupPeople.map((p) => (
+                      With {joinNameNodes(groupPeople.map((p) => (
                             <span key={p.username} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(p.username)}>
                               {p.label}
                             </span>
-                          )))
-                        : groupName}
+                          )))}
                     </EditorialSub>
                   ) : null}
                   </div>
