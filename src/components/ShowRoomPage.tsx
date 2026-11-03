@@ -681,6 +681,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   function closeRoom() {
     navigate(backTo ?? (parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard"));
   }
+  // The disc is the way UP, always the group room (his catch, 11-03: it had
+  // shared the corner's handler and followed its back note to the dashboard).
+  function openGroupRoom() {
+    navigate(parentGroupId ? `/dashboard?g=${parentGroupId}` : "/dashboard");
+  }
 
   // ── CP4b: progress picker → rating-capture (forward) / confirm (backward) ──
   // Forward pick → rate the episode you finished, then advance + refetch
@@ -1339,7 +1344,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                   ) : null}
                   </div>
                   {!privateOnly && parentGroupId && (
-                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={closeRoom} style={{ position: "absolute", left: 476, top: -1 }} />
+                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 476, top: -1 }} />
                   )}
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>

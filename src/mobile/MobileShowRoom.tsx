@@ -747,6 +747,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   function closeRoom() {
     navigate(backTo ?? (parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard"));
   }
+  // The disc is the way UP, always the group room (his catch, 11-03: it had
+  // shared the corner's handler and followed its back note to the dashboard).
+  function openGroupRoom() {
+    navigate(parentGroupId ? `/m/group/${parentGroupId}` : "/m/dashboard");
+  }
 
   // ── Progress → rating capture (forward) / plain confirm (backward) ────────
   function onForwardPick(val: { s: number; e: number }) {
@@ -1379,7 +1384,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               ) : null}
               </div>
               {/* The disc carries the group's name; nudged left of the chat fold on the banner's corner (his note, 11-02). */}
-              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={closeRoom} style={{ marginTop: -1, marginRight: 36 }} />}
+              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -1, marginRight: 36 }} />}
             </div>
             {/* The banner (CP2 + his notes, 11-02): the show's art across the whole
                 page, the play mark at the top near the left, the group room's chat
