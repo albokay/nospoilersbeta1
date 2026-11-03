@@ -55,19 +55,29 @@ export async function tvmazeEpisodes(tvmazeId: number): Promise<number[]> {
 // record on demand. Tolerant: any failure → null (caller treats as a miss).
 export type TvmazeExternals = { imdb?: string | null; thetvdb?: number | null; tvrage?: number | null };
 
-// Show poster (medium) — module-cached; the reference band's recent-lookups
-// row resolves posters per show at render (2026-09-05). Misses cache too.
-const _posterCache = new Map<string, string | null>();
-export async function fetchTvmazePoster(tvmazeId: number | string): Promise<string | null> {
+// Show art — module-cached per show (misses too): the MEDIUM poster (210 ×
+// 295; the rows, the desktop poster — resolved per show at render since
+// 2026-09-05) and the ORIGINAL (the phone room's banner, 2026-11-02: the
+// medium goes soft stretched across a phone). One fetch serves both.
+export type TvmazeArt = { medium: string | null; original: string | null };
+const _artCache = new Map<string, Promise<TvmazeArt>>();
+export function fetchTvmazeArt(tvmazeId: number | string): Promise<TvmazeArt> {
   const key = String(tvmazeId);
-  if (_posterCache.has(key)) return _posterCache.get(key)!;
-  let url: string | null = null;
-  try {
-    const res = await fetch(`https://api.tvmaze.com/shows/${key}`);
-    if (res.ok) url = (await res.json())?.image?.medium ?? null;
-  } catch { /* miss */ }
-  _posterCache.set(key, url);
-  return url;
+  let p = _artCache.get(key);
+  if (!p) {
+    p = (async (): Promise<TvmazeArt> => {
+      try {
+        const res = await fetch(`https://api.tvmaze.com/shows/${key}`);
+        if (res.ok) { const img = (await res.json())?.image; return { medium: img?.medium ?? null, original: img?.original ?? null }; }
+      } catch { /* miss */ }
+      return { medium: null, original: null };
+    })();
+    _artCache.set(key, p);
+  }
+  return p;
+}
+export async function fetchTvmazePoster(tvmazeId: number | string): Promise<string | null> {
+  return (await fetchTvmazeArt(tvmazeId)).medium;
 }
 
 export async function fetchTvmazeExternals(tvmazeId: number | string): Promise<TvmazeExternals | null> {

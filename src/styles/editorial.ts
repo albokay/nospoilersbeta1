@@ -100,6 +100,10 @@ export const E_MEASURE = {
     logoTop: 62,                // the dashboard's centred logo (held for the dashboard scope)
     logo: { left: 32, top: 19, scale: 0.36 },  // the logo in the page's top-left corner: home (the landing-rule arc, 11-02)
     lobbyTitleTop: 108,         // a group room's title block, under the corner logo
+    roomTitleTop: 110,          // a show room's head (the group's name), under the corner logo
+    groupDisc: 88,              // the show room's GROUP ROOM disc
+    banner: 124,                // the show room's art banner across the page
+    artTabsGap: 18,             // from the show room's art to the folder tabs
     tabsGap: 26,                // from a title block to the folder tabs under it
     masthead: 252,              // a group room's sky masthead
     disc: 84,                   // the Open rooms disc
@@ -117,7 +121,9 @@ export const E_MEASURE = {
     logoTop: 44,                // (retired 11-02: the logo sits in the window's corner)
     logo: { left: 48, top: 22 },  // the logo in the window's top-left corner: home (the landing-rule arc, 11-02)
     lobbyTitleTop: 112,         // a group room's title block, under the corner logo
-    logoLift: -5,               // a show room's logo, beside the headline (until the room head lands)
+    roomTitleTop: 140,          // a show room's head (the group's name), under the corner logo
+    groupDisc: 128,             // the show room's GROUP ROOM disc
+    artTabsGap: 18,             // from the show room's poster to the folder tabs
     feedbackDisc: 32,           // the red feedback disc in the top-right row (28 on the phone)
     wordsTop: 34,
     wordsGap: 20,

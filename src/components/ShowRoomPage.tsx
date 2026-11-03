@@ -23,11 +23,11 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState, fetchSidebarLetters,
   fetchThreadSeenProgress, isAboveSeenProgress,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchJournalPlaces, type JournalPlace, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchMyGroupJoinOrder, fetchJournalPlaces, type JournalPlace, fetchContactNames, fetchRoomDigestOptOut, setRoomDigestOptOut,
   type Show,
 } from "../lib/db";
 import { effectiveProgress, isSeasonEnd } from "../lib/utils";
-import { joinNames, joinNameNodes } from "../lib/groupNames";
+import { joinNames, joinNameNodes, groupGenericName } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
 import { ensureShowReference } from "../lib/reference";
@@ -57,7 +57,10 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, FeedbackDisc } from "./editorial/Chrome";
+import { TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, FeedbackDisc, HomeLogo } from "./editorial/Chrome";
+import { GroupRoomDisc, RotatedLabel, useGroupSignals } from "./editorial/RoomHead";
+import { ChatCorner } from "./editorial/GroupRoom";
+import GroupChatDrawer from "./editorial/GroupChatDrawer";
 import { FolderTabs, RoomBand, RoomPicker, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "./editorial/ShowRoom";
 import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { PaperNote } from "./editorial/Dashboard";
@@ -123,6 +126,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   // when the group has a custom name (the line reads "with {name}") or no
   // one else is in the room yet.
   const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
+  // The group room's name for the headline (the landing-rule arc's CP2, 11-02):
+  // the custom name, else "Group N" as the group room says it; null = no group.
+  const [lobbyName, setLobbyName] = useState<string | null>(null);
+  // The group's chat drawer, opened from the band's fold (CP2).
+  const [chatOpen, setChatOpen] = useState(false);
+  const signals = useGroupSignals(user?.id, privateOnly ? null : parentGroupId, roomId);
   // Send is a copy (2026-10-28): the groups a journal entry can go to, and
   // the rooms already holding a copy of each entry.
   const [journalPlaces, setJournalPlaces] = useState<JournalPlace[]>([]);
@@ -335,6 +344,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       setShow(snap.show);
       setGroupName(snap.groupName ?? null);
       setGroupPeople(snap.groupPeople ?? null);
+      setLobbyName(snap.lobbyName ?? null);
       setProgressForShow(snap.progress ?? null);
       setFeedEntries(snap.feedEntries ?? []);
       setMapMembers(snap.mapMembers ?? []);
@@ -423,7 +433,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         const eff = effectiveProgress(pm[showId] ?? null);
         return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
       });
-      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes, joinOrder] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
         // Always (2026-10-28): the journal's places need every group.
         fetchPeopleGroupsForUser(user.id).catch(() => []),
@@ -434,6 +444,8 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         fetchSidebarLetters(roomId).catch(() => ({} as Record<string, SidebarLetterKind>)),
         // The journal arc (2026-10-26): the group's yes-votes name the pitcher.
         parentGid ? fetchGroupShowVotes(parentGid).catch(() => []) : Promise.resolve([]),
+        // The headline's "Group N" (CP2): the viewer's join order numbers the groups.
+        fetchMyGroupJoinOrder(user.id).catch(() => ({} as Record<string, number>)),
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
@@ -451,6 +463,15 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       // given names for those members; else "Group N". (No extra fetch —
       // roomMapData is already loaded.)
       const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
+      // The group room's name (the landing-rule arc's CP2, 11-02): custom, else
+      // "Group N" by the viewer's join order — the room's headline.
+      let lobby: string | null = null;
+      if (pg) {
+        const sorted = myGroups.map((g) => ({ id: g.id, j: joinOrder[g.id] ?? 0 })).sort((a, b) => a.j - b.j);
+        const idx = sorted.findIndex((g) => g.id === pg.id);
+        lobby = groupGenericName(pg, idx >= 0 ? idx + 1 : undefined);
+      }
+      setLobbyName(lobby);
       let derivedGroupName: string | null = null;
       let derivedPeople: { username: string; label: string }[] | null = null;
       if (pg) {
@@ -589,7 +610,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       if (!privateOnly && roomId) {
         try {
           sessionStorage.setItem(`ns_room_snap_${user.id}_${roomId}`, JSON.stringify({
-            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, progress,
+            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, lobbyName: lobby, progress,
             feedEntries: [...entries, ...gatedStubs], mapMembers: members,
             privateEntries: priv, parentGroupId: parentGid, lettersOnly: lettersOnlyRef.current,
           }));
@@ -1275,15 +1296,17 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             positioned 104px strip). Header + body colors still swap by mode:
             friend = green header / sky body, private = sky header / green
             body (the inactive tab shows through). ── */}
-      <div style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green) }}>
+      <div style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green), ...(editorial ? { position: "relative" as const } : {}) }}>
         {editorial ? (
-          // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
-          //    the way out, `? ⚙` at the column's top right, the show's name
-          //    in Lora at the 1080 column with the logo at its right edge. The
-          //    tabs and the body under it are still classic until checkpoint 4. ──
+          // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
+          //    arc's CP2, 11-02): the logo in the window's corner is home (the
+          //    blue back corner is gone), the feedback disc leads `? [account]`
+          //    at the column's top right; the GROUP's name is the headline with
+          //    the sky GROUP ROOM disc beside it as the way up, the show's name
+          //    up the side of its poster in the rail. ──
           <>
-            <CornerTab desktop kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
-            <EditorialColumn wide style={{ height: E.measure.desktop.titleTop }}>
+            <HomeLogo desktop bg="cream" onClick={() => navigate("/dashboard")} />
+            <EditorialColumn wide style={{ height: E.measure.desktop.roomTitleTop }}>
               <TopRight right={0} textTop={E.measure.desktop.wordsTop} gap={E.measure.desktop.wordsGap} hit={E.measure.desktop.wordHit} items={[
                 <FeedbackDisc key="feedback" desktop hit={E.measure.desktop.wordHit} onClick={() => setFeedbackOpen(true)} />,
                 ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.desktop.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
@@ -1291,15 +1314,18 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               ]} />
             </EditorialColumn>
             <EditorialColumn wide>
-              <div style={{ position: "relative" }}>
-                {/* The poster carries the trailer (Alborz 2026-10-13): a play
-                    mark once one resolves, opening the trailer band in a dialog. */}
-                <span style={{ position: "absolute", left: E.measure.desktop.letters - 96, top: -8 }}><TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={96} h={136} season={refEff?.s ?? null} /></span>
-                <div style={{ width: E.measure.desktop.letters - 120 }}>
-                  {/* The fitted title (Alborz 2026-10-13): a word that would reach
-                      the poster shrinks the size to fit; the gear (beside the name
-                      since round 2) as a superscript after the first line's last word. */}
-                  <FittedTitle desktop shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
+              {/* The head (the landing-rule arc's CP2, 11-02, his boards): the GROUP's
+                  name is the headline, the gear its superscript (email updates for
+                  this room), the With line under it; the sky disc beside it is the
+                  way up to the group room (its dot: something new elsewhere in the
+                  group); the show's name runs up the side of its poster in the
+                  rail, the play mark on the poster's corner. A private room keeps
+                  the show's name as its headline. */}
+              <div style={{ display: "grid", gridTemplateColumns: `${E.measure.desktop.letters}px ${E.measure.desktop.rail}px`, columnGap: E.measure.desktop.railGap, alignItems: "start" }}>
+                <div style={{ position: "relative", minHeight: E.measure.desktop.groupDisc }}>
+                  <div style={{ width: 464 }}>
+                    <FittedTitle desktop shrink name={lobbyName ?? show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
+
                   {tab === "reference" && refCreatedBy.length > 0 ? (
                     <EditorialSub desktop>Created by {refCreatedBy.join(" & ")}</EditorialSub>
                   ) : groupName ? (
@@ -1313,9 +1339,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                         : groupName}
                     </EditorialSub>
                   ) : null}
+                  </div>
+                  {!privateOnly && parentGroupId && (
+                    <GroupRoomDisc desktop signal={signals.disc} onClick={closeRoom} style={{ position: "absolute", left: 476, top: -1 }} />
+                  )}
                 </div>
-                <div role="button" aria-label="Home" title="Home" onClick={() => navigate("/dashboard")} style={{ position: "absolute", right: 0, top: E.measure.desktop.logoLift, cursor: "pointer" }}>
-                  <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                  {lobbyName && <RotatedLabel name={show?.name ?? "Show"} height={191} />}
+                  <TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={135} h={191} season={refEff?.s ?? null} />
                 </div>
               </div>
             </EditorialColumn>
@@ -1392,7 +1423,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           //    its section's colour, the band under it the same, carrying the
           //    picker; the band runs off the window's right edge. ──
           <>
-            <EditorialColumn wide style={{ marginTop: E.measure.desktop.tabsGap }}>
+            <EditorialColumn wide style={{ marginTop: E.measure.desktop.artTabsGap }}>
               <FolderTabs
                 width={E.measure.desktop.letters}
                 // Letters · Journal · Show guide (his call, 10-30): the journal
@@ -1403,7 +1434,11 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               />
             </EditorialColumn>
             <div style={{ maxWidth: E.measure.desktop.wide, margin: "0 auto" }}>
-              <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))" }}>
+              <RoomBand tab={tab} style={{ marginRight: "min(0px, calc(540px - 50vw))", position: "relative" }}>
+                {/* The chat fold (CP2, 11-02): the group room's yellow corner at the window's right edge, its foot on the band's top edge; opens the group's chat drawer here. */}
+                {!privateOnly && parentGroupId && user && (
+                  <ChatCorner desktop countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => setChatOpen(true)} style={{ top: -E.measure.desktop.corner }} />
+                )}
                 {show && progressForShow ? (
                   // The picker centres on the COLUMN, not on the band that runs
                   // off the window's right edge (his catch, 10-14): a box the
@@ -1437,6 +1472,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
           onClose={() => setShowAccount(false)}
           onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } navigate("/"); }}
         />
+      )}
+      {/* The group's chat, in the room (CP2, 11-02). Closing it refreshes the disc's dot and the fold's count. */}
+      {chatOpen && parentGroupId && user && (
+        <GroupChatDrawer groupId={parentGroupId} userId={user.id} onClose={() => { setChatOpen(false); signals.reload(); }} />
       )}
 
       {/* ── Two-pane body — mirrors the live room (V2FriendRoomPage): a 672px

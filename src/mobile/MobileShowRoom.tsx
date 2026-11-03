@@ -10,15 +10,17 @@ import {
   fetchShows, refreshShowIfStale, fetchProgress, fetchRoomMapData, fetchGroupThreads, fetchUserThreads,
   persistProgressUpdate, upsertEpisodeRating, deleteEpisodeRating, markRoomSeen, markThreadSeen, fetchThreadViewState, fetchSidebarLetters,
   fetchThreadSeenProgress, isAboveSeenProgress,
-  fetchHighlights, fetchPeopleGroupsForUser, fetchJournalPlaces, type JournalPlace, fetchRoomDigestOptOut, setRoomDigestOptOut,
+  fetchHighlights, fetchPeopleGroupsForUser, fetchMyGroupJoinOrder, fetchJournalPlaces, type JournalPlace, fetchRoomDigestOptOut, setRoomDigestOptOut,
   leaveShowRoom, setRoomDnf, fetchContactNames, setGroupShowPass, setShowVote,
   type Show,
 } from "../lib/db";
-import { joinNames, joinNameNodes } from "../lib/groupNames";
+import { joinNames, joinNameNodes, groupGenericName } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, FeedbackDisc } from "../components/editorial/Chrome";
+import { TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, FeedbackDisc, HomeLogo } from "../components/editorial/Chrome";
+import { GroupRoomDisc, RotatedLabel, useGroupSignals } from "../components/editorial/RoomHead";
+import { ChatCorner } from "../components/editorial/GroupRoom";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
 import { RowPoster } from "../components/editorial/GroupRoom";
@@ -161,6 +163,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   // when the group has a custom name (the line reads "with {name}") or no
   // one else is in the room yet.
   const [groupPeople, setGroupPeople] = useState<{ username: string; label: string }[] | null>(null);
+  // The group room's name for the headline (the landing-rule arc's CP2, 11-02):
+  // the custom name, else "Group N" as the group room says it; null = no group.
+  const [lobbyName, setLobbyName] = useState<string | null>(null);
+  const signals = useGroupSignals(user?.id, privateOnly ? null : parentGroupId, roomId);
   // Send is a copy (2026-10-28): the groups a journal entry can go to, and
   // the rooms already holding a copy of each entry.
   const [journalPlaces, setJournalPlaces] = useState<JournalPlace[]>([]);
@@ -415,6 +421,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       setShow(snap.show);
       setGroupName(snap.groupName ?? null);
       setGroupPeople(snap.groupPeople ?? null);
+      setLobbyName(snap.lobbyName ?? null);
       setProgressForShow(snap.progress ?? null);
       setFeedEntries(snap.feedEntries ?? []);
       setMapMembers(snap.mapMembers ?? []);
@@ -500,7 +507,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         const eff = effectiveProgress(pm[showId] ?? null);
         return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
       });
-      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes] = await Promise.all([
+      const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes, joinOrder] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
         // Always (2026-10-28): the journal's places need every group.
         fetchPeopleGroupsForUser(user.id).catch(() => []),
@@ -511,11 +518,22 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         fetchSidebarLetters(roomId).catch(() => ({} as Record<string, SidebarLetterKind>)),
         // The journal arc (2026-10-26): the group's yes-votes name the pitcher.
         parentGid ? fetchGroupShowVotes(parentGid).catch(() => []) : Promise.resolve([]),
+        // The headline's "Group N" (CP2): the viewer's join order numbers the groups.
+        fetchMyGroupJoinOrder(user.id).catch(() => ({} as Record<string, number>)),
       ]);
       setRoomContactNames(cn);
       const showRow = allShows.find((s) => s.id === showId) ?? null;
       const progress = progressMap[showId] ?? null;
       const pg = parentGid ? myGroups.find((x) => x.id === parentGid) : null;
+      // The group room's name (the landing-rule arc's CP2, 11-02): custom, else
+      // "Group N" by the viewer's join order — the room's headline.
+      let lobby: string | null = null;
+      if (pg) {
+        const sorted = myGroups.map((g) => ({ id: g.id, j: joinOrder[g.id] ?? 0 })).sort((a, b) => a.j - b.j);
+        const idx = sorted.findIndex((g) => g.id === pg.id);
+        lobby = groupGenericName(pg, idx >= 0 ? idx + 1 : undefined);
+      }
+      setLobbyName(lobby);
       // "with …" lists the members who OPTED INTO THIS SHOW — the room's
       // current (non-departed) members from roomMapData, NOT the whole group
       // (2026-07-09; matches desktop). Custom group name still wins; unnamed
@@ -659,7 +677,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       if (!privateOnly && roomId) {
         try {
           sessionStorage.setItem(`ns_m_room_snap_${user.id}_${roomId}`, JSON.stringify({
-            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, progress,
+            show: showRow, groupName: derivedGroupName, groupPeople: derivedPeople, lobbyName: lobby, progress,
             feedEntries: [...entries, ...gatedStubs], mapMembers: members,
             privateEntries: priv, parentGroupId: parentGid, lettersOnly: lettersOnlyRef.current,
           }));
@@ -1330,24 +1348,29 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       {/* ── Header: back · show name (+ with group) · digest gear ── */}
       <div ref={headRef} style={{ background: editorial ? "transparent" : (tab === "private" ? C.sky : C.green) }}>
         {editorial ? (
-          // ── The editorial chrome (checkpoint 1, 2026-10-10): the corner is
-          //    the way out, `? ⚙` as mono words at the top right, the show's
-          //    name in Lora 46 at the title line with the group under it. The
-          //    tabs and the body under it are still classic until checkpoint 4. ──
+          // ── The editorial chrome (checkpoint 1, 2026-10-10; the landing-rule
+          //    arc's CP2, 11-02): the logo in the corner is home (the blue back
+          //    corner is gone), the feedback disc leads `? [account]`; the
+          //    GROUP's name is the headline with the sky GROUP ROOM disc beside
+          //    it as the way up; the show's art is a banner across the page with
+          //    its name up a cream strip at the right edge. ──
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
-            <CornerTab kind="back" label={privateOnly ? "Back to dashboard" : "Back to group"} onClick={closeRoom} />
+            <HomeLogo bg="cream" onClick={() => navigate("/m/dashboard")} />
             <TopRight safe right={E.space.gutter} textTop={E.measure.phone.wordsTop.room} gap={E.measure.phone.wordsGap} hit={E.measure.phone.wordHit} items={[
               <FeedbackDisc key="feedback" hit={E.measure.phone.wordHit} onClick={() => setFeedbackOpen(true)} />,
               ...(!privateOnly && tab === "friend" && user ? [<HelpWord key="help" hit={E.measure.phone.wordHit} open={!!letterOpen} onClick={() => (letterOpen ? closeLetter() : setLetterOpen(true))} />] : []),
               <AccountWord key="account" hit={E.measure.phone.wordHit} onClick={() => setShowAccount(true)} />,
             ]} />
-            <div style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+            <div style={{ paddingTop: E.safe.plus(E.measure.phone.roomTitleTop), display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
               <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-              {/* The fitted title (Alborz 2026-10-13): a word that would reach the
-                  poster shrinks the size to fit; the gear as a superscript after
-                  the first line's last word. The box always takes the width
-                  beside the poster so the measure is the same for every name. */}
-              <FittedTitle shrink name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
+                {/* The group's name as the headline (CP2, 11-02, his board): 32px,
+                    balanced in its column, the gear as its superscript. A private
+                    room keeps the show's name. */}
+                <h1 style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 32, lineHeight: 1.04, letterSpacing: "-0.01em", color: E.color.ink, margin: 0, textWrap: "balance" } as React.CSSProperties}>
+                  {lobbyName ?? show?.name ?? "Show"}
+                  {!privateOnly && roomId && <TitleGear size={16} label="Email updates for this room" onClick={() => { void openDigestModal(); }} />}
+                </h1>
+
               {tab === "reference" && refCreatedBy.length > 0 ? (
                 <EditorialSub>Created by {refCreatedBy.join(" & ")}</EditorialSub>
               ) : groupName ? (
@@ -1360,9 +1383,20 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 </EditorialSub>
               ) : null}
               </div>
-              {/* The poster carries the trailer (Alborz 2026-10-13): a play mark
-                  once one resolves, opening the trailer band in a sheet. */}
-              <span style={{ marginTop: 12, flexShrink: 0 }}><TrailerPoster mobile showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={64} h={90} /></span>
+              {!privateOnly && parentGroupId && <GroupRoomDisc signal={signals.disc} onClick={closeRoom} style={{ marginTop: -1 }} />}
+            </div>
+            {/* The banner (CP2, 11-02): the show's art across the page, its name up
+                a cream strip at the right edge, the play mark at the top near the
+                left, the group room's chat fold on its top-right corner (it opens
+                the group's chat page, which comes back here). */}
+            <div style={{ position: "relative", margin: `33px -${E.space.gutter}px 0`, display: "flex", alignItems: "stretch" }}>
+              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <TrailerPoster mobile banner={E.measure.phone.banner} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
+              </div>
+              {lobbyName && <RotatedLabel name={show?.name ?? "Show"} height={E.measure.phone.banner} />}
+              {!privateOnly && parentGroupId && user && (
+                <ChatCorner countLabel={signals.chatCountLabel} isNew={signals.chatNew} onClick={() => navigate(`/m/group/${parentGroupId}/chat`, { state: { back: location.pathname } })} style={{ top: -E.measure.phone.corner }} />
+              )}
             </div>
           </div>
         ) : (
@@ -1417,7 +1451,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           //    its section's colour, the band under it the same, carrying the
           //    picker. ──
           <>
-            <div style={{ padding: `${E.measure.phone.tabsGap}px ${E.space.gutter}px 0` }}>
+            <div style={{ padding: `${E.measure.phone.artTabsGap}px ${E.space.gutter}px 0` }}>
               <FolderTabs
                 // Letters · Journal · Show guide (his call, 10-30): the journal
                 // sits second, ahead of the guide.

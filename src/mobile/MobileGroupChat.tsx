@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowUp } from "lucide-react";
 import { CANON } from "../styles/canon";
 import { useAuth } from "../lib/auth";
@@ -45,6 +45,10 @@ const C = {
 export default function MobileGroupChat({ groupId }: { groupId: string }) {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  // Opened from a show room's chat fold (the landing-rule arc's CP2, 11-02):
+  // the corner goes back to that room; otherwise to the group room.
+  const location = useLocation();
+  const backTo = (location.state as { back?: string } | null)?.back ?? `/m/group/${groupId}`;
   // The editorial chat page (Alborz's notes, item 7, 2026-10-12): cream,
   // the folded corner back, the title in Lora, messages as blocks, the
   // composer on its foot. Same messages, same send, same realtime.
@@ -193,7 +197,7 @@ export default function MobileGroupChat({ groupId }: { groupId: string }) {
     return (
       <div style={{ position: "fixed", inset: 0, height: "100dvh", display: "flex", flexDirection: "column", background: E.color.cream, color: E.color.ink, fontFamily: E.font.interface }}>
         <div style={{ position: "relative", flexShrink: 0, padding: `${E.safe.plus(E.measure.phone.titleTop)} ${E.space.gutter}px 16px`, borderBottom: `1px solid ${E.color.ink}` }}>
-          <CornerTab kind="back" label="Back to group" onClick={() => navigate(`/m/group/${groupId}`)} />
+          <CornerTab kind="back" label="Back" onClick={() => navigate(backTo)} />
           <div style={{ ...E.type.letterTitle22, fontSize: 26 }}>{group ? groupGenericName(group, viewerNumber) : "Group"} chat</div>
           <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: 8 }}>with {connected} &middot; not spoiler-gated</div>
         </div>

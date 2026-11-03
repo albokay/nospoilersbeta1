@@ -13,11 +13,16 @@ import { RowPoster, EditorialDialog } from "./editorial/GroupRoom";
 import { BottomSheet } from "./editorial/Overlays";
 import TrailerCard from "./TrailerCard";
 import { getTrailerKeyCached } from "../lib/trailers";
+import { fetchTvmazeArt, type TvmazeArt } from "../lib/tvmaze";
 import { ensureShowReference } from "../lib/reference";
 import { E } from "../styles/editorial";
 
-export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile = false, season = null }: {
-  showId?: string | null; showName?: string | null; tvmazeId?: string | null; w: number; h: number; mobile?: boolean;
+export default function TrailerPoster({ showId, showName, tvmazeId, w = 0, h = 0, mobile = false, season = null, banner = null }: {
+  showId?: string | null; showName?: string | null; tvmazeId?: string | null; w?: number; h?: number; mobile?: boolean;
+  /** The phone room's banner (the landing-rule arc's CP2, 2026-11-02): the
+   *  show's ORIGINAL art this many px tall across its box, cropped to the
+   *  top third, the play mark at the top near the left. */
+  banner?: number | null;
   /** The season the viewer is on (his note, 2026-11-02): the play mark opens
    *  THAT season's trailer from the show's guide data when it has one
    *  (season 2 on; its first-season trailer is the launch trailer), else
@@ -28,6 +33,14 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile
   // The season's own key, when the guide data has one for the season you're on.
   const [seasonKey, setSeasonKey] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [art, setArt] = useState<TvmazeArt | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setArt(null);
+    if (!banner || !tvmazeId) return;
+    fetchTvmazeArt(tvmazeId).then((a) => { if (!cancelled) setArt(a); }).catch(() => { /* the draft block, then */ });
+    return () => { cancelled = true; };
+  }, [banner, tvmazeId]);
   useEffect(() => {
     let cancelled = false;
     setHasTrailer(false); setSeasonKey(null);
@@ -41,7 +54,12 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile
     return () => { cancelled = true; };
   }, [showId, tvmazeId, season]);
   const title = seasonKey && season ? `${showName ?? "Trailer"} · season ${season}` : (showName ?? "Trailer");
-  const poster = <RowPoster tvmazeId={tvmazeId} w={w} h={h} />;
+  const bannerUrl = banner ? (art?.original ?? art?.medium ?? null) : null;
+  const poster = banner
+    ? (bannerUrl
+      ? <img src={bannerUrl} alt="" draggable={false} style={{ width: "100%", height: banner, objectFit: "cover", objectPosition: "50% 22%", display: "block" }} />
+      : <span aria-hidden="true" style={{ display: "block", width: "100%", height: banner, background: E.color.draft }} />)
+    : <RowPoster tvmazeId={tvmazeId} w={w} h={h} />;
   if (!hasTrailer || !showId) return poster;
   const disc = mobile ? 24 : 28;
   return (
@@ -49,9 +67,9 @@ export default function TrailerPoster({ showId, showName, tvmazeId, w, h, mobile
       {/* zIndex 3 (his catch, 2026-10-14): the disc pokes 8px past the poster
           into the tabs row's box below, a positioned sibling drawn later —
           without a z-index that transparent box took the disc's clicks. */}
-      <button type="button" onClick={() => setOpen(true)} aria-label="Watch the trailer" title="Watch the trailer" style={{ position: "relative", zIndex: 3, display: "block", padding: 0, border: 0, background: "transparent", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+      <button type="button" onClick={() => setOpen(true)} aria-label="Watch the trailer" title="Watch the trailer" style={{ position: "relative", zIndex: 3, display: "block", width: banner ? "100%" : undefined, padding: 0, border: 0, background: "transparent", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
         {poster}
-        <span aria-hidden="true" style={{ position: "absolute", right: -8, bottom: -8, width: disc, height: disc, borderRadius: "50%", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span aria-hidden="true" style={{ position: "absolute", ...(banner ? { left: 16, top: -12 } : { right: -8, bottom: -8 }), width: disc, height: disc, borderRadius: "50%", background: E.color.cream, border: `1px solid ${E.color.ink}`, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width={mobile ? 9 : 10} height={mobile ? 9 : 10} viewBox="0 0 10 10" style={{ marginLeft: 1 }}><path d="M2 1 L9 5 L2 9 Z" fill={E.color.ink} /></svg>
         </span>
       </button>
