@@ -1401,18 +1401,19 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 // A room of one (his words, 11-03): in place of the With line.
                 <EditorialSub>(just you so far)</EditorialSub>
               ) : null}
+              {/* The disc with the group's name sits UNDER the With line, in from
+                  the gutter (his mockup, 11-04): the head's two columns are now
+                  title · With · disc on the left and the poster alone on the
+                  right, so a room's green head runs shorter than it did with
+                  the disc stacked over the poster. */}
+              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: 34, marginLeft: 46 }} />}
               </div>
-              {/* The right column (his mockup, 11-03): the disc with the group's
-                  name, then the show's poster under it with the play mark on
-                  its bottom corner — the thumbnail is back, the banner and the
-                  chat fold are gone (the chat lives in the group room). */}
-              <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 20 }}>
-                {/* The disc rides 16px higher than the title's top (his mockup, 11-03); the gap below grows by the same so the poster keeps its seat on the With line. */}
-                {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: -17 }} />}
-                {/* The poster sits left of the disc's edge and up on the With line (his mockup vs the live render, 11-03). */}
-                <div style={{ marginRight: 56 }}>
-                  <TrailerPoster mobile w={112} h={160} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
-                </div>
+              {/* The right column: the show's poster with the play mark on its
+                  bottom corner, its top on the title's, nudged out to 10px past
+                  the gutter so it keeps clear of the headline (his mockups,
+                  11-04: the same seat on the show's own page and in a room). */}
+              <div style={{ flex: "0 0 auto", marginRight: 10 }}>
+                <TrailerPoster mobile w={112} h={160} showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} />
               </div>
               {/* The With line's + (his ask, 11-03): the group's add-friends sheet, in the room. */}
               {inviteOpen && parentGroupId && <MobileInviteSheet targetGroupId={parentGroupId} onClose={() => setInviteOpen(false)} onSent={() => {}} />}
@@ -1485,7 +1486,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
               )}
               {/* The door (Option B, CP1, his mockup 11-03): a yellow strip above the picker running off the page's right edge, its left edge past the poster's. */}
               {!privateOnly && show && (
-                <div style={{ display: "flex", justifyContent: "flex-end", margin: `0 -${E.space.gutter}px 22px 0` }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", margin: `4px -${E.space.gutter}px 22px 0` }}>
                   <span style={{ background: E.color.accent, width: 230, boxSizing: "border-box", padding: "8px 14px", display: "inline-flex", justifyContent: "flex-end" }}>
                     <UnderlineWord onClick={openShowPage} title="The show guide and your journal">Show guide &amp; journal →</UnderlineWord>
                   </span>
