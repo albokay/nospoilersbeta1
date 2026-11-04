@@ -103,9 +103,10 @@ export function ChatCorner({ onClick, countLabel, isNew = false, desktop = false
   const inset = desktop ? 18 : 13;
   const signal = !!countLabel || isNew;
   // The dot (his note, 11-03): the map's 16px circle, no outline, its centre
-  // on the glyph's top-left corner as before, wholly on the yellow. It lives
-  // outside the clipped fold so nothing clips it.
-  const dotOffset = 8;
+  // 3px inside the glyph's top-left corner (his 11-03 note: a little more
+  // overlap than the corner itself), wholly on the yellow. It lives outside
+  // the clipped fold so nothing clips it.
+  const dotOffset = 5;
   const glyphLeft = size - inset - glyph, glyphTop = size - inset - glyph;
   return (
     <span style={{ position: "absolute", right: 0, width: size, height: size, display: "block", zIndex: 2, pointerEvents: "none", ...style }}>
