@@ -26,6 +26,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SquarePen, MessageCircle, ChevronDown } from "lucide-react";
+import { useAuthOptional } from "../../lib/auth";
+import { fetchSeasonPlaces } from "../../lib/db";
+import { getSeasonPlaces, standAloneSwitchVisible, useSeasonPlaces, useStandAlone } from "../../lib/standAlone";
+import { StandAloneSwitch } from "./StandAlone";
 import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
 
@@ -353,17 +357,33 @@ export function AnswerRow<T extends string | boolean>({ options, value, onChange
 export function NumbersPicker({ show, value, onChange, allowZero = true, align = "center" }: {
   /** The desktop show room (his catch, 11-03): the picker sits at the band's left so it wraps before the door at the right. */
   align?: "center" | "start";
-  show: { seasons?: number[] } | null | undefined;
+  show: { id?: string; seasons?: number[]; tvmazeType?: string; standAlone?: boolean | null } | null | undefined;
   value: { s: number; e: number };
-  onChange: (v: { s: number; e: number }) => void;
+  /** `seasonSwitch` (stand alone mode, 2026-11-04): the season menu changed —
+   *  the value is that season's remembered place (or 0), not a watch. */
+  onChange: (v: { s: number; e: number; seasonSwitch?: boolean }) => void;
   allowZero?: boolean;
 }) {
   const seasons = show?.seasons ?? [];
+  // ── Stand alone mode (2026-11-04, his design): on a show the mode applies
+  //    to, the switch sits in line after the season menu; while it's ON every
+  //    season starts at 0, the numbers read within the season only, and the
+  //    menu switches which season's place you're setting — restoring where
+  //    you were in it. Nothing below changes for a show outside the mode.
+  //    (Hooks above the loading return.) ──
+  const auth = useAuthOptional();
+  const userId = auth?.user?.id;
+  const standAlone = useStandAlone(show);
+  const switchVisible = !!userId && !!show?.id && standAloneSwitchVisible(show);
+  const places = useSeasonPlaces(standAlone ? show?.id : undefined);
+  useEffect(() => {
+    if (standAlone && userId && show?.id && !getSeasonPlaces(show.id)) void fetchSeasonPlaces(userId, show.id);
+  }, [standAlone, userId, show?.id]);
   if (seasons.length === 0) return <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 12 }}>loading episodes…</div>;
   const season = Math.min(Math.max(value.s, 1), seasons.length);
   const count = seasons[season - 1] ?? 0;
   const nums: number[] = [];
-  if (allowZero && season === 1) nums.push(0);
+  if (allowZero && (season === 1 || standAlone)) nums.push(0);
   for (let i = 1; i <= count; i++) nums.push(i);
   const current = value.s === 0 ? 0 : value.s === season ? value.e : -1;
   // Two rows on one grid (his idea, 10-14): "Watched:" and "ep:" in the first
@@ -385,26 +405,36 @@ export function NumbersPicker({ show, value, onChange, allowZero = true, align =
       <style>{`@media (max-width: 767px){ .e-pick-l1 { display: block; line-height: 1.1; } }`}</style>
       {/* The season as a menu: a chevron at the underline's weight, so the two
           picking pieces read as one grammar and the arrow points at nothing. */}
-      <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", justifySelf: "start", alignSelf: "end", ...E.type.label11, color: E.color.ink }}>
+      {/* The season menu, and in stand alone mode the switch in line to its
+          right with a gap (his mockup, 11-04); on a narrow phone the switch
+          wraps under as one piece rather than breaking. */}
+      <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 16px", justifySelf: "start", alignSelf: "end", minWidth: 0 }}>
+      <label style={{ position: "relative", display: "inline-flex", alignItems: "baseline", gap: 4, cursor: "pointer", ...E.type.label11, color: E.color.ink }}>
         <span>Season {season}</span>
         <ChevronDown size={14} strokeWidth={2.25} color={E.color.ink} aria-hidden="true" style={{ flexShrink: 0, alignSelf: "center" }} />
         <select
           aria-label="Season" value={season}
-          onChange={(e) => { const s = Number(e.target.value); onChange({ s, e: Math.min(Math.max(1, value.s === s ? value.e : 1), seasons[s - 1] ?? 1) }); }}
+          onChange={(e) => {
+            const s = Number(e.target.value);
+            if (standAlone) { onChange({ s, e: Math.min(places.get(s) ?? 0, seasons[s - 1] ?? 0), seasonSwitch: true }); return; }
+            onChange({ s, e: Math.min(Math.max(1, value.s === s ? value.e : 1), seasons[s - 1] ?? 1) });
+          }}
           style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
         >
           {seasons.map((_, i) => <option key={i + 1} value={i + 1}>Season {i + 1}</option>)}
         </select>
       </label>
+      {switchVisible && show && <StandAloneSwitch show={show} />}
+      </span>
       <span aria-hidden="true" style={{ ...E.type.label11, textTransform: "none", color: E.color.inkMuted, justifySelf: "end" }}>ep:</span>
       <div aria-label="Episode" style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", alignItems: "baseline", gap: "6px 11px", minWidth: 0 }}>
         {nums.map((n) => {
           const me = n === current;
-          const watched = n === 0 ? false : value.s > season || (value.s === season && n <= value.e);
+          const watched = n === 0 ? false : standAlone ? value.s === season && n <= value.e : value.s > season || (value.s === season && n <= value.e);
           return (
             <button
               key={n} type="button" aria-pressed={me} aria-label={n === 0 ? "Haven't started" : `Episode ${n}`}
-              onClick={() => onChange(n === 0 ? { s: 0, e: 0 } : { s: season, e: n })}
+              onClick={() => onChange(n === 0 ? (standAlone ? { s: season, e: 0 } : { s: 0, e: 0 }) : { s: season, e: n })}
               style={{ ...E.type.numbers22, background: "transparent", border: 0, padding: "2px 1px", cursor: "pointer", color: me || watched ? E.color.ink : E.color.inkFaint, fontWeight: me ? 700 : 600, borderBottom: me ? `2px solid ${E.color.ink}` : "2px solid transparent", lineHeight: 1.1, minWidth: 18, WebkitTapHighlightColor: "transparent" }}
             >
               {n}
@@ -423,7 +453,7 @@ export type StanceView = {
   /** "Sam is in. Priya has already seen it." lines. */
   answerLines: string[];
   answer: { kind: "stance"; value: "in" | "out" | "seen" | null; onChange: (v: "in" | "out" | "seen") => void } | { kind: "yesno"; value: boolean; onChange: (v: boolean) => void } | null;
-  progress: { title: string | null; note: string | null; show: { seasons?: number[] } | null | undefined; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void } | null;
+  progress: { title: string | null; note: string | null; show: { id?: string; seasons?: number[]; tvmazeType?: string; standAlone?: boolean | null } | null | undefined; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void } | null;
   actions: { readLine: string | null; enterLabel: string; onEnter: () => void; joinNote: string | null; onJustConfirm: (() => void) | null } | null;
   trailer: { showId: string; tvmazeId?: string | null } | null;
   /** The journal handover's panel (2026-10-26): shown under the answers

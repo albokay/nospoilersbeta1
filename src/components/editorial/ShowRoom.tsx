@@ -86,8 +86,12 @@ export function RoomPicker({ show, value, onConfirm, onForwardPick, allowZero = 
   align?: "center" | "start";
 }) {
   const [pending, setPending] = useState<{ s: number; e: number; backwards: boolean } | null>(null);
-  const pick = (v: { s: number; e: number }) => {
+  const pick = (v: { s: number; e: number; seasonSwitch?: boolean }) => {
     if (v.s === value.s && v.e === value.e) return;
+    // Stand alone mode (2026-11-04): changing the season menu moves you to
+    // that season's remembered place — not a watch, so no rating and no
+    // "are you sure?": it lands at once.
+    if (v.seasonSwitch) { onConfirm({ s: v.s, e: v.e }); return; }
     const backwards = v.s < value.s || (v.s === value.s && v.e < value.e);
     if (!backwards && onForwardPick) { onForwardPick(v); return; }
     setPending({ ...v, backwards });

@@ -3,6 +3,7 @@
  * All reads are public (no auth required).
  */
 import { supabase } from "./supabaseClient";
+import { noteSeasonPlace, noteStandAloneOverride, setSeasonPlaces, showStandAlone } from "./standAlone";
 import { fetchAskNewGroups } from "./groupAsks";
 import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation, PeopleGroup, PeopleGroupMember, GroupShowVote } from "../types";
 import { groupDisplayName } from "./groupNames";
@@ -64,6 +65,9 @@ export type Show = {
    *  banner — filled by the nightly refresh-shows run (2026-11-02); null or
    *  absent → the TVMaze original poster, cropped. */
   backdropUrl?: string | null;
+  /** Stand alone mode (2026-11-04): the show's switch for everyone — null =
+   *  decided by its TVMaze type (lib/standAlone), true / false = flipped. */
+  standAlone?: boolean | null;
 };
 
 // ── Shows catalog cache (egress) ────────────────────────────────────────────
@@ -93,6 +97,7 @@ const _rowToShow = (row: any): Show => ({
   nextAirAt: row.next_air_at ?? null,
   nextAirSeason: row.next_air_season ?? null,
   backdropUrl: row.backdrop_url ?? null,
+  standAlone: typeof row.stand_alone === "boolean" ? row.stand_alone : null,
 });
 const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
 
@@ -128,9 +133,11 @@ export async function fetchShows(): Promise<Show[]> {
   if (_showsInflight) return _showsInflight; // dedupe concurrent first-loads
   _showsInflight = (async () => {
     const cols = "id, name, seasons, tvmaze_id, status, is_hidden, last_synced_at, genres, tvmaze_type, seasons_planned, next_air_at, next_air_season";
-    let r = await supabase.from("shows").select(`${cols}, backdrop_url`).order("name");
-    // Column-tolerant (CP5, 2026-11-02): until 20261102_show_backdrop.sql has
-    // run, the select without the banner's column — nothing else waits on it.
+    let r = await supabase.from("shows").select(`${cols}, backdrop_url, stand_alone`).order("name");
+    // Column-tolerant (CP5, 2026-11-02; stand alone 2026-11-04): until the
+    // migration adding a column has run, the select without it — nothing
+    // else waits on them.
+    if (r.error && /stand_alone/i.test(r.error.message ?? "")) r = await supabase.from("shows").select(`${cols}, backdrop_url`).order("name") as typeof r;
     if (r.error && /backdrop_url/i.test(r.error.message ?? "")) r = await supabase.from("shows").select(cols).order("name") as typeof r;
     if (r.error) throw r.error;
     _showsCache = ((r.data ?? []) as any[]).map(_rowToShow);
@@ -1630,6 +1637,10 @@ export async function upsertRewatchStatus(
   showId: string,
   entry: import("../types").ProgressEntry
 ): Promise<void> {
+  // Stand alone mode (2026-11-04): a season's place is remembered on EVERY
+  // progress write, switch on or off, so switching the mode off and back on
+  // loses nothing. Fire-and-forget beside the real write; S0 E0 isn't a place.
+  if (entry.s > 0) void upsertSeasonPlace(userId, showId, entry.s, entry.e);
   const { error } = await supabase
     .from("progress")
     .upsert({
@@ -1717,9 +1728,65 @@ export async function persistProgressUpdate(
   cur: import("../types").ProgressEntry | undefined,
   next: { s: number; e: number }
 ): Promise<import("../types").ProgressEntry> {
+  const show = _showsCache?.find((x) => x.id === showId);
+  if (showStandAlone(show)) {
+    // Stand alone mode (2026-11-04): the one position row is the season
+    // you're in now; a switch of season (or any pick) must never be read
+    // as a rewatch or trip the rewatch trigger's one-way rule, so the row
+    // is written plainly — no rewatch state, the high-water mark kept.
+    const updated: import("../types").ProgressEntry = { ...(cur ?? {} as import("../types").ProgressEntry), s: next.s, e: next.e, isRewatching: false, rewatchS: undefined, rewatchE: undefined };
+    await upsertRewatchStatus(userId, showId, updated);
+    return updated;
+  }
   const updated = computeNextProgressEntry(cur, next);
+  // Switch OFF (today's one position): moving on to a later season means
+  // the season you left is done, so its place is set to its end — the
+  // memory stand alone mode restores when it's switched on (his yes, 11-04).
+  if (cur && cur.s > 0 && next.s > cur.s && show?.seasons) {
+    for (let sn = cur.s; sn < next.s; sn++) {
+      const last = show.seasons[sn - 1];
+      if (last) void upsertSeasonPlace(userId, showId, sn, last);
+    }
+  }
   await upsertRewatchStatus(userId, showId, updated);
   return updated;
+}
+
+// ── Stand alone mode (2026-11-04) ───────────────────────────────────────────
+// A person's place in each season of a show (progress_seasons), and the
+// show's switch. The places are also mirrored into lib/standAlone's store so
+// a picker can restore a season's place the moment its menu changes.
+
+/** The viewer's places on a show, {season → episode}. Column-tolerant until
+ *  20261104_stand_alone_mode.sql has run (an empty map, nothing waits on it). */
+export async function fetchSeasonPlaces(userId: string, showId: string): Promise<Map<number, number>> {
+  const { data, error } = await supabase
+    .from("progress_seasons")
+    .select("season, episode")
+    .eq("user_id", userId)
+    .eq("show_id", showId);
+  const m = new Map<number, number>();
+  if (error) { console.warn("season places read failed", error.message); setSeasonPlaces(showId, m); return m; }
+  for (const r of (data ?? []) as { season: number; episode: number }[]) m.set(r.season, r.episode);
+  setSeasonPlaces(showId, m);
+  return m;
+}
+
+export async function upsertSeasonPlace(userId: string, showId: string, season: number, episode: number): Promise<void> {
+  noteSeasonPlace(showId, season, episode);
+  const { error } = await supabase
+    .from("progress_seasons")
+    .upsert({ user_id: userId, show_id: showId, season, episode, updated_at: new Date().toISOString() }, { onConflict: "user_id,show_id,season" });
+  if (error) console.warn("season place write failed", error.message);
+}
+
+/** The switch: the show's, for everyone (his call, 11-04). */
+export async function setShowStandAlone(showId: string, on: boolean): Promise<void> {
+  noteStandAloneOverride(showId, on);
+  const cur = _showsCache?.find((x) => x.id === showId);
+  if (cur) upsertShowInCache({ ...cur, standAlone: on });
+  const { error } = await supabase.rpc("set_show_stand_alone", { p_show_id: showId, p_on: on });
+  if (error) throw error;
 }
 
 export async function clearRewatchMode(userId: string, showId: string): Promise<void> {
