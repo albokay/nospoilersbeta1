@@ -527,7 +527,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     <div>
       {roomRows.length > 0 && (
         <div style={{ marginBottom: desktop ? 56 : 44 }}>
-          <SectionHead big tab={E.color.cream} tabText={E.color.ink}>Show rooms</SectionHead>
+          <SectionHead big tab={E.color.personal}>Show rooms</SectionHead>
           {roomRows.map((r) => (
             <RoomRow key={r.roomId} desktop={desktop} row={r} onEnter={() => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} />
           ))}

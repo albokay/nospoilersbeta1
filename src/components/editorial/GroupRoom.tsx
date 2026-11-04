@@ -97,14 +97,15 @@ export function ChatCorner({ onClick, countLabel, isNew = false, desktop = false
 }) {
   const size = desktop ? E.measure.desktop.corner : E.measure.phone.corner;
   const glyph = desktop ? 30 : 24;
-  // The glyph sits a little further in than before (22/16) so the dot on
-  // its shoulder lands half across the fold (his note, 11-03).
-  const inset = desktop ? 26 : 19;
+  // The glyph sits comfortably in the fold's middle (his 11-03 call: the
+  // dip across the fold is dropped), a touch nearer the corner than the
+  // triangle's centroid (22/17) so the dot on its shoulder clears the fold.
+  const inset = desktop ? 18 : 13;
   const signal = !!countLabel || isNew;
   // The dot (his note, 11-03): the map's 16px circle, no outline, its centre
-  // on the fold line so it dips into the band's colour. It lives OUTSIDE the
-  // clipped fold (a clip-path clips children, which kept it on the yellow).
-  const dotOffset = desktop ? 10 : 10;
+  // on the glyph's top-left corner as before, wholly on the yellow. It lives
+  // outside the clipped fold so nothing clips it.
+  const dotOffset = 8;
   const glyphLeft = size - inset - glyph, glyphTop = size - inset - glyph;
   return (
     <span style={{ position: "absolute", right: 0, width: size, height: size, display: "block", zIndex: 2, pointerEvents: "none", ...style }}>
