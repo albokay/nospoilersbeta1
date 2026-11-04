@@ -28,6 +28,9 @@ import { createPortal } from "react-dom";
 import { SquarePen, MessageCircle, ChevronDown } from "lucide-react";
 import { CelebrationStar } from "../CelebrationBadge";
 import { E } from "../../styles/editorial";
+
+/** The one size for a notification dot (his note, 11-03): the season map's 16px, on the chat fold and the group disc alike, no outline. */
+export const SIGNAL_DOT = 16;
 import { fetchTvmazePoster } from "../../lib/tvmaze";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import useKeyboardInset from "../../lib/useKeyboardInset";
@@ -94,23 +97,32 @@ export function ChatCorner({ onClick, countLabel, isNew = false, desktop = false
 }) {
   const size = desktop ? E.measure.desktop.corner : E.measure.phone.corner;
   const glyph = desktop ? 30 : 24;
-  const inset = desktop ? 22 : 16;
+  // The glyph sits a little further in than before (22/16) so the dot on
+  // its shoulder lands half across the fold (his note, 11-03).
+  const inset = desktop ? 26 : 19;
   const signal = !!countLabel || isNew;
+  // The dot (his note, 11-03): the map's 16px circle, no outline, its centre
+  // on the fold line so it dips into the band's colour. It lives OUTSIDE the
+  // clipped fold (a clip-path clips children, which kept it on the yellow).
+  const dotOffset = desktop ? 10 : 10;
+  const glyphLeft = size - inset - glyph, glyphTop = size - inset - glyph;
   return (
-    <button
-      type="button" aria-label={countLabel ? `Open chat · ${countLabel} new` : isNew ? "Open chat · new messages" : "Open chat"} title="Open chat" onClick={onClick} data-tip-anchor={anchor}
-      style={{
-        position: "absolute", right: 0, width: size, height: size, padding: 0, border: 0, background: E.color.accent, cursor: "pointer", display: "block",
-        clipPath: "polygon(100% 0, 100% 100%, 0 100%)", WebkitTapHighlightColor: "transparent", zIndex: 2, ...style,
-      }}
-    >
-      <span style={{ position: "absolute", right: inset, bottom: inset, width: glyph, height: glyph, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-        <MessageCircle size={glyph} strokeWidth={1.6} color={E.color.cream} aria-hidden="true" />
-        {signal && (
-          <span style={{ position: "absolute", left: -8, top: -8, minWidth: 18, height: 18, padding: countLabel ? "0 5px" : 0, borderRadius: 9, background: E.color.identity, color: E.color.cream, ...E.type.label9, letterSpacing: 0, lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: `2px solid ${E.color.accent}` }}>{countLabel}</span>
-        )}
-      </span>
-    </button>
+    <span style={{ position: "absolute", right: 0, width: size, height: size, display: "block", zIndex: 2, pointerEvents: "none", ...style }}>
+      <button
+        type="button" aria-label={countLabel ? `Open chat · ${countLabel} new` : isNew ? "Open chat · new messages" : "Open chat"} title="Open chat" onClick={onClick} data-tip-anchor={anchor}
+        style={{
+          position: "absolute", inset: 0, width: size, height: size, padding: 0, border: 0, background: E.color.accent, cursor: "pointer", display: "block",
+          clipPath: "polygon(100% 0, 100% 100%, 0 100%)", WebkitTapHighlightColor: "transparent", pointerEvents: "auto",
+        }}
+      >
+        <span style={{ position: "absolute", right: inset, bottom: inset, width: glyph, height: glyph, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          <MessageCircle size={glyph} strokeWidth={1.6} color={E.color.cream} aria-hidden="true" />
+        </span>
+      </button>
+      {signal && (
+        <span aria-hidden="true" style={{ position: "absolute", left: glyphLeft - dotOffset, top: glyphTop - dotOffset, width: SIGNAL_DOT, height: SIGNAL_DOT, borderRadius: "50%", background: E.color.identity, color: E.color.cream, ...E.type.label9, letterSpacing: 0, lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" }}>{countLabel}</span>
+      )}
+    </span>
   );
 }
 

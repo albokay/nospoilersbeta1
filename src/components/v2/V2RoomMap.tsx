@@ -690,6 +690,12 @@ export default function V2RoomMap({
   // Every spine / stub / terminal dot: Business on desktop's dark surface,
   // Friend blue on the mobile sheet's cream (Alborz 2026-09-23).
   const lineColor = mobile ? CANON.friend : CANON.business;
+  // The colour of a member's thread (his catch, 11-03: the thread turned
+  // grey-blue where it crossed a season break or ran through a folded
+  // season, while the segments between cells wore the column's blue). On
+  // the editorial map the YOU column is identity, a friend's is friend blue;
+  // the classic map keeps its one line colour.
+  const spineColor = (userId: string) => (editorial ? (!!viewerUserId && userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor);
 
   return (
     <div
@@ -1260,10 +1266,8 @@ export default function V2RoomMap({
                           top: 0,
                           width: 2,
                           height: GAP_BELOW * 2,
-                          // Flat canon greyblue (Alborz 2026-08-21; was
-                          // translucent --dos-border) — every map line is
-                          // opaque Business.
-                          background: CANON.business,
+                          // The column's colour (11-03); was flat Business.
+                          background: spineColor(m.userId),
                         }}
                       />
                     )}
@@ -1367,7 +1371,7 @@ export default function V2RoomMap({
                           style={{
                             position: "absolute", left: CELL / 2 - 1, top: 0, width: 2,
                             height: through ? ROW_HEIGHT : ROW_HEIGHT / 2,
-                            background: CANON.business,
+                            background: spineColor(m.userId),
                           }}
                         />
                       )}
@@ -1674,6 +1678,9 @@ export default function V2RoomMap({
                 // red tooltip line. Only one signal per cell at a time.
                 const signal = entry ? cellSignals?.[entry.threadId] ?? null : null;
                 const cellIsNew = entry ? !!isNewMap?.[entry.threadId] : false;
+                // A new letter you haven't opened (readable, reached): the
+                // blue dot (his note, 11-03; was the doubled ring).
+                const isNewLetter = cellIsNew && isReached && !!entry && !aboveViewer;
                 // Per-cell unique key (the receding-layers cycle). Cell key
                 // alone (season-episode) collides across members; need to
                 // include member id for uniqueness.
@@ -1775,14 +1782,12 @@ export default function V2RoomMap({
                       const cellShape = cellShapeStyle(isReached, !!entry, isSelf, editMode, aboveViewer, mobile, editorial);
                       // Identity blue since 2026-09-13 — one rule everywhere:
                       // blue outline = an entry you haven't opened.
-                      const newOutlineOverride: React.CSSProperties = cellIsNew && isReached && !!entry && !aboveViewer
-                        // A never-opened friend entry wears the ticket's blue
-                        // outline, doubled for the map (Alborz 2026-09-25): the
-                        // solid Identity cell, a Friend ring, then an Identity
-                        // ring outside — blue-on-blue alone would vanish. Same
-                        // on the cream sheet.
-                        ? { boxShadow: `0 0 0 2px ${editorial ? CANON.cream : CANON.friend}, 0 0 0 4px ${CANON.identity}` }
-                        : {};
+                      // A never-opened friend letter wore the doubled blue ring
+                      // (2026-09-25); since 2026-11-03 (his note) it carries the
+                      // usual notification dot instead — any new writing on the
+                      // map, a letter or a note, is one blue dot. Nothing on
+                      // the cell itself.
+                      const newOutlineOverride: React.CSSProperties = {};
 
                       // Receding back layers (multi-entry cells only). Each
                       // non-top entry gets a translated, 30%-opacity copy of
@@ -1916,8 +1921,9 @@ export default function V2RoomMap({
                         on every idiom (Alborz 2026-09-23): the red dot's
                         hover-X was the last way to dismiss one by hand —
                         red now stays until you catch up, everywhere. */}
-                    {signal && entry && (
-                      <MapCellDot kind={signal.kind} redCount={signal.redCount} ring={editMode} ringColor={mobile || editorial ? CANON.cream : CANON.friend} />
+                    {/* The dot (his note, 11-03): a new letter you haven't opened gets the same blue dot a note or response does; the signal's own kind wins when there is one (red for sealed). No outline on the editorial map's sky cells; the ring stays where the dot would vanish (your own blue cell, edit mode's red cells, the classic map). */}
+                    {(signal || isNewLetter) && entry && (
+                      <MapCellDot kind={signal?.kind ?? "blue"} redCount={signal?.redCount} ring={editMode || !editorial || isSelf} ringColor={mobile || editorial ? CANON.cream : CANON.friend} />
                     )}
 
                     {/* Spine segment below the cell — only when both this
@@ -1931,7 +1937,7 @@ export default function V2RoomMap({
                           width: 2,
                           height: GAP_BELOW,
                           // Flat canon greyblue (Alborz 2026-08-21).
-                          background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor,
+                          background: spineColor(m.userId),
                         }}
                       />
                     )}
@@ -1953,13 +1959,13 @@ export default function V2RoomMap({
                             height: 10,
                             // Canon greyblue — flat, no opacity, so the line +
                             // dot don't darken where they overlap.
-                            background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor,
+                            background: spineColor(m.userId),
                           }}
                         />
                         {mobile ? (
                           <div
                             aria-hidden
-                            style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8, borderRadius: "50%", background: editorial ? (!!viewerUserId && m.userId === viewerUserId ? CANON.identity : CANON.friend) : lineColor }}
+                            style={{ position: "absolute", left: CELL / 2 - 4, top: CELL + 8, width: 8, height: 8, borderRadius: "50%", background: spineColor(m.userId) }}
                           />
                         ) : (
                         <Tooltip
@@ -1976,7 +1982,7 @@ export default function V2RoomMap({
                               width: 8,
                               height: 8,
                               borderRadius: "50%",
-                              background: CANON.business,
+                              background: spineColor(m.userId),
                             }}
                           />
                         </Tooltip>
@@ -2079,7 +2085,7 @@ function MapCellDot({
         background: bg,
         // Green-on-green was invisible (Alborz 2026-09-13): the green dot
         // wears a Friend-sky ring so it registers on any cell color.
-        boxShadow: kind === "blue" || (isRed && ring) ? `0 0 0 2px ${ringColor}` : undefined,
+        boxShadow: ring ? `0 0 0 2px ${ringColor}` : undefined,
         color: CANON.cream,
         display: "flex",
         alignItems: "center",

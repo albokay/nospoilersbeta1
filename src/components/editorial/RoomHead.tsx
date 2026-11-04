@@ -14,6 +14,7 @@
  *                    count, for a room: this room's own writing is left out.
  */
 import React, { useCallback, useEffect, useState } from "react";
+import { SIGNAL_DOT } from "./GroupRoom";
 import { E } from "../../styles/editorial";
 import {
   fetchRoomActivityVisibility, fetchGroupChatActivity, fetchGroupPitchActivity,
@@ -43,7 +44,7 @@ export function WithPlus({ onClick, desktop = false }: { onClick: () => void; de
 export function GroupRoomDisc({ desktop = false, signal = null, label = "Group room", onClick, style }: { desktop?: boolean; signal?: DiscSignal; /** The group's name (the lobby's: custom, else "Group N"). */ label?: string; onClick: () => void; style?: React.CSSProperties }) {
   const size = desktop ? E.measure.desktop.groupDisc : E.measure.phone.groupDisc;
   const arrow = desktop ? 32 : 24;
-  const dot = desktop ? 16 : 12;
+  const dot = SIGNAL_DOT;
   // The dot's centre on the circle's edge, up and to the left at 45°: r(1 − 1/√2) in from the box's corner.
   const inset = (size / 2) * (1 - Math.SQRT1_2);
   return (
@@ -66,7 +67,7 @@ export function GroupRoomDisc({ desktop = false, signal = null, label = "Group r
         <svg width={arrow} height={arrow} viewBox="0 0 24 24" fill="none" stroke={E.color.ink} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: "block", flexShrink: 0 }}><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></svg>
       </span>
       {signal && (
-        <span aria-hidden="true" style={{ position: "absolute", left: inset - dot / 2 - 2, top: inset - dot / 2 - 2, width: dot, height: dot, borderRadius: "50%", background: signal === "blue" ? E.color.identity : E.color.alert, border: `2px solid ${E.color.cream}` }} />
+        <span aria-hidden="true" style={{ position: "absolute", left: inset - dot / 2, top: inset - dot / 2, width: dot, height: dot, borderRadius: "50%", background: signal === "blue" ? E.color.identity : E.color.alert }} />
       )}
     </button>
   );
