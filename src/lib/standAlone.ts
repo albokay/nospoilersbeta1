@@ -27,6 +27,16 @@ export function standAloneDefault(show: StandAloneShow | null | undefined): bool
   return !!t && STAND_ALONE_TYPES.includes(t);
 }
 
+// ── The catalog, by id ─────────────────────────────────────────────────────
+// Every show row that reaches the client passes db's _rowToShow, which notes
+// it here, so the sealing rule (lib/utils canView) can ask about a show by
+// the id a progress entry carries without holding the catalog itself.
+const catalog = new Map<string, StandAloneShow>();
+
+export function noteShowCatalog(show: StandAloneShow & { id: string }) {
+  catalog.set(show.id, show);
+}
+
 // ── The switch's live state ────────────────────────────────────────────────
 // A flip lands in the shows catalog (set_show_stand_alone) and the catalog
 // cache is patched, but hosts hold their own snapshot of the show; this
@@ -47,6 +57,12 @@ export function showStandAlone(show: StandAloneShow | null | undefined): boolean
   if (show.id && overrides.has(show.id)) return overrides.get(show.id)!;
   if (typeof show.standAlone === "boolean") return show.standAlone;
   return standAloneDefault(show);
+}
+
+/** The same, by id (the flip wins, then the catalog's flag, then the
+ *  type's default; a show the client hasn't seen is not in the mode). */
+export function showStandAloneById(showId: string): boolean {
+  return showStandAlone(catalog.get(showId) ?? { id: showId });
 }
 
 /** The switch shows on a show the type puts in the mode, and on any show
@@ -87,6 +103,17 @@ export function noteSeasonPlace(showId: string, season: number, episode: number)
   m.set(season, episode);
   places.set(showId, m);
   notify();
+}
+
+const NO_PLACES: ReadonlyMap<number, number> = new Map<number, number>();
+
+/** CP2 (2026-11-04): the places the sealing rule reads for a progress
+ *  entry — a map when the entry's show is in stand alone mode (empty until
+ *  loaded; the entry's own position still counts for its season), null
+ *  when the show isn't, so the regular rule runs untouched. */
+export function placesForEntry(p: { showId?: string } | null | undefined): ReadonlyMap<number, number> | null {
+  if (!p?.showId || !showStandAloneById(p.showId)) return null;
+  return places.get(p.showId) ?? NO_PLACES;
 }
 
 /** The viewer's place in each season of a show (empty until loaded). */

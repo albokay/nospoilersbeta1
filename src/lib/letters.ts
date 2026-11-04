@@ -12,6 +12,8 @@
  * Positions are the raw dashboard s/e (what the group room already shows).
  */
 import { linearIndex } from "./groupPills";
+import { placesForEntry } from "./standAlone";
+import { canViewInSeason } from "./utils";
 
 export type RoomEntryTag = { authorId: string; s: number; e: number };
 export type RoomMemberPos = { userId: string; s: number; e: number };
@@ -31,11 +33,31 @@ export type RoomLetters = {
  *  room has started, a friend who hasn't sits at index 0 — "3 ahead of Sam",
  *  "3 letters for Sam to open". Before anyone starts, nobody is on the road
  *  (no "in sync" at zero). Departed members never reach here. */
-export function roadOthers(members: RoomMemberPos[], selfUserId: string, seasons: number[] | undefined): { userId: string; idx: number }[] {
+export function roadOthers(members: RoomMemberPos[], selfUserId: string, seasons: number[] | undefined, seasonal?: Seasonal | null): { userId: string; idx: number }[] {
   if (!members.some((m) => m.s > 0 || m.e > 0)) return [];
   return members
-    .filter((m) => m.userId !== selfUserId)
+    .filter((m) => m.userId !== selfUserId && (!seasonal || m.s === seasonal.season))
     .map((m) => ({ userId: m.userId, idx: linearIndex(m.s, m.e, seasons) }));
+}
+
+/** Stand alone mode (2026-11-04, CP2; the logic is PINNED for a revisit once
+ *  the arc is done): on a show in the mode the road and the mail count only
+ *  between people on the viewer's season — a friend on another season is
+ *  off the road (no gap, no sync claim), and the viewer's letters in a
+ *  season a friend isn't on aren't "for them to open" (their places in
+ *  other seasons aren't on the client yet). Letters "waiting for you" keep
+ *  counting everything sealed for the viewer. null off the mode. */
+export type Seasonal = { season: number; canSee: (s: number, e: number) => boolean };
+export function seasonalFor(showId: string | undefined, self: { s: number; e: number } | null | undefined): Seasonal | null {
+  if (!showId || !self) return null;
+  const places = placesForEntry({ showId });
+  if (!places) return null;
+  return { season: self.s, canSee: (s, e) => canViewInSeason({ season: s, episode: e }, self, places) };
+}
+/** How many friends the seasonal road leaves off (0 off the mode). */
+export function offSeason(members: RoomMemberPos[], selfUserId: string, seasonal?: Seasonal | null): number {
+  if (!seasonal || !members.some((m) => m.s > 0 || m.e > 0)) return 0;
+  return members.filter((m) => m.userId !== selfUserId && m.s !== seasonal.season).length;
 }
 
 export function computeRoomLetters(
@@ -43,21 +65,25 @@ export function computeRoomLetters(
   members: RoomMemberPos[],
   selfUserId: string,
   seasons: number[] | undefined,
+  seasonal?: Seasonal | null,
 ): RoomLetters {
   const out: RoomLetters = { waiting: 0, waitingFrom: [], forThem: 0, forWhom: [] };
   if (!tags?.length) return out;
   const idx = (s: number, e: number) => linearIndex(s, e, seasons);
   const self = members.find((m) => m.userId === selfUserId);
   const selfIdx = self ? idx(self.s, self.e) : 0;
-  const others = roadOthers(members, selfUserId, seasons);
+  const others = roadOthers(members, selfUserId, seasons, seasonal);
+  const posOf = (userId: string) => members.find((m) => m.userId === userId);
   const from = new Set<string>();
   const whom = new Set<string>();
   for (const t of tags) {
     const ti = idx(t.s, t.e);
     if (t.authorId === selfUserId) {
-      const behind = others.filter((o) => o.idx < ti);
+      const behind = seasonal
+        ? others.filter((o) => { const m = posOf(o.userId); return !!m && m.s === t.s && m.e < t.e; })
+        : others.filter((o) => o.idx < ti);
       if (behind.length) { out.forThem++; for (const o of behind) whom.add(o.userId); }
-    } else if (ti > selfIdx) {
+    } else if (seasonal ? !seasonal.canSee(t.s, t.e) : ti > selfIdx) {
       out.waiting++;
       from.add(t.authorId);
     }
@@ -74,11 +100,12 @@ export type GapSummary = {
   nearestBehind: { userId: string; gap: number } | null;
 };
 
-export function summarizeGap(selfIdx: number, others: { userId: string; idx: number }[]): GapSummary {
+export function summarizeGap(selfIdx: number, others: { userId: string; idx: number }[], offRoad = 0): GapSummary {
   if (!others.length) return { sync: null, nearestAhead: null, nearestBehind: null };
   const ahead = others.filter((o) => o.idx > selfIdx).sort((a, b) => a.idx - b.idx);
   const behind = others.filter((o) => o.idx < selfIdx).sort((a, b) => b.idx - a.idx);
-  if (!ahead.length && !behind.length) return { sync: others.length === 1 ? "one" : "all", nearestAhead: null, nearestBehind: null };
+  // No sync claim while a friend is off the road (stand alone mode, CP2).
+  if (!ahead.length && !behind.length) return { sync: offRoad > 0 ? null : others.length === 1 ? "one" : "all", nearestAhead: null, nearestBehind: null };
   return {
     sync: null,
     nearestAhead: ahead[0] ? { userId: ahead[0].userId, gap: ahead[0].idx - selfIdx } : null,

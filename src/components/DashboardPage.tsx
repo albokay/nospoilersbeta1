@@ -25,7 +25,7 @@ import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
-import { computeRoomLetters, roadOthers, summarizeGap, syncLine, lettersSentence, gapPhrase, lettersSegment, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, syncLine, lettersSentence, gapPhrase, lettersSegment, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan, positionLabel } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -568,14 +568,15 @@ export default function DashboardPage() {
     // Everyone else once anyone has started — a friend at zero included
     // (Alborz 2026-09-28). A member at zero is opted in too: the pill's
     // arrow says ▼N and the tooltip carries the mail.
-    const others = roadOthers(members, selfUserId, seasons);
+    const seasonal = seasonalFor(r.pill.showId, r.selfProg);
+    const others = roadOthers(members, selfUserId, seasons, seasonal);
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
-    const gap = summarizeGap(selfIdx, others);
+    const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
     const optedIn = !!r.selfProg || r.pill.right.kind !== "none";
     return {
       sync: optedIn && others.length ? syncLine(gap, others, nameOf) : null,
-      mail: optedIn && others.length ? lettersSentence(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf) : null,
+      mail: optedIn && others.length ? lettersSentence(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf) : null,
     };
   }
   function watchingTipProps(r: WatchRow) {
@@ -607,15 +608,16 @@ export default function DashboardPage() {
     const seasons = showsById[r.pill.showId]?.seasons;
     const gs = groupShows.find((g) => g.showId === r.pill.showId);
     const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
-    const others = roadOthers(members, selfUserId, seasons);
+    const seasonal = seasonalFor(r.pill.showId, r.selfProg);
+    const others = roadOthers(members, selfUserId, seasons, seasonal);
     if (!others.length) return r.pill.right.kind === "progress" ? `Only you so far · S${r.pill.right.s} E${r.pill.right.e}` : null;
     if (!r.selfProg && r.pill.right.kind === "none") return null;
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
-    const gap = summarizeGap(selfIdx, others);
+    const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
     const sync = syncLine(gap, others, nameOf);
     if (sync) return `☆ ${sync}`;
-    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
     return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
   }
   function editorialProposalLine(showId: string): string | null {

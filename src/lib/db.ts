@@ -3,7 +3,7 @@
  * All reads are public (no auth required).
  */
 import { supabase } from "./supabaseClient";
-import { noteSeasonPlace, noteStandAloneOverride, setSeasonPlaces, showStandAlone } from "./standAlone";
+import { noteSeasonPlace, noteShowCatalog, noteStandAloneOverride, setSeasonPlaces, showStandAlone } from "./standAlone";
 import { fetchAskNewGroups } from "./groupAsks";
 import type { Thread, Reply, FriendGroup, FriendGroupMember, Invitation, PeopleGroup, PeopleGroupMember, GroupShowVote } from "../types";
 import { groupDisplayName } from "./groupNames";
@@ -83,7 +83,7 @@ let _showsCache: Show[] | null = null;
 let _showsInflight: Promise<Show[]> | null = null;
 let _showsChannel: any = null;
 
-const _rowToShow = (row: any): Show => ({
+const _rowToShow = (row: any): Show => noteCatalog({
   id: row.id,
   name: row.name,
   seasons: row.seasons,
@@ -99,6 +99,8 @@ const _rowToShow = (row: any): Show => ({
   backdropUrl: row.backdrop_url ?? null,
   standAlone: typeof row.stand_alone === "boolean" ? row.stand_alone : null,
 });
+// Every catalog row noted for lib/standAlone's by-id lookups (CP2).
+const noteCatalog = (s: Show): Show => { noteShowCatalog(s); return s; };
 const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
 
 /** Insert-or-replace one show in the shared cache (new array each time so
@@ -1324,6 +1326,11 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
   // migration. Safe to drop the fallback once every env has the columns.
   let data: any[] | null = null;
   let usedFallback = false;
+  // Stand alone mode (2026-11-04, CP2): the viewer's place in every season
+  // of every show, read beside the positions and mirrored into
+  // lib/standAlone's store, where the sealing rule and the pickers read it.
+  // Column-tolerant until 20261104_stand_alone_mode.sql has run.
+  const placesP = supabase.from("progress_seasons").select("show_id, season, episode").eq("user_id", userId);
   {
     const res = await supabase
       .from("progress")
@@ -1343,9 +1350,23 @@ export async function fetchProgress(userId: string): Promise<Record<string, impo
       data = res.data;
     }
   }
+  try {
+    const sp = await placesP;
+    if (sp.error) console.warn("season places read failed", sp.error.message);
+    else {
+      const byShow = new Map<string, Map<number, number>>();
+      for (const r of (sp.data ?? []) as { show_id: string; season: number; episode: number }[]) {
+        const m = byShow.get(r.show_id) ?? new Map<number, number>();
+        m.set(r.season, r.episode);
+        byShow.set(r.show_id, m);
+      }
+      for (const [sid, m] of byShow) setSeasonPlaces(sid, m);
+    }
+  } catch (e) { console.warn("season places read failed", e); }
   const result: Record<string, import("../types").ProgressEntry> = {};
   for (const row of data ?? []) {
     result[row.show_id] = {
+      showId: row.show_id,
       s: row.season,
       e: row.episode,
       isRewatching:  row.is_rewatching  ?? false,
@@ -1734,11 +1755,11 @@ export async function persistProgressUpdate(
     // you're in now; a switch of season (or any pick) must never be read
     // as a rewatch or trip the rewatch trigger's one-way rule, so the row
     // is written plainly — no rewatch state, the high-water mark kept.
-    const updated: import("../types").ProgressEntry = { ...(cur ?? {} as import("../types").ProgressEntry), s: next.s, e: next.e, isRewatching: false, rewatchS: undefined, rewatchE: undefined };
+    const updated: import("../types").ProgressEntry = { ...(cur ?? {} as import("../types").ProgressEntry), showId, s: next.s, e: next.e, isRewatching: false, rewatchS: undefined, rewatchE: undefined };
     await upsertRewatchStatus(userId, showId, updated);
     return updated;
   }
-  const updated = computeNextProgressEntry(cur, next);
+  const updated: import("../types").ProgressEntry = { ...computeNextProgressEntry(cur, next), showId };
   // Switch OFF (today's one position): moving on to a later season means
   // the season you left is done, so its place is set to its end — the
   // memory stand alone mode restores when it's switched on (his yes, 11-04).
@@ -3975,7 +3996,11 @@ export async function fetchGroupThreads(
    * notification dot doesn't fire on the user's own posts). Reply *counts*
    * remain inclusive — own replies still count toward the "(N)" total.
    */
-  viewerId?: string | null
+  viewerId?: string | null,
+  /** Stand alone mode (2026-11-04, CP2): the room passes the per-season
+   *  rule here; without it the one-position rule on maxS/maxE runs as
+   *  ever. */
+  gate?: (season: number, episode: number) => boolean
 ): Promise<{
   threads: Thread[];
   replyCounts: Record<string, number>;
@@ -4068,6 +4093,8 @@ export async function fetchGroupThreads(
   const aheadCounts: Record<string, number> = {};
   const sharedAt: Record<string, number> = {};
   const journalKind: Record<string, JournalKind> = {};
+  // The viewer's rule: the room's per-season gate, else the one position.
+  const pass = gate ?? ((s: number, e: number) => s < maxS || (s === maxS && e <= maxE));
   for (const row of data ?? []) {
     const t = (row as any).threads;
     if (!t) continue;
@@ -4081,8 +4108,7 @@ export async function fetchGroupThreads(
     const byId: Record<string, any> = {};
     for (const r of allReplies) byId[r.id] = r;
     const selfVisible = (r: any) =>
-      r.group_id === groupId && !r.is_deleted &&
-      (r.season < maxS || (r.season === maxS && r.episode <= maxE));
+      r.group_id === groupId && !r.is_deleted && pass(r.season, r.episode);
     const chainVisible = (r: any): boolean => {
       if (!selfVisible(r)) return false;
       let cur = r.referenced_reply_id ? byId[r.referenced_reply_id] : null;
@@ -4096,7 +4122,7 @@ export async function fetchGroupThreads(
     const replyCount = visibleReplies.length;
     if (t.is_deleted && replyCount === 0) continue;
     const thread = rowToThread(t);
-    if (thread.season > maxS || (thread.season === maxS && thread.episode > maxE)) {
+    if (!pass(thread.season, thread.episode)) {
       // Spoiler-gated entry: excluded from the feed, but surfaced so the
       // room can render its one-line stub (CP4). Deleted entries never stub.
       if (!t.is_deleted) {
@@ -4168,7 +4194,7 @@ export async function fetchGroupThreads(
     for (const r of allReplies) {
       if (r.group_id !== groupId) continue;
       if (r.is_deleted) continue;
-      if (!(r.season > maxS || (r.season === maxS && r.episode > maxE))) continue;
+      if (pass(r.season, r.episode)) continue;
       ahead++;
     }
     if (ahead > 0) aheadCounts[thread.id] = ahead;

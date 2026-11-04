@@ -1,4 +1,5 @@
 import type { Thread, Reply } from '../types';
+import { placesForEntry } from './standAlone';
 
 export const timeAgo = (ms: number) => {
   const diffMs = Date.now() - ms;
@@ -34,7 +35,30 @@ export type ViewerProgress = {
   isRewatching?: boolean;
   highestS?: number;
   highestE?: number;
+  /** The show, when known — stand alone mode is decided per show. */
+  showId?: string;
 };
+
+// Stand alone mode (2026-11-04, CP2): on a show in the mode a person holds
+// a PLACE PER SEASON, and a piece of writing opens only if they've picked
+// its season and reached its episode there — seasons they haven't picked
+// stay sealed, earlier or later. Season 0 (letters from Sidebar) is open
+// to anyone with a position. The entry's own position counts for its
+// season, so the rule holds before the places have loaded. Only an entry
+// whose show is in the mode takes this branch; everything else is the
+// one-position rule below, untouched.
+export const canViewInSeason = (
+  t: { season: number; episode: number },
+  p: { s: number; e: number },
+  places: ReadonlyMap<number, number>
+) => {
+  if (t.season <= 0) return true;
+  const place = Math.max(places.get(t.season) ?? -1, t.season === p.s ? p.e : -1);
+  return place >= 0 && t.episode <= place;
+};
+
+/** The places the rule reads for this viewer, or null off the mode. */
+export const standAlonePlaces = (p?: ViewerProgress | null): ReadonlyMap<number, number> | null => placesForEntry(p);
 
 export const effectiveProgress = (
   p?: ViewerProgress | null
@@ -50,6 +74,8 @@ export const canView = (
   t: { season: number; episode: number },
   p?: ViewerProgress | null
 ) => {
+  const places = placesForEntry(p);
+  if (places && p) return canViewInSeason(t, p, places);
   const eff = effectiveProgress(p);
   return !!eff && (t.season < eff.s || (t.season === eff.s && t.episode <= eff.e));
 };

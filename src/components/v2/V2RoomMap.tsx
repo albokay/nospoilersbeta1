@@ -6,7 +6,7 @@ import Tooltip from "../Tooltip";
 import LoadingDots from "../LoadingDots";
 import { D } from "../dashboardChrome";
 import { M } from "../../mobile/m";
-import { effectiveProgress } from "../../lib/utils";
+import { canViewInSeason, effectiveProgress, standAlonePlaces } from "../../lib/utils";
 import type { ProgressEntry } from "../../types";
 import StarFace from "./StarFace";
 import { E } from "../../styles/editorial";
@@ -687,6 +687,10 @@ export default function V2RoomMap({
   }, [members, rows]);
 
   const viewerEff = effectiveProgress(viewerProgress);
+  // Stand alone mode (2026-11-04, CP2): the viewer's places per season when
+  // the show is in the mode — a cell is sealed unless its season is picked
+  // and its episode reached there. (Which seasons the map draws is CP4.)
+  const viewerPlaces = standAlonePlaces(viewerProgress);
   // Every spine / stub / terminal dot: Business on desktop's dark surface,
   // Friend blue on the mobile sheet's cream (Alborz 2026-09-23).
   const lineColor = mobile ? CANON.friend : CANON.business;
@@ -1494,7 +1498,9 @@ export default function V2RoomMap({
                 // Build tooltip body
                 const ratingPhrase = rating ? RATING_PHRASES[rating] : null;
                 const aboveViewer =
-                  !!viewerEff && isAbove(viewerEff.s, viewerEff.e, row.season, row.episode);
+                  !!viewerEff && (viewerPlaces && viewerProgress
+                    ? !canViewInSeason({ season: row.season, episode: row.episode }, viewerProgress, viewerPlaces)
+                    : isAbove(viewerEff.s, viewerEff.e, row.season, row.episode));
 
                 // Tooltip line shape per sidebar_spec_rating_dice_display.md:
                 //   - State 1 (reached + rated, no entry) → 2 lines:

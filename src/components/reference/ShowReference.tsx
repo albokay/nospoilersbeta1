@@ -82,8 +82,12 @@ const idx = (s: number, e: number) => s * 10000 + e;
 type RefSeasonLike = { n: number; episodes: { s: number; e: number }[] };
 
 export default function ShowReference({
-  showId, viewerProgress, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost, openLetterAt = null,
+  showId, viewerProgress, standAlonePlaces = null, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost, openLetterAt = null,
 }: {
+  /** Stand alone mode (2026-11-04, CP2): the viewer's place per season when
+   *  the show is in the mode — the guide then shows the picked seasons,
+   *  each to its place, with no next-season tease. null off the mode. */
+  standAlonePlaces?: ReadonlyMap<number, number> | null;
   /** Arriving from the dashboard's "Read it →" note (open letters, CP4):
    *  the episode whose letters open once they've loaded. */
   openLetterAt?: { s: number; e: number } | null;
@@ -381,6 +385,13 @@ export default function ShowReference({
   // The effective dial: the prop, unless a canon-add just jumped it.
   const prog = progressOverride ?? viewerProgress;
   const vIdx = idx(prog.s, prog.e);
+  // Stand alone mode (2026-11-04, CP2): in the mode an episode is watched
+  // when it's within your place in its season, and a season is picked when
+  // it has a place (the one you're in counts); off the mode, the dial.
+  const sa = standAlonePlaces ?? null;
+  const placeIn = (s: number) => (sa ? Math.max(sa.get(s) ?? -1, s === prog.s ? prog.e : -1) : null);
+  const seen = (s: number, e: number) => (sa ? (placeIn(s) ?? -1) >= e : idx(s, e) <= vIdx);
+  const seasonPicked = (n: number) => (sa ? (placeIn(n) ?? -1) >= 0 : n <= prog.s);
   const seasonCounts = (catalogShow as { seasons?: number[] } | null)?.seasons;
   const finished = !!seasonCounts?.length && (prog.s > seasonCounts.length || (prog.s === seasonCounts.length && prog.e >= (seasonCounts[seasonCounts.length - 1] ?? 1)));
   // Arriving via the dashboard's "Pick its essential episodes →" (Alborz,
@@ -418,8 +429,8 @@ export default function ShowReference({
   // poster and in the trailer, not a spoiler.
   const castIdx = Math.max(vIdx, idx(1, 1));
   const visiblePeople = useMemo(
-    () => (ref?.people ?? []).filter((p) => idx(p.firstS, p.firstE) <= castIdx),
-    [ref, castIdx],
+    () => (ref?.people ?? []).filter((p) => (sa ? seen(p.firstS, p.firstE) || idx(p.firstS, p.firstE) <= idx(1, 1) : idx(p.firstS, p.firstE) <= castIdx)),
+    [ref, castIdx, sa, prog.s, prog.e], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Watched episodes (dropdown options) + the selected one, clamped to the
@@ -429,11 +440,11 @@ export default function ShowReference({
     const out: { s: number; e: number; title: string }[] = [];
     for (const season of ref?.seasons ?? []) {
       for (const ep of season.episodes) {
-        if (idx(ep.s, ep.e) <= vIdx) out.push({ s: ep.s, e: ep.e, title: ep.title });
+        if (seen(ep.s, ep.e)) out.push({ s: ep.s, e: ep.e, title: ep.title });
       }
     }
     return out;
-  }, [ref, vIdx]);
+  }, [ref, vIdx, sa, prog.s, prog.e]); // eslint-disable-line react-hooks/exhaustive-deps
   // The plot by season (Alborz's notes, round 5): with more than one season
   // watched, each season folds; the season you're in starts open and opening
   // one closes the other.
@@ -463,7 +474,7 @@ export default function ShowReference({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openLetterAt, guideByEp, guideSealed, user?.id, editorial]);
   useEffect(() => { setOpenPlotSeason(prog.s); }, [prog.s]);
-  const selCastEp = (castEpisode && idx(castEpisode.s, castEpisode.e) <= vIdx) ? castEpisode : prog;
+  const selCastEp = (castEpisode && seen(castEpisode.s, castEpisode.e)) ? castEpisode : prog;
   const selEpData = useMemo(
     () => ref?.seasons.find((se) => se.n === selCastEp.s)?.episodes.find((ep) => ep.e === selCastEp.e),
     [ref, selCastEp.s, selCastEp.e],
@@ -477,8 +488,8 @@ export default function ShowReference({
     if (!selEpData?.cast) return null; // pre-rev blob → whole-cast fallback
     return selEpData.cast
       .map((n) => peopleByName.get(n) ?? { name: n, character: null, firstS: selCastEp.s, firstE: selCastEp.e, exact: true, img: null, tmdbId: null })
-      .filter((person) => idx(person.firstS, person.firstE) <= vIdx);
-  }, [selEpData, peopleByName, selCastEp.s, selCastEp.e, vIdx]);
+      .filter((person) => seen(person.firstS, person.firstE));
+  }, [selEpData, peopleByName, selCastEp.s, selCastEp.e, vIdx, sa, prog.s, prog.e]); // eslint-disable-line react-hooks/exhaustive-deps
   // The folded 8 (Alborz catch 2026-09-05): the data sources only know
   // season REGULARS (the same list for every episode of a season — verified
   // against TMDB's per-episode credits endpoint) plus THIS EPISODE's guest
@@ -532,7 +543,7 @@ export default function ShowReference({
   }
 
   if (editorial) {
-    const seasonsVisible = [...ref.seasons].filter((season) => season.n <= prog.s).sort((a, b) => a.n - b.n);
+    const seasonsVisible = [...ref.seasons].filter((season) => seasonPicked(season.n)).sort((a, b) => a.n - b.n);
     // The cast as polaroids (the guide redesign, 2026-10-31, his canvas):
     // the episode's whole cast in a strip that scrolls sideways (the phone's
     // bleeds to the screen's edges; 14px under the cards keeps a drawn
@@ -562,8 +573,8 @@ export default function ShowReference({
       const since = idx(p.firstS, p.firstE) > idx(1, 1) ? (p.exact ? `since S${p.firstS} E${p.firstE}` : `since season ${p.firstS}`) : null;
       return [p.character, since].filter(Boolean).join(" · ") || null;
     };
-    const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx));
-    const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => idx(ep.s, ep.e) <= vIdx) })).filter((season) => season.eps.length > 0);
+    const plotEpisodes = seasonsVisible.flatMap((season) => season.episodes.filter((ep) => seen(ep.s, ep.e)));
+    const plotSeasons = seasonsVisible.map((season) => ({ n: season.n, eps: season.episodes.filter((ep) => seen(ep.s, ep.e)) })).filter((season) => season.eps.length > 0);
     plotSeasonsRef.current = plotSeasons;
     // The star on the plot (Alborz, round 5 follow-up): a line and a star
     // after each episode's label, for a show you've FINISHED that's in your
@@ -730,8 +741,8 @@ export default function ShowReference({
             stretch. Letters about an episode you've reached have no row here:
             their episode's act already says it in red. Sealed by where it was
             written FROM. */}
-        {season.n === prog.s && guideSealed
-          .filter((sg) => sg.season > prog.s || (sg.season === prog.s && sg.episode > prog.e))
+        {(sa ? true : season.n === prog.s) && guideSealed
+          .filter((sg) => (sa ? sg.season === season.n && !seen(sg.season, sg.episode) : sg.season > prog.s || (sg.season === prog.s && sg.episode > prog.e)))
           .map((sg) => {
             const names = sg.writerIds.map(guideNameOf);
             const who = joinNames(names);
@@ -770,7 +781,7 @@ export default function ShowReference({
     // them all. On DESKTOP they sit in the rail as tabs: the season in view
     // is the cream tab with an ink outline, the others greyed and indented
     // (one is always in view). A one-season show gets no strips.
-    const strips = [...ref.seasons].filter((season) => season.n <= prog.s + 1 && season.episodes.length > 0).sort((a, b) => a.n - b.n);
+    const strips = [...ref.seasons].filter((season) => (sa ? seasonPicked(season.n) : season.n <= prog.s + 1) && season.episodes.length > 0).sort((a, b) => a.n - b.n);
     const openSeason = plotSeasons.find((x) => x.n === openPlotSeason) ?? null;
     // The sheet in view on desktop: the opened season, else the latest
     // watched; 0 = the viewer closed the open tab (his note, 2026-11-02: the
@@ -919,9 +930,11 @@ export default function ShowReference({
           {ref.seasons.filter((season) => season.n >= 2 && season.trailerKey).map((season) => {
             const prev = ref.seasons.find((x) => x.n === season.n - 1);
             const prevLast = prev?.episodes[prev.episodes.length - 1];
-            const unlocked = !!prevLast && vIdx >= idx(prevLast.s, prevLast.e);
+            // In stand alone mode a picked season's trailer is open (it
+            // can't spoil another season) and nothing is teased.
+            const unlocked = sa ? seasonPicked(season.n) : (!!prevLast && vIdx >= idx(prevLast.s, prevLast.e));
             if (unlocked) return <RefTrailer key={season.n} label={`season ${season.n}`} trailerKey={season.trailerKey!} editorial />;
-            if (season.n === prog.s + 1) {
+            if (!sa && season.n === prog.s + 1) {
               return <div key={season.n} style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>The season {season.n} trailer unlocks when you finish season {season.n - 1}.</div>;
             }
             return null;
@@ -932,7 +945,7 @@ export default function ShowReference({
     return (
       <div style={{ color: E.color.ink, fontFamily: E.font.interface, paddingBottom: 80 }}>
         {/* The room links left the guide's body (his call, 11-03): the show's own page carries them in its band, green strips mirroring the room's yellow door. */}
-        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>{vIdx < idx(1, 1) ? "Nothing watched yet. Everything below is safe before S1 E1." : `Everything below stops at S${prog.s} E${prog.e}. Nothing past it.`}</div>
+        <div style={{ ...E.type.label11, letterSpacing: "0.06em", color: E.color.inkMuted }}>{vIdx < idx(1, 1) ? "Nothing watched yet. Everything below is safe before S1 E1." : sa ? "Everything below stops at your place in each season you\u2019ve picked. Nothing past it." : `Everything below stops at S${prog.s} E${prog.e}. Nothing past it.`}</div>
         {user && canonOn && (
           <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 18 }}>
             <UnderlineWord onClick={() => navigate(mobile ? "/m/dashboard" : "/dashboard", { state: { scrollToCanon: true } })} title="See your canon on the dashboard">In your canon →</UnderlineWord>

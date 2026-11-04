@@ -16,7 +16,7 @@ import { RoadRule, SealedEntry, EntryShell, FROM_LINE, ENTRY_TITLE, ENTRY_PREVIE
 import { UnderlineWord } from "../editorial/Chrome";
 import { UNDERLINE_WORD } from "../editorial/MapNotes";
 import { EditorialScope } from "../../lib/skin";
-import { effectiveProgress } from "../../lib/utils";
+import { effectiveProgress, standAlonePlaces } from "../../lib/utils";
 import EpisodeTag, { REWATCH_TOOLTIP } from "../EpisodeTag";
 import Stamp, { stampSpecFor, stampBox } from "../Stamp";
 import { stampLabelFor, rangeCount, inARow } from "../../lib/letterRange";
@@ -527,7 +527,11 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
   const countdownFor = (entry: V2RoomFeedEntry): string | null => {
     if (!userId || entry.authorId !== userId || entry.gatedStub || entry.isDeleted || !positions?.length) return null;
     const ei = idxOf(entry.s, entry.e);
+    // Stand alone mode (2026-11-04, CP2): only a friend on the letter's
+    // season counts down to it.
+    const seasonal = !!standAlonePlaces(viewerProgress);
     const behind = positions
+      .filter((p) => !seasonal || p.s === entry.s)
       .map((p) => ({ name: dn(p.username), idx: idxOf(p.s, p.e) }))
       .filter((p) => p.idx > 0)
       .map((p) => ({ name: p.name, n: ei - p.idx }))
@@ -926,18 +930,28 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
         if (entry.gatedStub && editorial) {
           // The editorial sealed letter: FROM · SEALED UNTIL, one dim line,
           // the lock on the writer's stamp (drawn at hairline weight in ink).
-          const aheadBy = seasons
-            ? linearIndex(entry.s, entry.e, seasons) - linearIndex(viewerProgress?.s ?? 0, viewerProgress?.e ?? 0, seasons)
-            : null;
+          // Stand alone mode (2026-11-04, CP2): a letter in a season you
+          // haven't picked opens when you pick it; in a picked season the
+          // count is within that season.
+          const places = standAlonePlaces(viewerProgress);
+          const placeIn = places && viewerProgress ? Math.max(places.get(entry.s) ?? -1, entry.s === viewerProgress.s ? viewerProgress.e : -1) : null;
+          const unpicked = !!places && (placeIn ?? -1) < 0;
+          const aheadBy = places
+            ? (unpicked ? null : entry.e - (placeIn ?? 0))
+            : seasons
+              ? linearIndex(entry.s, entry.e, seasons) - linearIndex(viewerProgress?.s ?? 0, viewerProgress?.e ?? 0, seasons)
+              : null;
           const sv = stampSpecFor(entry.authorId || entry.authorUsername);
           const from = entry.fromS != null && entry.fromE != null ? { s: entry.fromS, e: entry.fromE } : null;
           // A letter written after a binge names the stretch (Alborz 2026-10-25;
           // "four in a row" in italics) and the episode it opens at.
           const line: React.ReactNode = from && seasons
             ? <>{dn(entry.authorUsername)} wrote this after watching <em>{inARow(rangeCount(from, { s: entry.s, e: entry.e }, seasons))}</em>. It opens at S{entry.s} E{entry.e}.</>
-            : aheadBy != null && aheadBy > 0
-              ? `A letter to ${gatedStubAudience} from ${aheadBy} episode${aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.`
-              : `A letter to ${gatedStubAudience} from S${entry.s} E${entry.e}. It opens when you catch up.`;
+            : unpicked
+              ? `A letter to ${gatedStubAudience} from season ${entry.s}. It opens when you pick that season.`
+              : aheadBy != null && aheadBy > 0
+                ? `A letter to ${gatedStubAudience} from ${aheadBy} episode${aheadBy === 1 ? "" : "s"} ahead. It opens when you catch up.`
+                : `A letter to ${gatedStubAudience} from S${entry.s} E${entry.e}. It opens when you catch up.`;
           return (
             <div key={entry.threadId} ref={(el) => { ticketRefs.current[entry.threadId] = el; }} data-thread-id={entry.threadId} style={{ position: "relative", scrollMarginTop: 72 }}>
               <SealedEntry

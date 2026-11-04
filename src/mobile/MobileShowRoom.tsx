@@ -38,7 +38,7 @@ import JournalCard from "../components/editorial/JournalCard";
 import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
 import AccountModal from "../components/AccountModal";
-import { effectiveProgress, isSeasonEnd } from "../lib/utils";
+import { canView, effectiveProgress, isSeasonEnd, standAlonePlaces } from "../lib/utils";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
 import SidebarLetter, { JournalLetter } from "../components/SidebarLetter";
@@ -505,9 +505,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       // progress promise INSIDE the batch instead of trailing it.
       const emptyGr = { threads: [] as Thread[], replyCounts: {} as Record<string, number>, aheadCounts: {} as Record<string, number>, sharedAt: {} as Record<string, number>, latestVisibleReplyAt: {} as Record<string, number>, hiddenCounts: {} as Record<string, number>, latestHiddenReplyAt: {} as Record<string, number> };
       const progressP = fetchProgress(user.id);
-      const grP: Promise<any> = progressP.then((pm) => {
-        const eff = effectiveProgress(pm[showId] ?? null);
-        return eff ? fetchGroupThreads(roomId, eff.s, eff.e, user.id) : (emptyGr as any);
+      const grP: Promise<any> = Promise.all([progressP, fetchShows()]).then(([pm]) => {
+        const entry = pm[showId] ?? null;
+        const eff = effectiveProgress(entry);
+        if (!eff) return emptyGr as any;
+        // Stand alone mode (2026-11-04, CP2): on a show in the mode the
+        // room's letters and responses open by the per-season rule; the
+        // catalog is awaited first so the show's switch is known. Off the
+        // mode nothing is passed and the one-position rule runs as ever.
+        const gate = standAlonePlaces(entry) ? (s: number, e: number) => canView({ season: s, episode: e }, entry) : undefined;
+        return fetchGroupThreads(roomId, eff.s, eff.e, user.id, gate);
       });
       const [allShows, progressMap, roomMapData, myGroups, cn, mine, gr, sbKinds, showVotes, joinOrder] = await Promise.all([
         fetchShows(), progressP, fetchRoomMapData(roomId),
@@ -1037,6 +1044,9 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
     const v = effectiveProgress(progressForShow);
     const vIdx = v ? linearIndex(v.s, v.e, show?.seasons) : 0;
     const me = effectiveProgress(m.progress);
+    // Stand alone mode (2026-11-04, CP2; his yes 4): only a friend on your
+    // season, behind you in it.
+    if (standAlonePlaces(progressForShow) && (me?.s ?? 0) !== (v?.s ?? 0)) return null;
     const mIdx = me ? linearIndex(me.s, me.e, show?.seasons) : 0;
     const behind = vIdx - mIdx;
     if (behind < 3) return null;
@@ -1640,7 +1650,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
         {/* ── Feed (shared V2RoomFeed — expansion, respond, edit, stubs) ── */}
         {tab === "reference" && show && refEff && (
           <div style={editorial ? { marginTop: 18 } : undefined}>
-            <ShowReference showId={show.id} viewerProgress={refEff} openLetterAt={(location.state as { guideLetterAt?: { s: number; e: number } } | null)?.guideLetterAt ?? null} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+            <ShowReference showId={show.id} viewerProgress={refEff} standAlonePlaces={standAlonePlaces(progressForShow)} openLetterAt={(location.state as { guideLetterAt?: { s: number; e: number } } | null)?.guideLetterAt ?? null} mobile showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
                   if (m.userId !== user?.id) return m;
                   if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
                   const i = m.ratings.findIndex((x) => x.s === s && x.e === e);

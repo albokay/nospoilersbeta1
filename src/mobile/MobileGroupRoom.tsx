@@ -8,7 +8,7 @@ import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
 import LetterDisc from "../components/LetterDisc";
-import { computeRoomLetters, roadOthers, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -789,7 +789,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     // Everyone else once anyone has started — a friend at zero included
     // (Alborz 2026-09-28); empty while nobody has started, or when you're
     // alone in the room.
-    const others = roadOthers(members, selfUserId, seasons);
+    const seasonal = seasonalFor(r.pill.showId, r.selfProg);
+    const others = roadOthers(members, selfUserId, seasons, seasonal);
     if (!others.length) {
       // Mirror the pill's right side: written-but-unwatched shows "s0 e0".
       return r.pill.right.kind === "progress" ? `s${r.pill.right.s} e${r.pill.right.e}` : null;
@@ -799,12 +800,12 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     if (!r.selfProg && r.pill.right.kind === "none") return null;
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
-    const gap = summarizeGap(selfIdx, others);
+    const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
     const sync = syncLine(gap, others, nameOf);
     if (sync) {
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CelebrationStar size={12} color={C.cream} />{sync}</span>;
     }
-    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
     const text = [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ");
     return text || null;
   }
@@ -816,15 +817,16 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const seasons = showsById[r.pill.showId]?.seasons;
     const gs = groupShows.find((g) => g.showId === r.pill.showId);
     const members = (gs?.members ?? []).map((m) => ({ userId: m.userId, s: m.s ?? 0, e: m.e ?? 0 }));
-    const others = roadOthers(members, selfUserId, seasons);
+    const seasonal = seasonalFor(r.pill.showId, r.selfProg);
+    const others = roadOthers(members, selfUserId, seasons, seasonal);
     if (!others.length) return r.pill.right.kind === "progress" ? `Only you so far · S${r.pill.right.s} E${r.pill.right.e}` : null;
     if (!r.selfProg && r.pill.right.kind === "none") return null;
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
-    const gap = summarizeGap(selfIdx, others);
+    const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
     const sync = syncLine(gap, others, nameOf);
     if (sync) return `☆ ${sync}`;
-    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons), nameOf);
+    const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
     return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
   }
 

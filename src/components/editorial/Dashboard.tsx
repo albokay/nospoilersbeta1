@@ -35,7 +35,7 @@ import {
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import { linearIndex } from "../../lib/groupPills";
-import { roadOthers, summarizeGap } from "../../lib/letters";
+import { offSeason, roadOthers, seasonalFor, summarizeGap } from "../../lib/letters";
 import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
@@ -85,7 +85,8 @@ export function roomShelfRows(
       const seasons = showsById[r.showId]?.seasons;
       const members = b.members.filter((m) => m.s != null && m.e != null && mem.includes(m.userId)).map((m) => ({ userId: m.userId, s: m.s as number, e: m.e as number }));
       const self = members.find((m) => m.userId === selfUserId);
-      const gap = summarizeGap(self ? linearIndex(self.s, self.e, seasons) : 0, roadOthers(members, selfUserId, seasons));
+      const seasonal = seasonalFor(r.showId, self);
+      const gap = summarizeGap(self ? linearIndex(self.s, self.e, seasons) : 0, roadOthers(members, selfUserId, seasons, seasonal), offSeason(members, selfUserId, seasonal));
       if (gap.nearestAhead) reason = `you\u2019re ${gap.nearestAhead.gap} behind`;
       else if (gap.nearestBehind) reason = `you\u2019re ${gap.nearestBehind.gap} ahead`;
     }
