@@ -93,6 +93,42 @@ function canView(season: number, episode: number, eff: Eff): boolean {
   return season < eff.s || (season === eff.s && episode <= eff.e);
 }
 
+// Stand alone mode (2026-11-04, CP3). Mirrors src/lib/standAlone.ts and
+// canViewInSeason in src/lib/utils.ts: on a show in the mode (shows.stand_alone,
+// else its TVMaze type) a person holds a PLACE PER SEASON (progress_seasons;
+// the position row counts for the season it's in) and writing opens only
+// within a picked season's place; season 0 is open to anyone. Every site
+// below takes this branch ONLY for a show in the mode.
+const STAND_ALONE_TYPES = ["reality", "talk show", "documentary", "game show", "news", "sports", "variety", "award show", "panel show"];
+function standAloneShow(sh: any): boolean {
+  if (typeof sh?.stand_alone === "boolean") return sh.stand_alone;
+  const t = String(sh?.tvmaze_type ?? "").trim().toLowerCase();
+  return !!t && STAND_ALONE_TYPES.includes(t);
+}
+type Places = Map<string, Map<number, number>>; // `${userId}|${showId}` → season → episode
+async function loadPlaces(admin: any, userIds: string[], showIds: string[]): Promise<Places> {
+  const out: Places = new Map();
+  if (!userIds.length || !showIds.length) return out;
+  const { data, error } = await admin.from("progress_seasons").select("user_id, show_id, season, episode").in("user_id", userIds).in("show_id", showIds);
+  if (error) { console.warn("season places read failed:", error.message); return out; }
+  for (const r of (data ?? []) as any[]) {
+    const k = `${r.user_id}|${r.show_id}`;
+    if (!out.has(k)) out.set(k, new Map());
+    out.get(k)!.set(Number(r.season), Number(r.episode));
+  }
+  return out;
+}
+/** The person's place in a season: the remembered one, or the position row when it's in that season; -1 = not picked. */
+function placeIn(places: Places, userId: string, showId: string, p: any, season: number): number {
+  const remembered = places.get(`${userId}|${showId}`)?.get(season) ?? -1;
+  const current = p && Number(p.season ?? 0) === season ? Number(p.episode ?? 0) : -1;
+  return Math.max(remembered, current);
+}
+function canSeeInSeason(places: Places, userId: string, showId: string, p: any, season: number, episode: number): boolean {
+  if (season <= 0) return true;
+  return placeIn(places, userId, showId, p, season) >= episode;
+}
+
 // Seen-gating (Alborz, round 6): an item counts only while the app itself
 // still marks it new for the recipient — newer than their last visit to that
 // room (friend_group_members.last_seen_at), that chat (chat_last_seen_at) or
@@ -705,7 +741,7 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
   const roomIds = live.map((r) => r.id as string);
   const showIds = [...new Set(live.map((r) => r.show_id as string))];
   const [{ data: showRows }, { data: memberRows }, { data: existing }] = await Promise.all([
-    admin.from("shows").select("id, name, seasons, status, seasons_planned, next_air_at, next_air_season").in("id", showIds),
+    admin.from("shows").select("id, name, seasons, status, seasons_planned, next_air_at, next_air_season, stand_alone, tvmaze_type").in("id", showIds),
     admin.from("friend_group_members").select("group_id, user_id").in("group_id", roomIds),
     admin.from("sidebar_letters").select("room_id, kind, season").in("room_id", roomIds),
   ]);
@@ -727,6 +763,7 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
       .in("show_id", showIds);
     for (const pr of (progs ?? []) as any[]) progByKey.set(`${pr.user_id}|${pr.show_id}`, pr);
   }
+  const places = await loadPlaces(admin, userIds, showIds);
   // A letter at the second-to-last episode counts as the trigger too.
   const { data: linkRows } = await admin
     .from("group_threads")
@@ -753,8 +790,32 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
       return pr ? { eff: effectiveProgress(pr) as Eff, at: pr.updated_at ? new Date(pr.updated_at).getTime() : 0 } : null;
     });
 
+    // Stand alone mode (2026-11-04, CP3; his yes 4): the finished letter
+    // comes PER SEASON, only when everyone in the room is on the same season
+    // at its known end (and someone got there this week); there is no
+    // "almost done" letter in the mode, and no whole-show one.
+    const sa = standAloneShow(show);
+    if (sa) {
+      const seasonOf = members.map((uid) => Number(progByKey.get(`${uid}|${room.show_id}`)?.season ?? 0));
+      const n = seasonOf[0];
+      if (n >= 1 && n <= S && seasonOf.every((x) => x === n) && seasonKnownComplete(show, n) && !planted.has(`${room.id}|whats_next|${n}`)) {
+        const lastN = seasons[n - 1] ?? 0;
+        const everyoneDone = members.every((uid) => placeIn(places, uid, room.show_id, progByKey.get(`${uid}|${room.show_id}`), n) >= lastN);
+        const recent = effs.some((x) => x && x.at >= recentCutoff);
+        if (lastN >= 1 && everyoneDone && recent) {
+          const tail = "\n\nBelow are the shows already proposed in this group, and a few from your own lists. Say yes to what you'd watch.";
+          const ok = await plantOne(admin, room.id, room.show_id, "whats_next", n, {
+            title: `You all finished season ${n} of ${show.name}. What's next?`,
+            preview: `Everyone in this room has reached the end of season ${n}.`,
+            body: `Everyone in this room has reached the end of season ${n} of ${show.name}. Pick another season from the room's menu, or what you'll watch together next.${tail}`,
+          });
+          if (ok) { out.whatsNext++; planted.add(`${room.id}|whats_next|${n}`); }
+        }
+      }
+    }
+
     // what's next
-    if (last >= 2 && seasonKnownComplete(show, S) && !planted.has(`${room.id}|whats_next|${S}`)) {
+    if (!sa && last >= 2 && seasonKnownComplete(show, S) && !planted.has(`${room.id}|whats_next|${S}`)) {
       const pen = last - 1;
       const recentProgress = effs.some((x) => x && atOrPast(x.eff, S, pen) && x.at >= recentCutoff);
       const recentLetter = (lettersByRoom.get(room.id) ?? []).some((l) => (l.s > S || (l.s === S && l.e >= pen)) && l.at >= recentCutoff);
@@ -782,7 +843,10 @@ async function plantSidebarLetters(admin: any): Promise<{ whatsNext: number; ret
     const nextAt = show.next_air_at ? new Date(show.next_air_at).getTime() : 0;
     const nextSeason = Number(show.next_air_season ?? 0);
     if (nextAt > nowMs && nextAt <= nowMs + RETURNING_DAYS * 86400000 && nextSeason > S && !planted.has(`${room.id}|returning|${nextSeason}`)) {
-      const everyoneFinished = effs.every((x) => x && atOrPast(x.eff, S, last));
+      // In stand alone mode: everyone's place in the latest season at its end.
+      const everyoneFinished = sa
+        ? members.every((uid) => placeIn(places, uid, room.show_id, progByKey.get(`${uid}|${room.show_id}`), S) >= last)
+        : effs.every((x) => x && atOrPast(x.eff, S, last));
       if (everyoneFinished) {
         const finishedAt = Math.max(...effs.map((x) => x ? x.at : 0));
         const month = finishedAt > 0 ? ` in ${fmtMonth(finishedAt)}` : "";
@@ -882,15 +946,15 @@ async function computeNudgePrompts(admin: any, dryRun: boolean, onlyUserId: stri
   const showIds = [...new Set(liveRooms.map((r) => r.show_id as string))];
   const [{ data: progRows }, { data: showRows }, { data: profRows }, { data: pingRows }, { data: promptRows }] = await Promise.all([
     admin.from("progress").select("user_id, show_id, season, episode, is_rewatching, highest_season, highest_episode, updated_at").in("user_id", userIds).in("show_id", showIds),
-    admin.from("shows").select("id, name, seasons").in("id", showIds),
+    admin.from("shows").select("id, name, seasons, stand_alone, tvmaze_type").in("id", showIds),
     admin.from("profiles").select("id, is_seed").in("id", userIds),
     admin.from("pings").select("sender_id, recipient_id, group_id").eq("ping_type", "nudge_ahead").gte("sent_at", quietSince).in("group_id", liveRooms.map((r) => r.id)),
     admin.from("nudge_prompts").select("group_id, ahead_id, behind_id").in("group_id", liveRooms.map((r) => r.id)),
   ]);
   const prog = new Map<string, any>();
   for (const p of (progRows ?? []) as any[]) prog.set(`${p.user_id}|${p.show_id}`, p);
-  const shows = new Map<string, { name: string; seasons: number[] }>();
-  for (const sh of (showRows ?? []) as any[]) shows.set(sh.id, { name: String(sh.name ?? sh.id), seasons: Array.isArray(sh.seasons) ? sh.seasons : [] });
+  const shows = new Map<string, { name: string; seasons: number[]; sa: boolean }>();
+  for (const sh of (showRows ?? []) as any[]) shows.set(sh.id, { name: String(sh.name ?? sh.id), seasons: Array.isArray(sh.seasons) ? sh.seasons : [], sa: standAloneShow(sh) });
   const seeds = new Set(((profRows ?? []) as any[]).filter((p) => p.is_seed).map((p) => p.id as string));
   const nudgedRecently = new Set(((pingRows ?? []) as any[]).map((p) => `${p.group_id}|${p.sender_id}|${p.recipient_id}`));
   const prompted = new Set(((promptRows ?? []) as any[]).map((p) => `${p.group_id}|${p.ahead_id}|${p.behind_id}`));
@@ -913,7 +977,9 @@ async function computeNudgePrompts(admin: any, dryRun: boolean, onlyUserId: stri
       for (const b of pos) {
         if (a === b) continue;
         const key = `${room.id}|${a.m.user_id}|${b.m.user_id}`;
-        const gap = a.idx - b.idx;
+        // Stand alone mode (CP3; his yes 4): only between friends on the same
+        // season, the gap within it; another season reads as no gap.
+        const gap = show.sa ? (a.eff.s === b.eff.s ? a.eff.e - b.eff.e : 0) : a.idx - b.idx;
         if (gap <= 2) {
           if (prompted.has(key)) { prompted.delete(key); toDelete.push({ group_id: room.id, ahead_id: a.m.user_id, behind_id: b.m.user_id }); }
           continue;
@@ -927,7 +993,7 @@ async function computeNudgePrompts(admin: any, dryRun: boolean, onlyUserId: stri
         if (onlyUserId && a.m.user_id !== onlyUserId) continue;
         out.set(a.m.user_id, [...(out.get(a.m.user_id) ?? []), {
           groupId: room.id, roomName: show.name, behindId: b.m.user_id, behindName: "", started: b.idx > 0,
-          behindS: b.eff.s, behindE: b.eff.e, gap, viewerEpisodes: a.idx,
+          behindS: b.eff.s, behindE: b.eff.e, gap, viewerEpisodes: show.sa ? a.eff.e : a.idx,
         }]);
         toInsert.push({ group_id: room.id, ahead_id: a.m.user_id, behind_id: b.m.user_id, gap });
       }
@@ -971,7 +1037,7 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
   const [{ data: groupRows }, { data: memRows }, { data: showRows }] = await Promise.all([
     admin.from("people_groups").select("id, deleted_at").in("id", groupIds),
     admin.from("people_group_members").select("group_id, user_id").in("group_id", groupIds),
-    admin.from("shows").select("id, name").in("id", showIds),
+    admin.from("shows").select("id, name, stand_alone, tvmaze_type").in("id", showIds),
   ]);
   const live = new Set(((groupRows ?? []) as any[]).filter((g) => !g.deleted_at).map((g) => g.id as string));
   const membersByGroup = new Map<string, { userId: string }[]>();
@@ -993,6 +1059,7 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
     }
   }
   const showName = new Map<string, string>(((showRows ?? []) as any[]).map((sh) => [sh.id, String(sh.name ?? sh.id)]));
+  const saById = new Map<string, boolean>(((showRows ?? []) as any[]).map((sh) => [sh.id, standAloneShow(sh)]));
   // Sealed by where it was WRITTEN FROM (the rooms' rule, 2026-11-02): the
   // relation is to the from position; one row per (show, episode, from).
   const byKey = new Map<string, { recipient: string; showId: string; season: number; episode: number; fromS: number; fromE: number; writers: Set<string>; latest: string }>();
@@ -1015,6 +1082,7 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
     admin.from("guide_letter_holds").select("user_id, show_id, seen_at, not_for_me").in("user_id", recipients).in("show_id", showIds),
   ]);
   const prog = new Map<string, any>(((progRows ?? []) as any[]).map((p) => [`${p.user_id}|${p.show_id}`, p]));
+  const places = await loadPlaces(admin, recipients, showIds);
   const views = new Map<string, string>(((viewRows ?? []) as any[]).map((v) => [`${v.user_id}|${v.show_id}|${v.season}|${v.episode}`, v.seen_at]));
   const holds = new Map<string, any>(((holdRows ?? []) as any[]).map((h) => [`${h.user_id}|${h.show_id}`, h]));
   for (const x of byKey.values()) {
@@ -1023,7 +1091,9 @@ async function computeGuideLetters(admin: any, since: string, onlyUserId: string
     if (h?.seen_at && new Date(h.seen_at).getTime() >= new Date(x.latest).getTime()) continue;   // tapped the note since
     const p = prog.get(`${x.recipient}|${x.showId}`);
     const eff = p ? effectiveProgress(p) : { s: 0, e: 0 };
-    const relation: GuideLetterRaw["relation"] = eff.s === 0 ? "none" : (eff.s > x.fromS || (eff.s === x.fromS && eff.e >= x.fromE)) ? "past" : "behind";
+    // Stand alone mode (CP3): past = within the place in the season it was written from.
+    const past = saById.get(x.showId) ? canSeeInSeason(places, x.recipient, x.showId, p, x.fromS, x.fromE) : (eff.s > x.fromS || (eff.s === x.fromS && eff.e >= x.fromE));
+    const relation: GuideLetterRaw["relation"] = eff.s === 0 ? "none" : past ? "past" : "behind";
     if (relation === "past") {
       const seen = views.get(`${x.recipient}|${x.showId}|${x.season}|${x.episode}`);
       if (seen && new Date(seen).getTime() >= new Date(x.latest).getTime()) continue;                // opened the letters since
@@ -1056,11 +1126,12 @@ async function computeReachedLetters(admin: any, dryRun: boolean, onlyUserId: st
   const members = new Map<string, any>(((memRows ?? []) as any[]).map((m) => [`${m.group_id}|${m.user_id}`, m]));
   const showIds = [...new Set([...groups.values()].map((g) => g.show_id as string))];
   const [{ data: showRows }, { data: progRows }] = await Promise.all([
-    admin.from("shows").select("id, name, seasons").in("id", showIds),
+    admin.from("shows").select("id, name, seasons, stand_alone, tvmaze_type").in("id", showIds),
     admin.from("progress").select("user_id, show_id, season, episode, is_rewatching, highest_season, highest_episode").in("user_id", behindIds).in("show_id", showIds),
   ]);
-  const shows = new Map<string, { name: string; seasons: number[] }>();
-  for (const sh of (showRows ?? []) as any[]) shows.set(sh.id, { name: String(sh.name ?? sh.id), seasons: Array.isArray(sh.seasons) ? sh.seasons : [] });
+  const shows = new Map<string, { name: string; seasons: number[]; sa: boolean }>();
+  for (const sh of (showRows ?? []) as any[]) shows.set(sh.id, { name: String(sh.name ?? sh.id), seasons: Array.isArray(sh.seasons) ? sh.seasons : [], sa: standAloneShow(sh) });
+  const places = await loadPlaces(admin, behindIds, showIds);
   const prog = new Map<string, any>();
   for (const p of (progRows ?? []) as any[]) prog.set(`${p.user_id}|${p.show_id}`, p);
 
@@ -1075,7 +1146,11 @@ async function computeReachedLetters(admin: any, dryRun: boolean, onlyUserId: st
     if (!g || g.deleted_at || g.dnf_at || !t || t.is_deleted || !show || !member) { done.push({ thread_id: w.thread_id, behind_id: w.behind_id }); continue; }
     const p = prog.get(`${w.behind_id}|${g.show_id}`);
     const eff = p ? effectiveProgress(p) : { s: 0, e: 0 };
-    if (linearIndex(eff.s, eff.e, show.seasons) < linearIndex(w.stamp_season, w.stamp_episode, show.seasons)) continue; // not there yet
+    // Stand alone mode (CP3): reached = the place in the letter's season.
+    const reached = show.sa
+      ? placeIn(places, w.behind_id, g.show_id, p, Number(w.stamp_season)) >= Number(w.stamp_episode)
+      : linearIndex(eff.s, eff.e, show.seasons) >= linearIndex(w.stamp_season, w.stamp_episode, show.seasons);
+    if (!reached) continue; // not there yet
     done.push({ thread_id: w.thread_id, behind_id: w.behind_id });
     if (authorMember?.digest_opt_out) continue;      // the author turned the room's emails off
     if (onlyUserId && w.author_id !== onlyUserId) continue;
@@ -1348,11 +1423,13 @@ serve(async (req) => {
   ])].filter(Boolean);
   const showNameById = new Map<string, string>();
   const showSeasonsById = new Map<string, number[]>();
+  const standAloneById = new Map<string, boolean>();
   if (showIds.length) {
-    const { data: showRows } = await admin.from("shows").select("id, name, seasons").in("id", showIds);
+    const { data: showRows } = await admin.from("shows").select("id, name, seasons, stand_alone, tvmaze_type").in("id", showIds);
     for (const srow of showRows ?? []) {
       if (srow.name) showNameById.set(srow.id, String(srow.name));
       if (Array.isArray(srow.seasons)) showSeasonsById.set(srow.id, srow.seasons as number[]);
+      standAloneById.set(srow.id, standAloneShow(srow));
     }
   }
 
@@ -1440,6 +1517,12 @@ serve(async (req) => {
       .in("user_id", memberUserIds);
     for (const p of progresses ?? []) progIndex.set(`${p.user_id}|${p.show_id}`, p);
   }
+  // Stand alone mode (CP3): the members' places per season, for the shows in the mode.
+  const placesIndex = await loadPlaces(admin, memberUserIds, showIds.filter((id) => standAloneById.get(id)));
+  const readable = (userId: string, showId: string, prog: any, season: number, episode: number): boolean =>
+    standAloneById.get(showId)
+      ? canSeeInSeason(placesIndex, userId, showId, prog, season, episode)
+      : canView(season, episode, prog ? effectiveProgress(prog) : { s: 0, e: 0 });
 
   // 6. Compute per-recipient, per-room visible-new entries.
   //    perUser: Map<userId, Map<groupId, { roomName, entries[] }>>
@@ -1474,7 +1557,7 @@ serve(async (req) => {
         jroom.journals.set(t.author_id, (jroom.journals.get(t.author_id) ?? 0) + 1);
         continue;
       }
-      if (!canView(t.season, t.episode, prog ? effectiveProgress(prog) : { s: 0, e: 0 })) continue;
+      if (!readable(m.user_id, g.show_id, prog, t.season, t.episode)) continue;
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(link.group_id)) {
@@ -1511,7 +1594,7 @@ serve(async (req) => {
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       if (!prog) continue;
       // Readable only — a hidden reply is the in-app red dot, never mail.
-      if (!canView(rr.season, rr.episode, effectiveProgress(prog))) continue;
+      if (!readable(m.user_id, g.show_id, prog, rr.season, rr.episode)) continue;
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(rr.group_id)) {
@@ -1549,7 +1632,7 @@ serve(async (req) => {
       const prog = progIndex.get(`${m.user_id}|${g.show_id}`);
       if (!prog) continue;
       // Readable only — a sealed note is the in-app red dot, never mail.
-      if (!canView(h.author_season ?? 0, h.author_episode ?? 0, effectiveProgress(prog))) continue;
+      if (!readable(m.user_id, g.show_id, prog, h.author_season ?? 0, h.author_episode ?? 0)) continue;
       if (!perUser.has(m.user_id)) perUser.set(m.user_id, new Map());
       const rooms = perUser.get(m.user_id)!;
       if (!rooms.has(h.group_id)) {
