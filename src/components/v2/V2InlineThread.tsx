@@ -125,6 +125,9 @@ export type V2InlineThreadProps = {
   journalSend?: JournalSendTarget;
   /** The rooms that already hold a copy of this entry (2026-10-28). */
   sentTo?: string[];
+  /** The letter's head (lib/letterHead, 2026-11-03): the body's first words
+   *  up to this raw offset draw bold in Lora, run into the first line. */
+  headEnd?: number;
 };
 /** Send is a COPY (2026-10-28): the entry stays in the journal; a copy goes
  *  to each group picked. `places` = every group of the viewer's with a room
@@ -163,6 +166,7 @@ export default function V2InlineThread({
   onNotesOpened,
   onReplyAdded,
   mobileIdiom = false,
+  headEnd,
   journalEntry = false,
   journalSend,
   sentTo,
@@ -911,6 +915,7 @@ export default function V2InlineThread({
         <div ref={bodyRef} onMouseUp={handleBodyMouseUp} style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, marginTop: 8 }}>
           <HighlightableBody
             body={thread.body}
+            headEnd={headEnd}
             highlights={highlights}
             displayNames={displayNames}
             currentUserId={userId}

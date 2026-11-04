@@ -27,6 +27,7 @@ import { timeAgo } from "../../lib/utils";
 import { linearIndex } from "../../lib/groupPills";
 import { D } from "../dashboardChrome";
 import { parsePromptTokens } from "../../lib/promptTokens";
+import { LETTER_HEADS, LETTER_HEAD_STYLE, letterHead, letterHeadSpan, letterRest, letterTitle } from "../../lib/letterHead";
 import V2InlineThread, { type JournalSendTarget } from "./V2InlineThread";
 import { journalDate, journalFromTag } from "../../lib/journal";
 import type { PendingReference } from "../ResponseComposer";
@@ -1055,6 +1056,12 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
           // 2026-10-13: the tall family ran into the preview); the phone
           // keeps the 74px default, which he read as right.
           const eClear = eStamp && !mobileIdiom ? Math.max(E.space.stampClear, 10 + Math.round(stampSize.h * eScale) + 8) : undefined;
+          // The head (2026-11-03, lib/letterHead): the letter's first words
+          // in Lora bold, run into the first line, in place of the written
+          // title; the stamp floats and the words wrap around it. Letters
+          // from Sidebar and the tour keep their titles.
+          const useHead = LETTER_HEADS && !isSb && !demoMode && !entry.isInstructional && !entry.isDeleted;
+          const headSpan = useHead ? letterHeadSpan(entry.body) : null;
           const authorName = isSb ? SIDEBAR_DISPLAY_NAME : dn(entry.authorUsername);
           const canOpenProfile = !isSb && !!onClickProfile;
           const threadEl = demoMode ? (
@@ -1070,6 +1077,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             <div onClick={(e) => e.stopPropagation()}>
               <V2InlineThread
                       thread={entry.thread}
+                      headEnd={headSpan && headSpan.end > headSpan.start ? headSpan.end : undefined}
                       sidebarKind={entry.sidebarKind ?? null}
                       whatsNextGroupId={parentGroupId}
                       onOpenRoom={onOpenRoom}
@@ -1135,9 +1143,9 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
             return (
               <div key={entry.threadId} {...refProps} style={{ position: "relative", scrollMarginTop: 72, ...(entryIndex === 0 ? { marginTop: 20, borderTop: `1px solid ${E.color.hairline}` } : {}) }}>
                 <DraftRow
-                  title={entry.isDeleted ? "(deleted)" : entry.title}
+                  title={entry.isDeleted ? "(deleted)" : letterTitle(entry.title, entry.body)}
                   meta={`Journal · S${entry.s} E${entry.e} · edited ${timeAgo(entry.updatedAt)}`}
-                  line={entry.isDeleted ? null : entry.preview}
+                  line={entry.isDeleted ? null : LETTER_HEADS ? letterRest(entry.preview) : entry.preview}
                   note={entry.sentToNames?.length ? `Sent to ${entry.sentToNames.join(" · ")}` : null}
                   onClick={(ev) => toggleExpand(entry.threadId, ev)}
                 />
@@ -1176,6 +1184,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 stamp={eStamp}
                 stampReserve={eReserve}
                 headMinHeight={eClear}
+                wrap
                 chevron={!isExpanded}
                 dim={isEngaged && !isExpanded}
                 highlighted={isHighlighted}
@@ -1200,13 +1209,32 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                         {editorialDrafts && entry.sentToNames?.length ? <span style={{ color: E.color.identity }}>{" · "}Sent to {entry.sentToNames.join(" · ")}</span> : null}
                       </span>
                     </div>
-                    <h2 style={{ ...ENTRY_TITLE, opacity: entry.isDeleted ? 0.35 : 1 }}>{entry.isDeleted ? "(deleted letter)" : entry.title}</h2>
+                    {!useHead && <h2 style={{ ...ENTRY_TITLE, opacity: entry.isDeleted ? 0.35 : 1 }}>{entry.isDeleted ? "(deleted letter)" : entry.title}</h2>}
                   </>
                 )}
               >
                 {isExpanded ? threadEl : entry.isDeleted ? (
                   <div style={{ fontStyle: "italic", opacity: 0.35 }}>{dn(entry.authorUsername)} deleted their entry.</div>
-                ) : isSb ? null : (
+                ) : isSb ? null : useHead ? (
+                  // The closed letter: the head and three more lines, cut at
+                  // the line (no clamp class: a clamped box can't wrap
+                  // around the floated stamp). The 3px of head room keeps
+                  // the Lora ascenders inside the box.
+                  <div style={{ ...ENTRY_PREVIEW, lineHeight: "24px", maxHeight: 24 * 4 + 3, paddingTop: 3, marginTop: 7, overflow: "hidden", whiteSpace: "pre-wrap" }}>
+                    {(() => {
+                      const span = letterHeadSpan(entry.preview);
+                      const lead = span.start > 0 ? entry.preview.slice(0, span.start) : "";
+                      return (
+                        <>
+                          {lead && parsePromptTokens(lead).map((part, pi) => <React.Fragment key={`lead-${pi}`}>{part}</React.Fragment>)}
+                          <strong style={LETTER_HEAD_STYLE}>{letterHead(entry.preview)}</strong>
+                          {" "}
+                          {parsePromptTokens(letterRest(entry.preview)).map((part, pi) => <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>)}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
                   <div className="clamp3" style={ENTRY_PREVIEW}>
                     {parsePromptTokens(entry.preview).map((part, pi) => (
                       <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>

@@ -1,3 +1,4 @@
+import { letterTitle } from "../lib/letterHead";
 import { loadSeenNoteIds } from "../lib/noteSeen";
 import { type SidebarLetterKind } from "../lib/sidebarLetters";
 /**
@@ -514,10 +515,13 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
         replyCount: 0, thread: t, gatedStub: true, fromS: t.fromS, fromE: t.fromE,
       }));
 
+      // The map's "wrote:" line carries the letter's head (2026-11-03) where
+      // the letter is loaded; the written title otherwise.
+      const headByThread = new Map<string, string>(gr.threads.map((t: Thread) => [t.id, letterTitle(t.titleBase, t.body)]));
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
         userId: m.userId, username: m.username ?? "?", displayName: m.displayName, isDeparted: m.isDeparted,
         progress: m.progress, ratings: m.ratings,
-        entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: e.title })),
+        entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: headByThread.get(e.threadId) ?? e.title })),
       }));
 
       const priv = mine.filter((x) => !x.thread.isPublic && !x.groupId).map((x) => x.thread);

@@ -236,27 +236,33 @@ function SidewaysPointer({ size }: { size: number }) {
 }
 
 /** The frame of a letter in the stream. `stamp` sits at the top-right; the
- *  head reserves it and is at least 74px tall. */
-export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, chevron = false, headMinHeight, style }: {
+ *  head reserves it and is at least 74px tall. With `wrap` (his 11-03 ask)
+ *  the stamp floats instead and the words run down its left, head and body
+ *  alike, then full width once they clear it. */
+export function EntryShell({ stamp, stampReserve, head, children, onClick, dim = false, highlighted = false, chevron = false, headMinHeight, wrap = false, style }: {
   stamp?: React.ReactNode; stampReserve: number; head: React.ReactNode; children?: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLDivElement>) => void; dim?: boolean; highlighted?: boolean;
   /** A closed letter's expand cue: the down chevron at the bottom right, in
    *  its own 10px of foot room so nothing runs under it. */
   chevron?: boolean;
   /** The head's clearance when the stamp is taller than the 74px default
    *  (Alborz 2026-10-13: the tall stamp ran into the preview). */
-  headMinHeight?: number; style?: React.CSSProperties;
+  headMinHeight?: number;
+  /** The words wrap around the stamp (closed and open letters alike). */
+  wrap?: boolean; style?: React.CSSProperties;
 }) {
   return (
     <div
       onClick={onClick}
-      style={{ position: "relative", padding: chevron ? "12px 0 26px" : "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", ...style }}
+      style={{ position: "relative", display: wrap ? "flow-root" : undefined, padding: chevron ? "12px 0 26px" : "12px 0 16px", borderTop: `1px solid ${E.color.ink}`, borderBottom: `1px solid ${E.color.hairline}`, color: E.color.ink, opacity: dim ? 0.5 : 1, cursor: onClick ? "pointer" : "default", ...style }}
     >
       {/* The map-tap frame (Alborz's notes, round 5): the identity outline
           stands 12px clear of the words on both sides, drawn as its own
           layer so the letter never shifts. */}
       <span aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: -12, right: -12, border: `2px solid ${E.color.identity}`, pointerEvents: "none", opacity: highlighted ? 1 : 0, transition: "opacity 300ms ease", zIndex: 1 }} />
-      {stamp && <span style={{ position: "absolute", top: 10, right: 0, display: "inline-block" }}>{stamp}</span>}
-      <div style={{ minHeight: headMinHeight ?? E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
+      {stamp && (wrap
+        ? <span style={{ float: "right", marginLeft: 16, marginBottom: 8, marginTop: -2, display: "inline-block", position: "relative", zIndex: 2 }}>{stamp}</span>
+        : <span style={{ position: "absolute", top: 10, right: 0, display: "inline-block" }}>{stamp}</span>)}
+      <div style={wrap ? undefined : { minHeight: headMinHeight ?? E.space.stampClear, paddingRight: stampReserve, boxSizing: "border-box" }}>{head}</div>
       {children}
       {chevron && <ChevronDown size={16} color={E.color.ink} strokeWidth={1.5} aria-hidden="true" style={{ position: "absolute", right: 0, bottom: 6 }} />}
     </div>

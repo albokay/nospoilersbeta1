@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HighlightHoverPopup, HighlightNotePaper } from "./HighlightNotePaper";
 import { HighlightNoteSheet } from "./HighlightSheets";
@@ -6,6 +6,7 @@ import { splitSentences, type Range } from "../../lib/sentences";
 import { linkifyText } from "../../lib/linkify";
 import { useSeenNoteIds, loadSeenNoteIds, markNoteIdsSeen } from "../../lib/noteSeen";
 import type { Highlight } from "../../lib/db";
+import { LETTER_HEAD_STYLE } from "../../lib/letterHead";
 import { CANON } from "../../styles/canon";
 import { useEditorialScope } from "../../lib/skin";
 
@@ -36,7 +37,7 @@ export function darken(hex: string, f = 0.86): string {
 // trim). `prompt` tokens render as non-highlightable blockquotes and don't
 // participate in offset tracking — Q7 guarantees highlights never span them.
 type BodyToken =
-  | { kind: "text"; text: string; bodyStart: number }
+  | { kind: "text"; text: string; bodyStart: number; /** the letter's head segment (drawn in Lora bold) */ head?: boolean }
   | { kind: "prompt"; text: string };
 
 /**
@@ -311,8 +312,14 @@ export default function HighlightableBody({
   mobile = false,
   pick,
   sealedTone = "sky",
+  headEnd,
 }: {
   body: string;
+  /** The letter's head (lib/letterHead): raw-body offset where the bold
+   *  first words end. The first text token splits there into two segments,
+   *  each with its own body offset, so highlights and notes keep their
+   *  places; the head segment draws in Lora bold. Skipped in pick mode. */
+  headEnd?: number;
   highlights: Highlight[];
   currentUserId: string | null;
   onDeleteHighlight?: (id: string) => void;
@@ -348,7 +355,19 @@ export default function HighlightableBody({
    *  paper attribution only). */
   displayNames?: Record<string, string>;
 }) {
-  const tokens = tokenizeBody(body, bodyStart);
+  const tokens = useMemo(() => {
+    const raw = tokenizeBody(body, bodyStart);
+    if (headEnd == null || pick) return raw;
+    const i = raw.findIndex((t) => t.kind === "text");
+    const tok = raw[i];
+    if (!tok || tok.kind !== "text") return raw;
+    const cut = headEnd - tok.bodyStart;
+    if (cut <= 0) return raw;
+    if (cut >= tok.text.length) return raw.map((t, j) => (j === i ? { ...t, head: true } : t));
+    const a: BodyToken = { kind: "text", text: tok.text.slice(0, cut), bodyStart: tok.bodyStart, head: true };
+    const b: BodyToken = { kind: "text", text: tok.text.slice(cut), bodyStart: tok.bodyStart + cut };
+    return [...raw.slice(0, i), a, b, ...raw.slice(i + 1)];
+  }, [body, bodyStart, headEnd, pick]);
   const allSentences = pick ? tokens.flatMap((t) => (t.kind === "text" ? splitSentences(t.text, t.bodyStart) : [])) : [];
   const [hover, setHover] = useState<Active | null>(null);
   const [open, setOpen] = useState<Active | null>(null);
@@ -479,7 +498,7 @@ export default function HighlightableBody({
             />
           );
         }
-        return (
+        const seg = (
           <HighlightableSegment
             key={`seg-${tok.bodyStart}`}
             text={tok.text}
@@ -497,6 +516,7 @@ export default function HighlightableBody({
             onPick={onPick}
           />
         );
+        return tok.head ? <strong key={`head-${tok.bodyStart}`} style={LETTER_HEAD_STYLE}>{seg}</strong> : seg;
       })}
       {!mobile && hover && !open && hoverSet.length > 0 && createPortal(
         <HighlightHoverPopup
