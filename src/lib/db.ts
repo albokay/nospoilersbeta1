@@ -106,6 +106,7 @@ const _byName = (a: Show, b: Show) => a.name.localeCompare(b.name);
 /** Insert-or-replace one show in the shared cache (new array each time so
  *  holders of the old reference keep a stable snapshot). No-op until warmed. */
 function upsertShowInCache(s: Show) {
+  noteShowCatalog(s);
   if (!_showsCache) return;
   const i = _showsCache.findIndex((x) => x.id === s.id);
   _showsCache = (i >= 0 ? _showsCache.map((x, j) => (j === i ? s : x)) : [..._showsCache, s]).sort(_byName);
@@ -1015,6 +1016,22 @@ export async function createShow(show: {
   status?: string;
 }): Promise<Show> {
   const now = new Date().toISOString();
+  // The show's TVMaze type and genres at add time (2026-11-04): stand alone
+  // mode reads the type, and a row added from search used to wait up to a
+  // day for the next refresh to fill it (his Big Brother / Top Chef /
+  // Housewives catch). One small read; nothing waits on it failing.
+  let tvmazeType: string | null = null;
+  let genres: string[] | null = null;
+  if (show.tvmazeId) {
+    try {
+      const r = await fetch(`https://api.tvmaze.com/shows/${show.tvmazeId}`);
+      if (r.ok) {
+        const d = await r.json();
+        if (typeof d?.type === "string" && d.type) tvmazeType = d.type;
+        if (Array.isArray(d?.genres)) genres = d.genres;
+      }
+    } catch { /* the refresh fills it later */ }
+  }
   const insertRow = {
     id: show.id,
     name: show.name,
@@ -1023,6 +1040,8 @@ export async function createShow(show: {
     status: show.status ?? "Ended",
     is_hidden: false,
     last_synced_at: now,
+    ...(tvmazeType ? { tvmaze_type: tvmazeType } : {}),
+    ...(genres ? { genres } : {}),
   };
 
   // Try fresh INSERT first. On unique-key conflict (row already exists)
@@ -1039,6 +1058,9 @@ export async function createShow(show: {
     tvmazeId: r.tvmaze_id ?? undefined,
     status: r.status ?? "Ended",
     isHidden: r.is_hidden ?? false,
+    genres: r.genres ?? [],
+    tvmazeType: r.tvmaze_type ?? undefined,
+    standAlone: typeof r.stand_alone === "boolean" ? r.stand_alone : null,
   });
 
   const { data: inserted, error: insertErr } = await supabase
@@ -1051,7 +1073,7 @@ export async function createShow(show: {
   // error for the caller.
   const { data: updated, error: updateErr } = await supabase
     .from("shows")
-    .update({ seasons: show.seasons, last_synced_at: now })
+    .update({ seasons: show.seasons, last_synced_at: now, ...(tvmazeType ? { tvmaze_type: tvmazeType } : {}) })
     .eq("id", show.id)
     .select().single();
   if (updated) { const s = mapRow(updated); upsertShowInCache(s); return s; }

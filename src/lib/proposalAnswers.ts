@@ -8,14 +8,27 @@
  */
 export type Stance = "in" | "out" | "seen";
 export type PassKind = "out" | "seen";
-export type AnswerNames = { in: string[]; out: string[]; seen: string[] };
+export type AnswerNames = {
+  in: string[]; out: string[]; seen: string[];
+  /** Stand alone mode (2026-11-04): the season each "in" friend is on, by
+   *  name — the sheet says which season the pitcher picked. */
+  inSeason?: Record<string, number>;
+};
 
 const list = (n: string[]) => n.length === 1 ? n[0] : n.length === 2 ? `${n[0]} and ${n[1]}` : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`;
 
 /** "Sam and Alex are in." / "Adam's sitting this out." / "Yalborz has already seen it." */
 export function answerLines(names: AnswerNames): string[] {
   const out: string[] = [];
-  if (names.in.length) out.push(`${list(names.in)} ${names.in.length === 1 ? "is" : "are"} in.`);
+  if (names.in.length && names.inSeason) {
+    // "Aalborz is in, on season 51." — one line per season; friends with no
+    // season yet keep the plain line.
+    const bySeason = new Map<number, string[]>();
+    for (const n of names.in) { const s = names.inSeason[n] ?? 0; bySeason.set(s, [...(bySeason.get(s) ?? []), n]); }
+    for (const [s, ns] of [...bySeason.entries()].sort((a, b) => a[0] - b[0])) {
+      out.push(s > 0 ? `${list(ns)} ${ns.length === 1 ? "is" : "are"} in, on season ${s}.` : `${list(ns)} ${ns.length === 1 ? "is" : "are"} in.`);
+    }
+  } else if (names.in.length) out.push(`${list(names.in)} ${names.in.length === 1 ? "is" : "are"} in.`);
   if (names.out.length) out.push(names.out.length === 1 ? `${names.out[0]}'s sitting this out.` : `${list(names.out)} are sitting this out.`);
   if (names.seen.length) out.push(`${list(names.seen)} ${names.seen.length === 1 ? "has" : "have"} already seen it.`);
   return out;

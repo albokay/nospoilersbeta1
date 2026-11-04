@@ -96,6 +96,7 @@ import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent
 import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
 import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
@@ -686,7 +687,11 @@ export default function DashboardPage() {
     const ps = passes[showId] ?? {};
     const name = (id: string) => memberNameById[id] ?? "someone";
     const passers = (kind: PassKind) => Object.entries(ps).filter(([id, k]) => id !== selfUserId && k === kind && !inIds.includes(id)).map(([id]) => name(id));
-    return { in: inIds.map(name), out: passers("out"), seen: passers("seen") };
+    // Stand alone mode (2026-11-04): which season each "in" friend is on.
+    const inSeason = showStandAlone(showsById[showId])
+      ? Object.fromEntries((gs?.members ?? []).filter((m) => inIds.includes(m.userId) && (m.s ?? 0) > 0).map((m) => [name(m.userId), m.s as number]))
+      : undefined;
+    return { in: inIds.map(name), out: passers("out"), seen: passers("seen"), inSeason };
   };
 
   // ── Rail (people-groups). Isolated + tolerant so the dashboard works before
@@ -1603,7 +1608,12 @@ export default function DashboardPage() {
     // Your current progress whenever you have any (2026-09-29: a friend's
     // proposal you'd finished elsewhere defaulted to zero — a button press
     // without touching the picker would have written zero over it).
-    setDeclaredProgress(cur && (cur.s > 0 || cur.e > 0) ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : { s: 0, e: 0 });
+    // Stand alone mode (2026-11-04): a friend's pitch opens the picker on the
+    // season the pitcher is on, at 0 — so "I'm in" lands on the same season.
+    const pitchedSeason = showStandAlone(showsById[pill.showId])
+      ? (groupShows.find((s) => s.showId === pill.showId)?.members.find((m) => m.userId !== selfUserId && m.voted && (m.s ?? 0) > 0)?.s ?? 0)
+      : 0;
+    setDeclaredProgress(cur && (cur.s > 0 || cur.e > 0) ? { s: cur.s, e: cur.e } : seenHere ? endOfShow(showsById[pill.showId]) : pitchedSeason > 0 ? { s: pitchedSeason, e: 0 } : { s: 0, e: 0 });
     // Haven't-started shows keep the vote toggle visible in the solo modal
     // (voting is a want-to-watch concept), so a "yes" can be taken back by
     // toggling — the second un-vote path besides remove-from-pool.
