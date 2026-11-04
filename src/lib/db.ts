@@ -5678,6 +5678,10 @@ export type RoomMapMember = {
   progress: import("../types").ProgressEntry | null;
   ratings: EpisodeRating[];
   entries: RoomMapEntry[];
+  /** Stand alone mode (2026-11-04, CP4): the member's place per season
+   *  {season: episode}, from get_room_map_data.places (20261104b); empty
+   *  before that migration. JSON-safe (the room snapshots its members). */
+  places: Record<number, number>;
 };
 
 type RoomMapRPCRow = {
@@ -5692,6 +5696,7 @@ type RoomMapRPCRow = {
   highest_episode: number | null;
   ratings: Array<{ s: number; e: number; r: number }> | null;
   entries: Array<{ thread_id: string; s: number; e: number; title: string; created_at: string }> | null;
+  places?: Array<{ s: number; e: number }> | null;
 };
 
 function rowToRoomMapMember(row: RoomMapRPCRow, displayNames?: Record<string, string>): RoomMapMember {
@@ -5720,6 +5725,7 @@ function rowToRoomMapMember(row: RoomMapRPCRow, displayNames?: Record<string, st
       title: e.title,
       createdAt: Date.parse(e.created_at),
     })),
+    places: Object.fromEntries((row.places ?? []).map((p) => [p.s, p.e])),
   };
 }
 

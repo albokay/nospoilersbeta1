@@ -150,7 +150,46 @@ export type V2RoomMapMember = {
   progress: ProgressEntry | null;
   ratings: V2RoomMapRating[];
   entries: V2RoomMapEntry[];
+  /** Stand alone mode (2026-11-04, CP4): the member's place per season. */
+  places?: Record<number, number> | null;
 };
+
+/** Stand alone mode: where a member stands in a season — the remembered
+ *  place, or the position row when it's in that season; -1 = not picked. */
+function placeOf(m: { places?: Record<number, number> | null; progress: ProgressEntry | null }, season: number): number {
+  return Math.max(m.places?.[season] ?? -1, m.progress && m.progress.s === season ? m.progress.e : -1);
+}
+/** Has this member reached the episode — by their place in its season in
+ *  stand alone mode, by the one position otherwise (the rule as ever). */
+function reachedBy(m: V2RoomMapMember, standAlone: boolean, s: number, e: number): boolean {
+  if (standAlone) return placeOf(m, s) >= e;
+  const eff = effectiveProgress(m.progress);
+  return !!eff && (s < eff.s || (s === eff.s && e <= eff.e));
+}
+/** The seasons the map draws, ascending: off the mode every season up to
+ *  the furthest anyone has reached episode 1 in; in stand alone mode only
+ *  the seasons someone has PICKED (reached episode 1 in) or written about
+ *  (his yes 2), added as they're picked. */
+function drawnSeasons(members: V2RoomMapMember[], seasons: number[], standAlone: boolean): number[] {
+  if (standAlone) {
+    const picked = new Set<number>();
+    const ok = (s: number) => s >= 1 && s <= seasons.length;
+    for (const m of members) {
+      for (const [k, e] of Object.entries(m.places ?? {})) { const s = Number(k); if (ok(s) && e >= 1) picked.add(s); }
+      if (m.progress && ok(m.progress.s) && m.progress.e >= 1) picked.add(m.progress.s);
+      for (const en of m.entries) if (ok(en.s)) picked.add(en.s);
+    }
+    return [...picked].sort((a, b) => a - b);
+  }
+  let maxSeasonReached = 0;
+  for (const m of members) {
+    const eff = effectiveProgress(m.progress);
+    if (!eff) continue;
+    const reachedSeason = eff.e >= 1 ? eff.s : eff.s - 1;
+    if (reachedSeason > maxSeasonReached) maxSeasonReached = reachedSeason;
+  }
+  return Array.from({ length: Math.max(0, Math.min(maxSeasonReached, seasons.length)) }, (_, i) => i + 1);
+}
 
 export type V2RoomMapProps = {
   members: V2RoomMapMember[];
@@ -159,6 +198,10 @@ export type V2RoomMapProps = {
   displayNames?: Record<string, string>;
   /** Per-season episode counts — comes from shows.seasons. */
   seasons: number[];
+  /** Stand alone mode (2026-11-04, CP4): the show's switch. On, the map
+   *  draws only the picked seasons and reads every member's column by
+   *  their place per season. */
+  standAlone?: boolean;
   /** Viewer's progress — drives initial scroll + above-progress title masking. */
   viewerProgress: ProgressEntry | null;
   /** Viewer's user id — drives the canon-dark-blue self-column treatment. */
@@ -289,14 +332,14 @@ function nudgeStatusFor(
 
 type RowKey = { season: number; episode: number; isFirstOfSeason: boolean };
 
-function flattenSeasons(seasons: number[]): RowKey[] {
+function flattenSeasons(seasons: number[], drawn: number[]): RowKey[] {
   const rows: RowKey[] = [];
-  seasons.forEach((epCount, sIdx) => {
-    const season = sIdx + 1;
+  for (const season of drawn) {
+    const epCount = seasons[season - 1] ?? 0;
     for (let ep = 1; ep <= epCount; ep++) {
       rows.push({ season, episode: ep, isFirstOfSeason: ep === 1 });
     }
-  });
+  }
   return rows;
 }
 
@@ -315,19 +358,16 @@ function isAbove(
 /** True while nobody in the room has reached an episode — the map has no
  *  rows (the same rule as `touchedSeasons` inside). The desktop room reads
  *  it to render no map at all then (Alborz 2026-10-14). */
-export function mapIsEmpty(members: V2RoomMapMember[]): boolean {
-  for (const m of members) {
-    const eff = effectiveProgress(m.progress);
-    if (!eff) continue;
-    if ((eff.e >= 1 ? eff.s : eff.s - 1) >= 1) return false;
-  }
-  return true;
+export function mapIsEmpty(members: V2RoomMapMember[], standAlone = false): boolean {
+  // The season count isn't known here; any season number counts.
+  return drawnSeasons(members, Array(999).fill(0), standAlone).length === 0;
 }
 
 export default function V2RoomMap({
   members: membersProp,
   displayNames,
   seasons,
+  standAlone = false,
   viewerProgress,
   viewerUserId,
   visibleEntryIds,
@@ -530,19 +570,10 @@ export default function V2RoomMap({
   // A member at S2E0 ("haven't started season 2") hasn't reached any S2
   // episode, so S2 stays hidden until someone actually watches S2E1+.
   // Rewatcher-aware via effectiveProgress (highest for rewatchers).
-  const touchedSeasons = useMemo(() => {
-    let maxSeasonReached = 0;
-    for (const m of members) {
-      const eff = effectiveProgress(m.progress);
-      if (!eff) continue;
-      const reachedSeason = eff.e >= 1 ? eff.s : eff.s - 1;
-      if (reachedSeason > maxSeasonReached) maxSeasonReached = reachedSeason;
-    }
-    if (maxSeasonReached <= 0) return [];
-    return seasons.slice(0, maxSeasonReached);
-  }, [members, seasons]);
+  // Stand alone mode (CP4): the picked seasons only — see drawnSeasons.
+  const touchedSeasons = useMemo(() => drawnSeasons(members, seasons, standAlone), [members, seasons, standAlone]);
 
-  const rows = useMemo(() => flattenSeasons(touchedSeasons), [touchedSeasons]);
+  const rows = useMemo(() => flattenSeasons(seasons, touchedSeasons), [seasons, touchedSeasons]);
   // Row-index span of each rendered season (for the fold strip's thread
   // logic: a member's spine runs THROUGH a folded season when they've
   // reached past its last row, INTO it when their last-reached row is
@@ -563,15 +594,15 @@ export default function V2RoomMap({
   // where they're watching right now, the same anchor as the auto-scroll)
   // and the one before it open; every earlier season folded; seasons ahead
   // open. A viewer who hasn't started folds nothing.
-  const defaultCollapsed = (vp: ProgressEntry | null, seasonCount: number): Set<number> => {
+  const defaultCollapsed = (vp: ProgressEntry | null, drawn: number[]): Set<number> => {
     const out = new Set<number>();
     if (!vp || vp.s < 1) return out;
-    for (let season = 1; season <= seasonCount; season++) {
+    for (const season of drawn) {
       if (season < vp.s - 1) out.add(season);
     }
     return out;
   };
-  const [collapsedSeasons, setCollapsedSeasons] = useState<Set<number>>(() => defaultCollapsed(viewerProgress, touchedSeasons.length));
+  const [collapsedSeasons, setCollapsedSeasons] = useState<Set<number>>(() => defaultCollapsed(viewerProgress, touchedSeasons));
   // Defaults are applied ONCE per mount — on mount when the data is already
   // here (the normal case: the room renders the map after its load), else
   // the first time seasons appear. Later data refreshes never undo the
@@ -582,9 +613,9 @@ export default function V2RoomMap({
     if (foldDefaultsAppliedRef.current) return;
     if (touchedSeasons.length === 0) return;
     foldDefaultsAppliedRef.current = true;
-    setCollapsedSeasons(defaultCollapsed(viewerProgress, touchedSeasons.length));
+    setCollapsedSeasons(defaultCollapsed(viewerProgress, touchedSeasons));
     setFoldDefaultsReady(true);
-  }, [touchedSeasons.length, viewerProgress]);
+  }, [touchedSeasons.length, viewerProgress]); // eslint-disable-line react-hooks/exhaustive-deps
   const toggleSeason = (season: number) => {
     setCollapsedSeasons((prev) => {
       const next = new Set(prev);
@@ -656,18 +687,11 @@ export default function V2RoomMap({
   // from `${s}-${e}` → entry / rating, for O(1) cell lookups.
   const memberMaps = useMemo(() => {
     return members.map((m) => {
-      const eff = effectiveProgress(m.progress);
-      let lastReachedIdx = -1;
-      if (eff) {
-        for (let i = 0; i < rows.length; i++) {
-          const r = rows[i];
-          if (r.season < eff.s || (r.season === eff.s && r.episode <= eff.e)) {
-            lastReachedIdx = i;
-          } else {
-            break;
-          }
-        }
-      }
+      // Which rows this member has reached (off the mode a prefix of the
+      // rows, as ever; in stand alone mode each picked season to its place)
+      // and the last of them.
+      const reached = rows.map((r) => reachedBy(m, standAlone, r.season, r.episode));
+      const lastReachedIdx = reached.lastIndexOf(true);
       const ratingByKey = new Map<string, number>();
       for (const r of m.ratings) ratingByKey.set(`${r.s}-${r.e}`, r.rating);
       // entryByKey holds a LIST of entries per cell — multiple entries on
@@ -682,9 +706,9 @@ export default function V2RoomMap({
         if (list) list.unshift(e);
         else entryByKey.set(k, [e]);
       }
-      return { lastReachedIdx, ratingByKey, entryByKey };
+      return { reached, lastReachedIdx, ratingByKey, entryByKey };
     });
-  }, [members, rows]);
+  }, [members, rows, standAlone]);
 
   const viewerEff = effectiveProgress(viewerProgress);
   // Stand alone mode (2026-11-04, CP2): the viewer's places per season when
@@ -1254,8 +1278,8 @@ export default function V2RoomMap({
               <div /> {/* episode-label column placeholder */}
               {members.map((m, mIdx) => {
                 const mMap = memberMaps[mIdx];
-                const prevReached = rowIdx - 1 <= mMap.lastReachedIdx;
-                const thisReached = rowIdx <= mMap.lastReachedIdx;
+                const prevReached = rowIdx === 0 || !!mMap.reached[rowIdx - 1];
+                const thisReached = !!mMap.reached[rowIdx];
                 const drawSpine = prevReached && thisReached;
                 return (
                   <div
@@ -1366,8 +1390,8 @@ export default function V2RoomMap({
                 <div style={{ height: ROW_HEIGHT }} /> {/* episode-label column placeholder */}
                 {members.map((m, mIdx) => {
                   const mMap = memberMaps[mIdx];
-                  const through = range ? mMap.lastReachedIdx > range.last : false;
-                  const into = range ? !through && mMap.lastReachedIdx >= range.first : false;
+                  const through = range ? !!mMap.reached[range.last] && mMap.lastReachedIdx > range.last : false;
+                  const into = range ? !through && mMap.reached.slice(range.first, range.last + 1).some(Boolean) : false;
                   return (
                     <div key={m.userId} style={{ width: CELL, height: ROW_HEIGHT, position: "relative" }}>
                       {(through || into) && (
@@ -1460,7 +1484,7 @@ export default function V2RoomMap({
               {/* One cell per member */}
               {members.map((m, mIdx) => {
                 const mMap = memberMaps[mIdx];
-                const isReached = rowIdx <= mMap.lastReachedIdx;
+                const isReached = !!mMap.reached[rowIdx];
                 const isLastReached = rowIdx === mMap.lastReachedIdx;
                 // entries[0] is the newest; [last] is the oldest. `entry`
                 // (top-most / front-most layer) drives notification anchor,
@@ -1489,7 +1513,7 @@ export default function V2RoomMap({
                 // (same column) are both reached. For departed at terminal,
                 // the dot lives in this gap instead.
                 const nextReached =
-                  rowIdx + 1 <= mMap.lastReachedIdx; // next row also reached
+                  !!mMap.reached[rowIdx + 1]; // next row also reached
                 // Mobile: the season strip is the divider — no spine runs
                 // out of a season's last row into it.
                 const showSpineBelow = isReached && nextReached && !(mobile && !!rows[rowIdx + 1]?.isFirstOfSeason);

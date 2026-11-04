@@ -39,12 +39,13 @@ import { BottomSheet } from "../components/editorial/Overlays";
 import { Block, Frame } from "../components/editorial/Onboarding";
 import AccountModal from "../components/AccountModal";
 import { canView, effectiveProgress, isSeasonEnd, standAlonePlaces } from "../lib/utils";
+import { showStandAlone } from "../lib/standAlone";
 import type { Thread, ProgressEntry } from "../types";
 import V2RoomFeed, { type V2RoomFeedEntry, type V2RoomFeedHandle } from "../components/v2/V2RoomFeed";
 import SidebarLetter, { JournalLetter } from "../components/SidebarLetter";
 import { roomLetterKey } from "../lib/tipsContent";
 import LoadingDots from "../components/LoadingDots";
-import V2RoomMap, { type V2RoomMapMember } from "../components/v2/V2RoomMap";
+import V2RoomMap, { mapIsEmpty, type V2RoomMapMember } from "../components/v2/V2RoomMap";
 import UnlockLine, { type UnlockNote } from "../components/UnlockLine";
 import { linearIndex } from "../lib/groupPills";
 import NudgeSheet, { joinNudgeNames, finaleBannerTitle, seasonEndBannerTitle, type NudgeRecipient } from "../components/NudgeSheet";
@@ -190,11 +191,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
   const [mapMembers, setMapMembers] = useState<V2RoomMapMember[]>([]);
   // The map's own emptiness rule (V2RoomMap's touchedSeasons): nobody has
   // reached episode 1 of any season, so it would draw no rows.
-  const mapEmpty = useMemo(() => mapMembers.every((m) => {
-    const eff = effectiveProgress(m.progress);
-    if (!eff) return true;
-    return (eff.e >= 1 ? eff.s : eff.s - 1) <= 0;
-  }), [mapMembers]);
+  const mapEmpty = useMemo(() => mapIsEmpty(mapMembers, showStandAlone(show)), [mapMembers, show]);
   // The unlock line (2026-09-25): what the last progress move opened. See
   // load() for the detection; UnlockLine for the copy.
   const [unlockNote, setUnlockNote] = useState<UnlockNote | null>(null);
@@ -593,7 +590,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
       const headByThread = new Map<string, string>(gr.threads.map((t: Thread) => [t.id, letterTitle(t.titleBase, t.body)]));
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
         userId: m.userId, username: m.username ?? "?", displayName: m.displayName, isDeparted: m.isDeparted,
-        progress: m.progress, ratings: m.ratings,
+        progress: m.progress, ratings: m.ratings, places: m.places,
         entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: headByThread.get(e.threadId) ?? e.title })),
       }));
 
@@ -1909,6 +1906,7 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 mobile
                 editorial={editorial}
                 members={mapMembers}
+                standAlone={showStandAlone(show)}
                 displayNames={displayNames}
                 seasons={show.seasons ?? []}
                 viewerProgress={progressForShow}

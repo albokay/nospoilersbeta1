@@ -29,6 +29,7 @@ import {
   type Show,
 } from "../lib/db";
 import { canView, effectiveProgress, isSeasonEnd, standAlonePlaces } from "../lib/utils";
+import { showStandAlone } from "../lib/standAlone";
 import { joinNames, joinNameNodes, groupGenericName } from "../lib/groupNames";
 import { composeBackdrop, composeCardOuter, groupHeadingMembers, EDGE_TAB_TOP, D } from "./dashboardChrome";
 import AccountModal from "./AccountModal";
@@ -527,7 +528,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
       const headByThread = new Map<string, string>(gr.threads.map((t: Thread) => [t.id, letterTitle(t.titleBase, t.body)]));
       const members: V2RoomMapMember[] = roomMapData.map((m) => ({
         userId: m.userId, username: m.username ?? "?", displayName: m.displayName, isDeparted: m.isDeparted,
-        progress: m.progress, ratings: m.ratings,
+        progress: m.progress, ratings: m.ratings, places: m.places,
         entries: m.entries.map((e) => ({ threadId: e.threadId, s: e.s, e: e.e, title: headByThread.get(e.threadId) ?? e.title })),
       }));
 
@@ -1240,7 +1241,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
   const referenceAvailable = !!show?.tvmazeId && !!refEff;
   // The map's empty state (Alborz 2026-10-14): no map at all until someone
   // reaches an episode.
-  const mapEmpty = mapIsEmpty(mapMembers);
+  const mapEmpty = mapIsEmpty(mapMembers, showStandAlone(show));
   useEffect(() => {
     // Only bounce AFTER the load has landed — on arrival from the dashboard
     // band the progress row isn't fetched yet, and the pre-load bounce was
@@ -1770,6 +1771,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
               <V2RoomMap
                 editorial={editorial}
                 members={mapMembers}
+                standAlone={showStandAlone(show)}
                 displayNames={displayNames}
                 seasons={show?.seasons ?? []}
                 viewerProgress={progressForShow}
