@@ -28,7 +28,8 @@ import { M } from "../../mobile/m";
 import { D } from "../dashboardChrome";
 import { E } from "../../styles/editorial";
 import { CornerTab } from "../editorial/Chrome";
-import { COMPOSE_CSS, MinimizeRing, PromptButton, TITLE_INPUT, PAPER_TEXTAREA, ComposeFoot, DiscardConfirm } from "../editorial/Compose";
+import { COMPOSE_CSS, MinimizeRing, PromptButton, TITLE_INPUT, PAPER_TEXTAREA, ComposeFoot, DiscardConfirm, HeadLine } from "../editorial/Compose";
+import { LETTER_HEADS, letterHead } from "../../lib/letterHead";
 import { StepsBars } from "../editorial/Onboarding";
 
 // Compose-page cream palette + dark ink. Self-contained — V2Layout's
@@ -499,10 +500,13 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     // any of destination / title / body is missing, but guard here too so a
     // stray keyboard / form submit can't sneak through.
     if (destination === null) return;
-    const title = postTitle.trim();
     const body = postBody.trim();
+    // The head is the title (2026-11-03): the letter's first words, as the
+    // rule picks them, saved into `title` so the daily email, the map and
+    // every row keep reading the one column.
+    const title = LETTER_HEADS ? letterHead(body) : postTitle.trim();
     if (!title || !body) {
-      setSubmitError("Add a title and some text to publish.");
+      setSubmitError(LETTER_HEADS ? "Write something to send." : "Add a title and some text to publish.");
       return;
     }
     setSubmitting(true);
@@ -647,7 +651,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
     const eyebrow = autoPrompt
       ? <span style={{ display: "inline-block", maxWidth: 300 }}>Write down your immediate thoughts before reading your friends&rsquo;:</span>
       : "Capture your thoughts on";
-    const hasContent = postTitle.trim() !== "" && postBody.trim() !== "" && destination !== null;
+    const hasContent = (LETTER_HEADS || postTitle.trim() !== "") && postBody.trim() !== "" && destination !== null;
     const canSubmit = hasContent && !submitting;
     const sendLabel = submitting
       ? <>{externalSubmit?.submittingLabel ?? "sending"}<LoadingDots /></>
@@ -734,16 +738,20 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
                 {stampEl(desk ? 0.9 : 0.8, E.color.ink)}
               </div>
             )}
-            <input
-              className="e-compose-title"
-              type="text"
-              aria-label="Title"
-              placeholder="a title"
-              value={postTitle}
-              onChange={(e) => setPostTitle(e.target.value)}
-              maxLength={200}
-              style={{ ...TITLE_INPUT(desk), marginTop: desk ? 34 : 22, paddingRight: submitting ? 112 : 0 }}
-            />
+            {LETTER_HEADS ? (
+              <HeadLine body={postBody} desktop={desk} style={{ marginTop: desk ? 34 : 22, paddingRight: submitting ? 112 : 0 }} />
+            ) : (
+              <input
+                className="e-compose-title"
+                type="text"
+                aria-label="Title"
+                placeholder="a title"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+                maxLength={200}
+                style={{ ...TITLE_INPUT(desk), marginTop: desk ? 34 : 22, paddingRight: submitting ? 112 : 0 }}
+              />
+            )}
             <textarea
               ref={bodyRef}
               className="e-compose-paper"
@@ -973,6 +981,11 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               <Stamp spec={stampSpecFor(user?.id ?? "")} label={stampLabel} initial={(profile?.display_name || profile?.username || "").trim().charAt(0).toUpperCase()} ink={CANON.friend} scale={mobileIdiom ? 0.8 : 1} rewatch={isRewatchTag} />
             </div>
           )}
+          {LETTER_HEADS ? (
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: letterHead(postBody) ? INK : "var(--canon-accent,#dea838)", minHeight: 27, marginBottom: 14, letterSpacing: "-0.015em", lineHeight: 1.2, paddingRight: submitting ? (mobileIdiom ? 92 : 112) : undefined }}>
+              {letterHead(postBody) || "your first words become the headline"}
+            </div>
+          ) : (
           <input
             className="v2-compose-title-input"
             type="text"
@@ -997,6 +1010,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               lineHeight: 1.2,
             }}
           />
+          )}
           <textarea
             ref={bodyRef}
             className="v2-compose-paper-input"
@@ -1125,7 +1139,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             )}
             {(() => {
               const hasContent =
-                postTitle.trim() !== "" &&
+                (LETTER_HEADS || postTitle.trim() !== "") &&
                 postBody.trim() !== "" &&
                 destination !== null;
               const canSubmit = hasContent && !submitting;

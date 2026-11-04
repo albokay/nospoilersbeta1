@@ -6,7 +6,8 @@ import { Confirm, BottomSheet } from "../editorial/Overlays";
 import { EditorialDialog } from "../editorial/GroupRoom";
 import { Block } from "../editorial/Onboarding";
 import { UNDERLINE_WORD, INK_BLOCK_M, INK_SMALL, REPLY_TA_CSS } from "../editorial/MapNotes";
-import { PAPER_TEXTAREA, PAPER_LH, COMPOSE_CSS } from "../editorial/Compose";
+import { PAPER_TEXTAREA, PAPER_LH, COMPOSE_CSS, HeadLine } from "../editorial/Compose";
+import { LETTER_HEADS, letterHead } from "../../lib/letterHead";
 import { isSidebarAuthor, type SidebarLetterKind } from "../../lib/sidebarLetters";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -573,8 +574,9 @@ export default function V2InlineThread({
       return;
     }
     setShowRetagWarning(false);
-    const title = editTitle.trim() || "Untitled note";
     const body = editBody.trim() || "(blank)";
+    // The head is the title (2026-11-03): recomputed from the edited body.
+    const title = (LETTER_HEADS ? letterHead(body) : editTitle.trim()) || "Untitled note";
     setEditSubmitting(true);
     setEditError(null);
     try {
@@ -810,13 +812,17 @@ export default function V2InlineThread({
       ) : editing ? (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
           {editorialScope && <style>{REPLY_TA_CSS}{COMPOSE_CSS}</style>}
-          <input
-            className={editorialScope ? undefined : "badge"}
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            placeholder="Title"
-            style={editorialScope ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", ...E.type.letterTitle22, color: E.color.ink, padding: "0 0 8px" } : { width: "100%", height: 40, fontWeight: 700, border: "none" }}
-          />
+          {LETTER_HEADS ? (
+            <HeadLine body={editBody} desktop={!mobileIdiom} style={editorialScope ? { fontSize: 22 } : undefined} />
+          ) : (
+            <input
+              className={editorialScope ? undefined : "badge"}
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Title"
+              style={editorialScope ? { width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent", ...E.type.letterTitle22, color: E.color.ink, padding: "0 0 8px" } : { width: "100%", height: 40, fontWeight: 700, border: "none" }}
+            />
+          )}
           {editorialScope ? (
             // The ruled paper inside the 1px ink box (round 6: the box says
             // "a different state"); the inset keeps the rules under the lines.
@@ -850,8 +856,8 @@ export default function V2InlineThread({
             <button
               className={editorialScope ? undefined : "btn"}
               onClick={handleSaveEdit}
-              disabled={editSubmitting || !editTitle.trim() || !editBody.trim()}
-              style={editorialScope ? { ...INK_SMALL, opacity: editSubmitting || !editTitle.trim() || !editBody.trim() ? 0.6 : 1 } : { background: CANON.personal, color: CANON.cream, border: "2px solid var(--canon-personal,#7abd8e)" }}
+              disabled={editSubmitting || (!LETTER_HEADS && !editTitle.trim()) || !editBody.trim()}
+              style={editorialScope ? { ...INK_SMALL, opacity: editSubmitting || (!LETTER_HEADS && !editTitle.trim()) || !editBody.trim() ? 0.6 : 1 } : { background: CANON.personal, color: CANON.cream, border: "2px solid var(--canon-personal,#7abd8e)" }}
             >
               {editSubmitting ? "Saving…" : "Save"}
             </button>

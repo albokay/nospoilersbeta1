@@ -11,6 +11,7 @@
 import React from "react";
 import { Sparkles } from "lucide-react";
 import { E } from "../../styles/editorial";
+import { letterHead } from "../../lib/letterHead";
 import { EditorialDialog, EditorialSheet } from "./GroupRoom";
 
 export const PAPER_LH = E.space.paperRule; // 28 — the line-height AND the rule period, or text drifts off the rules
@@ -53,6 +54,18 @@ export const TITLE_INPUT = (desktop: boolean): React.CSSProperties => ({
   width: "100%", boxSizing: "border-box", border: 0, borderBottom: `1px solid ${E.color.ink}`, outline: "none", background: "transparent",
   fontFamily: E.font.display, fontWeight: 700, fontSize: desktop ? 24 : 22, lineHeight: 1.2, color: E.color.ink, padding: "0 0 8px", margin: 0, borderRadius: 0,
 });
+
+/** The compose's head line (2026-11-03, lib/letterHead): where the title
+ *  box stood, the letter's first words as the rule picks them, live as you
+ *  type; a muted hint until there are any. Nothing to type into. */
+export function HeadLine({ body, desktop, style }: { body: string; desktop: boolean; style?: React.CSSProperties }) {
+  const head = letterHead(body);
+  return (
+    <div aria-live="polite" style={{ ...TITLE_INPUT(desktop), minHeight: desktop ? 38 : 35, color: head ? E.color.ink : "rgba(26,58,74,0.45)", overflowWrap: "anywhere", ...style }}>
+      {head || "your first words become the headline"}
+    </div>
+  );
+}
 export const PAPER_TEXTAREA = (desktop: boolean, minLines: number): React.CSSProperties => ({
   width: "100%", minWidth: "100%", maxWidth: "100%", boxSizing: "border-box", border: 0, outline: "none", resize: "none", overflow: "hidden", display: "block",
   fontFamily: E.font.display, fontWeight: 400, fontSize: desktop ? 17 : 16, lineHeight: `${PAPER_LH}px`, color: E.color.ink,
