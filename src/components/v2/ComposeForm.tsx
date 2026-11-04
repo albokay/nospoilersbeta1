@@ -258,6 +258,38 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
   const [pendingRating, setPendingRating] = useState<{ s: number; e: number } | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  // The phone's head block (eyebrow + show name): what stays in view when
+  // the paper is tapped (his 11-03 note: the keyboard's own scroll pushed
+  // the head line off the top, so the forming head couldn't be seen).
+  const headAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [paperReady, setPaperReady] = useState(false);
+  // The cursor lands in the paper as soon as it is there (his 11-03 ask:
+  // the head line above it is not where you type). preventScroll keeps the
+  // desktop page still; the phone's keyboard scroll is handled on focus.
+  useEffect(() => {
+    if (!paperReady) return;
+    const ta = bodyRef.current;
+    if (!ta || document.activeElement === ta) return;
+    try { ta.focus({ preventScroll: true }); } catch { ta.focus(); }
+  }, [paperReady]);
+  // On the phone, a tap on the first line scrolls the head block to the
+  // top once the keyboard has settled, so "Capture your thoughts on", the
+  // show, the head line and the first lines of paper all stay in view.
+  // Deeper in the letter the browser's own scroll is right.
+  function handleBodyFocus() {
+    if (!mobileIdiom) return;
+    const ta = bodyRef.current;
+    if (!ta) return;
+    const before = ta.value.slice(0, ta.selectionStart ?? 0);
+    if (before.includes("\n") || before.length > 160) return;
+    window.setTimeout(() => {
+      // Only once the keyboard is actually up (the viewport shrinks): the
+      // cursor landing in the paper on open must not move the page.
+      const vv = window.visualViewport;
+      if (vv && vv.height > window.innerHeight * 0.8) return;
+      headAnchorRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 400);
+  }
 
   // Boot: shows + progress for this show + groups + prompts. Bails to
   // /v3/journal if the show isn't in the user's progress (no journal tab).
@@ -615,6 +647,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
       </div>
     );
   }
+  useEffect(() => { if (show && progress) setPaperReady(true); }, [show, progress]);
   if (!show || !progress) {
     return (
       <div style={{ minHeight: "100vh", padding: "100px 24px", textAlign: "center", color: INK_70, fontStyle: "italic" }}>
@@ -679,7 +712,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           ) : (
             <div style={{ padding: `${E.safe.plus(30)} 28px 22px`, background: E.color.accent }}>
               {editorial.banner.step != null && <div style={{ display: "flex", justifyContent: "flex-end" }}><StepsBars step={editorial.banner.step} /></div>}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: editorial.banner.step != null ? 52 : 24 }}>
+              <div ref={headAnchorRef} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, marginTop: editorial.banner.step != null ? 52 : 24, scrollMarginTop: 12 }}>
                 <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 23, lineHeight: 1.2, minWidth: 0 }}>{editorial.banner.title}</div>
                 <div style={{ transform: "translateY(-8px)", flexShrink: 0 }}>{stampEl(0.85, E.color.cream)}</div>
               </div>
@@ -706,7 +739,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{editorial.context ?? ""} · {bandTag}</span>
               {editorial.onMinimize && <MinimizeRing onClick={editorial.onMinimize} style={{ position: "absolute", right: 0, top: 0 }} />}
             </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22, padding: "0 12px" }}>
+            <div ref={headAnchorRef} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginTop: 22, padding: "0 12px", scrollMarginTop: 12 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ ...E.type.label10, letterSpacing: "0.1em", color: E.color.inkMuted }}>{eyebrow}</div>
                 <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 8, overflowWrap: "anywhere" }}>{show.name}</div>
@@ -756,6 +789,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
               ref={bodyRef}
               className="e-compose-paper"
               aria-label="Your letter"
+              onFocus={handleBodyFocus}
               placeholder={activePrompt ? "(insert a prompt below to get started, or just write)" : (bodyPlaceholder ?? "What's something that's gonna stay with you?")}
               value={postBody}
               onChange={(e) => setPostBody(e.target.value)}
@@ -982,7 +1016,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
             </div>
           )}
           {LETTER_HEADS ? (
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: letterHead(postBody) ? INK : "var(--canon-accent,#dea838)", minHeight: 27, marginBottom: 14, letterSpacing: "-0.015em", lineHeight: 1.2, paddingRight: submitting ? (mobileIdiom ? 92 : 112) : undefined }}>
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: 22, fontWeight: 600, color: letterHead(postBody) ? INK : "var(--canon-accent,#dea838)", fontStyle: letterHead(postBody) ? "normal" : "italic", minHeight: 27, marginBottom: 14, letterSpacing: "-0.015em", lineHeight: 1.2, paddingRight: submitting ? (mobileIdiom ? 92 : 112) : undefined }}>
               {letterHead(postBody) || "your first words become the headline"}
             </div>
           ) : (
@@ -1013,6 +1047,7 @@ const ComposeForm = forwardRef<ComposeFormHandle, ComposeFormProps>(function Com
           )}
           <textarea
             ref={bodyRef}
+            onFocus={handleBodyFocus}
             className="v2-compose-paper-input"
             placeholder={activePrompt ? "(insert a prompt below to get started, or just write)" : (bodyPlaceholder ?? "What's something that's gonna stay with you?")}
             value={postBody}

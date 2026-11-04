@@ -57,11 +57,13 @@ export const TITLE_INPUT = (desktop: boolean): React.CSSProperties => ({
 
 /** The compose's head line (2026-11-03, lib/letterHead): where the title
  *  box stood, the letter's first words as the rule picks them, live as you
- *  type; a muted hint until there are any. Nothing to type into. */
+ *  type; until there are any, the hint in the band's sky blue, italic (his
+ *  11-03 call: low contrast on purpose — it is NOT where you type), wrapped
+ *  by the balanced rule. */
 export function HeadLine({ body, desktop, style }: { body: string; desktop: boolean; style?: React.CSSProperties }) {
   const head = letterHead(body);
   return (
-    <div aria-live="polite" style={{ ...TITLE_INPUT(desktop), minHeight: desktop ? 38 : 35, color: head ? E.color.ink : "rgba(26,58,74,0.45)", overflowWrap: "anywhere", ...style }}>
+    <div aria-live="polite" className="sb-balance" style={{ ...TITLE_INPUT(desktop), minHeight: desktop ? 38 : 35, color: head ? E.color.ink : E.color.friend, fontStyle: head ? "normal" : "italic", overflowWrap: "anywhere", ...style }}>
       {head || "your first words become the headline"}
     </div>
   );
