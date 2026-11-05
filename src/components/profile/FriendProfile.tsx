@@ -560,6 +560,8 @@ export default function FriendProfile({
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ ...E.type.label10, color: E.color.inkMuted }}>Show: <span style={{ color: E.color.ink }}>{show.name}</span></div>
                       {take && open && <div style={{ ...E.type.quote14, marginTop: 6 }}>&ldquo;{take}&rdquo;</div>}
+                      {/* No take written (his T-Man catch, 11-04): one muted line in the note's place, so the row still reads as a canon entry. */}
+                      {!take && <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 6 }}>{ownerName} hasn&rsquo;t written why yet.</div>}
                       {take && !open && (
                         <div style={{ marginTop: 8, padding: "12px 12px", border: `1px dashed ${E.color.friend}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
                           <span style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={13} color={E.color.cream} strokeWidth={2.2} /></span>
