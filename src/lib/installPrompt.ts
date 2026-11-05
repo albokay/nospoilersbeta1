@@ -88,8 +88,9 @@ export function installPath(): InstallPath {
 
 // ── The home-screen tab (2026-11-04, editorial/HomeScreenTab) ──────────────
 /** The square's side; the deck's docked tab gives up this much plus the gap
- *  at its right end on the phone. */
-export const HOME_SCREEN_TAB = 56;
+ *  at its right end on the phone. 48, a touch under the How tab's 56 — equal
+ *  felt odd (his live note after CP1); still square, same foot. */
+export const HOME_SCREEN_TAB = 48;
 export const HOME_SCREEN_GAP = 12;
 
 /** Is the square docked at the phone's foot? Everywhere but inside the
