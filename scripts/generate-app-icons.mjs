@@ -1,6 +1,11 @@
 // Re-runnable: renders the home-screen app icons (Alborz's pass #2,
-// 2026-08-18): five OPAQUE blocks in a diagonal staircase on canon green, no
-// wordmark. Positions/sizes are fractions of the tile, read off the pass.
+// 2026-08-18): five OPAQUE blocks in a diagonal staircase, no wordmark.
+// Positions/sizes are fractions of the tile, read off the pass.
+// His redesign (2026-11-04, the home-screen tab CP3): the tile is CREAM to
+// match the editorial dashboard, and the staircase's cream block turns GREEN
+// — the same mark the phone's docked square and the drawer draw
+// (editorial/HomeScreenTab AppIconBlocks). The launch screen behind the icon
+// (manifest background_color) is cream too; the bar colour stays green.
 // Run: node scripts/generate-app-icons.mjs
 // Outputs public/icons/{icon-192,icon-512,icon-512-maskable,apple-touch-icon}.png
 import sharp from "sharp";
@@ -9,11 +14,11 @@ import { writeFileSync } from "node:fs";
 const GREEN = "#7ABD8E", ACCENT = "#DEA838", CREAM = "#FEF8EA", SKY = "#ADC8D7", ALERT = "#F45028", IDENTITY = "#355EB8";
 const BLOCK = 0.288;          // block side as a fraction of the tile
 const RADIUS = 15 / 52;       // the logo's corner ratio
-// Paint order = z-order (later = on top): orange < yellow < cream; blue < sky.
+// Paint order = z-order (later = on top): orange < yellow < green; blue < sky.
 const blocks = [
   { c: ALERT,    x: 0.060, y: 0.080 }, // orange — upper-left
   { c: ACCENT,   x: 0.265, y: 0.295 }, // yellow — over orange's lower-right
-  { c: CREAM,    x: 0.430, y: 0.180 }, // cream — over yellow's upper-right
+  { c: GREEN,    x: 0.430, y: 0.180 }, // green (was cream) — over yellow's upper-right
   { c: IDENTITY, x: 0.540, y: 0.670 }, // blue — lower-right, under sky
   { c: SKY,      x: 0.670, y: 0.505 }, // sky — over blue's upper-right
 ];
@@ -25,7 +30,7 @@ function svg(size, scale = 1) {
     const s = BLOCK * size * scale;
     return `<rect x="${(off + b.x * size * scale).toFixed(2)}" y="${(off + b.y * size * scale).toFixed(2)}" width="${s.toFixed(2)}" height="${s.toFixed(2)}" rx="${(s * RADIUS).toFixed(2)}" fill="${b.c}"/>`;
   }).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${GREEN}"/>${rects}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="${CREAM}"/>${rects}</svg>`;
 }
 const jobs = [
   ["icon-512.png", 512, 0.92],           // breathing room from the tile edges (Alborz 2026-08-18)
