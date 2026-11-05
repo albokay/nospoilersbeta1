@@ -81,6 +81,12 @@ export function tallyBuckets(t: Tally, outstandingOnly = false): { key: TallyKey
   return keys.filter((k) => t[k].length > 0).map((k) => ({ key: k, label: TALLY_LABEL[k], names: t[k] }));
 }
 
+/** The tally without you — the answer sheet's stack, where your answer is the control, never a line. */
+export function tallyOthers(t: Tally): Tally {
+  const drop = (n: string[]) => n.filter((x) => x !== "you");
+  return { in: drop(t.in), out: drop(t.out), seen: drop(t.seen), waiting: drop(t.waiting) };
+}
+
 /** Someone is out, has seen it, or hasn't answered — the tally has something to say on a started room. */
 export const tallySplit = (t: Tally): boolean => t.out.length + t.seen.length + t.waiting.length > 0;
 

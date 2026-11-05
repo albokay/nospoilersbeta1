@@ -94,7 +94,7 @@ import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, endOfShow, indexPasses, passSlotLabel, tallyFor, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, endOfShow, indexPasses, passSlotLabel, tallyFor, tallyOthers, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "./StanceToggle";
@@ -3194,6 +3194,8 @@ export default function DashboardPage() {
             name: clicked.name,
             question: clicked.mode === "watchq" ? "Are you also watching?" : withToggle ? (seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`) : null,
             answerLines: withToggle ? answerText : [],
+            // The stacked tally (2026-11-05): the others' answers and who hasn't answered, in place of the sentences.
+            tally: withToggle ? { buckets: tallyOthers(showTally(clicked.showId)), inSeason: answers.inSeason } : null,
             answer: withToggle
               ? (gs
                 ? { kind: "stance", value: myStance, onChange: (v) => { doStance(id, v); if (v !== "in") setClicked(null); } }

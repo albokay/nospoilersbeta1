@@ -180,6 +180,30 @@ export function TallyLine({ tally, outstandingOnly = false, mine = false }: { ta
   );
 }
 
+/** The answer sheet's tally (his 11-05 call): the buckets STACKED, one per
+ *  line, the labels right-aligned in a column beside the names — in · out ·
+ *  seen it · waiting on (the sheet's word for ?, in alert) — empty buckets
+ *  left out, the others only (your answer is the row of answers under it).
+ *  Stand alone mode: an "in" friend's season rides their name. */
+export function TallyStack({ tally, inSeason }: { tally: Tally; inSeason?: Record<string, number> }) {
+  const buckets = tallyBuckets(tally);
+  if (buckets.length === 0) return null;
+  const name = (key: string, n: string) => (key === "in" && inSeason && (inSeason[n] ?? 0) > 0 ? `${n} (season ${inSeason[n]})` : n);
+  return (
+    <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "auto auto", columnGap: 10, rowGap: 6, justifyContent: "center", ...E.type.label11, textTransform: "none", letterSpacing: "0.04em", lineHeight: 1.3, color: E.color.inkSub, textAlign: "left" }}>
+      {buckets.map((b) => {
+        const alert = b.key === "waiting";
+        return (
+          <React.Fragment key={b.key}>
+            <span style={{ textAlign: "right", color: alert ? E.color.alert : undefined }}>{b.key === "waiting" ? "waiting on" : b.label}:</span>
+            <span style={{ color: alert ? E.color.alert : undefined }}>{b.names.map((n) => name(b.key, n)).join(", ")}</span>
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 export function RowPoster({ tvmazeId, w = 40, h = 56 }: { tvmazeId?: string | null; w?: number; h?: number }) {
   const url = usePoster(tvmazeId);
   return url
@@ -482,8 +506,10 @@ export function NumbersPicker({ show, value, onChange, allowZero = true, align =
 export type StanceView = {
   name: string;
   question: string | null;
-  /** "Sam is in. Priya has already seen it." lines. */
+  /** "Sam is in. Priya has already seen it." lines (the classic sheet; the editorial sheet stacks `tally` instead when it has one). */
   answerLines: string[];
+  /** The stacked tally (2026-11-05): in · out · seen it · waiting on, the others only; `inSeason` names the season each "in" friend is on in stand alone mode. */
+  tally?: { buckets: Tally; inSeason?: Record<string, number> } | null;
   answer: { kind: "stance"; value: "in" | "out" | "seen" | null; onChange: (v: "in" | "out" | "seen") => void } | { kind: "yesno"; value: boolean; onChange: (v: boolean) => void } | null;
   progress: { title: string | null; note: string | null; show: { id?: string; seasons?: number[]; tvmazeType?: string; standAlone?: boolean | null } | null | undefined; value: { s: number; e: number }; onChange: (v: { s: number; e: number }) => void } | null;
   actions: { readLine: string | null; enterLabel: string; onEnter: () => void; joinNote: string | null; onJustConfirm: (() => void) | null } | null;
@@ -514,7 +540,9 @@ export function StanceSurface({ view, inset, foot }: { view: StanceView; inset: 
     <div style={{ textAlign: "center", color: E.color.ink }}>
       <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 26 }}>{view.name}</div>
       {view.question && <div style={{ ...E.type.label11, marginTop: 22 }}>{view.question}</div>}
-      {view.answerLines.length > 0 && (
+      {view.tally && tallyBuckets(view.tally.buckets).length > 0 ? (
+        <TallyStack tally={view.tally.buckets} inSeason={view.tally.inSeason} />
+      ) : view.answerLines.length > 0 && (
         <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.45, color: "rgba(26,58,74,0.7)" }}>{view.answerLines.join(" ")}</div>
       )}
       {view.answer && (view.answer.kind === "stance" ? (

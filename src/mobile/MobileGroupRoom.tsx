@@ -67,7 +67,7 @@ import { ensureCatalogShow } from "../lib/browseCatalog";
 import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, tallyFor, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, tallyFor, tallyOthers, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
@@ -1630,6 +1630,8 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
             name: clicked.name,
             question: clicked.mode === "watchq" ? "Are you also watching?" : withToggle ? (seenIt ? "Do you want to join in?" : `Do you want to watch${interestedNames.length > 0 ? " too" : ""}?`) : null,
             answerLines: withToggle ? answerText : [],
+            // The stacked tally (2026-11-05): the others' answers and who hasn't answered, in place of the sentences.
+            tally: withToggle ? { buckets: tallyOthers(showTally(id)), inSeason: answers.inSeason } : null,
             answer: withToggle
               ? (gs
                 ? { kind: "stance", value: myStance, onChange: (v) => { doStance(id, v); if (v !== "in") setClicked(null); } }
