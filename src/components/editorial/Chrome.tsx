@@ -341,20 +341,33 @@ export function EditorialSub({ children, desktop = false, style }: { children: R
  *  never reaches the chat fold. A friend who hasn't joined yet is a dashed
  *  strip with no underline. `after` = the + at the end (the show room's
  *  add-friends). Replaces "With Adam, Lena & Mo" in the group rooms and the
- *  show rooms, phone and desktop. */
-export function WithStrips({ people, pending = [], after, desktop = false, style }: {
-  people: { key: string; label: string; onClick: () => void }[];
+ *  show rooms, phone and desktop.
+ *  The show room's second line (his ask, 11-04) is the same row with `lead`
+ *  "in" and ONE strip, the group's name, the way up to the group room — so
+ *  the head reads "The Diplomat with Rodrigo in Everybody's A Critic";
+ *  `nowrap` keeps it on its line, the name cut with an ellipsis rather than
+ *  broken; a `signal` on a person draws the group disc's old dot (something
+ *  new elsewhere in the group) on the strip's top-right corner. */
+export function WithStrips({ people, pending = [], after, desktop = false, lead = "With", nowrap = false, style }: {
+  people: { key: string; label: string; title?: string; onClick: () => void; signal?: "blue" | "red" | null }[];
   pending?: string[];
   after?: React.ReactNode;
   desktop?: boolean;
+  /** The row's first word: "With" (the friends) or "in" (the group). */
+  lead?: string;
+  /** One line only: a long strip truncates with an ellipsis instead of wrapping. */
+  nowrap?: boolean;
   style?: React.CSSProperties;
 }) {
-  const strip: React.CSSProperties = { ...E.type.label11, display: "inline-flex", alignItems: "center", padding: "7px 8px", boxSizing: "border-box", background: E.color.cream, color: E.color.inkSub, border: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" };
+  const strip: React.CSSProperties = { ...E.type.label11, display: "inline-block", padding: "7px 8px", boxSizing: "border-box", maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", background: E.color.cream, color: E.color.inkSub, border: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" };
   return (
-    <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: desktop ? 16 : 14, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, ...style }}>
-      <span style={{ marginRight: 2 }}>With</span>
+    <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: desktop ? 16 : 14, display: "flex", flexWrap: nowrap ? "nowrap" : "wrap", alignItems: "center", gap: 8, ...style }}>
+      <span style={{ marginRight: 2, flexShrink: 0 }}>{lead}</span>
       {people.map((p) => (
-        <button key={p.key} type="button" title={`${p.label}'s profile`} onClick={(e) => { e.stopPropagation(); p.onClick(); }} style={strip}>{p.label}</button>
+        <span key={p.key} style={{ position: "relative", display: "inline-flex", minWidth: 0, maxWidth: "100%" }}>
+          <button type="button" title={p.title ?? `${p.label}'s profile`} onClick={(e) => { e.stopPropagation(); p.onClick(); }} style={strip}>{p.label}</button>
+          {p.signal && <span aria-hidden="true" style={{ position: "absolute", top: -5, right: -5, width: 10, height: 10, borderRadius: "50%", background: p.signal === "red" ? E.color.alert : E.color.identity }} />}
+        </span>
       ))}
       {pending.map((n, i) => (
         <span key={`pend-${i}`} style={{ ...strip, textDecoration: "none", color: E.color.inkMuted, cursor: "default", outline: `1px dashed ${E.color.inkFaint}`, outlineOffset: -1 }}>{n}</span>

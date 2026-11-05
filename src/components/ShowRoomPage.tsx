@@ -61,7 +61,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark, UnderlineWord, WithStrips } from "./editorial/Chrome";
-import { GroupRoomDisc, WithPlus, useGroupSignals } from "./editorial/RoomHead";
+import { WithPlus, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
 import AddFriendsDialog from "./editorial/AddFriendsDialog";
@@ -1348,12 +1348,14 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
             <EditorialColumn wide>
               {/* The head (the landing-rule arc's CP2 + his notes, 11-02): the SHOW's
                   name is the headline, the gear its superscript (email updates for
-                  this room), the With line under it; the sky disc beside it carries
-                  the GROUP's name and is the way up to the group room (its dot:
-                  something new elsewhere in the group); the poster sits in the
-                  rail with the play mark on its corner. */}
+                  this room), the With line under it, then "in {group}" — the way up
+                  to the group room as a strip (his ask, 11-04: the sky disc went,
+                  the head reads "The Diplomat with Rodrigo in Everybody's A Critic",
+                  the disc's dot rides the strip's corner, and the head sits as
+                  tall as the show's own page's); the poster sits in the rail with
+                  the play mark on its corner. */}
               <div style={{ display: "grid", gridTemplateColumns: `${E.measure.desktop.letters}px ${E.measure.desktop.rail}px`, columnGap: E.measure.desktop.railGap, alignItems: "start" }}>
-                <div style={{ position: "relative", minHeight: E.measure.desktop.groupDisc }}>
+                <div style={{ position: "relative" }}>
                   <div style={{ width: 464 }}>
                     <FittedTitle desktop shrink gearAt="last" name={show?.name ?? "Show"} gear={!privateOnly && roomId ? <TitleGear label="Email updates for this room" onClick={() => { void openDigestModal(); }} /> : undefined} />
 
@@ -1371,11 +1373,10 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     // A room of one (his words, 11-03): in place of the With line.
                     <EditorialSub desktop>(just you so far)</EditorialSub>
                   ) : null}
-                  </div>
-                  {/* 476 again (his catch, 11-03: at 415 the disc crowded the title; the wordmark sits right of the letters column now, so the arrow no longer points at it). */}
                   {!privateOnly && parentGroupId && (
-                    <GroupRoomDisc desktop label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ position: "absolute", left: 476, top: -1 }} />
+                    <WithStrips desktop lead="in" nowrap people={[{ key: "group", label: lobbyName ?? "Group room", title: "Open the group room", onClick: openGroupRoom, signal: signals.disc }]} style={{ marginTop: 8 }} />
                   )}
+                  </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
                   <TrailerPoster showId={show?.id} showName={show?.name} tvmazeId={show?.tvmazeId} w={135} h={191} season={refEff?.s ?? null} />

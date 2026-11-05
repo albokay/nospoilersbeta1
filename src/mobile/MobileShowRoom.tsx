@@ -21,7 +21,7 @@ import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark, UnderlineWord, WithStrips } from "../components/editorial/Chrome";
-import { GroupRoomDisc, WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
+import { WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
 import MobileInviteSheet from "./MobileInviteSheet";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
 import TSPDemoModal from "../components/TSPDemoModal";
@@ -1376,9 +1376,10 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
           // ── The editorial chrome (checkpoint 1, 2026-10-10; his notes after
           //    the landing-rule arc, 11-02): the blue corner is the way out,
           //    the "sidebar" wordmark centred at the top in ink is home,
-          //    `? [account]` at the top right; the sky disc beside the
-          //    headline is the way up to the group room, the show's poster
-          //    under it (his mockup, 11-03: the banner and the chat fold went). ──
+          //    `? [account]` at the top right; the "in {group}" strip under
+          //    the With line is the way up to the group room (the sky disc
+          //    went, 11-04), the show's poster at the right (his mockup,
+          //    11-03: the banner and the chat fold went). ──
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px` }}>
             <CornerTab kind="back" label={backLabel} onClick={closeRoom} />
             <Wordmark tint="ink" onClick={() => navigate("/m/dashboard")} />
@@ -1407,12 +1408,16 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 // A room of one (his words, 11-03): in place of the With line.
                 <EditorialSub>(just you so far)</EditorialSub>
               ) : null}
-              {/* The disc with the group's name sits UNDER the With line, in from
-                  the gutter (his mockup, 11-04): the head's two columns are now
-                  title · With · disc on the left and the poster alone on the
-                  right, so a room's green head runs shorter than it did with
-                  the disc stacked over the poster. */}
-              {!privateOnly && parentGroupId && <GroupRoomDisc label={lobbyName ?? "Group room"} signal={signals.disc} onClick={openGroupRoom} style={{ marginTop: 34, marginLeft: 46 }} />}
+              {/* "in {group}" (his ask, 11-04): the way up to the group room is
+                  a strip under the With line, so the head reads "The Diplomat
+                  with Rodrigo in Everybody's A Critic"; a long group name is
+                  cut with an ellipsis, never broken; the disc's dot (something
+                  new elsewhere in the group) rides the strip's corner. The sky
+                  disc is retired, and the head pulls up to the show's own
+                  page's height — the poster sets both. */}
+              {!privateOnly && parentGroupId && (
+                <WithStrips lead="in" nowrap people={[{ key: "group", label: lobbyName ?? "Group room", title: "Open the group room", onClick: openGroupRoom, signal: signals.disc }]} style={{ marginTop: 8 }} />
+              )}
               </div>
               {/* The right column: the show's poster with the play mark on its
                   bottom corner, its top on the title's, nudged out to 10px past
