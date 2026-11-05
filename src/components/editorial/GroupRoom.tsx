@@ -40,6 +40,7 @@ import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import useKeyboardInset from "../../lib/useKeyboardInset";
 import TrailerCard from "../TrailerCard";
 import { joinNames } from "../../lib/groupNames";
+import { tallyBuckets, type Tally } from "../../lib/proposalAnswers";
 
 /** The room's paper note: a readable letter first, then a sealed one, then
  *  chat; null when nothing waits. The rooms are the shelves' rows. */
@@ -159,6 +160,26 @@ function usePoster(tvmazeId?: string | null): string | null {
   return url;
 }
 
+/** The pitch tally under a row (Alborz 2026-11-05): "in: you, sam / out: liz / ?: adam"
+ *  — lowercase labels and names, / between the buckets, "you" first in yours,
+ *  empty buckets left out; quiet ink with the ? bucket in alert (the one that
+ *  can still change), and on your own pitch the passes in alert too (his
+ *  note, 10-27). Wraps, never cut: a pitcher must see WHO answered WHAT.
+ *  `outstandingOnly` (a started room's rows) drops "in" — the room holds
+ *  who's in. Renders nothing when there's nothing to say. */
+export function TallyLine({ tally, outstandingOnly = false, mine = false }: { tally: Tally; outstandingOnly?: boolean; mine?: boolean }) {
+  const buckets = tallyBuckets(tally, outstandingOnly);
+  if (buckets.length === 0) return null;
+  return (
+    <span style={{ ...E.type.label11, textTransform: "none", letterSpacing: "0.04em", lineHeight: 1.4, color: E.color.inkQuiet, whiteSpace: "normal", overflowWrap: "anywhere" }}>
+      {buckets.flatMap((b, i) => [
+        i > 0 ? <span key={`sep-${b.key}`}> / </span> : null,
+        <span key={b.key} style={b.key === "waiting" || (mine && b.key !== "in") ? { color: E.color.alert } : undefined}>{b.label}: {b.names.join(", ")}</span>,
+      ])}
+    </span>
+  );
+}
+
 export function RowPoster({ tvmazeId, w = 40, h = 56 }: { tvmazeId?: string | null; w?: number; h?: number }) {
   const url = usePoster(tvmazeId);
   return url
@@ -215,13 +236,18 @@ export function useRowSwipe(onOptions?: () => void): { dx: number; dragging: boo
 /** The arrival flash (round 6): an accent wash fading to cream over two seconds, once. */
 const FLASH_CSS = "@keyframes eRowFlash{from{background-color:#F0D49A}to{background-color:#FEF8EA}}";
 
-export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false, mine = false, flash = false, domId, tipAnchor }: {
+export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, tally, titleEnd, end, onOpen, onOptions, optionsLabel = "Options for this show", desktop = false, padding, hint = false, dashed = false, fresh = false, mine = false, flash = false, domId, tipAnchor }: {
   tvmazeId?: string | null;
   /** false = a pitched row (no poster). */
   poster?: boolean;
   name: string;
   nameSize?: 16 | 17;
+  /** The news line: one line, cut with an ellipsis. */
   line?: React.ReactNode;
+  /** The pitch tally (2026-11-05): the row's last line, wraps, never cut. */
+  tally?: React.ReactNode;
+  /** A word on the title line's right (Answer · Your pitch), so the lines under run the row's full width. */
+  titleEnd?: React.ReactNode;
   end?: React.ReactNode;
   onOpen: () => void;
   /** The row's options (the leave / clear sheet). With one, the phone row
@@ -251,12 +277,17 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
 
   const text = (
     <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: poster ? 5 : 4 }}>
-      <span style={{ ...(nameSize === 17 ? E.type.row17 : E.type.row16), color: dashed ? E.color.inkMuted : E.color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {(fresh || mine) && <span aria-label={mine ? "Your new pitch" : "New pitch"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: mine ? E.color.alert : E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
-        {name}
+      <span style={{ display: "flex", alignItems: "baseline", gap: 12, minWidth: 0 }}>
+        <span style={{ ...(nameSize === 17 ? E.type.row17 : E.type.row16), flex: 1, minWidth: 0, color: dashed ? E.color.inkMuted : E.color.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {(fresh || mine) && <span aria-label={mine ? "Your new pitch" : "New pitch"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: mine ? E.color.alert : E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
+          {name}
+        </span>
+        {titleEnd}
       </span>
+      {/* The news line, a shade louder than a caption (2026-11-05, the With line's ink) so the tally under it reads as the quieter information. */}
       {/* The compositing hint (his screenshots, 11-04): in the installed app a truncated line sometimes kept a faded, half-clipped paint of the words past its ellipsis; its own layer repaints whole. */}
-      {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}>{line}</span>}
+      {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkSub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}>{line}</span>}
+      {tally}
     </span>
   );
   const rowStyle: React.CSSProperties = {

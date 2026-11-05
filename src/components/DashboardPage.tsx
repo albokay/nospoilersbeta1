@@ -94,7 +94,7 @@ import TipsNote from "./TipsNote";
 import { tipsDefaultOpen, markTipsSeen, type TipsPage } from "../lib/tipsContent";
 import { readInviteeWelcome } from "../lib/inviteeWelcome";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSlotLabel, passSelfNote, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, endOfShow, indexPasses, passSlotLabel, tallyFor, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "./StanceToggle";
@@ -125,7 +125,7 @@ import { useEditorial } from "../lib/skin";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, Wordmark, WithStrips } from "./editorial/Chrome";
-import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
+import { Masthead, ShowRow, TallyLine, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { useGuideLetterNote } from "./editorial/GuideNote";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
@@ -626,28 +626,6 @@ export default function DashboardPage() {
     const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
     return [gapPhrase(gap, nameOf, selfAtEnd), mail].filter(Boolean).join(" · ") || null;
   }
-  function editorialProposalLine(showId: string): string | null {
-    const gsRow = groupShows.find((x) => x.showId === showId);
-    const line = answerRowLine(answerNamesFor(showId));
-    const st = myStanceFor(showId);
-    const mine = st === "out" || st === "seen" ? st : null;
-    // Your own room that nobody has joined yet — only while nobody has
-    // answered (his catch, 10-14: a friend's "seen it" hid behind this line).
-    if (!line && !mine && gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
-    if (!line && !mine) return null;
-    return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
-  }
-  // Your own pitch's row (his note, 10-27): the friends' passes in alert, the
-  // "is in" part and everything else as before.
-  const proposalLineNode = (showId: string, mine: boolean): ReactNode => {
-    if (!mine) return editorialProposalLine(showId);
-    const parts = answerRowParts(answerNamesFor(showId));
-    if (!parts.length) return editorialProposalLine(showId);
-    return parts.flatMap((p, i) => [
-      i > 0 ? <span key={`sep${i}`}> · </span> : null,
-      <span key={i} style={p.pass ? { color: E.color.alert } : undefined}>{p.text}</span>,
-    ]);
-  };
   // "Haven't started yet" show button: tooltip lists the other friends who are
   // interested; falls back to the standard progress/notif tip. (showName /
   // selfOpted params kept for the callers — the 2026-08-12 copy no longer
@@ -698,6 +676,15 @@ export default function DashboardPage() {
       : undefined;
     return { in: inIds.map(name), out: passers("out"), seen: passers("seen"), inSeason };
   };
+  // The tally (2026-11-05): every group member in a bucket — in / out /
+  // seen it / ? — "you" first in yours; the rows draw it with TallyLine.
+  const showTally = (showId: string) => tallyFor({
+    memberIds: (railGroups.find((r) => r.group.id === activeGroupId)?.members ?? []).map((m) => m.userId),
+    selfId: selfUserId,
+    inIds: (groupShows.find((s) => s.showId === showId)?.members ?? []).filter((m) => m.voted).map((m) => m.userId),
+    passes: passes[showId],
+    name: (id) => memberNameById[id] ?? "someone",
+  });
 
   // ── Rail (people-groups). Isolated + tolerant so the dashboard works before
   //    the CP1 migration is applied. ─────────────────────────────────────────
@@ -2399,14 +2386,15 @@ export default function DashboardPage() {
                             poster={false}
                             nameSize={16}
                             name={r.name}
-                            line={proposalLineNode(r.pill.showId, mine)}
+                            tally={<TallyLine tally={showTally(r.pill.showId)} mine={mine} />}
                             dashed={r.passed}
                             fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                             mine={justPitched.has(r.pill.showId)}
                             flash={flashShowId === r.pill.showId}
                             domId={`pitched-${r.pill.showId}`}
                             tipAnchor={inviteeWelcome && inviteeWelcome.groupId === activeGroupId && inviteeWelcome.showId === r.pill.showId ? "invitee-show" : undefined}
-                            end={passed ? <span style={posLabel}>{passSlotLabel(st as PassKind)}</span>
+                            // On the title line (2026-11-05): Answer until you've answered, Your pitch on yours, nothing after an answer — your answer is in the tally as "you".
+                            titleEnd={passed ? undefined
                               : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                               : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                             onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onPillClick(r.pill, r.name); }}
@@ -2443,6 +2431,8 @@ export default function DashboardPage() {
                           ))}
                           {groupShelves.watching.map((r) => {
                             const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
+                            // The tally on a started room (2026-11-05): the outstanding friends only, while the group is split.
+                            const tally = showTally(r.pill.showId);
                             return (
                               <ShowRow
                                 desktop
@@ -2450,6 +2440,7 @@ export default function DashboardPage() {
                                 tvmazeId={showsById[r.pill.showId]?.tvmazeId}
                                 name={r.name}
                                 line={editorialRowLine(r)}
+                                tally={tallySplit(tally) ? <TallyLine tally={tally} outstandingOnly /> : undefined}
                                 end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} /> : r.selfProg ? <span style={posLabel}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
                                 onOpen={() => onPillClick(r.pill, r.name)}
                                 onOptions={r.pill.inRoom && r.pill.roomId ? () => setLeaveConfirm({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined}

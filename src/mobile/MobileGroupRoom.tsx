@@ -67,7 +67,7 @@ import { ensureCatalogShow } from "../lib/browseCatalog";
 import { fetchTvmazePoster } from "../lib/tvmaze";
 import MobileBrowseRows from "./MobileBrowseRows";
 import { computePill, linearIndex, type PillData } from "../lib/groupPills";
-import { answerLines, answerRowLine, answerRowParts, endOfShow, indexPasses, passSelfNote, passSlotLabel, type PassKind, type Stance } from "../lib/proposalAnswers";
+import { answerLines, answerRowLine, endOfShow, indexPasses, passSelfNote, tallyFor, tallySplit, type PassKind, type Stance } from "../lib/proposalAnswers";
 import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
@@ -81,7 +81,7 @@ import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle,
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
-import { Masthead, ShowRow as EditorialShowRow, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow, useBlockHeight } from "../components/editorial/GroupRoom";
+import { Masthead, ShowRow as EditorialShowRow, TallyLine, StanceSurface, EditorialSheet, OptionsSheet, swipeHintKey, groupRoomNote, type StanceView, ChatCorner, FinishedRow, useBlockHeight } from "../components/editorial/GroupRoom";
 import { PaperNote } from "../components/editorial/Dashboard";
 import AccountModal from "../components/AccountModal";
 import type { ProgressEntry, PeopleGroup, PeopleGroupMember, Thread } from "../types";
@@ -970,6 +970,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       : undefined;
     return { in: inIds.map(name), out: passers("out"), seen: passers("seen"), inSeason };
   };
+  // The tally (2026-11-05): every group member in a bucket — in / out /
+  // seen it / ? — "you" first in yours; the rows draw it with TallyLine.
+  const showTally = (showId: string) => tallyFor({
+    memberIds: members.map((m) => m.userId),
+    selfId: selfUserId,
+    inIds: (groupShows.find((s) => s.showId === showId)?.members ?? []).filter((m) => m.voted).map((m) => m.userId),
+    passes: passes[showId],
+    name: (id) => memberNameById[id] ?? "someone",
+  });
   // The proposals row's second line: who's in by name, passes as counts,
   // then your own pass.
   const proposalLine = (showId: string): string | null => {
@@ -982,18 +991,6 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     if (!line && !mine && gsRow?.roomId && gsRow.inRoom && gsRow.members.length < 2) return "Just you so far";
     if (!line && !mine) return null;
     return [line, mine ? passSelfNote(mine) : null].filter(Boolean).join(" · ");
-  };
-
-  // Your own pitch's row (his note, 10-27): the friends' passes in alert, the
-  // "is in" part and everything else as before.
-  const proposalLineNode = (showId: string, mine: boolean): React.ReactNode => {
-    if (!mine) return proposalLine(showId);
-    const parts = answerRowParts(answerNamesFor(showId));
-    if (!parts.length) return proposalLine(showId);
-    return parts.flatMap((p, i) => [
-      i > 0 ? <span key={`sep${i}`}> · </span> : null,
-      <span key={i} style={p.pass ? { color: E.color.alert } : undefined}>{p.text}</span>,
-    ]);
   };
 
   // Browse-row poster tap (2026-08-17, mirrors DashboardPage.pickBrowseShow):
@@ -1407,13 +1404,14 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                         poster={false}
                         nameSize={16}
                         name={r.name}
-                        line={proposalLineNode(r.pill.showId, mine)}
+                        tally={<TallyLine tally={showTally(r.pill.showId)} mine={mine} />}
                         dashed={r.passed}
                         fresh={freshPitches.fresh.has(r.pill.showId) || (freshPitches.freshAnswers.has(r.pill.showId) && !openedAnswers.has(r.pill.showId))}
                         mine={justPitched.has(r.pill.showId)}
                         flash={flashShowId === r.pill.showId}
                         domId={`pitched-${r.pill.showId}`}
-                        end={passed ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>{passSlotLabel(st as PassKind)}</span>
+                        // On the title line (2026-11-05): Answer until you've answered, Your pitch on yours, nothing after an answer — your answer is in the tally as "you".
+                        titleEnd={passed ? undefined
                           : mine ? <span style={{ ...E.type.label11, letterSpacing: "0.06em", fontStyle: "italic", color: E.color.inkMuted, flexShrink: 0 }}>Your pitch</span>
                           : <span style={{ ...E.type.label11, letterSpacing: "0.06em", textDecoration: "underline", textUnderlineOffset: 2, flexShrink: 0 }}>Answer</span>}
                         onOpen={() => { setOpenedAnswers((prev) => new Set(prev).add(r.pill.showId)); onRowClick(r.pill, r.name); }}
@@ -1451,12 +1449,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                   {groupShelves.watching.map((r, i) => {
                     const act = r.pill.inRoom && r.pill.roomId ? () => setSheetFor({ roomId: r.pill.roomId as string, showId: r.pill.showId, name: r.name }) : undefined;
                     const dot = r.pill.roomId ? roomDotByRoomId.get(r.pill.roomId) : undefined;
+                    // The tally on a started room (2026-11-05): the outstanding friends only, while the group is split.
+                    const tally = showTally(r.pill.showId);
                     return (
                       <EditorialShowRow
                         key={r.pill.showId}
                         tvmazeId={showsById[r.pill.showId]?.tvmazeId}
                         name={r.name}
                         line={rowLineText(r)}
+                        tally={tallySplit(tally) ? <TallyLine tally={tally} outstandingOnly /> : undefined}
                         end={dot ? <LetterDisc kind={dot === "red" ? "sealed" : "open"} className="m-dot-in" /> : r.selfProg ? <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, flexShrink: 0 }}>S{r.selfProg.s} E{r.selfProg.e}</span> : undefined}
                         onOpen={() => onRowClick(r.pill, r.name)}
                         onOptions={act}

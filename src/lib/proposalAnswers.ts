@@ -53,6 +53,37 @@ export function answerRowParts(names: AnswerNames): { text: string; pass: boolea
   return parts;
 }
 
+/** The tally (Alborz 2026-11-05): every current group member in one of four
+ *  buckets — in · out · seen it · ? (hasn't answered yet) — "you" included,
+ *  first in your bucket. The rows draw it (`TallyLine`), the answer sheet
+ *  stacks it. Someone invited but not yet in the group isn't counted: they
+ *  can't answer. */
+export type Tally = { in: string[]; out: string[]; seen: string[]; waiting: string[] };
+export type TallyKey = keyof Tally;
+export const TALLY_LABEL: Record<TallyKey, string> = { in: "in", out: "out", seen: "seen it", waiting: "?" };
+
+export function tallyFor(args: { memberIds: string[]; selfId: string; inIds: string[]; passes: Record<string, PassKind> | undefined; name: (id: string) => string }): Tally {
+  const t: Tally = { in: [], out: [], seen: [], waiting: [] };
+  // Nothing until the group's members have loaded — never a lone "in: you".
+  if (args.memberIds.length === 0) return t;
+  const ids = [args.selfId, ...args.memberIds.filter((id) => id !== args.selfId)];
+  for (const id of ids) {
+    const k: TallyKey = args.inIds.includes(id) ? "in" : args.passes?.[id] === "out" ? "out" : args.passes?.[id] === "seen" ? "seen" : "waiting";
+    t[k].push(id === args.selfId ? "you" : args.name(id));
+  }
+  return t;
+}
+
+/** The buckets with people in them, in order. `outstandingOnly` drops "in"
+ *  — a started room's rows, where the room already holds who's in. */
+export function tallyBuckets(t: Tally, outstandingOnly = false): { key: TallyKey; label: string; names: string[] }[] {
+  const keys: TallyKey[] = outstandingOnly ? ["out", "seen", "waiting"] : ["in", "out", "seen", "waiting"];
+  return keys.filter((k) => t[k].length > 0).map((k) => ({ key: k, label: TALLY_LABEL[k], names: t[k] }));
+}
+
+/** Someone is out, has seen it, or hasn't answered — the tally has something to say on a started room. */
+export const tallySplit = (t: Tally): boolean => t.out.length + t.seen.length + t.waiting.length > 0;
+
 /** Your own pass, in a pill's right slot / after the row line. */
 export const passSlotLabel = (k: PassKind): string => (k === "seen" ? "seen it" : "sitting this out");
 export const passSelfNote = (k: PassKind): string => (k === "seen" ? "you've seen it" : "you're sitting this out");

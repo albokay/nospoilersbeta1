@@ -27,6 +27,7 @@ export const E_COLOR = {
   inkMuted: "rgba(26,58,74,0.6)",   // second lines, captions, inactive tabs, counts
   inkSub: "rgba(26,58,74,0.78)",    // the "With …" line under a title (the boards)
   inkFaint: "rgba(26,58,74,0.38)",  // episodes you haven't reached
+  inkQuiet: "rgba(26,58,74,0.5)",   // the pitch tally under a row (2026-11-05): standing information, quieter than the news line
   hairline: "rgba(26,58,74,0.22)",  // row dividers and quiet rules
   inkLines: "rgba(26,58,74,0.14)",  // the ruled lines of the writing paper
   veil: "rgba(26,58,74,0.55)",      // the dim under a sheet
