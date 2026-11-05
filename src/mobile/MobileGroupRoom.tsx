@@ -8,7 +8,7 @@ import { useAuth } from "../lib/auth";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "../components/CelebrationBadge";
 import LetterDisc from "../components/LetterDisc";
-import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, gapPhrase, syncLine, lettersSegment, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, gapPhrase, syncLine, lettersSegment, atShowEnd, type RoomEntryTag } from "../lib/letters";
 import { supabase } from "../lib/supabaseClient";
 import OneSelectProgress from "../components/OneSelectProgress";
 import LoadingDots from "../components/LoadingDots";
@@ -803,12 +803,15 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
     const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
-    const sync = syncLine(gap, others, nameOf);
+    // Finished (11-04): at the show's end the words say so instead of a gap.
+    const selfAtEnd = !!r.selfProg && atShowEnd(r.selfProg.s, r.selfProg.e, seasons);
+    const allAtEnd = selfAtEnd && others.every((o) => { const m = members.find((x) => x.userId === o.userId); return !!m && atShowEnd(m.s, m.e, seasons); });
+    const sync = syncLine(gap, others, nameOf, allAtEnd);
     if (sync) {
       return <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><CelebrationStar size={12} color={C.cream} />{sync}</span>;
     }
     const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
-    const text = [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ");
+    const text = [gapPhrase(gap, nameOf, selfAtEnd), mail].filter(Boolean).join(" · ");
     return text || null;
   }
 
@@ -826,10 +829,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
     const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
-    const sync = syncLine(gap, others, nameOf);
+    // Finished (11-04): at the show's end the words say so instead of a gap.
+    const selfAtEnd = !!r.selfProg && atShowEnd(r.selfProg.s, r.selfProg.e, seasons);
+    const allAtEnd = selfAtEnd && others.every((o) => { const m = members.find((x) => x.userId === o.userId); return !!m && atShowEnd(m.s, m.e, seasons); });
+    const sync = syncLine(gap, others, nameOf, allAtEnd);
     if (sync) return `☆ ${sync}`;
     const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
-    return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
+    return [gapPhrase(gap, nameOf, selfAtEnd), mail].filter(Boolean).join(" · ") || null;
   }
 
   // ── Actions (same DB calls as desktop) ─────────────────────────────────────
@@ -1235,14 +1241,10 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           over it (round 5 catch: inside the title block it was trapped
           under the corner). Same spot as before — the block starts at the
           page's top. */}
-      {/* At the band's lower LEFT (his pick, 2026-10-13): under the title and
-          the With line, the dashboard note's mirror — running 40px off the
-          LEFT edge, its accent strip at its right, the words right-aligned
-          — filling the sky's empty space; its lower part dips over the
-          start of the "N finished together" row. The title, the With line
-          and the chat corner stay clear. It follows the title block's live
-          height. */}
-      {editorial && roomNote && user && <PaperNote side="left" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ left: -40, top: titleInnerH != null ? titleInnerH + 8 : (titleBlockH != null ? titleBlockH - 12 : E.safe.plus(E.measure.phone.masthead - 12)), width: 244 }} />}
+      {/* At the band's lower LEFT from 2026-10-13 to 11-04 (the dashboard
+          note's mirror); now at the right like the dashboard's. */}
+      {/* To the RIGHT since 11-04 (his note: the cream With strips made the left note messy): running off the right edge, swiping right, tilted the other way, seated at the band's foot just under the chat fold's glyph so it never covers it. */}
+      {editorial && roomNote && user && <PaperNote side="right" text={roomNote.text} at={roomNote.at} uid={`${user.id}:${groupId}`} style={{ right: -40, top: titleBlockH != null ? titleBlockH - 10 : E.safe.plus(E.measure.phone.masthead - 10), width: 244 }} />}
       {showAccount && (
         <AccountModal
           mobile

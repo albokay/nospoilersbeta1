@@ -115,17 +115,30 @@ export function summarizeGap(selfIdx: number, others: { userId: string; idx: num
 
 type NameOf = (userId: string) => string | undefined;
 
-/** "3 behind Adam, 1 ahead of Sam" — the /m row's terse gap. */
-export function gapPhrase(g: GapSummary, nameOf: NameOf): string | null {
+/** FINISHED (his note, 11-04): a position at — or past — the show's last
+ *  catalog episode. The rule the finished shelves and "finished together"
+ *  already use; when new episodes land the catalog grows and the same
+ *  position reads as progress again. Unknown catalog = never finished. */
+export function atShowEnd(s: number, e: number, seasons: number[] | undefined): boolean {
+  if (!seasons?.length) return false;
+  const ls = seasons.length, le = seasons[ls - 1] ?? 1;
+  return s > ls || (s === ls && e >= le);
+}
+
+/** "3 behind Adam, 1 ahead of Sam" — the /m row's terse gap. A viewer at the
+ *  show's end reads "you're finished" instead of "N ahead of …" (11-04). */
+export function gapPhrase(g: GapSummary, nameOf: NameOf, selfAtEnd = false): string | null {
   const parts: string[] = [];
   if (g.nearestAhead) parts.push(`${g.nearestAhead.gap} behind ${nameOf(g.nearestAhead.userId) ?? "a friend"}`);
-  if (g.nearestBehind) parts.push(`${g.nearestBehind.gap} ahead of ${nameOf(g.nearestBehind.userId) ?? "a friend"}`);
+  if (g.nearestBehind) parts.push(selfAtEnd ? "you\u2019re finished" : `${g.nearestBehind.gap} ahead of ${nameOf(g.nearestBehind.userId) ?? "a friend"}`);
   return parts.length ? parts.join(", ") : null;
 }
 
-/** "You and Adam are in sync!" / "Everyone is in sync!" */
-export function syncLine(g: GapSummary, others: { userId: string }[], nameOf: NameOf): string | null {
+/** "You and Adam are in sync!" / "Everyone is in sync!" — or, level at the
+ *  show's end (11-04), "You're both finished." / "You've all finished." */
+export function syncLine(g: GapSummary, others: { userId: string }[], nameOf: NameOf, allAtEnd = false): string | null {
   if (!g.sync) return null;
+  if (allAtEnd) return g.sync === "one" ? "You\u2019re both finished." : "You\u2019ve all finished.";
   if (g.sync === "one") return `You and ${nameOf(others[0]?.userId ?? "") ?? "your friend"} are in sync!`;
   return "Everyone is in sync!";
 }

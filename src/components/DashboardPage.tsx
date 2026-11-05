@@ -25,7 +25,7 @@ import { markJoinedThisSession, joinedThisSession } from "../lib/joinSession";
 import { celebrationState, markCelebrationOpened, markCelebrationDone, settleCelebrations } from "../lib/finishedCelebration";
 import CelebrationBadge, { CelebrationStar } from "./CelebrationBadge";
 import LetterDisc from "./LetterDisc";
-import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, syncLine, lettersSentence, gapPhrase, lettersSegment, type RoomEntryTag } from "../lib/letters";
+import { computeRoomLetters, offSeason, roadOthers, seasonalFor, summarizeGap, syncLine, lettersSentence, gapPhrase, lettersSegment, atShowEnd, type RoomEntryTag } from "../lib/letters";
 import { dashboardSignpostsVisible } from "../lib/dashboardSignposts";
 import { preventLastWordOrphan, positionLabel } from "../lib/utils";
 import { createPortal } from "react-dom";
@@ -574,8 +574,11 @@ export default function DashboardPage() {
     const nameOf = (id: string) => memberNameById[id];
     const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
     const optedIn = !!r.selfProg || r.pill.right.kind !== "none";
+    // Finished (11-04): level at the show's end reads "You're both finished."
+    const selfAtEnd = !!r.selfProg && atShowEnd(r.selfProg.s, r.selfProg.e, seasons);
+    const allAtEnd = selfAtEnd && others.every((o) => { const m = members.find((x) => x.userId === o.userId); return !!m && atShowEnd(m.s, m.e, seasons); });
     return {
-      sync: optedIn && others.length ? syncLine(gap, others, nameOf) : null,
+      sync: optedIn && others.length ? syncLine(gap, others, nameOf, allAtEnd) : null,
       mail: optedIn && others.length ? lettersSentence(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf) : null,
     };
   }
@@ -615,10 +618,13 @@ export default function DashboardPage() {
     const selfIdx = linearIndex(r.selfProg?.s ?? 0, r.selfProg?.e ?? 0, seasons);
     const nameOf = (id: string) => memberNameById[id];
     const gap = summarizeGap(selfIdx, others, offSeason(members, selfUserId, seasonal));
-    const sync = syncLine(gap, others, nameOf);
+    // Finished (11-04): at the show's end the words say so instead of a gap.
+    const selfAtEnd = !!r.selfProg && atShowEnd(r.selfProg.s, r.selfProg.e, seasons);
+    const allAtEnd = selfAtEnd && others.every((o) => { const m = members.find((x) => x.userId === o.userId); return !!m && atShowEnd(m.s, m.e, seasons); });
+    const sync = syncLine(gap, others, nameOf, allAtEnd);
     if (sync) return `☆ ${sync}`;
     const mail = lettersSegment(computeRoomLetters(gs?.roomId ? entryTags[gs.roomId] : undefined, members, selfUserId, seasons, seasonal), nameOf);
-    return [gapPhrase(gap, nameOf), mail].filter(Boolean).join(" · ") || null;
+    return [gapPhrase(gap, nameOf, selfAtEnd), mail].filter(Boolean).join(" · ") || null;
   }
   function editorialProposalLine(showId: string): string | null {
     const gsRow = groupShows.find((x) => x.showId === showId);

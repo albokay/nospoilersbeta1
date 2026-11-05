@@ -44,7 +44,7 @@ import {
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import { linearIndex } from "../../lib/groupPills";
 import { homeScreenTabInset } from "../../lib/installPrompt";
-import { offSeason, roadOthers, seasonalFor, summarizeGap } from "../../lib/letters";
+import { atShowEnd, offSeason, roadOthers, seasonalFor, summarizeGap } from "../../lib/letters";
 import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
 
 export type DashboardGroup = { group: PeopleGroup; members: PeopleGroupMember[]; pendingInvites: { name: string }[] };
@@ -97,7 +97,8 @@ export function roomShelfRows(
       const seasonal = seasonalFor(r.showId, self);
       const gap = summarizeGap(self ? linearIndex(self.s, self.e, seasons) : 0, roadOthers(members, selfUserId, seasons, seasonal), offSeason(members, selfUserId, seasonal));
       if (gap.nearestAhead) reason = `you\u2019re ${gap.nearestAhead.gap} behind`;
-      else if (gap.nearestBehind) reason = `you\u2019re ${gap.nearestBehind.gap} ahead`;
+      // Finished (his note, 11-04): at the show's end the row says so, not "N ahead".
+      else if (gap.nearestBehind) reason = self && atShowEnd(self.s, self.e, seasons) ? "you\u2019re finished" : `you\u2019re ${gap.nearestBehind.gap} ahead`;
     }
     const others = g.members.filter((m) => m.userId !== selfUserId);
     const group = groupDisplayName(g.group, others, contactNames, g.pendingInvites.map((pi) => pi.name || "a friend"), groupNumberById[g.group.id]);

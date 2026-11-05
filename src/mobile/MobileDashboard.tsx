@@ -439,7 +439,7 @@ export default function MobileDashboard() {
       <div style={{ ...page, ...(editorial ? { background: E.color.cream, color: E.color.ink } : {}) }}>
         {editorial ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop) }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
+            <SidebarLogo scale={0.6} blocksOpacity={1} bg="cream" betaBadge />
           </div>
         ) : (
         <div style={topBar}>
@@ -470,7 +470,7 @@ export default function MobileDashboard() {
             </>
           )}
           <div onClick={() => navigate("/m/dashboard")} role="button" aria-label="Home" style={{ display: "flex", justifyContent: "center", paddingTop: E.safe.plus(E.measure.phone.logoTop), cursor: "pointer" }}>
-            <SidebarLogo scale={0.5} blocksOpacity={1} bg="cream" betaBadge />
+            <SidebarLogo scale={0.6} blocksOpacity={1} bg="cream" betaBadge />
           </div>
         </div>
       ) : (
@@ -527,12 +527,12 @@ export default function MobileDashboard() {
           {/* No headline (two shelves, CP3, 11-03): the shelf heads carry the
               page. The paper note sits under the logo, above the shelves, off
               the right edge as it always has, tilted the other way. */}
-          {/* The note never covers the logo (his rule, 11-03): the logo's box ends where this band starts, the note begins 16px in, and its tilted corner rises 6px. */}
-          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px`, height: 92 }}>
+          {/* The note never covers the logo (his rule, 11-03): the logo's box ends where this band starts, the note begins 10px in, and its tilted corner rises 6px. The band is 76 (92 until 11-04: his note — the logo a touch bigger, the gap to the Groups tab a touch smaller). */}
+          <div style={{ position: "relative", padding: `0 ${E.space.gutter}px`, height: 76 }}>
             {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest). */}
             {user && (dashNote
-              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 16, width: 234, transform: "rotate(3deg)" }} />
-              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 16, width: 234, transform: "rotate(3deg)" }} />)}
+              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />
+              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />)}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>

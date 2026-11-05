@@ -278,9 +278,14 @@ export default function FriendProfile({
     const seasons = seasonsOf(show);
     const my = linIdx(mine.s, mine.e, seasons);
     const their = linIdx(theirs?.s ?? 0, theirs?.e ?? 0, seasons);
-    if (!started(mine) && their > 0) return `${ownerName} is ${their} episode${their === 1 ? "" : "s"} deep.`;
-    if (my > their) { const d = my - their; return `You're ${d} episode${d === 1 ? "" : "s"} ahead of ${ownerName}.`; }
-    if (their > my) { const d = their - my; return `${ownerName} is ${d} episode${d === 1 ? "" : "s"} ahead of you.`; }
+    // Finished (his note, 11-04): at the show's last catalog episode the line
+    // says so; new episodes grow the catalog and the same position reads as
+    // progress again.
+    const myEnd = atLatest(show, mine), theirEnd = atLatest(show, theirs);
+    if (myEnd && theirEnd) return "You're both finished.";
+    if (!started(mine) && their > 0) return theirEnd ? `${ownerName} is finished.` : `${ownerName} is ${their} episode${their === 1 ? "" : "s"} deep.`;
+    if (my > their) { const d = my - their; return myEnd ? `You're finished. ${ownerName} is ${d} episode${d === 1 ? "" : "s"} behind.` : `You're ${d} episode${d === 1 ? "" : "s"} ahead of ${ownerName}.`; }
+    if (their > my) { const d = their - my; return theirEnd ? `${ownerName} is finished. You're ${d} episode${d === 1 ? "" : "s"} behind.` : `${ownerName} is ${d} episode${d === 1 ? "" : "s"} ahead of you.`; }
     return `You're both at S${mine.s} E${mine.e}.`;
   }
   function openBubbleAt(show: Show, text: string, el: HTMLElement) {
@@ -564,7 +569,8 @@ export default function FriendProfile({
                       {!take && <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 6 }}>{ownerName} hasn&rsquo;t written why yet.</div>}
                       {take && !open && (
                         <div style={{ marginTop: 8, padding: "12px 12px", border: `1px dashed ${E.color.friend}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <span style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={13} color={E.color.cream} strokeWidth={2.2} /></span>
+                          {/* A ? in the red disc, not the lock (his note, 11-04): the lock read as a seal you can't open; this is a question you can answer with a click. */}
+                          <span aria-hidden="true" style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, color: E.color.cream, alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: E.font.interface, fontWeight: 700, fontSize: 16, lineHeight: 1 }}>?</span>
                           <div style={{ minWidth: 0 }}>
                             <button type="button" onClick={() => setUnsealed((prev) => new Set(prev).add(show.id))} style={{ ...reset, ...E.type.note13, fontWeight: 600, display: "block" }}>{mobile ? "Tap" : "Click"} to read {ownerName}&rsquo;s take.</button>
                             <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>There could be a spoiler!</div>

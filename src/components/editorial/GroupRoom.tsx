@@ -255,7 +255,8 @@ export function ShowRow({ tvmazeId, poster = true, name, nameSize = 17, line, en
         {(fresh || mine) && <span aria-label={mine ? "Your new pitch" : "New pitch"} style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: mine ? E.color.alert : E.color.identity, marginRight: 8, verticalAlign: "middle", position: "relative", top: -1 }} />}
         {name}
       </span>
-      {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>}
+      {/* The compositing hint (his screenshots, 11-04): in the installed app a truncated line sometimes kept a faded, half-clipped paint of the words past its ellipsis; its own layer repaints whole. */}
+      {line && <span style={{ ...E.type.label11, letterSpacing: "0.04em", color: E.color.inkMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden" }}>{line}</span>}
     </span>
   );
   const rowStyle: React.CSSProperties = {
