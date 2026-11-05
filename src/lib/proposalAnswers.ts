@@ -69,7 +69,8 @@ export function tallyFor(args: { memberIds: string[]; selfId: string; inIds: str
   const ids = [args.selfId, ...args.memberIds.filter((id) => id !== args.selfId)];
   for (const id of ids) {
     const k: TallyKey = args.inIds.includes(id) ? "in" : args.passes?.[id] === "out" ? "out" : args.passes?.[id] === "seen" ? "seen" : "waiting";
-    t[k].push(id === args.selfId ? "you" : args.name(id));
+    // Lowercase people (his call, 11-05): "yalborz", "j-man" — the labels stand out, the names read as one run.
+    t[k].push(id === args.selfId ? "you" : args.name(id).toLowerCase());
   }
   return t;
 }

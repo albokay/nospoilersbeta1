@@ -188,7 +188,9 @@ export function TallyLine({ tally, outstandingOnly = false, mine = false }: { ta
 export function TallyStack({ tally, inSeason }: { tally: Tally; inSeason?: Record<string, number> }) {
   const buckets = tallyBuckets(tally);
   if (buckets.length === 0) return null;
-  const name = (key: string, n: string) => (key === "in" && inSeason && (inSeason[n] ?? 0) > 0 ? `${n} (season ${inSeason[n]})` : n);
+  // The season map is keyed by the display name as spelled; the tally's names are lowercased.
+  const seasonOf = (n: string) => Object.entries(inSeason ?? {}).find(([k]) => k.toLowerCase() === n)?.[1] ?? 0;
+  const name = (key: string, n: string) => (key === "in" && seasonOf(n) > 0 ? `${n} (season ${seasonOf(n)})` : n);
   return (
     <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "auto auto", columnGap: 10, rowGap: 6, justifyContent: "center", ...E.type.label11, textTransform: "none", letterSpacing: "0.04em", lineHeight: 1.3, color: E.color.inkSub, textAlign: "left" }}>
       {buckets.map((b) => {
