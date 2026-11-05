@@ -36,7 +36,8 @@ import { Plus, SquarePen } from "lucide-react";
 import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
 import { SectionHead } from "./Chrome";
-import { useRowSwipe } from "./GroupRoom";
+import { useRowSwipe, RowPoster, TallyLine } from "./GroupRoom";
+import { tallyFor, tallySplit, type PassKind, type Tally } from "../../lib/proposalAnswers";
 import {
   fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, fetchRoomMemberIds, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
   type RoomVisibility, type GroupChatActivity, type GroupPitchActivity, type PendingGroupInvite, type Show, type ShowRoomOfGroup, type MyStances, type GroupShowPass, type GroupDashboardShow,
@@ -68,11 +69,12 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
  *  friend), and the envelope sits at the end. Rooms of one, rooms you left
  *  or cleared, and finished or parked rooms with nothing unread stay off
  *  it. Group rows always open the group room, so the two can't disagree. */
-export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number; /** The friends in the room, by first name (the row's "with Adam, Lena"; initials until 11-04). */ people: string[] };
+export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number; /** The friends in the room, by first name (the row's "with Adam, Lena"; initials until 11-04). */ people: string[]; /** The row's 40×56 thumbnail (2026-11-05). */ tvmazeId: string | null; /** The pitch tally (2026-11-05): who's out, has seen it, or hasn't answered — empty until the answers load. */ tally: Tally };
 export function roomShelfRows(
   groups: DashboardGroup[], rooms: ShowRoomOfGroup[], roomVis: RoomVisibility[], roomMembers: Record<string, string[]>,
   brain: Map<string, GroupDashboardShow[]>, finished: Set<string>, stances: MyStances | null,
   showsById: Record<string, Show>, contactNames: Record<string, string>, groupNumberById: Record<string, number>, selfUserId: string,
+  answers: { votes: GroupShowVote[]; passes: GroupShowPass[] } | null,
 ): RoomShelfRow[] {
   const out: RoomShelfRow[] = [];
   for (const r of rooms) {
@@ -87,10 +89,12 @@ export function roomShelfRows(
     const fresh = !!v && roomHasNewActivity(v);
     const sealed = !!v && roomHasNewInvisibleActivity(v);
     if (finished.has(r.roomId) && !fresh && !sealed) continue;
-    let reason = fresh ? "new letters" : sealed ? "a sealed letter" : "";
-    if (!reason && b) {
-      // The quiet line's one bit of news (his yes, 11-03): the gap to the
-      // nearest friend, the letters-in-transit arithmetic the group room uses.
+    // The line is the gap to the nearest friend (his yes, 11-03), the
+    // letters-in-transit arithmetic the group room uses. The envelope's words
+    // ("new letters" / "a sealed letter") are gone (2026-11-05): they said
+    // exactly what the envelope says, and hid the gap.
+    let reason = "";
+    if (b) {
       const seasons = showsById[r.showId]?.seasons;
       const members = b.members.filter((m) => m.s != null && m.e != null && mem.includes(m.userId)).map((m) => ({ userId: m.userId, s: m.s as number, e: m.e as number }));
       const self = members.find((m) => m.userId === selfUserId);
@@ -103,9 +107,22 @@ export function roomShelfRows(
     const others = g.members.filter((m) => m.userId !== selfUserId);
     const group = groupDisplayName(g.group, others, contactNames, g.pendingInvites.map((pi) => pi.name || "a friend"), groupNumberById[g.group.id]);
     const people = others.filter((m) => mem.includes(m.userId)).map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName));
+    // The pitch tally (2026-11-05): everyone in the room is "in" (a vote or the
+    // room's own member list), the passes from the all-groups read, the rest
+    // of the group hasn't answered. Empty until the answers have loaded, so
+    // nobody reads as "?" for a moment they'd already answered.
+    const passesHere: Record<string, PassKind> = {};
+    for (const p of answers?.passes ?? []) if (p.groupId === r.groupId && p.showId === r.showId) passesHere[p.userId] = p.kind;
+    const inIds = [...new Set([...mem, ...(answers?.votes ?? []).filter((v) => v.groupId === r.groupId && v.showId === r.showId).map((v) => v.userId)])];
+    const tally = tallyFor({
+      memberIds: answers ? g.members.map((m) => m.userId) : [],
+      selfId: selfUserId, inIds, passes: passesHere,
+      name: (id) => { const m = g.members.find((x) => x.userId === id); return m ? personDisplayName(contactNames, m.userId, m.username, m.displayName) : "someone"; },
+    });
     out.push({
       roomId: r.roomId, showId: r.showId, groupId: r.groupId,
-      show: showsById[r.showId]?.name ?? "A show", group, reason, people,
+      show: showsById[r.showId]?.name ?? "A show", group, reason, people, tally,
+      tvmazeId: showsById[r.showId]?.tvmazeId ?? null,
       envelope: fresh ? "open" : sealed ? "sealed" : null,
       at: Math.max(v?.latestVisibleActivityAt ?? 0, v?.latestInvisibleActivityAt ?? 0, b?.lastActivityAt ?? 0, r.createdAt),
     });
@@ -362,17 +379,22 @@ function RoomHead({ show, people }: { show: string; people: string[] }) {
   );
 }
 
-/** A room row inside its group's box: the show with the friends on its
- *  line, what's new under, the envelope flush right (no pen — settings
- *  live in the room; the order is the activity's). */
+/** A room row inside its group's box: the 40×56 thumbnail (2026-11-05), the
+ *  show with the friends on its line, the gap under in the With line's ink,
+ *  the pitch tally's outstanding friends under that while the group is split
+ *  (the poster absorbs the third line: the row stays 88), the envelope flush
+ *  right (no pen — settings live in the room; the order is the activity's). */
 function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomShelfRow; last: boolean; onEnter: () => void }) {
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
   const gutter = E.space.gutter;
+  const split = tallySplit(row.tally);
   return (
-    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "18px 0 18px 24px" : `18px ${gutter}px 18px 24px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
-      <span style={textCol}>
+    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "16px 0 16px 24px" : `16px ${gutter}px 16px 24px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+      <RowPoster tvmazeId={row.tvmazeId} />
+      <span style={{ ...textCol, gap: split ? 4 : 5 }}>
         <RoomHead show={row.show} people={row.people} />
-        <span style={{ ...lineStyle, minHeight: 13 }}>{row.reason}</span>
+        <span style={{ ...lineStyle, color: E.color.inkSub, minHeight: 13 }}>{row.reason}</span>
+        {split && <TallyLine tally={row.tally} outstandingOnly />}
       </span>
       {row.envelope && <LetterDisc kind={row.envelope} className="m-dot-in" />}
     </div>
@@ -499,7 +521,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
     return () => { cancelled = true; };
   }, [idsKey]);
   const lines = useMemo(() => computeLines(groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers), [groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers]);
-  const roomRows = useMemo(() => roomShelfRows(groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId), [groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId]);
+  const roomRows = useMemo(() => roomShelfRows(groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId, groupAnswers), [groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId, groupAnswers]);
 
   // Each group's rooms, newest activity first, and the clusters' order (his
   // call, 11-04): a group sits by whatever moved last in it — a room (a
