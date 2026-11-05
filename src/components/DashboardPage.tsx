@@ -100,7 +100,7 @@ import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "./StanceToggle";
 import YesNoToggle from "./YesNoToggle";
-import { groupDisplayName, groupGenericName, joinNames, joinNameNodes, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
+import { groupDisplayName, groupGenericName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../lib/groupNames";
 import { overlay, searchCard, pickerCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, invitePill, searchPill, composeBackdrop, composeCardOuter } from "./dashboardChrome";
 import ComposeForm, { type ComposeFormHandle } from "./v2/ComposeForm";
 import { bootstrapGroupWithLetter, type FirstLetter } from "../lib/firstLetterBootstrap";
@@ -125,7 +125,7 @@ import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, Wordmark } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, Wordmark, WithStrips } from "./editorial/Chrome";
 import { Masthead, ShowRow, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
 import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
 import { useGuideLetterNote } from "./editorial/GuideNote";
@@ -2132,14 +2132,12 @@ export default function DashboardPage() {
   // The editorial head's group title: the same name and members the classic
   // heading (GroupClusters) shows, at the column.
   const editorialGroup = inGroup ? (railGroups.find((g) => g.group.id === activeGroupId) ?? null) : null;
-  const editorialNames = editorialGroup ? [
-    ...editorialGroup.members.filter((m) => m.userId !== selfUserId).map((m) => (
-      <span key={m.userId} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(m.username)}>
-        {personDisplayName(contactNames, m.userId, m.username, m.displayName)}
-      </span>
-    )),
-    ...editorialGroup.pendingInvites.map((p, i) => <span key={`pend-${i}`}>{p.name || "a friend"}</span>),
-  ] : [];
+  // The friends as cream strips (his pick D, 11-04): each a door to that
+  // friend's profile drawer; a friend who hasn't joined yet is dashed.
+  const editorialPeople = editorialGroup
+    ? editorialGroup.members.filter((m) => m.userId !== selfUserId).map((m) => ({ key: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName), onClick: () => openFriendProfile(m.username) }))
+    : [];
+  const editorialPending = editorialGroup ? editorialGroup.pendingInvites.map((p) => p.name || "a friend") : [];
   const W = E.measure.desktop;
   // The editorial dashboard's paper note (checkpoint 2, 2026-10-12): one
   // sentence from the dashboard's signals, named with the rows' group labels.
@@ -2230,7 +2228,7 @@ export default function DashboardPage() {
                     onClick={(e) => { moveTip(null); if (activeGroupId) openGroupOptions(activeGroupId, e.currentTarget.getBoundingClientRect()); }}
                   />
                 )} />
-                {editorialNames.length > 0 && <EditorialSub desktop>With {joinNameNodes(editorialNames)}</EditorialSub>}
+                {(editorialPeople.length > 0 || editorialPending.length > 0) && <WithStrips desktop people={editorialPeople} pending={editorialPending} />}
               </div>
             )) : (!socialOnbActive && !postAccept ? (
               // No headline (two shelves, CP3, 11-03): the shelf heads carry the

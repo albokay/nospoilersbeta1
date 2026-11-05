@@ -60,7 +60,7 @@ import FriendProfileDrawer from "./profile/FriendProfileDrawer";
 import { openFriendProfile } from "./profile/friendProfileBus";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark, UnderlineWord } from "./editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, EditorialColumn, SectionHead, FittedTitle, Wordmark, UnderlineWord, WithStrips } from "./editorial/Chrome";
 import { GroupRoomDisc, WithPlus, useGroupSignals } from "./editorial/RoomHead";
 import { ChatCorner } from "./editorial/GroupRoom";
 import GroupChatDrawer from "./editorial/GroupChatDrawer";
@@ -1361,14 +1361,12 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
                     // The show's own page (Option B, CP2, 11-03): what the page is. The way back to each room is the guide's own green link (his call, 11-03).
                     <EditorialSub desktop>Show guide &amp; journal</EditorialSub>
                   ) : groupPeople?.length ? (
-                    <EditorialSub desktop>
-                      With {joinNameNodes(groupPeople.map((p) => (
-                            <span key={p.username} style={{ cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openFriendProfile(p.username)}>
-                              {p.label}
-                            </span>
-                          )))}
-                      {!privateOnly && parentGroupId && <WithPlus desktop onClick={() => setInviteOpen(true)} />}
-                    </EditorialSub>
+                    // The friends as cream strips (his pick D, 11-04): each a door to that friend's profile drawer; the + stays at the end.
+                    <WithStrips
+                      desktop
+                      people={groupPeople.map((p) => ({ key: p.username, label: p.label, onClick: () => openFriendProfile(p.username) }))}
+                      after={!privateOnly && parentGroupId ? <WithPlus desktop onClick={() => setInviteOpen(true)} /> : null}
+                    />
                   ) : !privateOnly && parentGroupId ? (
                     // A room of one (his words, 11-03): in place of the With line.
                     <EditorialSub desktop>(just you so far)</EditorialSub>

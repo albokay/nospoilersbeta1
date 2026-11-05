@@ -332,6 +332,38 @@ export function EditorialSub({ children, desktop = false, style }: { children: R
   return <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: desktop ? 16 : 14, ...style }}>{children}</div>;
 }
 
+/** The With line with each friend on a CREAM STRIP (his pick, 11-04 — option
+ *  D on canvas M3mPqsKjyjy2mTkb45gYdi): the line's own mono name, underlined,
+ *  on a strip the size of the section-head tabs ("Shows pitched", "You're
+ *  watching": 7px above and below, 8px at the sides), so a name reads as a
+ *  door — it opens the friend's profile. The strips wrap when there are
+ *  many friends; the row keeps the title block's inset, so a second line
+ *  never reaches the chat fold. A friend who hasn't joined yet is a dashed
+ *  strip with no underline. `after` = the + at the end (the show room's
+ *  add-friends). Replaces "With Adam, Lena & Mo" in the group rooms and the
+ *  show rooms, phone and desktop. */
+export function WithStrips({ people, pending = [], after, desktop = false, style }: {
+  people: { key: string; label: string; onClick: () => void }[];
+  pending?: string[];
+  after?: React.ReactNode;
+  desktop?: boolean;
+  style?: React.CSSProperties;
+}) {
+  const strip: React.CSSProperties = { ...E.type.label11, display: "inline-flex", alignItems: "center", padding: "7px 8px", boxSizing: "border-box", background: E.color.cream, color: E.color.inkSub, border: 0, textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" };
+  return (
+    <div style={{ ...E.type.label11, color: E.color.inkSub, marginTop: desktop ? 16 : 14, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, ...style }}>
+      <span style={{ marginRight: 2 }}>With</span>
+      {people.map((p) => (
+        <button key={p.key} type="button" title={`${p.label}'s profile`} onClick={(e) => { e.stopPropagation(); p.onClick(); }} style={strip}>{p.label}</button>
+      ))}
+      {pending.map((n, i) => (
+        <span key={`pend-${i}`} style={{ ...strip, textDecoration: "none", color: E.color.inkMuted, cursor: "default", outline: `1px dashed ${E.color.inkFaint}`, outlineOffset: -1 }}>{n}</span>
+      ))}
+      {after}
+    </div>
+  );
+}
+
 /** The desktop page column. */
 export function EditorialColumn({ children, wide = false, style }: { children?: React.ReactNode; wide?: boolean; style?: React.CSSProperties }) {
   const m = E.measure.desktop;

@@ -33,7 +33,8 @@ import SidebarLogo from "../SidebarLogo";
 import { overlay, searchCard, searchInput, modalClose, yellowCard, yellowTitle, startBtn, searchPill } from "../dashboardChrome";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord, EditorialColumn } from "../editorial/Chrome";
-import { EditorialDialog, EditorialSheet, NumbersPicker } from "../editorial/GroupRoom";
+import { NumbersPicker } from "../editorial/GroupRoom";
+import LookItUpCard, { EdShell } from "./LookItUpCard";
 import { Block, Frame, FORM_CSS, FIELD_BOX } from "../editorial/Onboarding";
 import { NOTE_FIELD } from "../editorial/MapNotes";
 import type { GuideAsk, GuideAskOutcome } from "../editorial/GuideNote";
@@ -55,15 +56,10 @@ const cardCenterColumn: React.CSSProperties = {
   padding: "24px 16px", boxSizing: "border-box",
 };
 
-/** The editorial card's shell: the phone's sheet, the desktop's dialog.
- *  At module level (round 5): declared inside the render it was a NEW
- *  component type every render, so every keystroke in the search field
- *  remounted the whole card — the field flickered and lost its place. */
-function EdShell({ mobile, children, onClose, label }: { mobile: boolean; children: React.ReactNode; onClose: () => void; label: string }) {
-  return mobile
-    ? <EditorialSheet onClose={onClose}>{children}</EditorialSheet>
-    : <EditorialDialog onClose={onClose} width={480} label={label} align="left">{children}</EditorialDialog>;
-}
+// The editorial card's shell is `EdShell` from LookItUpCard (one card for the
+// band and a friend's profile since 11-04). It lives at module level (round
+// 5): declared inside the render it was a NEW component type every render,
+// so every keystroke in the search field remounted the whole card.
 
 export default function ReferenceLookupBand({ mobile = false, editorial = false, groupsColumn, guideAsk = null, onGuideAskDone }: {
   mobile?: boolean;
@@ -795,39 +791,25 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
           </EdShell>
         );
       })()}
-      {(cardShow || cardPending) && (
-        <EdShell mobile={mobile} onClose={() => { if (!confirmBusy) { setCardShow(null); setCardPending(null); } }} label={cardTitle}>
+      {/* THE show card (one card with a friend's profile since 11-04: LookItUpCard). It owns the picker and the writes; the band keeps its own rows in step through the callbacks. */}
+      {cardShow && (
+        <LookItUpCard
+          show={cardShow} mobile={mobile} poster={posters[cardShow.id]} existing={progress[cardShow.id]}
+          onClose={() => setCardShow(null)}
+          onLogged={(id, entry) => setProgress((prev) => ({ ...prev, [id]: entry }))}
+          onWanted={(id) => setProgress((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { s: 0, e: 0 }), wantedAt: Date.now() } }))}
+          onUnwanted={(id) => setProgress((prev) => { const entry = prev[id]; return entry ? { ...prev, [id]: { ...entry, wantedAt: undefined } } : prev; })}
+        />
+      )}
+      {/* A pick paints the card at once while the catalog show resolves: the name and the trailer, dots where the picker will be. */}
+      {!cardShow && cardPending && (
+        <EdShell mobile={mobile} onClose={() => setCardPending(null)} label={cardTitle}>
           <div style={{ textAlign: "center" }}>
-            {/* The poster over the title (Alborz's notes, round 5), when the shelves know it. */}
-            {cardShow && posters[cardShow.id] && (
-              <img src={posters[cardShow.id] as string} alt="" draggable={false} style={{ width: 72, height: 104, objectFit: "cover", display: "block", margin: `${mobile ? 22 : 4}px auto 0` }} />
-            )}
-            <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: cardShow && posters[cardShow.id] ? 16 : (mobile ? 26 : 6), padding: "0 20px" }}>{cardTitle}</div>
+            <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: mobile ? 26 : 6, padding: "0 20px" }}>{cardTitle}</div>
             <div style={{ ...E.type.label11, marginTop: 22 }}>How far in are you?</div>
             <div style={edNote}>Set your episode. Nothing you see will ever go past it.</div>
-            {cardShow
-              ? <NumbersPicker show={cardShow} value={picked} onChange={(v) => setPicked(v)} />
-              : <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 14 }}>loading episodes<LoadingDots /></div>}
-            {cardShow && pickedReady && (
-              <>
-                <Block onClick={lookItUp} disabled={confirmBusy || logBusy} style={{ marginTop: 24 }}>{confirmBusy ? <>one moment<LoadingDots /></> : "Open show guide"}</Block>
-                <Frame onClick={justLogIt} disabled={confirmBusy || logBusy} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
-              </>
-            )}
-            {cardShow && !pickedReady && (
-              <>
-                {progress[cardShow.id]?.wantedAt ? (
-                  <div style={{ ...E.type.note13, marginTop: 24, display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }}>
-                    <span>On your want-to-watch list</span>
-                    <UnderlineWord onClick={() => unwantShow(cardShow.id)}>Remove show</UnderlineWord>
-                  </div>
-                ) : (
-                  <Block onClick={wantIt} disabled={wantBusy || logBusy} style={{ marginTop: 24 }}>{wantBusy ? <>one moment<LoadingDots /></> : "Want to watch"}</Block>
-                )}
-                <Frame onClick={justLogIt} disabled={wantBusy || logBusy} style={{ marginTop: 10 }}>{logBusy ? <>one moment<LoadingDots /></> : "Just log my progress"}</Frame>
-              </>
-            )}
-            <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow?.id ?? `pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} bleed={mobile ? E.space.gutter : 32} /></div>
+            <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 14 }}>loading episodes<LoadingDots /></div>
+            <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={`pending-${cardTvmazeId ?? "none"}`} tvmazeId={cardTvmazeId} bleed={mobile ? E.space.gutter : 32} /></div>
           </div>
         </EdShell>
       )}

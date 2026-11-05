@@ -20,7 +20,7 @@ import { joinNames, joinNameNodes, groupGenericName } from "../lib/groupNames";
 import { M, OVERLAY } from "./m";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark, UnderlineWord } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark, UnderlineWord, WithStrips } from "../components/editorial/Chrome";
 import { GroupRoomDisc, WithPlus, useGroupSignals } from "../components/editorial/RoomHead";
 import MobileInviteSheet from "./MobileInviteSheet";
 import { FolderTabs, RoomBand, RoomPicker, PinnedBand, useScrolledPast, MapButton, WriteBlock, SelectWord, TourWord, type RoomTabKey } from "../components/editorial/ShowRoom";
@@ -1398,12 +1398,11 @@ export default function MobileShowRoom({ roomId, privateShowId }: { roomId?: str
                 // The show's own page (Option B, CP2, 11-03): what the page is. The way back to each room is the guide's own green link (his call, 11-03).
                 <EditorialSub>Show guide &amp; journal</EditorialSub>
               ) : groupPeople?.length ? (
-                <EditorialSub>
-                  With {joinNameNodes(groupPeople.map((p) => (
-                        <span key={p.username} style={{ textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => openPool(p.username)}>{p.label}</span>
-                      )))}
-                  {!privateOnly && parentGroupId && <WithPlus onClick={() => setInviteOpen(true)} />}
-                </EditorialSub>
+                // The friends as cream strips (his pick D, 11-04): each a door to that friend's profile; the + stays at the end.
+                <WithStrips
+                  people={groupPeople.map((p) => ({ key: p.username, label: p.label, onClick: () => openPool(p.username) }))}
+                  after={!privateOnly && parentGroupId ? <WithPlus onClick={() => setInviteOpen(true)} /> : null}
+                />
               ) : !privateOnly && parentGroupId ? (
                 // A room of one (his words, 11-03): in place of the With line.
                 <EditorialSub>(just you so far)</EditorialSub>

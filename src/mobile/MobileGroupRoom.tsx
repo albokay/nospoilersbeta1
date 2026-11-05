@@ -72,12 +72,12 @@ import { showStandAlone } from "../lib/standAlone";
 import { fetchGroupShowPasses, setGroupShowPass, dismissGroupShow, restoreGroupShow, markGroupPitchesSeen } from "../lib/db";
 import StanceToggle from "../components/StanceToggle";
 import YesNoToggle from "../components/YesNoToggle";
-import { groupGenericName, joinNameNodes, personDisplayName } from "../lib/groupNames";
+import { groupGenericName, personDisplayName } from "../lib/groupNames";
 import { useEditorial } from "../lib/skin";
 import { fetchAskSignal } from "../lib/groupAsks";
 import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
-import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark } from "../components/editorial/Chrome";
+import { CornerTab, TopRight, TitleGear, AccountWord, wordStyle, EditorialTitle, EditorialSub, SectionHead, FittedTitle, Wordmark, WithStrips } from "../components/editorial/Chrome";
 import { EditorialStrips, Field, Block, Frame, FORM_CSS } from "../components/editorial/Onboarding";
 import { BottomSheet, Confirm, FinishedTiles, FinishedHead } from "../components/editorial/Overlays";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
@@ -1266,7 +1266,13 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
           ]} />
           <div ref={titleInnerRef} style={{ paddingTop: E.safe.plus(E.measure.phone.titleTop), paddingRight: 100 }}>
             <FittedTitle name={groupName} gear={<TitleGear size={16} label="Group settings" dot={staleInviteCount > 0} onClick={openGear} />} />
-            {nameNodes.length > 0 && <EditorialSub>With {joinNameNodes(nameNodes)}</EditorialSub>}
+            {/* The friends as cream strips (his pick D, 11-04): each a door to that friend's profile; a friend who hasn't joined yet is dashed. */}
+            {(others.length > 0 || groupInvites.length > 0) && (
+              <WithStrips
+                people={others.map((m) => ({ key: m.userId, label: personDisplayName(contactNames, m.userId, m.username, m.displayName), onClick: () => navigate(`/m/pool/${encodeURIComponent(m.username)}`) }))}
+                pending={groupInvites.map((p) => p.name || "a friend")}
+              />
+            )}
           </div>
         </div>
       ) : (

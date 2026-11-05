@@ -5,17 +5,24 @@
 // page's content at /pool/:username (the pool RENDERING survives untouched
 // for the email-invite arrival, which mounts PublicDashboardPage directly).
 //
-// Spoiler rules (Alborz 2026-09-08):
+// Spoiler rules — EDITORIAL (his calls, 2026-11-04; the classic branch
+// below keeps the 09-08 rules):
+//   • A canon take is SEALED behind one click whatever the viewer's
+//     progress — the dashed note "Tap/Click to read {Name}'s take." / "There
+//     could be a spoiler!" with the chat invitation into a shared group's
+//     chat kept; the essential episodes are open ("episode names aren't
+//     really spoilers"); the essentials card shows the take only once it's
+//     unsealed on the row.
+//   • EVERY poster — canon rows and the three shelves — opens THE show card
+//     (reference/LookItUpCard, the look-up band's), with the gap to the
+//     friend as one line under the title ("You're 2 episodes ahead of
+//     {Name}."); the hover / tap gap note and its group acts are retired.
+// Spoiler rules — CLASSIC (Alborz 2026-09-08):
 //   • A canon card's blurb + essentials are BLOCKED unless the viewer has
-//     FINISHED that show (their own progress at its last catalog episode) —
-//     the Business-fill stub carries a chat invitation into a shared
-//     GROUP's chat when the viewer and owner share any people-group —
-//     regardless of whether they share a room for that show (Alborz).
+//     FINISHED that show; the stub carries a chat invitation.
 //   • Poster taps never reveal the owner's data: with the show on the
-//     viewer's own shelves the tap/hover shows a tilted gap bubble ("You're
-//     X episodes ahead of {Name}."); without it, the tap opens the standard
-//     "How far in are you?" card in log/want-only form (no guide button) and
-//     the viewer STAYS here after adding.
+//     viewer's own shelves the tap/hover shows a tilted gap bubble; without
+//     it, the tap opens the log/want-only card and the viewer STAYS here.
 // Data comes from the public get_public_progress RPC (extended 2026-09-08
 // with essential_eps / wanted_at / shelf_hidden_at / updated_at) — the page
 // works logged-out like the pool always has; pre-SQL it degrades gracefully
@@ -44,8 +51,8 @@ import { yellowCard, yellowTitle, startBtn, modalClose } from "../dashboardChrom
 import { useEditorial } from "../../lib/skin";
 import { E } from "../../styles/editorial";
 import { SectionHead, UnderlineWord } from "../editorial/Chrome";
-import { NumbersPicker, EditorialDialog, EditorialSheet } from "../editorial/GroupRoom";
-import { Block, Frame } from "../editorial/Onboarding";
+import LookItUpCard from "../reference/LookItUpCard";
+import { EditorialDialog, EditorialSheet } from "../editorial/GroupRoom";
 
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
@@ -116,6 +123,10 @@ export default function FriendProfile({
   // four; mobile collapses behind a "show all N" expander instead.
   const [canonPage, setCanonPage] = useState(0);
   const [canonExpanded, setCanonExpanded] = useState(false);
+  // The canon takes the viewer has UNSEALED (editorial; his call, 11-04): a
+  // take is behind one click — "Tap to read Adam's take." / "There could be
+  // a spoiler!" — whatever the viewer's progress; the essentials are open.
+  const [unsealed, setUnsealed] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -479,24 +490,14 @@ export default function FriendProfile({
         ? <img src={p} alt="" loading="lazy" draggable={false} style={{ width: w, height: h, objectFit: "cover", display: "block" }} />
         : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: w, height: h, boxSizing: "border-box", background: E.color.draft, padding: 6, fontFamily: E.font.display, fontWeight: 700, fontSize: 12, textAlign: "center", color: E.color.ink }}>{show.name}</span>;
     };
-    // One shared group's act for a show — the same four states, as an
-    // underline word (the gap note) or a frame (the card).
-    const inkGroupRow = (g: SharedGroup, show: Show, asFrame: boolean) => {
-      const roomId = g.rooms[show.id];
-      const busy = voteBusy === `${g.id}:${show.id}`;
-      const label = roomId ? <>Open your room in &ldquo;{g.label}&rdquo;</>
-        : g.left.has(show.id) ? <>Put back in the &ldquo;{g.label}&rdquo; pool</>
-        : g.myVotes.has(show.id) ? <>In the &ldquo;{g.label}&rdquo; pool ✓</>
-        : <>Want to watch it with {g.label}</>;
-      const act = roomId ? () => openRoom(roomId) : g.left.has(show.id) ? () => putBackInPool(g, show) : g.myVotes.has(show.id) ? null : () => wantWithGroup(g, show);
-      if (!act) return <div key={g.id} style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: asFrame ? 10 : 6 }}>{label}</div>;
-      return asFrame
-        ? <Frame key={g.id} onClick={act} disabled={busy} style={{ marginTop: 10, height: 48, ...E.type.label11 }}>{busy ? <>one moment<LoadingDots /></> : label}</Frame>
-        : <UnderlineWord key={g.id} onClick={act} style={{ ...E.type.label10, display: "block", marginTop: 6, whiteSpace: "normal" }}>{busy ? <>one moment<LoadingDots /></> : label}</UnderlineWord>;
-    };
+    // Every poster opens THE show card (his call, 11-04): the canon rows and
+    // the three shelves alike, whatever the viewer's own position — the
+    // look-up band's card, with the gap to the friend as one line under the
+    // title. The hover / tap gap note and its group acts are retired.
+    const openCard = (show: Show) => setCardShow(show);
     const inkTile = (show: Show, caption?: string) => (
-      <div key={show.id} style={{ position: "relative", flexShrink: 0, width: 104 }} onMouseEnter={(e) => onTileHover(show, e.currentTarget)} onMouseLeave={scheduleClose}>
-        <button type="button" onClick={(e) => onTileTap(show, e.currentTarget)} style={{ ...reset, display: "block", width: 104, cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}>
+      <div key={show.id} style={{ position: "relative", flexShrink: 0, width: 104 }}>
+        <button type="button" onClick={() => openCard(show)} style={{ ...reset, display: "block", width: 104 }}>
           {posterBox(show, 104, 148)}
           <span style={{ display: "block", fontFamily: E.font.interface, fontWeight: 600, fontSize: 13, lineHeight: 1.3, marginTop: 10 }}>{show.name}</span>
           {caption && <span style={{ display: "block", ...E.type.label10, color: E.color.inkMuted, marginTop: 3 }}>{caption}</span>}
@@ -517,7 +518,8 @@ export default function FriendProfile({
         <>
           <div style={{ ...E.type.label10, color: E.color.inkMuted }}>{ownerName}&rsquo;s TV canon</div>
           <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", marginTop: 6, paddingRight: 28 }}>{shareShow.name}</div>
-          {entry?.canonTake && <div style={{ ...E.type.quote14, fontSize: 15, marginTop: 12 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
+          {/* The take rides along only once the viewer has unsealed it on the row (11-04). */}
+          {entry?.canonTake && unsealed.has(shareShow.id) && <div style={{ ...E.type.quote14, fontSize: 15, marginTop: 12 }}>&ldquo;{entry.canonTake}&rdquo;</div>}
           <SectionHead style={{ marginTop: 22 }} right={<span style={{ color: E.color.inkMuted }}>{eps.length}</span>}>Essential episodes</SectionHead>
           {eps.map((k) => {
             const es = Math.floor(k / 10000), ee = k % 10000;
@@ -534,19 +536,6 @@ export default function FriendProfile({
         </>
       );
     })();
-    const cardBody = cardShow && (
-      <div style={{ textAlign: "center" }}>
-        <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: narrow ? 6 : 26, padding: "0 20px" }}>{cardShow.name}</div>
-        <div style={{ ...E.type.label11, marginTop: 22 }}>How far in are you?</div>
-        <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 6 }}>Set your episode. Nothing you see will ever go past it.</div>
-        <NumbersPicker show={cardShow} value={picked} onChange={(v) => setPicked(v)} />
-        <Block onClick={pickedReady ? logIt : wantIt} disabled={cardBusy} style={{ marginTop: 24 }}>
-          {cardBusy ? <>one moment<LoadingDots /></> : pickedReady ? "Just log my progress" : "Want to watch"}
-        </Block>
-        {sharedGroups.length > 0 && <div style={{ marginTop: 4 }}>{sharedGroups.map((g) => inkGroupRow(g, cardShow, true))}</div>}
-        <div style={{ marginTop: 22, display: "flex", justifyContent: "center" }}><TrailerCard showId={cardShow.id} tvmazeId={cardShow.tvmazeId} /></div>
-      </div>
-    );
     return (
       <div style={{ width: "100%", color: E.color.ink, fontFamily: E.font.interface }}>
         <style>{`.e-strip::-webkit-scrollbar{display:none}`}</style>
@@ -558,29 +547,30 @@ export default function FriendProfile({
                 const entry = theirProg[show.id];
                 const take = entry?.canonTake;
                 const essCount = entry?.essentialEps?.length ?? 0;
-                const unlocked = atLatest(show, myProg[show.id]);
+                // The take is SEALED behind one click whatever the viewer's
+                // progress (his call, 11-04 — no more "finish it first"): the
+                // dashed note reads "Tap to read Adam's take." / "There could
+                // be a spoiler!", the chat line stays; the essentials are open.
+                const open = unsealed.has(show.id);
                 return (
                   <div key={show.id} style={{ display: "flex", gap: 16, padding: "16px 0", borderBottom: `1px solid ${E.color.hairline}` }}>
-                    <div style={{ flexShrink: 0 }} onMouseEnter={(e) => onTileHover(show, e.currentTarget)} onMouseLeave={scheduleClose}>
-                      <button type="button" onClick={(e) => onTileTap(show, e.currentTarget)} style={{ ...reset, display: "block", cursor: bubbleTextFor(show) && !mobile ? "default" : "pointer" }}>{posterBox(show, 44, 62)}</button>
+                    <div style={{ flexShrink: 0 }}>
+                      <button type="button" onClick={() => openCard(show)} style={{ ...reset, display: "block" }}>{posterBox(show, 44, 62)}</button>
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ ...E.type.label10, color: E.color.inkMuted }}>Show: <span style={{ color: E.color.ink }}>{show.name}</span></div>
-                      {unlocked ? (
-                        <>
-                          {take && <div style={{ ...E.type.quote14, marginTop: 6 }}>&ldquo;{take}&rdquo;</div>}
-                          {essCount > 0 && <UnderlineWord onClick={() => openShare(show)} title={`${ownerName}'s essential episodes`} style={{ ...E.type.label10, marginTop: 6, display: "inline-block" }}>★ {essCount} essential episode{essCount === 1 ? "" : "s"} →</UnderlineWord>}
-                        </>
-                      ) : (
+                      {take && open && <div style={{ ...E.type.quote14, marginTop: 6 }}>&ldquo;{take}&rdquo;</div>}
+                      {take && !open && (
                         <div style={{ marginTop: 8, padding: "12px 12px", border: `1px dashed ${E.color.friend}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
                           <span style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Lock size={13} color={E.color.cream} strokeWidth={2.2} /></span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ ...E.type.note13, fontWeight: 600 }}>Finish {show.name} to read this.</div>
-                            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>{ownerName}&rsquo;s take could spoil what&rsquo;s ahead.</div>
+                            <button type="button" onClick={() => setUnsealed((prev) => new Set(prev).add(show.id))} style={{ ...reset, ...E.type.note13, fontWeight: 600, display: "block" }}>{mobile ? "Tap" : "Click"} to read {ownerName}&rsquo;s take.</button>
+                            <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>There could be a spoiler!</div>
                             {sharedGroups.length > 0 && <UnderlineWord onClick={openChat} style={{ ...E.type.label10, marginTop: 8, display: "inline-block" }}>Chat with {ownerName} about it instead</UnderlineWord>}
                           </div>
                         </div>
                       )}
+                      {essCount > 0 && <UnderlineWord onClick={() => openShare(show)} title={`${ownerName}'s essential episodes`} style={{ ...E.type.label10, marginTop: 6, display: "inline-block" }}>★ {essCount} essential episode{essCount === 1 ? "" : "s"} →</UnderlineWord>}
                     </div>
                   </div>
                 );
@@ -595,21 +585,19 @@ export default function FriendProfile({
         {inkShelf(`${ownerName} wants to watch`, wantList)}
         {inkShelf(`${ownerName} has finished`, finishedList)}
         {nothingYet && <div style={{ ...E.type.note13, color: E.color.inkMuted, marginTop: 8 }}>{ownerName} hasn&rsquo;t filled out their personal dashboard yet.</div>}
-        {/* The gap note: a framed paper at the poster's spot. */}
-        {bubble && showsById[bubble.showId] && (
-          <div style={{ position: "fixed", left: bubble.x, top: bubble.y, zIndex: 1000, transform: bubble.below ? "translateX(-50%)" : "translate(-50%, -100%)", ...(bubble.below ? { paddingTop: 6 } : { paddingBottom: 6 }) }} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-            <div style={{ transform: "rotate(-2deg)", width: "max-content", maxWidth: 240, background: E.color.cream, color: E.color.ink, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, padding: "10px 14px 11px 12px", ...E.type.note13, textAlign: "left" }}>
-              {bubble.text}
-              {sharedGroups.length > 0 && <div style={{ marginTop: 4 }}>{sharedGroups.map((g) => inkGroupRow(g, showsById[bubble.showId], false))}</div>}
-            </div>
-          </div>
-        )}
         {shareShow && (mobile
           ? <EditorialSheet onClose={() => setShareShow(null)}>{shareBody}</EditorialSheet>
           : <EditorialDialog onClose={() => setShareShow(null)} width={480} label={`${ownerName}'s essentials`} align="left">{shareBody}</EditorialDialog>)}
-        {cardShow && (mobile
-          ? <EditorialSheet onClose={() => { if (!cardBusy) setCardShow(null); }}>{cardBody}</EditorialSheet>
-          : <EditorialDialog onClose={() => { if (!cardBusy) setCardShow(null); }} width={480} label={cardShow.name}>{cardBody}</EditorialDialog>)}
+        {/* THE show card (the look-up band's, shared since 11-04), with the gap to the friend under the title. */}
+        {cardShow && (
+          <LookItUpCard
+            show={cardShow} mobile={mobile} poster={posters[cardShow.id]} existing={myProg[cardShow.id]} gapLine={bubbleTextFor(cardShow)}
+            onClose={() => setCardShow(null)}
+            onLogged={(id, entry) => setMyProg((prev) => ({ ...prev, [id]: entry }))}
+            onWanted={(id) => setMyProg((prev) => ({ ...prev, [id]: { ...(prev[id] ?? { s: 0, e: 0 }), wantedAt: Date.now() } }))}
+            onUnwanted={(id) => setMyProg((prev) => { const entry = prev[id]; return entry ? { ...prev, [id]: { ...entry, wantedAt: undefined } } : prev; })}
+          />
+        )}
       </div>
     );
   }
