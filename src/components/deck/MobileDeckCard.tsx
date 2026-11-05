@@ -287,7 +287,10 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
   if (ui === "sheet") {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
-        <div style={{ position: "absolute", inset: 0, background: editorial ? E.color.veil : "rgba(26,58,74,0.35)" }} onClick={() => setUi("docked")} />
+        {/* The shared sheet rise (his note, 2026-11-04): this sheet is the
+            deck's own, not the shell's, so it never rose — now the same
+            180ms dim + rise every other bottom drawer has. */}
+        <div style={{ position: "absolute", inset: 0, background: editorial ? E.color.veil : "rgba(26,58,74,0.35)", animation: "mDimIn 180ms ease-out" }} onClick={() => setUi("docked")} />
         {/* Pass 3: the M sheet grammar — grabber + swipe-down + tap-out, no
             ×. The scrollRef gate keeps the drag off the scrolling rows (the
             2026-08-01 conflict that retired the old handle). */}
@@ -295,7 +298,7 @@ export default function MobileDeckCard({ mode, groupId, others = [], viewerId, e
           {...sheetSwipe.handlers}
           // The editorial sheet (Alborz's notes, item 7): square, an ink top edge,
           // no shadow, under the status bar; the grabber, names and captions in ink.
-          style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: editorial ? E.safe.plus(96) : 96, background: CANON.cream, borderRadius: editorial ? 0 : "24px 24px 0 0", boxShadow: editorial ? "none" : "0 -8px 28px rgba(0,0,0,0.28)", borderTop: editorial ? `1px solid ${E.color.ink}` : undefined, display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, top: editorial ? E.safe.plus(96) : 96, animation: "mSheetRise 180ms ease-out", background: CANON.cream, borderRadius: editorial ? 0 : "24px 24px 0 0", boxShadow: editorial ? "none" : "0 -8px 28px rgba(0,0,0,0.28)", borderTop: editorial ? `1px solid ${E.color.ink}` : undefined, display: "flex", flexDirection: "column", overflow: "hidden", ...sheetSwipe.style }}
         >
           <div style={{ flexShrink: 0, paddingTop: 10 }}><div style={editorial ? { width: 36, height: 4, background: E.color.ink, margin: "0 auto" } : { ...OVERLAY.grabber(CANON.dark), margin: "0 auto" }} /></div>
           {/* Header + the vertical names SHARE this band (names bottom-
