@@ -44,17 +44,78 @@ export function AppIconBlocks({ style }: { style?: React.CSSProperties }) {
   );
 }
 
+// ── CP2 (2026-11-04): the one-time auto-open ───────────────────────────────
+// The drawer rises on its own the SECOND time a person lands on a page that
+// docks the square (the dashboard or a group room) after onboarding, once per
+// phone — remembered in this browser's storage, the way the dashboard's
+// paper note remembers its dismissal, since installing is per phone. Never
+// over a sheet, a composer or a picker (an overlay up at the moment it would
+// rise = wait for the next screen), never inside another app's browser
+// (where the drawer could only say "open this in Safari first"). Opening the
+// drawer from the square counts as shown.
+const AUTO_KEY = "sb_home_screen_drawer";
+type AutoState = { screens: number; shown: boolean };
+function readAuto(): AutoState {
+  try {
+    const s = JSON.parse(window.localStorage.getItem(AUTO_KEY) ?? "null");
+    if (s && typeof s.screens === "number") return { screens: s.screens, shown: !!s.shown };
+  } catch { /* storage off: counts in memory only */ }
+  return { screens: 0, shown: false };
+}
+function writeAuto(s: AutoState) {
+  try { window.localStorage.setItem(AUTO_KEY, JSON.stringify(s)); } catch { /* tolerate */ }
+}
+/** A page is one screen however many times its tab re-mounts while it
+ *  loads (the viewer, the wave gate); a new pathname is a new screen. */
+let countedPath: string | null = null;
+/** Something sits over the page: a sheet, a modal, a full-screen panel — all
+ *  fixed and stacked well above the foot's tabs (z 40) and the chrome. */
+function overlayUp(): boolean {
+  try {
+    let el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2) as HTMLElement | null;
+    while (el && el !== document.body) {
+      const cs = window.getComputedStyle(el);
+      if (cs.position === "fixed" && Number(cs.zIndex) >= 100) return true;
+      el = el.parentElement;
+    }
+  } catch { /* fall through */ }
+  return false;
+}
+
 export default function HomeScreenTab() {
   const [open, setOpen] = useState(false);
   const [, bump] = useState(0);
   // A late `beforeinstallprompt` (Chrome fires it early, but not always
   // before this mounts) changes which drawer shows.
   useEffect(() => onInstallPromptChange(() => bump((n) => n + 1)), []);
+  // The auto-open: count this screen, and on the second one rise once the
+  // page has settled, unless something is already over it.
+  useEffect(() => {
+    if (!homeScreenTabDocked() || installPath() === "ios-webview") return;
+    const path = window.location.pathname;
+    if (countedPath === path) return;
+    countedPath = path;
+    const s = readAuto();
+    if (s.shown) return;
+    s.screens += 1;
+    writeAuto(s);
+    if (s.screens < 2) return;
+    const t = window.setTimeout(() => {
+      if (overlayUp() || readAuto().shown) return;
+      writeAuto({ ...readAuto(), shown: true });
+      setOpen(true);
+    }, 1000);
+    return () => window.clearTimeout(t);
+  }, []);
   if (!homeScreenTabDocked()) return null;
+  const openDrawer = () => {
+    writeAuto({ ...readAuto(), shown: true });
+    setOpen(true);
+  };
   return (
     <>
       <button
-        type="button" aria-label="Get Sidebar as an app" title="Get Sidebar as an app" onClick={() => setOpen(true)}
+        type="button" aria-label="Get Sidebar as an app" title="Get Sidebar as an app" onClick={openDrawer}
         style={{
           position: "fixed", bottom: 0, right: 44, zIndex: 40,
           width: HOME_SCREEN_TAB, height: `calc(${HOME_SCREEN_TAB}px + env(safe-area-inset-bottom, 0px))`, boxSizing: "border-box",
