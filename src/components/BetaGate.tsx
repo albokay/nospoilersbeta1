@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CANON } from "../styles/canon";
 import { supabase } from "../lib/supabaseClient";
+import { isStandalone } from "../lib/installPrompt";
 
 // Bump this key whenever the beta password rotates — every already-unlocked
 // browser then re-gates and must enter the new password (the old flag is
@@ -46,18 +47,19 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
   // rather than useNavigate. Skip this redirect on /reset-password — see
   // exemption above (mobile users on a recovery link should land on the
   // page directly without the /m bounce).
+  // Decided synchronously (his iPhone catch, 2026-11-04): the installed app
+  // launches at "/", so the gate used to mount the password field here,
+  // autofocused, and THEN replace the page with /m — where a second field
+  // mounted. On iOS the keyboard stayed attached to the field that had just
+  // gone, and nothing typed landed. While the redirect is pending nothing
+  // renders; the field mounts once, on /m.
+  const redirecting = !unlocked && !gateExempt && typeof window !== "undefined" && window.innerWidth < 768 && !window.location.pathname.startsWith("/m");
   useEffect(() => {
-    if (unlocked) return;
-    if (gateExempt) return;
-    if (typeof window === "undefined") return;
-    const isMobile = window.innerWidth < 768;
-    const onMobilePath = window.location.pathname.startsWith("/m");
-    if (isMobile && !onMobilePath) {
-      window.location.replace("/m");
-    }
-  }, [unlocked, gateExempt]);
+    if (redirecting) window.location.replace("/m");
+  }, [redirecting]);
 
   if (unlocked || gateExempt) return <>{children}</>;
+  if (redirecting) return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,8 +96,9 @@ export default function BetaGate({ children }: { children: React.ReactNode }) {
           <br />
           <span style={{ color: "#666" }}>(Not your account password — you'll sign in next.)</span>
         </div>
+        {/* No autofocus inside the installed app (11-04): iOS opens the keyboard only on a tap anyway, and a half-opened one was the failure. */}
         <input
-          autoFocus
+          autoFocus={!isStandalone()}
           type="password"
           placeholder="beta password"
           value={input}
