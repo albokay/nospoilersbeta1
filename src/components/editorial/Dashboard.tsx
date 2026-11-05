@@ -389,7 +389,7 @@ function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomS
   const gutter = E.space.gutter;
   const split = tallySplit(row.tally);
   return (
-    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "16px 0 16px 24px" : `16px ${gutter}px 16px 24px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "16px 0 16px 16px" : `16px ${gutter}px 16px 16px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
       <RowPoster tvmazeId={row.tvmazeId} />
       <span style={{ ...textCol, gap: split ? 4 : 5 }}>
         <RoomHead show={row.show} people={row.people} />
