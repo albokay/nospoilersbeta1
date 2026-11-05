@@ -74,7 +74,6 @@ import {
   fetchRoomDnfMap,
   setRoomDnf,
   cancelPitch,
-  setGroupOrder,
   chatHasNewActivity,
   chatUnreadLabel,
   markGroupChatSeen,
@@ -2644,7 +2643,6 @@ export default function DashboardPage() {
                 hideNewGroup={socialOnbActive}
                 desktop
                 onOptions={(id, rect) => { if (rect) openGroupOptions(id, rect); }}
-                onReorder={(ids) => { void setGroupOrder(ids); }}
               />
             );
             return socialOnbActive

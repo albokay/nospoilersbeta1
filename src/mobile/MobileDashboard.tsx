@@ -36,7 +36,6 @@ import {
   renamePeopleGroup,
   leavePeopleGroup,
   setContactName,
-  setGroupOrder,
   type MyPendingInvite,
   fetchMyPendingGroupInvites,
   acceptPeopleGroupInvite,
@@ -555,7 +554,6 @@ export default function MobileDashboard() {
                   onNewGroup={() => setInviteOpen(true)}
                   hideNewGroup={showSocialOnb}
                   onOptions={(id) => openSettings(id)}
-                  onReorder={(ids) => { void setGroupOrder(ids); }}
                 />
               </div>
             );

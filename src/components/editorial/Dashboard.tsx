@@ -3,13 +3,21 @@
  * the E3Dash / D3Dash boards). Rendered under the editorial skin only, by
  * MobileDashboard and DashboardPage; the classic dashboards are untouched.
  *
- *   EditorialGroups  the Show rooms shelf, then "Groups" on a rule with a green + beside the tab (was "Invite new watch group →" until 11-03);
- *                    hairline rows — the members' initials, the group's
- *                    name, a mono second line (new letters · a sealed
- *                    letter · new in chat · the room with the latest
- *                    activity · no shows yet — since 11-02 the arrow line:
- *                    where the tap lands, then why) and the envelope at the end;
- *                    an invite row with the inviter's line in red and Join.
+ *   EditorialGroups  THE NESTED SHELF (his design, 11-04, canvas VteijWE4Ae51YCisqG8KWf
+ *                    board Thin; replaces the two shelves of 11-03): "Groups"
+ *                    on a rule with the + beside the tab, then one CLUSTER per
+ *                    group — a thin one-line group row (the members' initials,
+ *                    the group's name, the blue dot when something new waits
+ *                    in the group room, the accent edge for its settings) with
+ *                    the group's live rooms indented under it in a hairline
+ *                    box (the show, "with Adam, Lena" on the show line — or
+ *                    "w/ 3 friends" when the names would cut the title — the
+ *                    news under, the envelope at the end), three rooms then
+ *                    "N more rooms →". Clusters order by whatever moved last,
+ *                    group or room; the dividers start at the tab's left edge
+ *                    and run off the right (an open left edge). The drag grip
+ *                    is retired. An invite row with the inviter's line in red
+ *                    and Join still closes the shelf.
  *                    The envelope follows the live rule exactly (open = new
  *                    writing you can read or new chat; sealed = only writing
  *                    ahead of you); the line names the room through one
@@ -23,8 +31,8 @@
  *                    per account, back when something newer arrives.
  *   DrawerTab        the docked "How I watch TV" tab at the foot.
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Plus, SquarePen } from "lucide-react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Plus, SquarePen } from "lucide-react";
 import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
 import { SectionHead } from "./Chrome";
@@ -52,15 +60,15 @@ export function pitchSentence(g: DashboardGroup, a: GroupPitchActivity | undefin
   return { text: `${who} pitched ${a.latestPitchShowName ?? "a show"}`, at: a.latestPitchAt ?? 0 };
 }
 
-/** THE ROOMS SHELF (two shelves, his yes 11-03): every room the viewer is
- *  in with two or more people, across all their groups, newest activity
- *  first — a letter, a note, a progress move, else the room's creation. A
- *  row opens its room; its line is the group, then what's new (new letters ·
- *  a sealed letter · you're N behind / ahead of the nearest friend), and the
- *  envelope sits at the end. Rooms of one, rooms you left or cleared, and
- *  finished or parked rooms with nothing unread stay off it. Group rows
- *  always open the group room now, so the two shelves can't disagree. */
-export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number; /** The friends in the room, as the row's initials (his swap, 11-03). */ people: string[] };
+/** THE ROOM ROWS (two shelves, his yes 11-03; nested under their group since
+ *  11-04): every room the viewer is in with two or more people, across all
+ *  their groups, newest activity first — a letter, a note, a progress move,
+ *  else the room's creation. A row opens its room; its line is what's new
+ *  (new letters · a sealed letter · you're N behind / ahead of the nearest
+ *  friend), and the envelope sits at the end. Rooms of one, rooms you left
+ *  or cleared, and finished or parked rooms with nothing unread stay off
+ *  it. Group rows always open the group room, so the two can't disagree. */
+export type RoomShelfRow = { roomId: string; showId: string; groupId: string; show: string; group: string; reason: string; envelope: "open" | "sealed" | null; at: number; /** The friends in the room, by first name (the row's "with Adam, Lena"; initials until 11-04). */ people: string[] };
 export function roomShelfRows(
   groups: DashboardGroup[], rooms: ShowRoomOfGroup[], roomVis: RoomVisibility[], roomMembers: Record<string, string[]>,
   brain: Map<string, GroupDashboardShow[]>, finished: Set<string>, stances: MyStances | null,
@@ -93,7 +101,7 @@ export function roomShelfRows(
     }
     const others = g.members.filter((m) => m.userId !== selfUserId);
     const group = groupDisplayName(g.group, others, contactNames, g.pendingInvites.map((pi) => pi.name || "a friend"), groupNumberById[g.group.id]);
-    const people = others.filter((m) => mem.includes(m.userId)).map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?");
+    const people = others.filter((m) => mem.includes(m.userId)).map((m) => personDisplayName(contactNames, m.userId, m.username, m.displayName));
     out.push({
       roomId: r.roomId, showId: r.showId, groupId: r.groupId,
       show: showsById[r.showId]?.name ?? "A show", group, reason, people,
@@ -275,53 +283,38 @@ function Avatar({ initial, first, pending = false }: { initial: string; first: b
   );
 }
 
-type GripHandlers = { onPointerDown: (e: React.PointerEvent<HTMLElement>) => void; onPointerMove: (e: React.PointerEvent<HTMLElement>) => void; onPointerUp: () => void; onPointerCancel: () => void; active: boolean };
-
-/** One group's row (Alborz's notes, round 5): on the phone it swipes left
- *  over a friend-blue pane to the group's settings (a cream pen); on desktop
- *  a pen sits in the grip's grey (alert on its own hover). The grip at the row's end drags it up or down
- *  the list (the faintest ink over cream). */
-function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }: {
+/** The thin group row (his design, 11-04): ONE line — the members' initials,
+ *  the group's name, the dot — with the accent edge at its end on the phone,
+ *  where it swipes left over a friend-blue pane to the group's settings (a
+ *  cream pen); on desktop a pen sits at the row's end (alert on its own
+ *  hover). Its divider starts at the tab's left edge and runs off the right
+ *  of the phone (an open left edge). No grip: the order is the activity's. */
+const GROUP_ROW_PAD = 5;
+function GroupRow({ desktop, onEnter, onOptions, children }: {
   desktop: boolean;
-  /** The dragged row's offset while it's carried. */
-  lift: number | null;
-  rowRef: (el: HTMLDivElement | null) => void;
   onEnter: () => void;
   onOptions?: (rect?: DOMRect) => void;
-  grip: GripHandlers | null;
   children: React.ReactNode;
 }) {
   const swipe = useRowSwipe(!desktop && onOptions ? () => onOptions() : undefined);
   const gutter = E.space.gutter;
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
-  const gripEl = grip && (
-    <span
-      data-grip="1" role="button" aria-label="Drag to reorder" title="Drag to reorder"
-      onPointerDown={grip.onPointerDown} onPointerMove={grip.onPointerMove} onPointerUp={grip.onPointerUp} onPointerCancel={grip.onPointerCancel}
-      onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 44, marginRight: -6, flexShrink: 0, color: E.color.inkFaint, cursor: grip.active ? "grabbing" : "grab", touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
-    >
-      <GripVertical size={18} strokeWidth={1.6} aria-hidden="true" />
-    </span>
-  );
-  const carried: React.CSSProperties = lift != null ? { transform: `translateY(${lift}px)`, zIndex: 3, boxShadow: "0 6px 18px rgba(26,58,74,0.18)" } : {};
   if (desktop) {
     return (
-      <div ref={rowRef} className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, position: "relative", background: E.color.cream, userSelect: "none", ...carried }}>
+      <div className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: `${GROUP_ROW_PAD}px 0`, position: "relative", background: E.color.cream, userSelect: "none" }}>
         {children}
         {onOptions && (
           <span className="e-pen" role="button" aria-label="Group settings" title="Group settings" onClick={(e) => { e.stopPropagation(); onOptions(e.currentTarget.getBoundingClientRect()); }} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
             <SquarePen size={16} strokeWidth={1.5} color="currentColor" aria-hidden="true" />
           </span>
         )}
-        {gripEl}
       </div>
     );
   }
   return (
     // Nothing in the row is selectable and the long-press callout is off
-    // (his catch): a held grip no longer wakes iOS's text selection mid-drag.
-    <div ref={rowRef} style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none", ...carried }} {...swipe.handlers}>
+    // (his catch, from the grip days): a held row never wakes iOS's text selection.
+    <div style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px 0 0`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }} {...swipe.handlers}>
       {onOptions && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.friend, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
           <span role="button" aria-label="Group settings" onClick={() => onOptions()} style={{ display: "inline-flex", width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
@@ -329,9 +322,8 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
           </span>
         </div>
       )}
-      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `18px ${gutter}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
+      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `${GROUP_ROW_PAD}px ${gutter}px ${GROUP_ROW_PAD}px 0`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
         {children}
-        {gripEl}
         {/* The edge strip that says the row swipes (the show rows' hint) — accent, like theirs (his call); the pane behind stays friend blue. */}
         {onOptions && <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 6, bottom: 6, width: 4, background: E.color.accent }} />}
       </div>
@@ -339,36 +331,73 @@ function GroupRow({ desktop, lift, rowRef, onEnter, onOptions, grip, children }:
   );
 }
 
-/** A rooms-shelf row: the show, the group · what's new, the envelope flush
- *  right (no pen, no grip — settings live in the room, the order is the
- *  activity's). The phone row spans the gutters like the group rows. */
-function RoomRow({ desktop, row, onEnter }: { desktop: boolean; row: RoomShelfRow; onEnter: () => void }) {
-  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
-  const inner = (
-    <>
-      {row.people.length > 0 && (
-        <span style={{ display: "inline-flex", flexShrink: 0 }}>
-          {row.people.map((p, i) => <Avatar key={i} initial={p} first={i === 0} />)}
-        </span>
-      )}
-      <span style={textCol}>
-        <span style={nameStyle}>{row.show}</span>
-        <span style={lineStyle}>{row.group}{row.reason ? ` \u00b7 ${row.reason}` : ""}</span>
-      </span>
-      {row.envelope && <LetterDisc kind={row.envelope} className="m-dot-in" />}
-    </>
+/** The show line of a room row: the show, then the friends in the room in
+ *  the With line's mono ("with Adam, Lena, Mo"). Measured after it draws
+ *  (his yes, 11-04): if the names would cut the title, the names give way
+ *  to "w/ 3 friends" — and only then does the title truncate, so the count
+ *  always fits. A resize, or a change of friends, measures again from the
+ *  names. */
+function RoomHead({ show, people }: { show: string; people: string[] }) {
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const [count, setCount] = useState(false);
+  const peopleKey = people.join("\u0000");
+  useEffect(() => { setCount(false); }, [peopleKey]);
+  useEffect(() => {
+    const again = () => setCount(false);
+    window.addEventListener("resize", again);
+    return () => window.removeEventListener("resize", again);
+  }, []);
+  useLayoutEffect(() => {
+    const el = nameRef.current;
+    if (!el || count || people.length === 0) return;
+    if (el.scrollWidth > el.clientWidth + 1) setCount(true);
+  });
+  const names = people.length === 0 ? null : count ? `w/ ${people.length} friend${people.length === 1 ? "" : "s"}` : `with ${people.join(", ")}`;
+  return (
+    <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
+      <span ref={nameRef} style={{ ...nameStyle, minWidth: 0, flexShrink: 1 }}>{show}</span>
+      {names && <span style={{ ...E.type.label11, color: E.color.inkSub, whiteSpace: "nowrap", flexShrink: 0 }}>{names}</span>}
+    </span>
   );
-  if (desktop) {
-    return <div className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, background: E.color.cream }}>{inner}</div>;
-  }
+}
+
+/** A room row inside its group's box: the show with the friends on its
+ *  line, what's new under, the envelope flush right (no pen — settings
+ *  live in the room; the order is the activity's). */
+function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomShelfRow; last: boolean; onEnter: () => void }) {
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
   const gutter = E.space.gutter;
   return (
-    <div style={{ margin: `0 -${gutter}px`, borderBottom: `1px solid ${E.color.hairline}`, background: E.color.cream }}>
-      <div role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, borderBottom: 0, padding: `18px ${gutter}px` }}>{inner}</div>
+    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "18px 0 18px 24px" : `18px ${gutter}px 18px 24px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+      <span style={textCol}>
+        <RoomHead show={row.show} people={row.people} />
+        <span style={{ ...lineStyle, minHeight: 13 }}>{row.reason}</span>
+      </span>
+      {row.envelope && <LetterDisc kind={row.envelope} className="m-dot-in" />}
     </div>
   );
 }
 
+/** A group's rooms, indented in a hairline box under its row (his sketch):
+ *  the group row's divider is the box's top, the box's left rule sits a
+ *  gutter in, its right edge is open on the phone. Three rooms, then "N more
+ *  rooms →" into the group room. */
+const ROOMS_SHOWN = 3;
+function RoomsBox({ desktop, rows, onEnterRoom, onMore }: { desktop: boolean; rows: RoomShelfRow[]; onEnterRoom: (r: RoomShelfRow) => void; onMore: () => void }) {
+  const gutter = E.space.gutter;
+  const shown = rows.slice(0, ROOMS_SHOWN);
+  const more = rows.length - shown.length;
+  return (
+    <div style={{ marginLeft: gutter, marginRight: desktop ? 0 : -gutter, borderLeft: `1px solid ${E.color.hairline}`, borderBottom: `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+      {shown.map((r, i) => <RoomRow key={r.roomId} desktop={desktop} row={r} last={i === shown.length - 1 && more === 0} onEnter={() => onEnterRoom(r)} />)}
+      {more > 0 && (
+        <button type="button" onClick={onMore} style={{ ...E.type.label11, color: E.color.inkMuted, display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", padding: desktop ? "12px 0 13px 24px" : `12px ${gutter}px 13px 24px`, background: "transparent", border: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+          {more} more room{more === 1 ? "" : "s"} →
+        </button>
+      )}
+    </div>
+  );
+}
 /** The Groups shelf's +: a sky-blue disc with a cream plus, a 44px hit on the phone. */
 function PlusDisc({ onClick }: { onClick: () => void }) {
   return (
@@ -392,7 +421,7 @@ function GhostRow() {
   );
 }
 
-export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onEnterRoom, onInvite, onNewGroup, hideNewGroup = false, desktop = false, onOptions, onReorder }: {
+export function EditorialGroups({ groups, pendingInvites, contactNames, groupNumberById, selfUserId, roomVis, chatActivity, pitchActivity = [], loading = false, onEnter, onEnterRoom, onInvite, onNewGroup, hideNewGroup = false, desktop = false, onOptions }: {
   groups: DashboardGroup[];
   pendingInvites: PendingGroupInvite[];
   contactNames: Record<string, string>;
@@ -409,12 +438,10 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   onInvite: (inv: PendingGroupInvite) => void;
   onNewGroup: () => void;
   hideNewGroup?: boolean;
-  /** Desktop: a pen in the row instead of the swipe; the grip drags with the mouse. */
+  /** Desktop: a pen in the row instead of the swipe. */
   desktop?: boolean;
   /** The group's settings (round 5): the phone row's swipe, the desktop row's pen (with the pen's rect). */
   onOptions?: (groupId: string, rect?: DOMRect) => void;
-  /** Your own order (round 5): every group's id in the dragged order, to save. */
-  onReorder?: (groupIds: string[]) => void;
 }) {
   const [showsById, setShowsById] = useState<Record<string, Show>>({});
   const [rooms, setRooms] = useState<ShowRoomOfGroup[]>([]);
@@ -473,99 +500,55 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   const lines = useMemo(() => computeLines(groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers), [groups, chatActivity, rooms, showsById, pitchActivity, contactNames, stances, selfUserId, answerByGroup, brain, roomMembers]);
   const roomRows = useMemo(() => roomShelfRows(groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId), [groups, rooms, roomVis, roomMembers, brain, finishedRooms, stances, showsById, contactNames, groupNumberById, selfUserId]);
 
-  // Your own order (round 5): the groups you've dragged first, in that
-  // order, then the rest newest-joined first. A drag this session is the
-  // truth until the saved order comes back with the next load.
-  const defaultIds = useMemo(() => {
-    const joined = (g: DashboardGroup) => g.members.find((m) => m.userId === selfUserId)?.joinedAt ?? g.group.createdAt;
-    const manual = groups.filter((g) => g.group.sortOrder != null).sort((a, b) => (a.group.sortOrder as number) - (b.group.sortOrder as number));
-    const rest = groups.filter((g) => g.group.sortOrder == null).sort((a, b) => joined(b) - joined(a));
-    return [...manual, ...rest].map((g) => g.group.id);
-  }, [groups, selfUserId]);
-  const [draggedIds, setDraggedIds] = useState<string[] | null>(null);
-  const orderedIds = useMemo(
-    () => (draggedIds ? [...draggedIds.filter((id) => defaultIds.includes(id)), ...defaultIds.filter((id) => !draggedIds.includes(id))] : defaultIds),
-    [draggedIds, defaultIds],
-  );
-  const ordered = useMemo(() => orderedIds.map((id) => groups.find((g) => g.group.id === id)).filter((g): g is DashboardGroup => !!g), [orderedIds, groups]);
-
-  // The drag from the grip: the row follows the pointer; past a neighbour's
-  // midpoint the two swap and the anchor carries along, so the carried row
-  // keeps its place under the finger.
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const dragRef = useRef<{ id: string; startY: number; order: string[] } | null>(null);
-  const [drag, setDrag] = useState<{ id: string; dy: number } | null>(null);
-  const onGripDown = (id: string) => (e: React.PointerEvent<HTMLElement>) => {
-    if (!onReorder) return;
-    e.preventDefault(); e.stopPropagation();
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* fine */ }
-    dragRef.current = { id, startY: e.clientY, order: orderedIds };
-    setDrag({ id, dy: 0 });
-  };
-  const onGripMove = (e: React.PointerEvent<HTMLElement>) => {
-    const d = dragRef.current;
-    if (!d) return;
-    let dy = e.clientY - d.startY;
-    const i = d.order.indexOf(d.id);
-    const heightOf = (id: string) => rowRefs.current[id]?.getBoundingClientRect().height ?? 0;
-    if (dy > 0 && i < d.order.length - 1) {
-      const h = heightOf(d.order[i + 1]);
-      if (h && dy > h / 2) { const next = [...d.order]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; d.order = next; d.startY += h; dy -= h; setDraggedIds(next); }
-    } else if (dy < 0 && i > 0) {
-      const h = heightOf(d.order[i - 1]);
-      if (h && -dy > h / 2) { const next = [...d.order]; [next[i], next[i - 1]] = [next[i - 1], next[i]]; d.order = next; d.startY -= h; dy += h; setDraggedIds(next); }
-    }
-    setDrag({ id: d.id, dy });
-  };
-  const onGripUp = () => {
-    const d = dragRef.current;
-    if (!d) return;
-    dragRef.current = null;
-    setDrag(null);
-    onReorder?.(d.order);
-  };
-
+  // Each group's rooms, newest activity first, and the clusters' order (his
+  // call, 11-04): a group sits by whatever moved last in it — a room (a
+  // letter, a note, a progress move, the room's creation) or the group
+  // itself (a friend's pitch, an answer to yours, chat) — else by when you
+  // joined. The saved drag order (round 5) is no longer read.
+  const roomsByGroup = useMemo(() => {
+    const m = new Map<string, RoomShelfRow[]>();
+    for (const r of roomRows) { const list = m.get(r.groupId) ?? []; list.push(r); m.set(r.groupId, list); }
+    return m; // roomRows is already newest-first
+  }, [roomRows]);
+  const ordered = useMemo(() => {
+    const at = (g: DashboardGroup) => {
+      const gid = g.group.id;
+      const joined = g.members.find((m) => m.userId === selfUserId)?.joinedAt ?? g.group.createdAt;
+      const room = roomsByGroup.get(gid)?.[0]?.at ?? 0;
+      const pitch = pitchActivity.find((a) => a.groupId === gid)?.latestPitchAt ?? 0;
+      const chat = chatActivity.find((a) => a.groupId === gid)?.latestMessageAt ?? 0;
+      const answer = answerByGroup.get(gid)?.at ?? 0;
+      return Math.max(joined, room, pitch, chat, answer);
+    };
+    return [...groups].sort((a, b) => at(b) - at(a));
+  }, [groups, roomsByGroup, pitchActivity, chatActivity, answerByGroup, selfUserId]);
   return (
     <div>
-      {roomRows.length > 0 && (
-        <div style={{ marginBottom: desktop ? 56 : 44 }}>
-          <SectionHead big tab={E.color.personal}>Show rooms</SectionHead>
-          {roomRows.map((r) => (
-            <RoomRow key={r.roomId} desktop={desktop} row={r} onEnter={() => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} />
-          ))}
-        </div>
-      )}
-      {/* The green + beside the tab (his note, 11-03) replaces "Invite new watch group →": it opens the same invite modal, now headed "Start a new watch group". */}
-      <div data-tip-anchor="groups-head"><SectionHead big tab={E.color.friend} after={!hideNewGroup && !loading ? <PlusDisc onClick={onNewGroup} /> : null}>Groups</SectionHead></div>
+      {/* The head's rule runs off the right of the phone (his sketch): the dividers' open left edge starts at the tab. The green + beside the tab (his note, 11-03) opens the invite modal headed "Start a new watch group". */}
+      <div data-tip-anchor="groups-head" style={{ marginRight: desktop ? 0 : -E.space.gutter }}><SectionHead big tab={E.color.friend} after={!hideNewGroup && !loading ? <PlusDisc onClick={onNewGroup} /> : null}>Groups</SectionHead></div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
       {ordered.map(({ group, members, pendingInvites: gp }) => {
         const others = members.filter((m) => m.userId !== selfUserId);
         const name = groupDisplayName(group, others, contactNames, gp.map((p) => p.name || "a friend"), groupNumberById[group.id]);
         const l = lines[group.id];
         const id = group.id;
+        const rows = roomsByGroup.get(id) ?? [];
         return (
-          <GroupRow
-            key={id}
-            desktop={desktop}
-            lift={drag?.id === id ? drag.dy : null}
-            rowRef={(el) => { rowRefs.current[id] = el; }}
-            onEnter={() => onEnter(id)}
-            onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}
-            grip={onReorder ? { onPointerDown: onGripDown(id), onPointerMove: onGripMove, onPointerUp: onGripUp, onPointerCancel: onGripUp, active: !!drag } : null}
-          >
-            {/* The initials on the group row too (restored at his ask, 11-03, hours after moving them to the room rows): a dashed circle is a friend who hasn't joined yet. */}
-            {(others.length > 0 || gp.length > 0) && (
-              <span style={{ display: "inline-flex", flexShrink: 0 }}>
-                {others.map((m, i) => <Avatar key={m.userId} initial={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?"} first={i === 0} />)}
-                {gp.map((p, i) => <Avatar key={`p${i}`} initial={(p.name || "?")[0]} first={others.length === 0 && i === 0} pending />)}
-              </span>
-            )}
-            <span style={textCol}>
-              <span style={nameStyle}>{name}</span>
-              <span style={lineStyle}>{l?.redTail ? <>{l.line.slice(0, -l.redTail.length)}<span style={{ color: E.color.alert }}>{l.redTail}</span></> : (l?.line ?? "")}</span>
-            </span>
-            {l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
-          </GroupRow>
+          <React.Fragment key={id}>
+            <GroupRow desktop={desktop} onEnter={() => onEnter(id)} onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}>
+              {/* The initials on the group row (restored at his ask, 11-03): a dashed circle is a friend who hasn't joined yet. */}
+              {(others.length > 0 || gp.length > 0) && (
+                <span style={{ display: "inline-flex", flexShrink: 0 }}>
+                  {others.map((m, i) => <Avatar key={m.userId} initial={personDisplayName(contactNames, m.userId, m.username, m.displayName)[0] ?? "?"} first={i === 0} />)}
+                  {gp.map((p, i) => <Avatar key={`p${i}`} initial={(p.name || "?")[0]} first={others.length === 0 && i === 0} pending />)}
+                </span>
+              )}
+              <span style={{ ...nameStyle, flex: 1, minWidth: 0 }}>{name}</span>
+              {/* The dot alone says something new waits in the group room (his call, 11-04: the sentence lives in the room and the paper note). */}
+              {l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
+            </GroupRow>
+            {rows.length > 0 && <RoomsBox desktop={desktop} rows={rows} onEnterRoom={(r) => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} onMore={() => onEnter(id)} />}
+          </React.Fragment>
         );
       })}
       {pendingInvites.map((inv) => {
