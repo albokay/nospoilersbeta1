@@ -18,6 +18,7 @@ import MobileGhostRow from "./MobileGhostRow";
 import MobileInviteSheet from "./MobileInviteSheet";
 import DeckWave from "../components/deck/DeckWave";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
+import HomeScreenTab from "../components/editorial/HomeScreenTab";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import useSheetSwipeDown from "../lib/useSheetSwipeDown";
 import { preventLastWordOrphan } from "../lib/utils";
@@ -1338,6 +1339,9 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {user && groupWaveDone && (
         <DeckWave wave="drip" heading="none" idiom="mobile" onComplete={() => {}} />
       )}
+      {/* The home-screen square at the foot (2026-11-04), docked whether or
+          not the How tab is there yet; hides inside the installed app. */}
+      {editorial && user && groupWaveDone && <HomeScreenTab />}
 
       {/* ── Swipe-deck arc CP3b — the docked "How We Watch TV" card
              (answers-led artifact; full grid behind the tap). Self-hiding

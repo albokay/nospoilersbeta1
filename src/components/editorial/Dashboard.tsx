@@ -35,6 +35,7 @@ import {
 } from "../../lib/db";
 import { groupDisplayName, joinNames, personDisplayName, pendingInviteMemberNames, pendingInviterLabel } from "../../lib/groupNames";
 import { linearIndex } from "../../lib/groupPills";
+import { homeScreenTabInset } from "../../lib/installPrompt";
 import { offSeason, roadOthers, seasonalFor, summarizeGap } from "../../lib/letters";
 import type { PeopleGroup, PeopleGroupMember, GroupShowVote } from "../../types";
 
@@ -660,7 +661,10 @@ export function DrawerTab({ label, onClick, desktop = false, right = "↑", anch
       onClick={onClick}
       style={{
         position: "fixed", bottom: 0, zIndex: 40,
-        ...(desktop ? { left: "50%", width: 360, marginLeft: -180 } : { left: 44, right: 44 }),
+        // The phone (2026-11-04): the tab stops short of the home-screen
+        // square docked at its right (lib/installPrompt homeScreenTabInset);
+        // inside the installed app there's no square and it runs to 44.
+        ...(desktop ? { left: "50%", width: 360, marginLeft: -180 } : { left: 44, right: homeScreenTabInset() }),
         height: desktop ? 56 : "calc(56px + env(safe-area-inset-bottom, 0px))", boxSizing: "border-box",
         padding: desktop ? "0 20px" : "0 20px env(safe-area-inset-bottom, 0px)",
         border: `1px solid ${E.color.ink}`, borderBottom: 0, background: E.color.cream,

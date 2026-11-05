@@ -16,6 +16,7 @@ import MobileSocialOnboarding from "./MobileSocialOnboarding";
 import DeckWave from "../components/deck/DeckWave";
 import YoureInCard from "../components/deck/YoureInCard";
 import MobileDeckCard from "../components/deck/MobileDeckCard";
+import HomeScreenTab from "../components/editorial/HomeScreenTab";
 import MobileTipsSheet from "../components/MobileTipsSheet";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
@@ -556,7 +557,6 @@ export default function MobileDashboard() {
                   onOptions={(id) => openSettings(id)}
                   onReorder={(ids) => { void setGroupOrder(ids); }}
                 />
-                {!showSocialOnb && <MobileAddToHomeScreen editorial />}
               </div>
             );
             return showSocialOnb
@@ -785,6 +785,10 @@ export default function MobileDashboard() {
       {user && !showSocialOnb && !postAccept && (
         <MobileDeckCard mode="personal" viewerId={user.id} editorial={editorial} />
       )}
+      {/* The home-screen square beside it (2026-11-04): "Get Sidebar as an
+          app" — replaces the underlined line that sat under the group rows;
+          hides itself inside the installed app. */}
+      {editorial && user && !showSocialOnb && !postAccept && <HomeScreenTab />}
 
       {/* ── Swipe-deck arc CP4 — the drip / catch-up modal: up to 4 released,
              unanswered cards, once per session; waits for the onboarding

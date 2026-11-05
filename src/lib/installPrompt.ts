@@ -86,6 +86,23 @@ export function installPath(): InstallPath {
   return "ios-safari";
 }
 
+// ── The home-screen tab (2026-11-04, editorial/HomeScreenTab) ──────────────
+/** The square's side; the deck's docked tab gives up this much plus the gap
+ *  at its right end on the phone. */
+export const HOME_SCREEN_TAB = 56;
+export const HOME_SCREEN_GAP = 12;
+
+/** Is the square docked at the phone's foot? Everywhere but inside the
+ *  installed app, where there's nothing left to get. */
+export function homeScreenTabDocked(): boolean {
+  return !isStandalone();
+}
+
+/** The phone's How-tab right inset: 44 as always, or past the square. */
+export function homeScreenTabInset(base = 44): number {
+  return homeScreenTabDocked() ? base + HOME_SCREEN_TAB + HOME_SCREEN_GAP : base;
+}
+
 /** Installed app: tag the body so CSS can flatten the page background
  *  (theme.ts body.pwa-standalone). Call once at boot. */
 export function markStandaloneBody(): void {
