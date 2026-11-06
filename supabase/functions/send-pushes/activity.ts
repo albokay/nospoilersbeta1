@@ -17,7 +17,8 @@
 //
 // composePush: his wording. One push per batch:
 //   one friend, one thing   → "Sam wrote a letter in The Bear."
-//   one friend, two things  → "Sam wrote a letter in The Bear and messaged Sunday Crew."
+//   one friend, two things  → "Sam left you a couple things on Sidebar."
+//                             (his 11-05 live look; it spelled both out before)
 //   one friend, 3+ things   → "Sam left you a few things on Sidebar."
 //   two or more friends     → "Sam and 2 other friends left you some things on Sidebar."
 //                             (the friend with the most things named; ties → the latest)
@@ -385,15 +386,6 @@ export function composePush(acts: Act[], nameOf: (id: string) => string): { body
   }
   const [[friendId, list]] = [...byFriend.entries()];
   const name = nameOf(friendId);
-  if (list.length >= 3) return { body: `${name} left you a few things on Sidebar.`, url: "/dashboard" };
   if (list.length === 1) return { body: `${name} ${phrase(list[0])}.`, url: list[0].url };
-  // Two things, in the order they happened; an answer goes last so its
-  // colon ends the sentence.
-  let [a, b] = [...list].sort((x, y) => ms(x.at) - ms(y.at));
-  if (a.kind === "answer" && b.kind !== "answer") [a, b] = [b, a];
-  const pa = phrase(a), pb = phrase(b);
-  if (pa === pb) {
-    return { body: a.kind === "letter" ? `${name} wrote two letters in ${a.show}.` : `${name} ${pa} twice.`, url: "/dashboard" };
-  }
-  return { body: `${name} ${pa} and ${pb}.`, url: "/dashboard" };
+  return { body: `${name} left you ${list.length === 2 ? "a couple" : "a few"} things on Sidebar.`, url: "/dashboard" };
 }

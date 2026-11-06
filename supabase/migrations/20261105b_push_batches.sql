@@ -8,7 +8,7 @@
 --
 -- run_push_batches() POSTs to send-pushes with the shared secret, the same
 -- shape as run_refresh_shows. The cron fires at :05 every hour; the
--- function decides who's due (8am, 11am, 2pm, 5pm, 8pm in each person's own
+-- function decides who's due (every hour from 8am to 9pm in each person's own
 -- time zone). A test call takes a body, e.g. a dry run for everyone:
 --   select public.run_push_batches('{"batch":true,"dry_run":true,"force":true}');
 -- and the answer lands in net._http_response a few seconds later.

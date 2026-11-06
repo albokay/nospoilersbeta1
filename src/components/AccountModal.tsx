@@ -505,7 +505,7 @@ function NotificationsSection({ admin }: { admin?: boolean }) {
           <div style={note}>Notifications are turned off for Sidebar in this device&rsquo;s settings. Turn them on there, then come back.</div>
         ) : (
           <>
-            <div style={note}>A note every few hours when friends leave you something. Never overnight, and never a letter&rsquo;s words. Each phone or computer has its own switch.{working ? " Saving\u2026" : ""}</div>
+            <div style={note}>A note within the hour when friends leave you something. Never overnight, and never a letter&rsquo;s words. Each phone or computer has its own switch.{working ? " Saving\u2026" : ""}</div>
             <AnswerRow label="Notifications on this device" options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} value={state} onChange={(v) => { void choose(v === "on"); }} />
             {admin && state === "on" && (
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12 }}>

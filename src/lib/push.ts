@@ -6,7 +6,7 @@
  * Turning it on asks the browser, registers the background worker
  * (public/sw.js, push only), and saves this device's push address
  * (save_push_device). Turning it off, or signing out, forgets the device.
- * What arrives, and when, is send-pushes (batches at 8, 11, 2, 5, 8 local).
+ * What arrives, and when, is send-pushes (hourly batches, 8am–9pm local).
  *
  * iPhones only get web push inside the installed app (Home Screen); in a
  * Safari tab the card points to the "Get Sidebar as an app" drawer instead.

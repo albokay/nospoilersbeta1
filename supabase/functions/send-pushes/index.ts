@@ -4,9 +4,10 @@
 // Push notifications (Alborz 2026-11-05).
 //
 // BATCHES (CP2): pg_cron calls this every hour (run_push_batches, shared
-// secret like send-digests). A person is due at 8am, 11am, 2pm, 5pm and 8pm
-// in their own time zone (their newest device's), so nothing ever arrives
-// 10pm–8am and the 8am push covers the night. When due, everything friends
+// secret like send-digests). A person is due every hour from 8am to 9pm in
+// their own time zone (their newest device's; his call 11-05, it was every
+// 3 hours), so nothing ever arrives 10pm–8am and the 8am push covers the
+// night. When due, everything friends
 // did since their last batch (push_state.covered_until; at most 24h back)
 // becomes ONE push (wording in activity.ts); nothing new, no push. Either way
 // the window closes, so nothing is ever pushed twice. What they've already
@@ -42,9 +43,9 @@ import { gatherActs, composePush, type Act } from "./activity.ts";
 const VAPID_PUBLIC_KEY = "BEy3WeEFKAm1M-dRFil1GlxWYC_2-KyMF8srQj15R8DgHvluVlUZ1--5GSpvxu5DlrtAcrlBJWoZGgsnJQZ3gZM";
 const VAPID_SUBJECT = "mailto:letters@sidebar.watch";
 
-const BATCH_HOURS = [8, 11, 14, 17, 20];
+const BATCH_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const DEFAULT_TZ = "America/Los_Angeles";
-const DEFAULT_WINDOW_H = 3;
+const DEFAULT_WINDOW_H = 1;
 const MAX_WINDOW_H = 24;
 
 const ALLOWED_ORIGINS = new Set([
@@ -158,7 +159,7 @@ serve(async (req) => {
       if (!BATCH_HOURS.includes(localHour(newest?.time_zone, now))) return false;
       // Already batched this hour (a retried cron call): skip.
       const cu = coveredUntil.get(uid);
-      return !cu || now.getTime() - new Date(cu).getTime() > 90 * 60 * 1000;
+      return !cu || now.getTime() - new Date(cu).getTime() > 40 * 60 * 1000;
     });
     if (!due.length) return json({ ok: true, due: 0, sent: 0, reason: "nobody due this hour" });
 

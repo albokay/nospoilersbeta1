@@ -12,7 +12,12 @@ self.addEventListener("activate", (event) => { event.waitUntil(self.clients.clai
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data ? event.data.text() : "" }; }
-  const title = data.title || "Sidebar";
+  // An iPhone/iPad Home Screen app already prints "from Sidebar" under the
+  // title, so a "Sidebar" title read "Sidebar / from Sidebar" (his catch,
+  // 11-05): there the title is left empty and the message follows the one
+  // "from Sidebar". Computers have no such line and keep the title.
+  const apple = /iPhone|iPad|iPod/.test(self.navigator.userAgent || "");
+  const title = apple ? "" : (data.title || "Sidebar");
   const options = {
     body: data.body || "",
     icon: "/icons/icon-192.png",

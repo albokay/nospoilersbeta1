@@ -1,5 +1,11 @@
 # Sidebar — Technical State (2026-11-05)
 
+> **⭐ 2026-11-05 — Push notifications, his live look (CP3 part 1).** Both catches came from his first real pushes on the iPhone.
+> - **One "Sidebar" on the iPhone:** a Home Screen app prints "from Sidebar" under the title itself, so the title "Sidebar" read "Sidebar / from Sidebar". `public/sw.js` now leaves the title empty on iPhone/iPad. Computers keep "Sidebar". If an empty title looks odd on the phone, the fallback is the message as the title.
+> - **Two things from one friend** now read "Sam left you a couple things on Sidebar." instead of being spelled out. One thing is still spelled out; three or more is "a few things"; two or more friends is unchanged.
+> - **Guide letters:** confirmed they push, when open to the reader. No friend guide letter was in his test window; the only recent one (Mad Men) he had already read.
+> - **Every hour** (his call after the batches-vs-immediate question): a person is due every hour from 8am to 9pm local (was 8, 11, 2, 5, 8), a first batch looks back 1h (was 3h), and a retried call within 40 minutes is skipped (was 90). Still nothing 10pm–8am, and the 8am push covers the night. The cron was already hourly (:05), so no SQL change. The account card reads "A note within the hour when friends leave you something."
+
 > **⭐ 2026-11-05 — Push notifications, CP2: the batches + the switch for everyone.**
 > - **When:** the hourly cron (`push-batches`, :05) calls `send-pushes`. A person is due at 8am, 11am, 2pm, 5pm and 8pm in their newest device's time zone, so nothing arrives 10pm–8am and the 8am push covers the night.
 > - **What a batch covers:** everything since their last batch (`push_state.covered_until`, at most 24h back; 3h for a first batch). Nothing new means no push. The window closes either way, so nothing pushes twice, and a retried call within 90 minutes is skipped.
