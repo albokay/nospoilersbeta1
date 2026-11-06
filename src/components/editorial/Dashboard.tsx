@@ -36,7 +36,7 @@ import { Plus, SquarePen } from "lucide-react";
 import { E } from "../../styles/editorial";
 import LetterDisc from "../LetterDisc";
 import { SectionHead } from "./Chrome";
-import { useRowSwipe, RowPoster, TallyLine } from "./GroupRoom";
+import { useRowSwipe, PosterBox, TallyLine } from "./GroupRoom";
 import { tallyFor, tallySplit, type PassKind, type Tally } from "../../lib/proposalAnswers";
 import {
   fetchShows, fetchShowRoomsForGroups, fetchMyStances, fetchAllGroupAnswers, fetchGroupDashboard, fetchRoomDnfMap, fetchRoomMemberIds, roomHasNewActivity, roomHasNewInvisibleActivity, chatHasNewActivity, pitchHasNewActivity,
@@ -308,8 +308,21 @@ function Avatar({ initial, first, pending = false }: { initial: string; first: b
  *  hover). Its divider starts at the tab's left edge and runs off the right
  *  of the phone (an open left edge). No grip: the order is the activity's. */
 const GROUP_ROW_PAD = 5;
-function GroupRow({ desktop, onEnter, onOptions, children }: {
+/** His dashboard refinement (11-05): the phone's clusters slide 16px LEFT so
+ *  the thumbnail's green box (16 on every side of the 40×56 poster) fits
+ *  without moving the text columns; the Groups strip and every group row's
+ *  TOP line run to the screen's left edge, the bottom lines start at the
+ *  green boxes. Desktop keeps its column: the green box and the strip's
+ *  width, the top lines to the column's edge, the bottom lines at the box. */
+const CLUSTER_SHIFT = 16;
+/** The thumbnail box's width: the poster + 16 each side. */
+const POSTER_BOX_W = 40 + 16 * 2;
+function GroupRow({ desktop, first, closing, onEnter, onOptions, children }: {
   desktop: boolean;
+  /** The first cluster: the Groups strip's ink rule is its top line, so it draws none of its own. */
+  first: boolean;
+  /** A group with no rooms at the shelf's end: it draws its own bottom line, since no box or next group does. */
+  closing: boolean;
   onEnter: () => void;
   onOptions?: (rect?: DOMRect) => void;
   children: React.ReactNode;
@@ -317,9 +330,11 @@ function GroupRow({ desktop, onEnter, onOptions, children }: {
   const swipe = useRowSwipe(!desktop && onOptions ? () => onOptions() : undefined);
   const gutter = E.space.gutter;
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEnter(); } };
+  // The TOP line runs the whole width (the screen's edge on the phone, the column on desktop); the bottom one belongs to the rooms box under it.
+  const lines: React.CSSProperties = { borderTop: first ? 0 : `1px solid ${E.color.hairline}`, borderBottom: closing ? `1px solid ${E.color.hairline}` : 0 };
   if (desktop) {
     return (
-      <div className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: `${GROUP_ROW_PAD}px 0`, position: "relative", background: E.color.cream, userSelect: "none" }}>
+      <div className="e-row" role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, ...lines, padding: `${GROUP_ROW_PAD}px 0`, position: "relative", background: E.color.cream, userSelect: "none" }}>
         {children}
         {onOptions && (
           <span className="e-pen" role="button" aria-label="Group settings" title="Group settings" onClick={(e) => { e.stopPropagation(); onOptions(e.currentTarget.getBoundingClientRect()); }} style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
@@ -332,7 +347,7 @@ function GroupRow({ desktop, onEnter, onOptions, children }: {
   return (
     // Nothing in the row is selectable and the long-press callout is off
     // (his catch, from the grip days): a held row never wakes iOS's text selection.
-    <div style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px 0 0`, borderBottom: `1px solid ${E.color.hairline}`, touchAction: "pan-y", background: E.color.cream, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }} {...swipe.handlers}>
+    <div style={{ position: "relative", overflow: "hidden", margin: `0 -${gutter}px`, ...lines, touchAction: "pan-y", background: E.color.cream, WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }} {...swipe.handlers}>
       {onOptions && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: E.color.friend, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 30 }}>
           <span role="button" aria-label="Group settings" onClick={() => onOptions()} style={{ display: "inline-flex", width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
@@ -340,7 +355,7 @@ function GroupRow({ desktop, onEnter, onOptions, children }: {
           </span>
         </div>
       )}
-      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `${GROUP_ROW_PAD}px ${gutter}px ${GROUP_ROW_PAD}px 0`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
+      <div role="button" tabIndex={0} onClick={() => { if (!swipe.dragging && swipe.dx === 0) onEnter(); }} onKeyDown={onKey} style={{ ...rowBase, position: "relative", borderBottom: 0, padding: `${GROUP_ROW_PAD}px ${gutter}px ${GROUP_ROW_PAD}px ${gutter - CLUSTER_SHIFT}px`, background: E.color.cream, transform: `translateX(${swipe.dx}px)`, transition: swipe.dragging ? "none" : "transform 260ms ease" }}>
         {children}
         {/* The edge strip that says the row swipes (the show rows' hint) — accent, like theirs (his call); the pane behind stays friend blue. */}
         {onOptions && <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 6, bottom: 6, width: 4, background: E.color.accent }} />}
@@ -389,8 +404,9 @@ function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomS
   const gutter = E.space.gutter;
   const split = tallySplit(row.tally);
   return (
-    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? "16px 0 16px 16px" : `16px ${gutter}px 16px 16px`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
-      <RowPoster tvmazeId={row.tvmazeId} />
+    <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? 0 : `0 ${gutter}px 0 0`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+      {/* The green box covers the cluster's left rule (nothing grey at the thumbnail's left — his closeup); the row's hairlines cross its top and bottom. */}
+      <PosterBox tvmazeId={row.tvmazeId} style={{ marginLeft: -1 }} />
       <span style={{ ...textCol, gap: split ? 4 : 5 }}>
         <RoomHead show={row.show} people={row.people} />
         <span style={{ ...lineStyle, color: E.color.inkSub, minHeight: 13 }}>{row.reason}</span>
@@ -406,15 +422,16 @@ function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomS
  *  gutter in, its right edge is open on the phone. Three rooms, then "N more
  *  rooms →" into the group room. */
 const ROOMS_SHOWN = 3;
-function RoomsBox({ desktop, rows, onEnterRoom, onMore }: { desktop: boolean; rows: RoomShelfRow[]; onEnterRoom: (r: RoomShelfRow) => void; onMore: () => void }) {
+function RoomsBox({ desktop, rows, last, onEnterRoom, onMore }: { desktop: boolean; rows: RoomShelfRow[]; /** The shelf's last cluster draws its own bottom line (from the box's left edge); every other cluster's bottom is the next group row's full-width top line. */ last: boolean; onEnterRoom: (r: RoomShelfRow) => void; onMore: () => void }) {
   const gutter = E.space.gutter;
   const shown = rows.slice(0, ROOMS_SHOWN);
   const more = rows.length - shown.length;
+  // The box's top edge IS the group row's bottom line (11-05): it starts at the green box's left, never further left.
   return (
-    <div style={{ marginLeft: gutter, marginRight: desktop ? 0 : -gutter, borderLeft: `1px solid ${E.color.hairline}`, borderBottom: `1px solid ${E.color.hairline}`, background: E.color.cream }}>
+    <div style={{ marginLeft: desktop ? gutter : gutter - CLUSTER_SHIFT, marginRight: desktop ? 0 : -gutter, borderLeft: `1px solid ${E.color.hairline}`, borderTop: `1px solid ${E.color.hairline}`, borderBottom: last ? `1px solid ${E.color.hairline}` : 0, background: E.color.cream }}>
       {shown.map((r, i) => <RoomRow key={r.roomId} desktop={desktop} row={r} last={i === shown.length - 1 && more === 0} onEnter={() => onEnterRoom(r)} />)}
       {more > 0 && (
-        <button type="button" onClick={onMore} style={{ ...E.type.label11, color: E.color.inkMuted, display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", padding: desktop ? "12px 0 13px 24px" : `12px ${gutter}px 13px 24px`, background: "transparent", border: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+        <button type="button" onClick={onMore} style={{ ...E.type.label11, color: E.color.inkMuted, display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", padding: desktop ? `12px 0 13px ${POSTER_BOX_W + 16}px` : `12px ${gutter}px 13px ${POSTER_BOX_W + 16}px`, background: "transparent", border: 0, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
           {more} more room{more === 1 ? "" : "s"} →
         </button>
       )}
@@ -548,9 +565,18 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   return (
     <div>
       {/* The head's rule runs off the right of the phone (his sketch): the dividers' open left edge starts at the tab. The green + beside the tab (his note, 11-03) opens the invite modal headed "Start a new watch group". */}
-      <div data-tip-anchor="groups-head" style={{ marginRight: desktop ? 0 : -E.space.gutter }}><SectionHead big tab={E.color.friend} after={!hideNewGroup && !loading ? <PlusDisc onClick={onNewGroup} /> : null}>Groups</SectionHead></div>
+      {/* His refinement (11-05): the strip's sky runs to the screen's left edge on the phone (the word stays where it was), its right edge lands on the green thumbnail boxes' right edge, and its ink rule is the first cluster's top line. */}
+      <div data-tip-anchor="groups-head" style={{ marginRight: desktop ? 0 : -E.space.gutter, marginLeft: desktop ? 0 : -E.space.gutter }}>
+        <SectionHead
+          big tab={E.color.friend}
+          tabStyle={desktop
+            ? { boxSizing: "border-box", width: E.space.gutter + POSTER_BOX_W, paddingRight: 0, whiteSpace: "nowrap" }
+            : { boxSizing: "border-box", width: E.space.gutter + (E.space.gutter - CLUSTER_SHIFT) + POSTER_BOX_W, paddingLeft: E.space.gutter + 12, paddingRight: 0, whiteSpace: "nowrap" }}
+          after={!hideNewGroup && !loading ? <PlusDisc onClick={onNewGroup} /> : null}
+        >Groups</SectionHead>
+      </div>
       {loading && groups.length === 0 && <><GhostRow /><GhostRow /></>}
-      {ordered.map(({ group, members, pendingInvites: gp }) => {
+      {ordered.map(({ group, members, pendingInvites: gp }, idx) => {
         const others = members.filter((m) => m.userId !== selfUserId);
         const name = groupDisplayName(group, others, contactNames, gp.map((p) => p.name || "a friend"), groupNumberById[group.id]);
         const l = lines[group.id];
@@ -558,7 +584,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
         const rows = roomsByGroup.get(id) ?? [];
         return (
           <React.Fragment key={id}>
-            <GroupRow desktop={desktop} onEnter={() => onEnter(id)} onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}>
+            <GroupRow desktop={desktop} first={idx === 0} closing={rows.length === 0 && idx === ordered.length - 1} onEnter={() => onEnter(id)} onOptions={onOptions ? (rect) => onOptions(id, rect) : undefined}>
               {/* The initials on the group row (restored at his ask, 11-03): a dashed circle is a friend who hasn't joined yet. */}
               {(others.length > 0 || gp.length > 0) && (
                 <span style={{ display: "inline-flex", flexShrink: 0 }}>
@@ -570,7 +596,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
               {/* The dot alone says something new waits in the group room (his call, 11-04: the sentence lives in the room and the paper note). */}
               {l?.dot ? <span aria-hidden="true" className="m-dot-in" style={{ width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 }} /> : null}
             </GroupRow>
-            {rows.length > 0 && <RoomsBox desktop={desktop} rows={rows} onEnterRoom={(r) => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} onMore={() => onEnter(id)} />}
+            {rows.length > 0 && <RoomsBox desktop={desktop} rows={rows} last={idx === ordered.length - 1} onEnterRoom={(r) => { if (onEnterRoom) onEnterRoom(r.roomId, r.showId, r.groupId); else onEnter(r.groupId); }} onMore={() => onEnter(id)} />}
           </React.Fragment>
         );
       })}

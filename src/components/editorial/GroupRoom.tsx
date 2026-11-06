@@ -206,6 +206,19 @@ export function TallyStack({ tally, inSeason }: { tally: Tally; inSeason?: Recor
   );
 }
 
+/** The dashboard's thumbnail box (his mockup, 11-05): the 40×56 poster
+ *  centred in a `personal` green box, 16 on every side, the row's full
+ *  height — the row's hairlines run across its top and bottom, nothing
+ *  grey at its left. No poster → the whole box is the `draft` grey, empty. */
+export function PosterBox({ tvmazeId, w = 40, h = 56, pad = 16, style }: { tvmazeId?: string | null; w?: number; h?: number; pad?: number; style?: React.CSSProperties }) {
+  const url = usePoster(tvmazeId);
+  return (
+    <span aria-hidden="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: w + pad * 2, minHeight: h + pad * 2, alignSelf: "stretch", flexShrink: 0, background: url ? E.color.personal : E.color.draft, ...style }}>
+      {url && <img src={url} alt="" loading="lazy" draggable={false} style={{ width: w, height: h, objectFit: "cover", display: "block" }} />}
+    </span>
+  );
+}
+
 export function RowPoster({ tvmazeId, w = 40, h = 56 }: { tvmazeId?: string | null; w?: number; h?: number }) {
   const url = usePoster(tvmazeId);
   return url
