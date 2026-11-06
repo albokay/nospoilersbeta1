@@ -126,7 +126,7 @@ import useFreshPitches from "../lib/useFreshPitches";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, HelpWord, TitleGear, AccountWord, Word, EditorialTitle, EditorialColumn, SectionHead, UnderlineWord, FittedTitle, Wordmark, WithStrips } from "./editorial/Chrome";
 import { Masthead, ShowRow, TallyLine, RowHoverStyle, StanceSurface, EditorialDialog, OptionsDialog, groupRoomNote, type StanceView, ChatCorner, FinishedRow, NumbersPicker, useBlockHeight } from "./editorial/GroupRoom";
-import { EditorialGroups, PaperNote, dashboardNote } from "./editorial/Dashboard";
+import { EditorialGroups, PaperNote, dashboardNote, paperNoteDismissed } from "./editorial/Dashboard";
 import { useGuideLetterNote } from "./editorial/GuideNote";
 import { FORM_CSS, FriendRows, ShowField, PickBand, Block, Frame, Field, FIELD_BOX, EditorialStrips } from "./editorial/Onboarding";
 import { InviteDialog, InvitesSentBody } from "./editorial/Invite";
@@ -499,6 +499,11 @@ export default function DashboardPage() {
   // New-activity dots: per-room visibility (own excluded) + per-group chat state.
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
+  // The rooms' signals have answered (11-05): the guide's note waits for them,
+  // so it never shows first and then gives way to a room note.
+  const [signalsReady, setSignalsReady] = useState(false);
+  // A note ×'d away re-seats the next one at once.
+  const [, setNoteDismissals] = useState(0);
   const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
 
   // Cursor-following tooltip (opt-in avatars + show-button watch progress).
@@ -767,7 +772,8 @@ export default function DashboardPage() {
         fetchGroupPitchActivity(user.id).catch(() => [] as GroupPitchActivity[]), // round 3: tolerant before the migration
       ])
         .then(([rv, ca, pa]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); setPitchActivity(pa); } })
-        .catch((e) => console.warn("[dashboard] activity dots not loaded", e));
+        .catch((e) => console.warn("[dashboard] activity dots not loaded", e))
+        .finally(() => { if (!cancelled) setSignalsReady(true); });
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, navigate, loadRail]);
@@ -2230,9 +2236,10 @@ export default function DashboardPage() {
               // reach down onto the tab, a two-line one doesn't (his rule).
               <div style={{ position: "relative", height: 0 }}>
                 {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest); the guide's note only when nothing of the rooms' waits. */}
-                {user && (dashNote
-                  ? <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />
-                  : guideLetter.note && <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />)}
+                {/* Only a room note you haven't ×'d away holds the seat, and the guide's waits for the rooms' signals (his catch, 11-05). */}
+                {user && (dashNote && !paperNoteDismissed(user.id, dashNote.text, dashNote.at)
+                  ? <PaperNote desktop text={dashNote.text} at={dashNote.at} uid={user.id} onDismissed={() => setNoteDismissals((n) => n + 1)} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />
+                  : signalsReady && guideLetter.note && <PaperNote desktop tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ left: 60, top: -80, width: 300, transform: "rotate(3deg)" }} />)}
               </div>
             ) : null)}
           </EditorialColumn>

@@ -21,7 +21,7 @@ import MobileTipsSheet from "../components/MobileTipsSheet";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
 import { CornerTab, TopRight, AccountWord, wordStyle } from "../components/editorial/Chrome";
-import { EditorialGroups, PaperNote, dashboardNote } from "../components/editorial/Dashboard";
+import { EditorialGroups, PaperNote, dashboardNote, paperNoteDismissed } from "../components/editorial/Dashboard";
 import { useGuideLetterNote } from "../components/editorial/GuideNote";
 import { GroupSettingsSheet } from "../components/editorial/GroupSettings";
 import MobileAddToHomeScreen from "./MobileAddToHomeScreen";
@@ -120,6 +120,11 @@ export default function MobileDashboard() {
   const guideLetter = useGuideLetterNote({ userId: user?.id ?? null, contactNames, mobile: true });
   const [roomVis, setRoomVis] = useState<RoomVisibility[]>([]);
   const [chatActivity, setChatActivity] = useState<GroupChatActivity[]>([]);
+  // The rooms' signals have answered (11-05): the guide's note waits for them,
+  // so it never shows first and then gives way to a room note.
+  const [signalsReady, setSignalsReady] = useState(false);
+  // A note swiped away re-seats the next one at once.
+  const [, setNoteDismissals] = useState(0);
   const [pitchActivity, setPitchActivity] = useState<GroupPitchActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -318,7 +323,8 @@ export default function MobileDashboard() {
         fetchGroupPitchActivity(user.id).catch(() => [] as GroupPitchActivity[]), // round 3: tolerant before the migration
       ])
         .then(([rv, ca, pa]) => { if (!cancelled) { setRoomVis(rv); setChatActivity(ca); setPitchActivity(pa); } })
-        .catch((e) => console.warn("[m-dashboard] activity dots not loaded", e));
+        .catch((e) => console.warn("[m-dashboard] activity dots not loaded", e))
+        .finally(() => { if (!cancelled) setSignalsReady(true); });
     })();
     return () => { cancelled = true; };
   }, [user, authLoading, loadRail]);
@@ -529,10 +535,10 @@ export default function MobileDashboard() {
               the right edge as it always has, tilted the other way. */}
           {/* The note never covers the logo (his rule, 11-03): the logo's box ends where this band starts, the note begins 10px in, and its tilted corner rises 6px. The band is 76 (92 until 11-04: his note — the logo a touch bigger, the gap to the Groups tab a touch smaller). */}
           <div style={{ position: "relative", padding: `0 ${E.space.gutter}px`, height: 76 }}>
-            {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest). */}
-            {user && (dashNote
-              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />
-              : guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />)}
+            {/* The rooms' note first (his note, 11-02: the guide's writing ranks lowest) — but only a room note you haven't swiped away holds the seat, and the guide's waits until the rooms' signals have answered (his catch, 11-05: a dismissed room note drew nothing and hid the guide note the moment it loaded). */}
+            {user && (dashNote && !paperNoteDismissed(user.id, dashNote.text, dashNote.at)
+              ? <PaperNote text={dashNote.text} at={dashNote.at} uid={user.id} onDismissed={() => setNoteDismissals((n) => n + 1)} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />
+              : signalsReady && guideLetter.note && <PaperNote tone="letter" byline={guideLetter.note.byline} text={guideLetter.note.text} at={guideLetter.note.at} uid={`${user.id}:guide`} onClick={guideLetter.open} style={{ right: -40, top: 10, width: 234, transform: "rotate(3deg)" }} />)}
           </div>
           {loading || (!onbResolved && !showSocialOnb && railGroups.length === 0 && pendingInvites.length === 0) ? (
             <div style={{ padding: `70px ${E.space.gutter}px 0` }}>

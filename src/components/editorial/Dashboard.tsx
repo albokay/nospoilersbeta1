@@ -626,14 +626,20 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
  *  is the right one's mirror on every front: the accent strip at its
  *  right, the words right-aligned with the strip's 16px inset, the tilt
  *  the other way, and it swipes LEFT — off its own edge. */
-export function PaperNote({ text, at, uid, desktop = false, side = "right", style, onClick, byline, tone = "accent" }: { text: string; at: number; uid: string; desktop?: boolean; side?: "left" | "right"; style?: React.CSSProperties; /** A tappable note (the nudge's, 2026-10-22): a press that isn't a swipe opens it. */ onClick?: () => void; /** A friend's guide letter (open letters, 2026-11-01): a letter card's byline over the sentence, and the sliver in the letter blue (the LetterDisc's) instead of the accent. */ byline?: string; tone?: "accent" | "letter" }) {
+/** Has this note been swiped / ×'d away (the same per-account memory the
+ *  note itself reads)? The dashboards ask it before choosing between the
+ *  rooms' note and the guide's (his catch, 11-05: a room note dismissed
+ *  long ago still won the seat, drew nothing, and hid the guide note). */
+export function paperNoteDismissed(uid: string, text: string, at: number): boolean {
+  try {
+    const s = JSON.parse(window.localStorage.getItem(`ns_dash_note_${uid}`) ?? "null");
+    return !!s && s.text === text && Number(s.at) >= at;
+  } catch { return false; }
+}
+
+export function PaperNote({ text, at, uid, desktop = false, side = "right", style, onClick, byline, tone = "accent", onDismissed }: { text: string; at: number; uid: string; desktop?: boolean; side?: "left" | "right"; style?: React.CSSProperties; /** A tappable note (the nudge's, 2026-10-22): a press that isn't a swipe opens it. */ onClick?: () => void; /** A friend's guide letter (open letters, 2026-11-01): a letter card's byline over the sentence, and the sliver in the letter blue (the LetterDisc's) instead of the accent. */ byline?: string; tone?: "accent" | "letter"; /** Told once the note is swiped away, so the host can seat the next one (11-05). */ onDismissed?: () => void }) {
   const key = `ns_dash_note_${uid}`;
-  const isDismissed = () => {
-    try {
-      const s = JSON.parse(window.localStorage.getItem(key) ?? "null");
-      return !!s && s.text === text && Number(s.at) >= at;
-    } catch { return false; }
-  };
+  const isDismissed = () => paperNoteDismissed(uid, text, at);
   const [dismissed, setDismissed] = useState<boolean>(isDismissed);
   const [dx, setDx] = useState(0);
   const [gone, setGone] = useState(false);
@@ -644,7 +650,7 @@ export function PaperNote({ text, at, uid, desktop = false, side = "right", styl
   function dismiss() {
     try { window.localStorage.setItem(key, JSON.stringify({ text, at })); } catch { /* storage off: the note returns next visit */ }
     setGone(true);
-    window.setTimeout(() => setDismissed(true), 240);
+    window.setTimeout(() => { setDismissed(true); onDismissed?.(); }, 240);
   }
   if (dismissed) return null;
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
