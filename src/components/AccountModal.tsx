@@ -163,9 +163,9 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
           <Block onClick={saveName} disabled={nameSaving || !nameDirty} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>{nameSaving ? <LoadingDots /> : nameSaved ? "Saved" : "Save"}</Block>
         </div>
         {nameError && <div style={err}>{nameError}</div>}
-        {/* Notifications (push CP1, 2026-11-05): admins only while the timed
-            batches are built (CP2 opens it to everyone). */}
-        {profile?.is_admin && <NotificationsSection admin />}
+        {/* Notifications (push, 2026-11-05): everyone since CP2; "Send a
+            test" stays an admin's. */}
+        {user && <NotificationsSection admin={!!profile?.is_admin} />}
         {canPickSkin && (
           <>
             <SectionHead style={{ marginTop: 28 }}>Your look</SectionHead>

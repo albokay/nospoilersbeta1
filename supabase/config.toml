@@ -53,8 +53,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-pushes]
-# Push notifications (2026-11-05). CP1: the test push, invoked from the app
-# with a user JWT — same ES256 reason as send-invite, so the function checks
-# the JWT itself via admin.auth.getUser. CP2's timed batches will gate on the
-# shared DIGEST_CRON_SECRET like send-digests.
+# Push notifications (2026-11-05). Two callers: the hourly batches from
+# pg_cron (run_push_batches), gated on the shared DIGEST_CRON_SECRET like
+# send-digests; and the account card's test push with a user JWT, which the
+# function checks itself via admin.auth.getUser (same ES256 reason as
+# send-invite).
 verify_jwt = false

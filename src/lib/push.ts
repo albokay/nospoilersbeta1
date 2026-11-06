@@ -6,6 +6,7 @@
  * Turning it on asks the browser, registers the background worker
  * (public/sw.js, push only), and saves this device's push address
  * (save_push_device). Turning it off, or signing out, forgets the device.
+ * What arrives, and when, is send-pushes (batches at 8, 11, 2, 5, 8 local).
  *
  * iPhones only get web push inside the installed app (Home Screen); in a
  * Safari tab the card points to the "Get Sidebar as an app" drawer instead.
@@ -140,7 +141,9 @@ export async function syncPushDevice(): Promise<void> {
 }
 
 /** The test push (admins, account card): one notification to every device
- *  this account has turned on. Returns how many it reached. */
+ *  this account has turned on, saying what the NEXT batch would say (CP2),
+ *  or "Notifications are on for this device." when nothing's waiting.
+ *  Returns how many devices it reached. */
 export async function sendTestPush(): Promise<{ sent: number; devices: number }> {
   const { data, error } = await supabase.functions.invoke("send-pushes", { body: { test: true } });
   if (error) throw error;

@@ -1,5 +1,23 @@
 # Sidebar — Technical State (2026-11-05)
 
+> **⭐ 2026-11-05 — Push notifications, CP2: the batches + the switch for everyone.**
+> - **When:** the hourly cron (`push-batches`, :05) calls `send-pushes`. A person is due at 8am, 11am, 2pm, 5pm and 8pm in their newest device's time zone, so nothing arrives 10pm–8am and the 8am push covers the night.
+> - **What a batch covers:** everything since their last batch (`push_state.covered_until`, at most 24h back; 3h for a first batch). Nothing new means no push. The window closes either way, so nothing pushes twice, and a retried call within 90 minutes is skipped.
+> - **The gatherer:** `send-pushes/activity.ts` MIRRORS the email's rules (not shared code; the email is untouched): the progress gate, stand-alone seasons, the app's seen stamps, and seed/demo/Sidebar acts dropped. It covers letters, handed-over journals, responses and notes on your writing, chat (one thing per friend per group), pitches (a pair's first vote ever), answers to your pitch (any later vote, plus passes; it also catches a same-day pitch-and-answer the email misses), and guide letters only when open to you.
+> - **Ignored on purpose:** the room's "stop emails" switch (email only, his call).
+> - **Wording** (`composePush`, all cases checked locally):
+>   - "Sam wrote a letter in The Bear."
+>   - two things joined with "and"; an answer goes last
+>   - "Sam wrote two letters in The Bear."
+>   - three or more: "Sam left you a few things on Sidebar."
+>   - two or more friends: "Sam and 2 other friends left you some things on Sidebar." (the most things named, ties go to the latest; one other reads "1 other friend")
+>   - answers spelled out: "I'm in" / "seen it" / "sitting this out"
+> - **Names and taps:** names come from the recipient's saved name for the friend, else the friend's first name. A tap goes to that thing's own page for one friend + one thing, else `/dashboard`.
+> - **Deleted accounts:** their devices are removed and they never push.
+> - **The test:** "Send a test" now sends what your NEXT batch would say, without closing the window, or the on-line when nothing's waiting.
+> - **The account card:** the Notifications section is for everyone; the test stays admins'.
+> - **His steps:** (1) the SQL paste `20261105b_push_batches.sql` (`push_state`, service-role only; `run_push_batches(body)`; the cron); (2) `supabase functions deploy send-pushes`. A dry run for everyone is `select public.run_push_batches('{"batch":true,"dry_run":true,"force":true}');` (add `"window_hours":24` to look back a day), which answers in `net._http_response`. UNVERIFIED on a device.
+
 > **⭐ 2026-11-05 — Push notifications, CP1: turning it on (admins only until CP2).** His design: pushes go out in timed batches like the daily email, about every 3 hours, and never when nothing's new. One push per batch: one friend's one or two things are spelled out ("Sam wrote a letter in The Bear and messaged Sunday Crew."); three or more from one friend read "Sam left you a few things on Sidebar."; two or more friends read "Sam and 2 other friends left you some things on Sidebar." (the busiest friend named). Pitch answers are spelled out ("I'm in", "seen it"). Friends' acts only: Sidebar's own letters, the behind prompt, "reached your letter" and deck answers stay email-only. Sealed letters and anything already opened never push. Quiet 10pm–8am in the device's own time zone. One switch for the whole app, per device: the room's "stop emails" switch stays email-only. A tap opens the room or chat for one friend + one thing, else the dashboard. **CP1 built:**
 > - **`public/sw.js`**: the background worker. Push only: it shows the notification and opens its link on a tap. It has NO fetch handler, so it caches nothing. It's registered only on a device that turns notifications on.
 > - **`lib/push.ts`**: `pushState` (unsupported / needs-install / blocked / off / on), `turnPushOn` (asks first, straight from the tap, as iPhones require; subscribes with the public key; saves through `save_push_device`; unsubscribes again if the save fails), `turnPushOff`, `pushOffForSignOut` (wired into `auth.signOut` after the UI flips, capped at 1.5s; also run before account deletion), `syncPushDevice` (on sign-in, re-saves an on device under whoever is signed in now, and keeps its time zone current), and `sendTestPush`.
