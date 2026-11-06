@@ -7,6 +7,7 @@ import { linkifyText } from "../../lib/linkify";
 import { useSeenNoteIds, loadSeenNoteIds, markNoteIdsSeen } from "../../lib/noteSeen";
 import type { Highlight } from "../../lib/db";
 import { LETTER_HEAD_STYLE } from "../../lib/letterHead";
+import { useHeadOrphan } from "../../lib/useHeadOrphan";
 import { CANON } from "../../styles/canon";
 import { useEditorialScope } from "../../lib/skin";
 
@@ -368,6 +369,21 @@ export default function HighlightableBody({
     const b: BodyToken = { kind: "text", text: tok.text.slice(cut), bodyStart: tok.bodyStart + cut };
     return [...raw.slice(0, i), a, b, ...raw.slice(i + 1)];
   }, [body, bodyStart, headEnd, pick]);
+  // A single word that would sit alone beside the head drops to the next
+  // line with the rest (his note, 11-05 — useHeadOrphan). With the break in,
+  // the rest's leading whitespace comes off (its offset moves with it, so
+  // highlights stay put) — a pre-wrap line must not open on a space.
+  const headRef = useRef<HTMLElement>(null);
+  const headDrop = useHeadOrphan(headRef, body, headEnd != null && !pick);
+  const shownTokens = useMemo(() => {
+    if (!headDrop) return tokens;
+    const h = tokens.findIndex((t) => t.kind === "text" && t.head);
+    const next = tokens[h + 1];
+    if (h < 0 || !next || next.kind !== "text") return tokens;
+    const lead = next.text.length - next.text.replace(/^[ \t]+/, "").length;
+    if (!lead) return tokens;
+    return tokens.map((t, j) => (j === h + 1 && t.kind === "text" ? { ...t, text: t.text.slice(lead), bodyStart: t.bodyStart + lead } : t));
+  }, [tokens, headDrop]);
   const allSentences = pick ? tokens.flatMap((t) => (t.kind === "text" ? splitSentences(t.text, t.bodyStart) : [])) : [];
   const [hover, setHover] = useState<Active | null>(null);
   const [open, setOpen] = useState<Active | null>(null);
@@ -478,7 +494,7 @@ export default function HighlightableBody({
 
   return (
     <>
-      {tokens.map((tok, i) => {
+      {shownTokens.map((tok, i) => {
         if (tok.kind === "prompt") {
           return (
             <blockquote key={`prompt-${i}`} className="prompt-ref">
@@ -516,7 +532,12 @@ export default function HighlightableBody({
             onPick={onPick}
           />
         );
-        return tok.head ? <strong key={`head-${tok.bodyStart}`} style={LETTER_HEAD_STYLE}>{seg}</strong> : seg;
+        return tok.head ? (
+          <React.Fragment key={`head-${tok.bodyStart}`}>
+            <strong ref={headRef} style={LETTER_HEAD_STYLE}>{seg}</strong>
+            {headDrop && <br />}
+          </React.Fragment>
+        ) : seg;
       })}
       {!mobile && hover && !open && hoverSet.length > 0 && createPortal(
         <HighlightHoverPopup

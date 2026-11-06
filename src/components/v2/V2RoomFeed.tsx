@@ -27,6 +27,7 @@ import { timeAgo } from "../../lib/utils";
 import { linearIndex } from "../../lib/groupPills";
 import { D } from "../dashboardChrome";
 import { parsePromptTokens } from "../../lib/promptTokens";
+import { useHeadOrphan } from "../../lib/useHeadOrphan";
 import { LETTER_HEADS, LETTER_HEAD_STYLE, letterHead, letterHeadSpan, letterRest, letterTitle } from "../../lib/letterHead";
 import V2InlineThread, { type JournalSendTarget } from "./V2InlineThread";
 import { journalDate, journalFromTag } from "../../lib/journal";
@@ -373,6 +374,26 @@ function demoPaperParagraphs(body: string): React.ReactNode {
     const signoff = /^—\s?Sidebar\s*$/.test(para);
     return <p key={i} style={DEMO_P}>{signoff ? <>—<em>Sidebar</em></> : para}</p>;
   });
+}
+
+/** The closed letter: the head and three more lines, cut at the line (no
+ *  clamp class: a clamped box can't wrap around the floated stamp). The 3px
+ *  of head room keeps the Lora ascenders inside the box. A single word that
+ *  would sit alone beside the head drops to the next line with the rest
+ *  (his note, 11-05 — useHeadOrphan). */
+function ClosedLetterPreview({ preview }: { preview: string }) {
+  const headRef = useRef<HTMLElement>(null);
+  const drop = useHeadOrphan(headRef, preview);
+  const span = letterHeadSpan(preview);
+  const lead = span.start > 0 ? preview.slice(0, span.start) : "";
+  return (
+    <div style={{ ...ENTRY_PREVIEW, lineHeight: "24px", maxHeight: 24 * 4 + 3, paddingTop: 3, marginTop: 7, overflow: "hidden", whiteSpace: "pre-wrap" }}>
+      {lead && parsePromptTokens(lead).map((part, pi) => <React.Fragment key={`lead-${pi}`}>{part}</React.Fragment>)}
+      <strong ref={headRef} style={LETTER_HEAD_STYLE}>{letterHead(preview)}</strong>
+      {drop ? <br /> : " "}
+      {parsePromptTokens(letterRest(preview)).map((part, pi) => <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>)}
+    </div>
+  );
 }
 
 function keepTailTogether(text: string, n = 3): string {
@@ -1230,24 +1251,7 @@ const V2RoomFeed = forwardRef<V2RoomFeedHandle, V2RoomFeedProps>(function V2Room
                 {isExpanded ? threadEl : entry.isDeleted ? (
                   <div style={{ fontStyle: "italic", opacity: 0.35 }}>{dn(entry.authorUsername)} deleted their entry.</div>
                 ) : isSb ? null : useHead ? (
-                  // The closed letter: the head and three more lines, cut at
-                  // the line (no clamp class: a clamped box can't wrap
-                  // around the floated stamp). The 3px of head room keeps
-                  // the Lora ascenders inside the box.
-                  <div style={{ ...ENTRY_PREVIEW, lineHeight: "24px", maxHeight: 24 * 4 + 3, paddingTop: 3, marginTop: 7, overflow: "hidden", whiteSpace: "pre-wrap" }}>
-                    {(() => {
-                      const span = letterHeadSpan(entry.preview);
-                      const lead = span.start > 0 ? entry.preview.slice(0, span.start) : "";
-                      return (
-                        <>
-                          {lead && parsePromptTokens(lead).map((part, pi) => <React.Fragment key={`lead-${pi}`}>{part}</React.Fragment>)}
-                          <strong style={LETTER_HEAD_STYLE}>{letterHead(entry.preview)}</strong>
-                          {" "}
-                          {parsePromptTokens(letterRest(entry.preview)).map((part, pi) => <React.Fragment key={`prev-${pi}`}>{part}</React.Fragment>)}
-                        </>
-                      );
-                    })()}
-                  </div>
+                  <ClosedLetterPreview preview={entry.preview} />
                 ) : (
                   <div className="clamp3" style={ENTRY_PREVIEW}>
                     {parsePromptTokens(entry.preview).map((part, pi) => (
