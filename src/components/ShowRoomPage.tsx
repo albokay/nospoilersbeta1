@@ -1637,7 +1637,7 @@ export default function ShowRoomPage({ roomId, privateShowId }: { roomId?: strin
 
             {tab === "reference" && show && refEff && (
               <div style={editorial ? { marginTop: 28 } : undefined}>
-                <ShowReference showId={show.id} viewerProgress={refEff} standAlonePlaces={standAlonePlaces(progressForShow)} openLetterAt={(location.state as { guideLetterAt?: { s: number; e: number } } | null)?.guideLetterAt ?? null} railHost={editorial ? guideRail : null} showRoomLinks={privateOnly} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
+                <ShowReference showId={show.id} viewerProgress={refEff} standAlonePlaces={standAlonePlaces(progressForShow)} openLetterAt={(location.state as { guideLetterAt?: { s: number; e: number } } | null)?.guideLetterAt ?? null} railHost={editorial ? guideRail : null} showRoomLinks={privateOnly} onOpenProfile={handleClickProfile} nudgeEssentials={!!(location.state as { essentialsNudge?: boolean } | null)?.essentialsNudge} editorial={editorial} onRated={(s, e, r) => setMapMembers((prev) => prev.map((m) => {
                   if (m.userId !== user?.id) return m;
                   if (r === null) return { ...m, ratings: m.ratings.filter((x) => !(x.s === s && x.e === e)) };
                   const i = m.ratings.findIndex((x) => x.s === s && x.e === e);

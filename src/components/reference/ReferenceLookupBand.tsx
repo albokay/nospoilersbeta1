@@ -849,7 +849,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
             <div style={{ textAlign: "center" }}>
               {askStep === "ask" ? (
                 <>
-                  {head("Have you watched it?", `${guideAsk.writers} wrote about it in the show guide. The letter opens for friends who’ve seen the episode it’s about.`, seasons.length > 0 ? `${seasons.length} season${seasons.length === 1 ? "" : "s"}` : undefined)}
+                  {head("Have you watched it?", `${guideAsk.writers} wrote about it in the show guide. Letters in the show guide open for anyone who’s seen the episode they’re about.`, seasons.length > 0 ? `${seasons.length} season${seasons.length === 1 ? "" : "s"}` : undefined)}
                   <Block onClick={() => { const ls = seasons.length; setPicked(ls ? { s: ls, e: seasons[ls - 1] ?? 1 } : { s: 0, e: 0 }); setAskStep("picker"); }} style={{ marginTop: 22 }}>I’ve seen it</Block>
                   <Frame
                     onClick={async () => {

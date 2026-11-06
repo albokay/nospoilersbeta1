@@ -20,7 +20,7 @@ import LoadingDots from "../LoadingDots";
 import { ensureShowReference, stampReferenceLookup, toCredit, type ShowReferenceData } from "../../lib/reference";
 import { useAuth } from "../../lib/auth";
 import { supabase } from "../../lib/supabaseClient";
-import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen, fetchGuideLetterSignals } from "../../lib/db";
+import { setEssentialEps, fetchFriendGroupsForUser, fetchPeopleGroupsForUser, fetchPeopleGroupMembers, fetchContactNames, fetchShows, upsertEpisodeRating, deleteEpisodeRating, fetchGuideLetters, createGuideLetter, deleteGuideLetter, fetchProfileNames, fetchGuideLetterViews, markGuideLettersSeen, fetchGuideSealedLetters, fetchMyFriendIds, insertFeedback } from "../../lib/db";
 import type { GuideLetter, GuideLetterSignal } from "../../lib/db";
 import { GuideWriter, GuideReader, writeContext, joinContext } from "./GuideLetters";
 import StarFace from "../v2/StarFace";
@@ -82,8 +82,11 @@ const idx = (s: number, e: number) => s * 10000 + e;
 type RefSeasonLike = { n: number; episodes: { s: number; e: number }[] };
 
 export default function ShowReference({
-  showId, viewerProgress, standAlonePlaces = null, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost, openLetterAt = null,
+  showId, viewerProgress, standAlonePlaces = null, mobile = false, nudgeEssentials = false, showRoomLinks = false, editorial = false, onRated, railHost, openLetterAt = null, onOpenProfile,
 }: {
+  /** A writer's name in the guide's letters opens their profile (the room's
+   *  byline tap, 2026-11-06): the desktop drawer, the phone's overlay. */
+  onOpenProfile?: (username: string) => void;
   /** Stand alone mode (2026-11-04, CP2): the viewer's place per season when
    *  the show is in the mode — the guide then shows the picked seasons,
    *  each to its place, with no next-season tease. null off the mode. */
@@ -116,7 +119,7 @@ export default function ShowReference({
    *  rooms for this show (one pill per friend-group room). */
   showRoomLinks?: boolean;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [ref, setRef] = useState<ShowReferenceData | null>(null);
   const [failed, setFailed] = useState(false);
@@ -222,38 +225,48 @@ export default function ShowReference({
   const [guideLetters, setGuideLetters] = useState<GuideLetter[]>([]);
   const [guideNames, setGuideNames] = useState<Record<string, string>>({});
   const [guideViews, setGuideViews] = useState<Record<string, string>>({});
-  // Friends' letters AHEAD of you (the signal, never a body): the sealed row
-  // at the end of your season's sheet, as the room's sealed letter.
+  // Letters AHEAD of you (the signal, never a body): the sealed row at the
+  // end of your season's sheet, as the room's sealed letter. Everyone's since
+  // 2026-11-06 (the guide is Sidebar's one public corner).
   const [guideSealed, setGuideSealed] = useState<GuideLetterSignal[]>([]);
+  // The people in your watch groups: only their letters count as new (the
+  // blue) — a stranger's letter is there to read, never a signal (his yes 4).
+  const [guideFriends, setGuideFriends] = useState<Set<string>>(new Set());
+  const [guideUsernames, setGuideUsernames] = useState<Record<string, string>>({});
   const [guideOpen, setGuideOpen] = useState<{ key: string; mode: "write" | "read" | "join"; atLast?: boolean; since?: string | null } | null>(null);
   const guideAnchors = useRef<Record<string, HTMLElement | null>>({});
   const guideHosts = useRef<Record<string, HTMLElement | null>>({});
   const sealedAnchors = useRef<Record<string, HTMLElement | null>>({});
   const closeGuide = useCallback(() => setGuideOpen(null), []);
   useEffect(() => {
-    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); setGuideSealed([]); return; }
+    if (!user || !editorial) { setGuideLetters([]); setGuideNames({}); setGuideViews({}); setGuideSealed([]); setGuideFriends(new Set()); setGuideUsernames({}); return; }
     let cancelled = false;
     setGuideLetters([]); setGuideViews({}); setGuideSealed([]); setGuideOpen(null);
     (async () => {
       try {
-        const [rows, views, signals] = await Promise.all([
+        const [rows, views, signals, friends] = await Promise.all([
           fetchGuideLetters(showId),
           fetchGuideLetterViews(user.id, showId).catch(() => ({} as Record<string, string>)),
-          fetchGuideLetterSignals(showId).catch(() => [] as GuideLetterSignal[]),
+          fetchGuideSealedLetters(showId).catch(() => [] as GuideLetterSignal[]),
+          fetchMyFriendIds().catch(() => new Set<string>()),
         ]);
         if (cancelled) return;
         const sealed = signals.filter((sg) => sg.relation === "behind").sort((a, b) => a.season - b.season || a.episode - b.episode);
-        setGuideLetters(rows); setGuideViews(views); setGuideSealed(sealed);
+        setGuideLetters(rows); setGuideViews(views); setGuideSealed(sealed); setGuideFriends(friends);
         const ids = Array.from(new Set([...rows.map((r) => r.userId), ...sealed.flatMap((sg) => sg.writerIds)].filter((id) => id !== user.id)));
-        if (!ids.length) { setGuideNames({}); return; }
+        if (!ids.length) { setGuideNames({}); setGuideUsernames({}); return; }
         const [profs, contact] = await Promise.all([
           fetchProfileNames(ids),
           fetchContactNames(user.id).catch(() => ({} as Record<string, string>)),
         ]);
         if (cancelled) return;
         const m: Record<string, string> = {};
-        for (const id of ids) m[id] = contact[id] ?? profs[id]?.displayName ?? profs[id]?.username ?? "A friend";
-        setGuideNames(m);
+        const u: Record<string, string> = {};
+        for (const id of ids) {
+          m[id] = contact[id] ?? profs[id]?.displayName ?? profs[id]?.username ?? "Someone";
+          if (profs[id]?.username) u[id] = profs[id].username;
+        }
+        setGuideNames(m); setGuideUsernames(u);
       } catch { if (!cancelled) setGuideLetters([]); }
     })();
     return () => { cancelled = true; };
@@ -263,13 +276,15 @@ export default function ShowReference({
     for (const l of guideLetters) { const k = `${l.season}-${l.episode}`; const a = m.get(k); if (a) a.push(l); else m.set(k, [l]); }
     return m;
   }, [guideLetters]);
-  const guideNameOf = (id: string) => (user && id === user.id ? "You" : guideNames[id] ?? "A friend");
+  const guideNameOf = (id: string) => (user && id === user.id ? "You" : guideNames[id] ?? "Someone");
+  // A friend's letter newer than your seen stamp: the only kind that's "new".
+  const guideCountsNew = (l: GuideLetter, since: string | null | undefined) => !!user && l.userId !== user.id && guideFriends.has(l.userId) && (!since || Date.parse(l.createdAt) > Date.parse(since));
   const guideWriters = (eps: GuideLetter[]) => { const out: string[] = []; for (const l of eps) { const n = guideNameOf(l.userId); if (!out.includes(n)) out.push(n); } return out; };
   // Unread = a friend's letter newer than your seen stamp for that episode
   // (none = never opened). Opening the reader stamps it (the room's rule:
   // cleared only by opening); the reader keeps the earlier stamp so the
   // dots stay on the new letters while you read.
-  const guideUnread = (key: string) => { const since = guideViews[key]; return (guideByEp.get(key) ?? []).some((l) => !!user && l.userId !== user.id && (!since || Date.parse(l.createdAt) > Date.parse(since))); };
+  const guideUnread = (key: string) => { const since = guideViews[key]; return (guideByEp.get(key) ?? []).some((l) => guideCountsNew(l, since)); };
   // A season out of view still says what it holds (his 11-02 catch: a
   // letter on S1 with the viewer on S6): its strip / tab carries the dot —
   // the identity blue while a friend's letter in it is unread, the alert
@@ -286,7 +301,7 @@ export default function ShowReference({
       const [s, e] = key.split("-").map(Number);
       if (s !== n) continue;
       const since = guideViews[key];
-      const newer = eps.filter((l) => !!user && l.userId !== user.id && (!since || Date.parse(l.createdAt) > Date.parse(since))).length;
+      const newer = eps.filter((l) => guideCountsNew(l, since)).length;
       count += eps.length; fresh += newer;
       rows.push({ s, e, state: newer ? "new" : "seen", info: newer ? `${newer} new` : `${eps.length} letter${eps.length === 1 ? "" : "s"}` });
     }
@@ -1048,6 +1063,22 @@ export default function ShowReference({
             return (
               <GuideReader
                 mobile={mobile} letters={eps} nameOf={guideNameOf} currentUserId={user.id} anchorEl={anchor} host={host} startAtLast={!!guideOpen.atLast} unreadSince={guideOpen.since}
+                countsNew={(l) => guideCountsNew(l, guideOpen.since)}
+                reportable={(l) => !guideFriends.has(l.userId)}
+                onReport={async (l) => {
+                  // A report lands in the feedback inbox (the admin's red disc),
+                  // with a copy of the letter in case the writer deletes it.
+                  const writer = guideUsernames[l.userId];
+                  await insertFeedback(user.id, profile?.username ?? "", window.location.href, [
+                    "REPORT: a letter in the show guide",
+                    `${ref.showName} · S${l.season} E${l.episode} (written from S${l.fromSeason} E${l.fromEpisode})`,
+                    `Writer: ${guideNameOf(l.userId)}${writer ? ` (@${writer})` : ""} · ${l.userId}`,
+                    `Letter id: ${l.id}`,
+                    "",
+                    l.body,
+                  ].join("\n").slice(0, 2000));
+                }}
+                onName={onOpenProfile ? (id) => { const un = guideUsernames[id]; if (!un || id === user.id) return; closeGuide(); onOpenProfile(un); } : undefined}
                 joinLabel={eps.some((l) => l.userId !== user.id) ? "Join the conversation" : "Write another letter"}
                 onClose={closeGuide}
                 onDelete={async (id) => { await deleteGuideLetter(id); setGuideLetters((prev) => prev.filter((l) => l.id !== id)); }}
@@ -1061,8 +1092,8 @@ export default function ShowReference({
           return (
             <GuideWriter
               mobile={mobile}
-              title={join ? <>Join the conversation – <em>all your friends</em></> : <>Write for <em>all your friends</em></>}
-              label={join ? "Join the conversation – all your friends" : "Write for all your friends"}
+              title={join ? <>Join the conversation</> : <>Write for <em>everyone</em></>}
+              label={join ? "Join the conversation" : "Write for everyone"}
               epLine={epLine}
               context={join ? joinContext(joinNames(writers), ref.showName) : writeContext(ref.showName)}
               anchorEl={anchor} host={host} onClose={closeGuide} onSave={save}

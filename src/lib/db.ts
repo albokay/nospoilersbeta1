@@ -6514,9 +6514,10 @@ export async function fetchBrowseLists(): Promise<BrowseList[]> {
 
 // ── Open letters in the show guide (2026-11-01, CP2) ──────────────────────
 // A letter on an episode written FROM the guide, outside any room. Who can
-// read one is the database's rule (guide_letters RLS): the writer, and every
-// friend (anyone sharing a live group) at or past the episode. So a plain
-// select returns exactly what this viewer may see.
+// read one is the database's rule (guide_letters RLS): the writer, and —
+// since 2026-11-06, the guide being Sidebar's one public corner — anyone
+// signed in who is at or past where it was written from. So a plain select
+// returns exactly what this viewer may see.
 export type GuideLetter = { id: string; userId: string; showId: string; season: number; episode: number; fromSeason: number; fromEpisode: number; body: string; createdAt: string };
 
 export async function fetchGuideLetters(showId: string): Promise<GuideLetter[]> {
@@ -6602,6 +6603,30 @@ export type GuideLetterSignal = {
   relation: "past" | "behind" | "none";
   seenAt: string | null; holdSeenAt: string | null; notForMe: boolean;
 };
+const toGuideSignal = (r: any): GuideLetterSignal => ({
+  showId: r.show_id, showName: r.show_name, season: r.season, episode: r.episode,
+  fromSeason: r.from_season ?? r.season, fromEpisode: r.from_episode ?? r.episode,
+  writerIds: (r.writer_ids ?? []) as string[], letterCount: r.letter_count ?? 0, latestAt: r.latest_at,
+  relation: r.relation, seenAt: r.seen_at ?? null, holdSeenAt: r.hold_seen_at ?? null, notForMe: !!r.not_for_me,
+});
+
+/** The show guide's sealed rows (2026-11-06, the guide goes public): EVERYONE's
+ *  letters on this show written from ahead of you — who, how many, where from,
+ *  never a body. The guide's own; the dashboard note stays friends-only
+ *  (fetchGuideLetterSignals). */
+export async function fetchGuideSealedLetters(showId: string): Promise<GuideLetterSignal[]> {
+  const { data, error } = await supabase.rpc("get_guide_sealed_letters", { p_show_id: showId });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map(toGuideSignal);
+}
+
+/** The people in your live watch groups — whose guide letters count as new. */
+export async function fetchMyFriendIds(): Promise<Set<string>> {
+  const { data, error } = await supabase.rpc("get_my_friend_ids");
+  if (error) throw error;
+  return new Set(((data ?? []) as any[]).map((r) => (typeof r === "string" ? r : r.get_my_friend_ids)).filter(Boolean));
+}
+
 export async function fetchGuideLetterSignals(showId: string | null = null): Promise<GuideLetterSignal[]> {
   const { data, error } = await supabase.rpc("get_guide_letter_signals", { p_show_id: showId });
   if (error) throw error;

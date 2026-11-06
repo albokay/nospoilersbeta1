@@ -25,6 +25,7 @@ import { timeAgo } from "../../lib/utils";
 import { paperStyle, NOTE_BYLINE, NOTE_TEXT, NOTE_FIELD, MONO_WORD, INK_SMALL, FRAME_SMALL } from "../editorial/MapNotes";
 import { NoteDrawer } from "../v2/HighlightSheets";
 import type { GuideLetter } from "../../lib/db";
+import { EditorialDialog } from "../editorial/GroupRoom";
 
 export const LETTER_MAX = 1000;
 const TEXT_MUTED = "#5f5e5a";
@@ -32,10 +33,10 @@ const WRITER_W = 420;
 const PAPER_W = 400;
 const PAPER_TILT = 2.5;
 
-/** The writing box's explanation (his copy, 11-02: the audience is every
- *  friend across every watch group — the thing a writer inside a room must
- *  not mistake). */
-const HOW_IT_WORKS = "Writing from the show guide pings your friends across all your watch groups. This is a way to write about shows you’ve already watched without opening a new room — any friend, in all your groups who has also watched this show can read and write back.";
+/** The writing box's explanation (his copy, 11-06: the show guide is the one
+ *  public corner of Sidebar — anyone signed in who has watched this far reads
+ *  it; only friends are notified). Two paragraphs: the box keeps the break. */
+const HOW_IT_WORKS = "The show guide is the one public corner of Sidebar: anyone on Sidebar who has watched this far can read what you write here.\n\nYour friends across all your watch groups get a notification that you’ve written. This is a way to write about shows you’ve already watched without opening a new room. You will get a notification if your friends write in here.";
 export function writeContext(_showName: string): string {
   return HOW_IT_WORKS;
 }
@@ -118,7 +119,7 @@ export function GuideWriter({ mobile, title, label, epLine, context, anchorEl, h
     <>
       <div style={{ ...E.type.letterTitle22, color: E.color.ink, paddingRight: mobile ? 0 : 36 }}>{title}</div>
       <div style={{ ...E.type.label10, color: "rgba(26,58,74,0.7)", marginTop: 8 }}>{epLine}</div>
-      <div style={{ ...E.type.note13, lineHeight: 1.5, color: "rgba(26,58,74,0.8)", margin: "8px 0 14px" }}>{context}</div>
+      <div style={{ ...E.type.note13, lineHeight: 1.5, color: "rgba(26,58,74,0.8)", margin: "8px 0 14px", whiteSpace: "pre-line" }}>{context}</div>
     </>
   );
 
@@ -161,7 +162,7 @@ export function GuideWriter({ mobile, title, label, epLine, context, anchorEl, h
  *  here (his call): before the read link, and on an unread letter's byline. */
 export const UNREAD_DOT: React.CSSProperties = { display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: E.color.identity, flexShrink: 0 };
 
-export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, host, startAtLast = false, unreadSince, joinLabel = "Join the conversation", onClose, onDelete, onJoin }: {
+export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, host, startAtLast = false, unreadSince, countsNew, onName, onReport, reportable, joinLabel = "Join the conversation", onClose, onDelete, onJoin }: {
   mobile: boolean;
   letters: GuideLetter[];
   nameOf: (userId: string) => string;
@@ -172,6 +173,17 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   /** The seen stamp from BEFORE this open (undefined = never): a friend's
    *  letter newer than it carries the dot while the reader is open. */
   unreadSince?: string | null;
+  /** Which letters carry the dot (2026-11-06): a friend's, newer than the
+   *  stamp — a stranger's letter in the public guide never does. Falls back
+   *  to any other writer's letter newer than unreadSince. */
+  countsNew?: (l: GuideLetter) => boolean;
+  /** A writer's name opens their profile (not your own). */
+  onName?: (userId: string) => void;
+  /** Report someone else's letter to Sidebar (2026-11-06, the public guide):
+   *  the Report word under it opens a small dialog; Send report calls this. */
+  onReport?: (l: GuideLetter) => Promise<void>;
+  /** Which letters carry Report: strangers' only (his note, 11-06). */
+  reportable?: (l: GuideLetter) => boolean;
   /** Open on the newest letter (after you've just written one). */
   startAtLast?: boolean;
   /** "Join the conversation" once a friend has written; "Write another
@@ -186,14 +198,27 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   const [busy, setBusy] = useState(false);
   const paperRef = useRef<HTMLDivElement | null>(null);
   const [place] = useState<Placement | null>(() => (mobile ? null : placeOnce(anchorEl, host, PAPER_W, "center", 56 + 41)));
-  useDismiss(paperRef, onClose, !mobile);
+  // The report dialog (2026-11-06): which letter, and where the send stands.
+  // While it's open the paper ignores clicks outside it (the dialog is outside).
+  const [reportFor, setReportFor] = useState<GuideLetter | null>(null);
+  const [reportState, setReportState] = useState<"ask" | "sending" | "sent" | "failed">("ask");
+  useDismiss(paperRef, onClose, !mobile && !reportFor);
+  // The thanks goes by itself after 3 seconds (or a click outside it).
+  useEffect(() => {
+    if (reportState !== "sent") return;
+    const t = window.setTimeout(() => setReportFor(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [reportState]);
   useEffect(() => { if (letters.length === 0) onClose(); }, [letters.length, onClose]);
 
-  const isUnread = (l: GuideLetter) => !!currentUserId && l.userId !== currentUserId && (unreadSince == null || Date.parse(l.createdAt) > Date.parse(unreadSince));
+  const isUnread = (l: GuideLetter) => countsNew ? countsNew(l) : !!currentUserId && l.userId !== currentUserId && (unreadSince == null || Date.parse(l.createdAt) > Date.parse(unreadSince));
+  const nameTap = (l: GuideLetter) => (onName && l.userId !== currentUserId
+    ? <button type="button" onClick={(e) => { e.stopPropagation(); onName(l.userId); }} style={{ all: "unset", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>{nameOf(l.userId)}</button>
+    : nameOf(l.userId));
   const byline = (l: GuideLetter) => (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {isUnread(l) && <span aria-label="New" style={UNREAD_DOT} />}
-      <span style={NOTE_BYLINE}>{nameOf(l.userId)} · S{l.season} E{l.episode} · {timeAgo(new Date(l.createdAt).getTime())}</span>
+      <span style={NOTE_BYLINE}>{nameTap(l)} · S{l.season} E{l.episode} · {timeAgo(new Date(l.createdAt).getTime())}</span>
     </div>
   );
   async function del(id: string) {
@@ -202,7 +227,45 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
     try { await onDelete(id); setConfirmId(null); setPage((p) => Math.max(0, Math.min(p, letters.length - 2))); }
     finally { setBusy(false); }
   }
+  const openReport = (l: GuideLetter) => { setReportFor(l); setReportState("ask"); };
+  const closeReport = () => { if (reportState !== "sending") setReportFor(null); };
+  async function sendReport() {
+    if (!reportFor || !onReport || reportState === "sending") return;
+    setReportState("sending");
+    try { await onReport(reportFor); setReportState("sent"); }
+    catch { setReportState("failed"); }
+  }
+  const reportDialog = reportFor && createPortal(
+    <EditorialDialog onClose={closeReport} width={420} label="Report this letter" align="left" zIndex={1300} closeButton={reportState !== "sent"}>
+      {reportState === "sent" ? (
+        <>
+          <div style={E.type.letterTitle22}>Thanks for flagging it</div>
+          <div style={{ ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, marginTop: 10 }}>Sidebar will take a look.</div>
+        </>
+      ) : (
+        <>
+          <div style={E.type.letterTitle22}>Report this letter?</div>
+          <div style={{ ...E.type.note13, lineHeight: 1.5, color: E.color.inkSub, margin: "10px 0 22px" }}>
+            If this letter is offensive, hurtful, or doesn’t belong on Sidebar, send it our way. Sidebar gets a copy of the letter and will take a look. {nameOf(reportFor.userId)} won’t know who sent it.
+          </div>
+          {reportState === "failed" && <div style={{ ...E.type.label11, color: E.color.alert, margin: "-10px 0 14px" }}>That didn’t send. Try again in a moment.</div>}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={sendReport} disabled={reportState === "sending"} style={{ ...INK_SMALL, height: 44, padding: "0 20px", opacity: reportState === "sending" ? 0.6 : 1 }}>{reportState === "sending" ? "Sending…" : "Send report"}</button>
+            <button type="button" onClick={closeReport} disabled={reportState === "sending"} style={{ ...FRAME_SMALL, height: 44, padding: "0 20px" }}>Cancel</button>
+          </div>
+        </>
+      )}
+    </EditorialDialog>,
+    document.body,
+  );
   const deleteRow = (l: GuideLetter) => {
+    if (currentUserId && l.userId !== currentUserId && onReport && (!reportable || reportable(l))) {
+      return (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); openReport(l); }} style={{ ...MONO_WORD, color: E.color.inkMuted, textDecoration: "underline", textUnderlineOffset: 2 }}>Report</button>
+        </div>
+      );
+    }
     if (!currentUserId || l.userId !== currentUserId) return null;
     return (
       <div style={{ display: "flex", justifyContent: "center", gap: 12, alignItems: "center", marginTop: 4 }}>
@@ -223,7 +286,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
     // The notes overlay: the papers fill from the bottom up until they
     // overflow, then scroll; a tap on the gap closes; the act floats alone
     // at the bottom, so it answers the whole thread, not one letter.
-    return createPortal(
+    return <>{reportDialog}{createPortal(
       <div style={{ position: "fixed", inset: 0, background: E.color.veil, zIndex: 1200 }} onClick={onClose}>
         <div role="dialog" aria-label="Letters on this episode" style={{ position: "fixed", inset: 0, overflowY: "auto", fontFamily: E.font.interface }}
           onClick={(e) => { e.stopPropagation(); const t = e.target as HTMLElement; if (t === e.currentTarget || t.dataset.floatGap === "1") onClose(); }}>
@@ -242,7 +305,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
         </div>
       </div>,
       document.body,
-    );
+    )}</>;
   }
 
   // Desktop: the note paper in the episode's block, centred under the link
@@ -255,7 +318,7 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
   const prev = i > 0 ? letters[i - 1] : null;
   const next = i < letters.length - 1 ? letters[i + 1] : null;
 
-  return createPortal(
+  return <>{reportDialog}{createPortal(
     <div ref={paperRef} style={{ position: "absolute", left: place.left, top: place.top, bottom: place.bottom, width, zIndex: 70, display: "flex", flexDirection: "column", fontFamily: E.font.interface, color: E.color.ink }}>
       <div style={{ position: "relative", transform: `rotate(${PAPER_TILT}deg)`, transformOrigin: below ? "top center" : "bottom center", maxHeight, display: "flex", flexDirection: "column" }}>
         {letters.length > 1 && (
@@ -279,5 +342,5 @@ export function GuideReader({ mobile, letters, nameOf, currentUserId, anchorEl, 
       </div>
     </div>,
     host,
-  );
+  )}</>;
 }
