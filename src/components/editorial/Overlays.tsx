@@ -144,7 +144,8 @@ export function FinishedTiles({ finished, dnf, poster, dot, onOpen, onRevive, de
       {finished.length > 0 && <div style={grid}>{finished.map((it) => tile(it, false))}</div>}
       {dnf.length > 0 && (
         <>
-          <SectionHead style={{ marginTop: finished.length ? 32 : 0 }} right={<span style={{ color: E.color.inkMuted }}>{dnf.length}</span>}>Didn&rsquo;t finish</SectionHead>
+          {/* Only didn't-finish shows: the drawer's head already says it (11-06). */}
+          {finished.length > 0 && <SectionHead style={{ marginTop: 32 }} right={<span style={{ color: E.color.inkMuted }}>{dnf.length}</span>}>Didn&rsquo;t finish</SectionHead>}
           <div style={grid}>{dnf.map((it) => tile(it, true))}</div>
         </>
       )}
@@ -153,12 +154,14 @@ export function FinishedTiles({ finished, dnf, poster, dot, onOpen, onRevive, de
   );
 }
 
-/** The drawer's / sheet's head for the finished drawer: the star and "Finished watching". */
-export function FinishedHead({ count }: { count: number }) {
+/** The drawer's / sheet's head for the finished drawer: the star and
+ *  "Finished watching"; when only didn't-finish shows are inside (his note,
+ *  11-06), "Didn't finish" and no star. */
+export function FinishedHead({ count, dnfOnly = false }: { count: number; dnfOnly?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <CelebrationStar size={20} color={E.color.accent} />
-      <span style={{ ...E.type.letterTitle22 }}>Finished watching</span>
+      {!dnfOnly && <CelebrationStar size={20} color={E.color.accent} />}
+      <span style={{ ...E.type.letterTitle22 }}>{dnfOnly ? "Didn\u2019t finish" : "Finished watching"}</span>
       <span style={{ ...E.type.label11, color: E.color.inkMuted }}>{count}</span>
     </div>
   );

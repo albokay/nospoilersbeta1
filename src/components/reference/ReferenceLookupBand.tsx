@@ -830,13 +830,14 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
         const waiting = several
           ? `Letters from ${guideAsk.writers} are waiting. They open once you’re past the episodes they’re about.`
           : `${guideAsk.writers}’s letter is waiting. It opens once you’re past the episode it’s about.`;
-        const head = (q: string, line: string) => (
+        const head = (q: string, line: string, sub?: string) => (
           <div style={{ display: "flex", gap: 20, alignItems: "flex-start", textAlign: "left", marginTop: mobile ? 22 : 4, paddingRight: mobile ? 0 : 20 }}>
             {poster
               ? <img src={poster} alt="" draggable={false} style={{ width: pw, height: ph, objectFit: "cover", display: "block", flexShrink: 0 }} />
               : <div aria-hidden="true" style={{ width: pw, height: ph, background: E.color.draft, flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: E.font.display, fontWeight: 700, fontSize: mobile ? 28 : 30, lineHeight: 1.1, letterSpacing: "-0.01em" }}>{askShow.name}</div>
+              {sub && <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 8 }}>{sub}</div>}
               <div style={{ ...E.type.label11, marginTop: 14 }}>{q}</div>
               <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 6 }}>{line}</div>
             </div>
@@ -848,7 +849,7 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
             <div style={{ textAlign: "center" }}>
               {askStep === "ask" ? (
                 <>
-                  {head("Have you watched it?", `${guideAsk.writers} wrote about it in the show guide. The letter opens for friends who’ve seen the episode it’s about.`)}
+                  {head("Have you watched it?", `${guideAsk.writers} wrote about it in the show guide. The letter opens for friends who’ve seen the episode it’s about.`, seasons.length > 0 ? `${seasons.length} season${seasons.length === 1 ? "" : "s"}` : undefined)}
                   <Block onClick={() => { const ls = seasons.length; setPicked(ls ? { s: ls, e: seasons[ls - 1] ?? 1 } : { s: 0, e: 0 }); setAskStep("picker"); }} style={{ marginTop: 22 }}>I’ve seen it</Block>
                   <Frame
                     onClick={async () => {

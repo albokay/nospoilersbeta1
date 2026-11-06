@@ -810,7 +810,12 @@ export default function V2InlineThread({
           {displayNames?.[thread.author] ?? thread.author} deleted their entry.
         </div>
       ) : editing ? (
-        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+        // The phone (his note, 11-06): a flex column sat beside the letter's
+        // floated stamp for its whole height, so the writing box was the
+        // narrow column left of it. There the form is a plain block: the head
+        // still runs beside the stamp, the ruled box clears it and spans the
+        // content column.
+        <div style={editorialScope && mobileIdiom ? { marginTop: 8 } : { marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
           {editorialScope && <style>{REPLY_TA_CSS}{COMPOSE_CSS}</style>}
           {LETTER_HEADS ? (
             <HeadLine body={editBody} desktop={!mobileIdiom} style={editorialScope ? { fontSize: 22 } : undefined} />
@@ -826,7 +831,7 @@ export default function V2InlineThread({
           {editorialScope ? (
             // The ruled paper inside the 1px ink box (round 6: the box says
             // "a different state"); the inset keeps the rules under the lines.
-            <div style={{ border: `1px solid ${E.color.ink}`, padding: "10px 12px", marginTop: 8 }}>
+            <div style={{ border: `1px solid ${E.color.ink}`, padding: "10px 12px", marginTop: mobileIdiom ? 16 : 8, ...(mobileIdiom ? { clear: "right" as const } : null) }}>
               <textarea
                 ref={editTaRef}
                 className="e-compose-paper"
@@ -847,9 +852,9 @@ export default function V2InlineThread({
           />
           )}
           {editError && (
-            <div style={{ fontSize: 13, color: "var(--danger)" }}>{editError}</div>
+            <div style={{ fontSize: 13, color: "var(--danger)", ...(editorialScope && mobileIdiom ? { marginTop: 8 } : null) }}>{editError}</div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: editorialScope ? 18 : 8 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: editorialScope ? 18 : 8, ...(editorialScope && mobileIdiom ? { marginTop: 8 } : null) }}>
             <button className={editorialScope ? undefined : "btn"} onClick={cancelEdit} disabled={editSubmitting} style={editorialScope ? edWord : undefined}>
               Cancel
             </button>

@@ -217,6 +217,11 @@ body.public-context .expand-chip{ color:var(--canon-personal,#7abd8e) !important
 
 *{ box-sizing:border-box; }
 html,body,#root{ height:100%; }
+/* The iPhone's own text enlarging (his screenshots, 11-06): when the page's
+   width shifts for a moment (a sheet or drawer locking the page behind it),
+   iOS blew up long paragraphs of small text and left short labels alone.
+   100% tells it to keep the sizes we set; pinch-zoom is unaffected. */
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 body{
   margin:0;
   background: linear-gradient(to bottom, var(--frame-top-private,#c8e4b0) 0px, var(--dos-bg) 180px) fixed, var(--dos-bg);

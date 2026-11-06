@@ -308,15 +308,16 @@ function Avatar({ initial, first, pending = false }: { initial: string; first: b
  *  hover). Its divider starts at the tab's left edge and runs off the right
  *  of the phone (an open left edge). No grip: the order is the activity's. */
 const GROUP_ROW_PAD = 5;
-/** His dashboard refinement (11-05): the phone's clusters slide 16px LEFT so
- *  the thumbnail's green box (16 on every side of the 40×56 poster) fits
- *  without moving the text columns; the Groups strip and every group row's
- *  TOP line run to the screen's left edge, the bottom lines start at the
- *  green boxes. Desktop keeps its column: the green box and the strip's
- *  width, the top lines to the column's edge, the bottom lines at the box. */
+/** His dashboard refinement (11-05): the phone's clusters slide 16px LEFT
+ *  (made for the green thumbnail box; kept when the box went, 11-06, so the
+ *  text gains the 12px the bare poster frees); the Groups strip and every
+ *  group row's TOP line run to the screen's left edge, the bottom lines start
+ *  at the posters. Desktop keeps its column: the poster and the strip's
+ *  width, the top lines to the column's edge, the bottom lines at the poster. */
 const CLUSTER_SHIFT = 16;
-/** The thumbnail box's width: the poster + 16 each side. */
-const POSTER_BOX_W = 40 + 16 * 2;
+/** The thumbnail's width: the poster at the row's full 88 (11-06; the
+ *  green box around a 40×56 poster, 72 wide, is gone). */
+const POSTER_BOX_W = 60;
 function GroupRow({ desktop, first, closing, onEnter, onOptions, children }: {
   desktop: boolean;
   /** The first cluster: the Groups strip's ink rule is its top line, so it draws none of its own. */
@@ -366,26 +367,28 @@ function GroupRow({ desktop, first, closing, onEnter, onOptions, children }: {
 
 /** The show line of a room row: the show, then the friends in the room in
  *  the With line's mono ("with Adam, Lena, Mo"). Measured after it draws
- *  (his yes, 11-04): if the names would cut the title, the names give way
- *  to "w/ 3 friends" — and only then does the title truncate, so the count
- *  always fits. A resize, or a change of friends, measures again from the
- *  names. */
+ *  (his yes, 11-04; the middle step his note, 11-06): if the names would cut
+ *  the title, they shorten to "w/ Adam, Lena", then give way to "w/ 3
+ *  friends" — and only then does the title truncate, so the count always
+ *  fits. A resize, or a change of friends, measures again from the names. */
 function RoomHead({ show, people }: { show: string; people: string[] }) {
   const nameRef = useRef<HTMLSpanElement>(null);
-  const [count, setCount] = useState(false);
+  const [step, setStep] = useState(0); // 0 "with …", 1 "w/ …", 2 "w/ 3 friends"
   const peopleKey = people.join("\u0000");
-  useEffect(() => { setCount(false); }, [peopleKey]);
+  useEffect(() => { setStep(0); }, [peopleKey]);
   useEffect(() => {
-    const again = () => setCount(false);
+    const again = () => setStep(0);
     window.addEventListener("resize", again);
     return () => window.removeEventListener("resize", again);
   }, []);
   useLayoutEffect(() => {
     const el = nameRef.current;
-    if (!el || count || people.length === 0) return;
-    if (el.scrollWidth > el.clientWidth + 1) setCount(true);
+    if (!el || step >= 2 || people.length === 0) return;
+    if (el.scrollWidth > el.clientWidth + 1) setStep(step + 1);
   });
-  const names = people.length === 0 ? null : count ? `w/ ${people.length} friend${people.length === 1 ? "" : "s"}` : `with ${people.join(", ")}`;
+  const names = people.length === 0 ? null
+    : step === 2 ? `w/ ${people.length} friend${people.length === 1 ? "" : "s"}`
+    : `${step === 1 ? "w/" : "with"} ${people.join(", ")}`;
   return (
     <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
       <span ref={nameRef} style={{ ...nameStyle, minWidth: 0, flexShrink: 1 }}>{show}</span>
@@ -405,7 +408,7 @@ function RoomRow({ desktop, row, last, onEnter }: { desktop: boolean; row: RoomS
   const split = tallySplit(row.tally);
   return (
     <div className={desktop ? "e-row" : undefined} role="button" tabIndex={0} onClick={onEnter} onKeyDown={onKey} style={{ ...rowBase, padding: desktop ? 0 : `0 ${gutter}px 0 0`, borderBottom: last ? 0 : `1px solid ${E.color.hairline}`, background: E.color.cream }}>
-      {/* The green box covers the cluster's left rule (nothing grey at the thumbnail's left — his closeup); the row's hairlines cross its top and bottom. */}
+      {/* The poster covers the cluster's left rule (nothing grey at the thumbnail's left — his closeup); the row's hairlines cross its top and bottom. */}
       <PosterBox tvmazeId={row.tvmazeId} style={{ marginLeft: -1 }} />
       <span style={{ ...textCol, gap: split ? 4 : 5 }}>
         <RoomHead show={row.show} people={row.people} />
@@ -426,7 +429,7 @@ function RoomsBox({ desktop, rows, last, onEnterRoom, onMore }: { desktop: boole
   const gutter = E.space.gutter;
   const shown = rows.slice(0, ROOMS_SHOWN);
   const more = rows.length - shown.length;
-  // The box's top edge IS the group row's bottom line (11-05): it starts at the green box's left, never further left.
+  // The box's top edge IS the group row's bottom line (11-05): it starts at the posters' left, never further left.
   return (
     <div style={{ marginLeft: desktop ? gutter : gutter - CLUSTER_SHIFT, marginRight: desktop ? 0 : -gutter, borderLeft: `1px solid ${E.color.hairline}`, borderTop: `1px solid ${E.color.hairline}`, borderBottom: last ? `1px solid ${E.color.hairline}` : 0, background: E.color.cream }}>
       {shown.map((r, i) => <RoomRow key={r.roomId} desktop={desktop} row={r} last={i === shown.length - 1 && more === 0} onEnter={() => onEnterRoom(r)} />)}
@@ -565,7 +568,7 @@ export function EditorialGroups({ groups, pendingInvites, contactNames, groupNum
   return (
     <div>
       {/* The head's rule runs off the right of the phone (his sketch): the dividers' open left edge starts at the tab. The green + beside the tab (his note, 11-03) opens the invite modal headed "Start a new watch group". */}
-      {/* His refinement (11-05): the strip's sky runs to the screen's left edge on the phone (the word stays where it was), its right edge lands on the green thumbnail boxes' right edge, and its ink rule is the first cluster's top line. */}
+      {/* His refinement (11-05): the strip's sky runs to the screen's left edge on the phone (the word stays where it was), its right edge lands on the posters' right edge (11-06; the green boxes' before), and its ink rule is the first cluster's top line. */}
       <div data-tip-anchor="groups-head" style={{ marginRight: desktop ? 0 : -E.space.gutter, marginLeft: desktop ? 0 : -E.space.gutter }}>
         <SectionHead
           big tab={E.color.friend}
@@ -699,10 +702,13 @@ export function DrawerTab({ label, onClick, desktop = false, right = "↑", anch
       onClick={onClick}
       style={{
         position: "fixed", bottom: 0, zIndex: 40,
-        // The phone (2026-11-04): the tab stops short of the home-screen
-        // square docked at its right (lib/installPrompt homeScreenTabInset);
-        // inside the installed app there's no square and it runs to 44.
-        ...(desktop ? { left: "50%", width: 360, marginLeft: -180 } : { left: 44, right: homeScreenTabInset() }),
+        // The phone (2026-11-04; the margins his note, 11-06): the tab runs
+        // from the page's side margin (where "You're watching" starts, clear
+        // of the room rows' posters) and stops short of the home-screen
+        // square docked at the right margin (lib/installPrompt
+        // homeScreenTabInset); inside the installed app there's no square
+        // and it runs to the margin.
+        ...(desktop ? { left: "50%", width: 360, marginLeft: -180 } : { left: E.space.gutter, right: homeScreenTabInset(E.space.gutter) }),
         height: desktop ? 56 : "calc(56px + env(safe-area-inset-bottom, 0px))", boxSizing: "border-box",
         padding: desktop ? "0 20px" : "0 20px env(safe-area-inset-bottom, 0px)",
         border: `1px solid ${E.color.ink}`, borderBottom: 0, background: E.color.cream,

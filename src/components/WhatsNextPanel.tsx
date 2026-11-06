@@ -451,6 +451,7 @@ export default function WhatsNextPanel({ groupId, userId, mobile = false, onOpen
             progress: null,
             actions: null,
             trailer: { showId: card.id, tvmazeId: String(card.tvmazeId) },
+            seasons: { tvmazeId: card.tvmazeId },
           };
           return mobile
             ? <EditorialSheet onClose={() => setCard(null)}><StanceSurface view={view} inset={E.space.gutter} foot="calc(env(safe-area-inset-bottom, 0px) + 32px)" /></EditorialSheet>

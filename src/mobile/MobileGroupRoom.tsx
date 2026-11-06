@@ -1434,6 +1434,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
                 <FinishedRow
                   style={{ marginTop: 36 }}
                   count={settledCount}
+                  dnfOnly={drawerItems.finished.length === 0 && drawerItems.dnf.length > 0}
                   onClick={openFinishedDrawer}
                   signal={finishedWriting
                     ? <LetterDisc kind={finishedWriting === "red" ? "sealed" : "open"} className="m-dot-in" />
@@ -1650,6 +1651,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
               onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
             } : null,
             trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+            seasons: { list: showsById[id]?.seasons, tvmazeId: showsById[id]?.tvmazeId },
             journal: (() => {
               // The journal handover's panel (2026-10-26): a proposal sheet,
               // a show a FRIEND pitched, the viewer not in its room, and
@@ -2000,7 +2002,7 @@ export default function MobileGroupRoom({ groupId }: { groupId: string }) {
       {/* ── Finished-together drawer (2026-09-13) — same sheet shell:
              grabber, Lora title, no ×, swipe-down. ── */}
       {finishedDrawerOpen && (editorial ? (
-        <BottomSheet onClose={() => setFinishedDrawerOpen(false)} label="Finished together" head={<FinishedHead count={drawerItems.finished.length} />}>
+        <BottomSheet onClose={() => setFinishedDrawerOpen(false)} label="Finished together" head={drawerItems.finished.length === 0 && drawerItems.dnf.length > 0 ? <FinishedHead dnfOnly count={drawerItems.dnf.length} /> : <FinishedHead count={drawerItems.finished.length} />}>
           <FinishedTiles
             finished={drawerItems.finished}
             dnf={drawerItems.dnf}

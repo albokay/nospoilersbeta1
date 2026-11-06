@@ -99,8 +99,9 @@ export function homeScreenTabDocked(): boolean {
   return !isStandalone();
 }
 
-/** The phone's How-tab right inset: 44 as always, or past the square. */
-export function homeScreenTabInset(base = 44): number {
+/** The phone's How-tab right inset: the side margin, or past the square
+ *  (which sits at that margin, 11-06). */
+export function homeScreenTabInset(base = 28): number {
   return homeScreenTabDocked() ? base + HOME_SCREEN_TAB + HOME_SCREEN_GAP : base;
 }
 

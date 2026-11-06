@@ -575,7 +575,8 @@ export default function FriendProfile({
                           <div style={{ minWidth: 0 }}>
                             <button type="button" onClick={() => setUnsealed((prev) => new Set(prev).add(show.id))} style={{ ...reset, ...E.type.note13, fontWeight: 600, display: "block" }}>{mobile ? "Tap" : "Click"} to read {ownerName}&rsquo;s take.</button>
                             <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>There could be a spoiler!</div>
-                            {sharedGroups.length > 0 && <UnderlineWord onClick={openChat} style={{ ...E.type.label10, marginTop: 8, display: "inline-block" }}>Chat with {ownerName} about it instead</UnderlineWord>}
+                            {/* Wraps inside the dashed box (his note, 11-06: on the phone it ran off the screen). */}
+                            {sharedGroups.length > 0 && <UnderlineWord onClick={openChat} style={{ ...E.type.label10, marginTop: 8, display: "inline-block", whiteSpace: "normal", maxWidth: "100%" }}>Chat with {ownerName} about it instead</UnderlineWord>}
                           </div>
                         </div>
                       )}

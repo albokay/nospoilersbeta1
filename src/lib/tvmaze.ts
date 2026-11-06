@@ -100,3 +100,25 @@ export function networkLabel(s: TVmazeShow): string {
 export function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || `show${Date.now()}`;
 }
+
+// The season count for the "do you want to watch?" screens (his note,
+// 11-06): seasons that have premiered, from TVMaze's seasons list (lighter
+// than the episodes). Module-cached per show, misses too; null on failure.
+const _seasonCountCache = new Map<string, Promise<number | null>>();
+export function fetchSeasonCount(tvmazeId: number | string): Promise<number | null> {
+  const key = String(tvmazeId);
+  let p = _seasonCountCache.get(key);
+  if (!p) {
+    p = (async (): Promise<number | null> => {
+      try {
+        const res = await fetch(`https://api.tvmaze.com/shows/${key}/seasons`);
+        if (!res.ok) return null;
+        const list: any[] = await res.json();
+        const today = new Date().toISOString().slice(0, 10);
+        return list.filter((s) => Number(s?.number) > 0 && typeof s?.premiereDate === "string" && s.premiereDate <= today).length;
+      } catch { return null; }
+    })();
+    _seasonCountCache.set(key, p);
+  }
+  return p;
+}

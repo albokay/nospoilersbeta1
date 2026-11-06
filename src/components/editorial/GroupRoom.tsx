@@ -35,7 +35,7 @@ import { E } from "../../styles/editorial";
 
 /** The one size for a notification dot (his note, 11-03): the season map's 16px, on the chat fold and the group disc alike, no outline. */
 export const SIGNAL_DOT = 16;
-import { fetchTvmazePoster } from "../../lib/tvmaze";
+import { fetchTvmazePoster, fetchSeasonCount } from "../../lib/tvmaze";
 import useSheetSwipeDown from "../../lib/useSheetSwipeDown";
 import useKeyboardInset from "../../lib/useKeyboardInset";
 import TrailerCard from "../TrailerCard";
@@ -137,16 +137,36 @@ export function ChatCorner({ onClick, countLabel, isNew = false, desktop = false
  *  and star): the door to the finished drawer, a row attached to the
  *  masthead's bottom edge above "You're watching:". `signal` = the letter
  *  disc or the dot the classic pill carried. */
-export function FinishedRow({ count, onClick, signal, desktop = false, style }: { count: number; onClick: () => void; signal?: React.ReactNode; desktop?: boolean; style?: React.CSSProperties }) {
+export function FinishedRow({ count, onClick, signal, desktop = false, dnfOnly = false, style }: { count: number; onClick: () => void; signal?: React.ReactNode; desktop?: boolean; /** Only "didn't finish" shows behind it (his note, 11-06): "Did not finish", no star. */ dnfOnly?: boolean; style?: React.CSSProperties }) {
   return (
-    <button type="button" onClick={onClick} title="shows you've finished together" style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", height: desktop ? 56 : 54, padding: 0, background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink, textAlign: "left", WebkitTapHighlightColor: "transparent", ...style }}>
-      <CelebrationStar size={16} color={E.color.accent} />
-      <span style={{ ...E.type.label11, flex: 1, minWidth: 0 }}>{count} finished together</span>
+    <button type="button" onClick={onClick} title={dnfOnly ? "shows you didn't finish" : "shows you've finished together"} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", height: desktop ? 56 : 54, padding: 0, background: "transparent", border: 0, borderBottom: `1px solid ${E.color.hairline}`, cursor: "pointer", color: E.color.ink, textAlign: "left", WebkitTapHighlightColor: "transparent", ...style }}>
+      {!dnfOnly && <CelebrationStar size={16} color={E.color.accent} />}
+      <span style={{ ...E.type.label11, flex: 1, minWidth: 0 }}>{dnfOnly ? "Did not finish" : `${count} finished together`}</span>
       {signal}
       <span style={{ ...E.type.label11, color: E.color.inkMuted }}>→</span>
     </button>
   );
 }
+
+/** How many seasons a show has (his note, 11-06), for the screens that ask
+ *  whether you want to watch it: the catalog's aired seasons when we have
+ *  them, else TVMaze's premiered seasons (a browse or search pick). */
+export function useSeasonCount(src?: { list?: number[] | null; tvmazeId?: string | number | null } | null): number | null {
+  const listed = src?.list && src.list.length > 0 ? src.list.length : null;
+  const tvmazeId = listed == null ? src?.tvmazeId ?? null : null;
+  const [fetched, setFetched] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setFetched(null);
+    if (tvmazeId == null || tvmazeId === "") return;
+    fetchSeasonCount(tvmazeId).then((n) => { if (!cancelled) setFetched(n); });
+    return () => { cancelled = true; };
+  }, [tvmazeId]);
+  const n = listed ?? fetched;
+  return n != null && n > 0 ? n : null;
+}
+/** "1 season" / "3 seasons". */
+export const seasonsLabel = (n: number) => `${n} season${n === 1 ? "" : "s"}`;
 
 /** The poster for a row, from the module-cached TVMaze lookup. */
 function usePoster(tvmazeId?: string | null): string | null {
@@ -210,11 +230,14 @@ export function TallyStack({ tally, inSeason }: { tally: Tally; inSeason?: Recor
  *  centred in a `personal` green box, 16 on every side, the row's full
  *  height — the row's hairlines run across its top and bottom, nothing
  *  grey at its left. No poster → the whole box is the `draft` grey, empty. */
-export function PosterBox({ tvmazeId, w = 40, h = 56, pad = 16, style }: { tvmazeId?: string | null; w?: number; h?: number; pad?: number; style?: React.CSSProperties }) {
+export function PosterBox({ tvmazeId, w = 60, h = 88, style }: { tvmazeId?: string | null; w?: number; h?: number; style?: React.CSSProperties }) {
+  // The dashboard's thumbnail (his note, 11-06): the poster itself at the
+  // row's full height, no green box behind it (the colour read as meaning
+  // something). A show without a poster keeps the draft grey in its place.
   const url = usePoster(tvmazeId);
   return (
-    <span aria-hidden="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: w + pad * 2, minHeight: h + pad * 2, alignSelf: "stretch", flexShrink: 0, background: url ? E.color.personal : E.color.draft, ...style }}>
-      {url && <img src={url} alt="" loading="lazy" draggable={false} style={{ width: w, height: h, objectFit: "cover", display: "block" }} />}
+    <span aria-hidden="true" style={{ display: "block", position: "relative", overflow: "hidden", width: w, minHeight: h, alignSelf: "stretch", flexShrink: 0, background: E.color.draft, ...style }}>
+      {url && <img src={url} alt="" loading="lazy" draggable={false} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
     </span>
   );
 }
@@ -534,6 +557,10 @@ export type StanceView = {
    *  in the room yet. `line` = "Your journal · 9 entries · finished spring
    *  2024"; `groupName` fills his copy; the block opens the picker. */
   journal?: { line: string; showName: string; groupName: string; onHandOver: () => void } | null;
+  /** Where the season count comes from (his note, 11-06): "3 seasons" under
+   *  the name while the sheet asks and shows no picker (the picker already
+   *  says it). */
+  seasons?: { list?: number[] | null; tvmazeId?: string | number | null } | null;
 };
 
 /** The handover panel: the grey band, his headline and body, the ink block. */
@@ -551,9 +578,11 @@ export function JournalPanel({ journal, inset, buttonLabel = "Hand over my journ
 /** `foot` (round 5): the host's bottom inset as a CSS length — the trailer's
  *  yellow runs through it to the sheet's or dialog's bottom edge. */
 export function StanceSurface({ view, inset, foot }: { view: StanceView; inset: number; foot?: string }) {
+  const seasonCount = useSeasonCount(view.progress ? null : view.seasons);
   return (
     <div style={{ textAlign: "center", color: E.color.ink }}>
       <div style={{ ...E.type.question30, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.01em", marginTop: 26 }}>{view.name}</div>
+      {!view.progress && seasonCount != null && <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 10 }}>{seasonsLabel(seasonCount)}</div>}
       {view.question && <div style={{ ...E.type.label11, marginTop: 22 }}>{view.question}</div>}
       {view.tally && tallyBuckets(view.tally.buckets).length > 0 ? (
         <TallyStack tally={view.tally.buckets} inSeason={view.tally.inSeason} />

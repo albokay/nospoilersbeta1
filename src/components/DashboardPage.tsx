@@ -2423,6 +2423,7 @@ export default function DashboardPage() {
                         <FinishedRow
                           desktop
                           count={settledCount}
+                          dnfOnly={drawerItems.finished.length === 0 && drawerItems.dnf.length > 0}
                           style={{ marginTop: groupShelves.notStarted.length > 0 ? 36 : 0 }}
                           onClick={openFinishedDrawer}
                           signal={finishedWriting
@@ -3221,6 +3222,7 @@ export default function DashboardPage() {
               onJustConfirm: !atEnd ? () => { void declareProgressOnly(id, declaredProgress); } : null,
             } : null,
             trailer: zero ? { showId: id, tvmazeId: showsById[id]?.tvmazeId } : null,
+            seasons: { list: showsById[id]?.seasons, tvmazeId: showsById[id]?.tvmazeId },
             journal: (() => {
               // The journal handover's panel (2026-10-26): a proposal sheet,
               // a show a FRIEND pitched, the viewer not in its room, and
@@ -3615,7 +3617,7 @@ export default function DashboardPage() {
       {/* ── Finished-together drawer (2026-09-13) — the chat panel's
             geometry; thumbnails open their rooms. ── */}
       {finishedDrawerOpen && (editorial ? (
-        <Drawer onClose={() => setFinishedDrawerOpen(false)} zIndex={70} label="Finished together" head={<FinishedHead count={drawerItems.finished.length} />}>
+        <Drawer onClose={() => setFinishedDrawerOpen(false)} zIndex={70} label="Finished together" head={drawerItems.finished.length === 0 && drawerItems.dnf.length > 0 ? <FinishedHead dnfOnly count={drawerItems.dnf.length} /> : <FinishedHead count={drawerItems.finished.length} />}>
           <FinishedTiles
             desktop
             finished={drawerItems.finished}

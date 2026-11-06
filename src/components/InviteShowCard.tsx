@@ -7,7 +7,7 @@ import { M } from "../mobile/m";
 import { preventLastWordOrphan } from "../lib/utils";
 import { useEditorial } from "../lib/skin";
 import { E } from "../styles/editorial";
-import { EditorialDialog, EditorialSheet } from "./editorial/GroupRoom";
+import { EditorialDialog, EditorialSheet, useSeasonCount, seasonsLabel } from "./editorial/GroupRoom";
 
 // The invite wall's show card (Alborz 2026-09-28): a version of the group
 // room's yellow opt-in modal for the invited friend's landing. The show's
@@ -27,10 +27,13 @@ export default function InviteShowCard({ idiom, show, onClose, children }: {
   children?: React.ReactNode;
 }) {
   const editorial = useEditorial();
+  // The season count under the name while the card asks (his note, 11-06).
+  const seasonCount = useSeasonCount(editorial && children ? { tvmazeId: show.tvmazeId } : null);
   if (editorial) {
     const body = (
       <>
         <div style={{ ...E.type.letterTitle22, color: E.color.ink, paddingRight: 28 }}>{show.name}</div>
+        {seasonCount != null && <div style={{ ...E.type.label11, color: E.color.inkMuted, marginTop: 8 }}>{seasonsLabel(seasonCount)}</div>}
         {children && <div style={{ marginTop: 16 }}>{children}</div>}
         <div style={{ marginTop: 20, display: "flex", justifyContent: "center" }}><TrailerCard showId={show.id} tvmazeId={show.tvmazeId} /></div>
       </>

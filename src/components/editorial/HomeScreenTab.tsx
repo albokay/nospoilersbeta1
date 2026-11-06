@@ -117,7 +117,7 @@ export default function HomeScreenTab() {
       <button
         type="button" aria-label="Get Sidebar as an app" title="Get Sidebar as an app" onClick={openDrawer}
         style={{
-          position: "fixed", bottom: 0, right: 44, zIndex: 40,
+          position: "fixed", bottom: 0, right: E.space.gutter, zIndex: 40, // the right margin (11-06)
           width: HOME_SCREEN_TAB, height: `calc(${HOME_SCREEN_TAB}px + env(safe-area-inset-bottom, 0px))`, boxSizing: "border-box",
           padding: `0 0 env(safe-area-inset-bottom, 0px)`,
           border: `1px solid ${E.color.ink}`, borderBottom: 0, background: E.color.cream,
