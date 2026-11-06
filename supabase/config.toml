@@ -51,3 +51,10 @@ verify_jwt = false
 # Spoiler-gated reference builder (2026-09-05). Same ES256 reason as
 # send-invite — the function verifies the JWT itself via admin.auth.getUser.
 verify_jwt = false
+
+[functions.send-pushes]
+# Push notifications (2026-11-05). CP1: the test push, invoked from the app
+# with a user JWT — same ES256 reason as send-invite, so the function checks
+# the JWT itself via admin.auth.getUser. CP2's timed batches will gate on the
+# shared DIGEST_CRON_SECRET like send-digests.
+verify_jwt = false

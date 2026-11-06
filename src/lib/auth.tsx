@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { claimPendingDeckAnswers } from "./deckPending";
+import { pushOffForSignOut, syncPushDevice } from "./push";
 import type { User } from "@supabase/supabase-js";
 
 // skin: which look the account sees — "classic" (the live site) or
@@ -185,6 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.id) claimPendingDeckAnswers(user.id);
   }, [user?.id]);
 
+  // Push notifications (CP1, 2026-11-05): a device that's on is saved again
+  // under whoever just signed in, so a device that changed hands follows its
+  // new owner. Quiet; asks nothing.
+  useEffect(() => {
+    if (user?.id) void syncPushDevice();
+  }, [user?.id]);
+
   async function signUp(
     email: string,
     password: string,
@@ -277,6 +285,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // here means logout always takes effect regardless of the token's status.
     setUser(null);
     setProfile(null);
+    // Push notifications (CP1): this device stops getting this account's
+    // pushes. The session is still good here; capped at 1.5s, never throws.
+    await pushOffForSignOut();
     // Best-effort server-side revocation of the refresh token (global scope).
     // Swallow any error (a deleted/banned user's logout can 401) — the local
     // clear below is what guarantees the tokens leave localStorage.

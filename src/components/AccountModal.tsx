@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, LogOut } from "lucide-react";
 import Modal from "./Modal";
 import LoadingDots from "./LoadingDots";
@@ -15,6 +15,8 @@ import { SectionHead } from "./editorial/Chrome";
 import { AnswerRow, EditorialDialog } from "./editorial/GroupRoom";
 import { BottomSheet } from "./editorial/Overlays";
 import { Field, Block, Frame, FORM_CSS } from "./editorial/Onboarding";
+import { HomeScreenDrawer } from "./editorial/HomeScreenTab";
+import { pushState, turnPushOn, turnPushOff, pushOffForSignOut, sendTestPush, type PushState } from "../lib/push";
 
 // Minimal account surface. Currently houses the self-serve "delete account"
 // flow (ANONYMIZE model): personal info + private notes are erased, shared-room
@@ -107,6 +109,8 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
   async function doDelete() {
     setBusy(true);
     setError(null);
+    // This device stops getting pushes before the account goes (push CP1).
+    await pushOffForSignOut();
     const res = await deleteAccount();
     if (!res.ok) {
       setBusy(false);
@@ -159,6 +163,9 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
           <Block onClick={saveName} disabled={nameSaving || !nameDirty} style={{ width: "auto", height: 44, padding: "0 18px", ...E.type.label11, flexShrink: 0 }}>{nameSaving ? <LoadingDots /> : nameSaved ? "Saved" : "Save"}</Block>
         </div>
         {nameError && <div style={err}>{nameError}</div>}
+        {/* Notifications (push CP1, 2026-11-05): admins only while the timed
+            batches are built (CP2 opens it to everyone). */}
+        {profile?.is_admin && <NotificationsSection admin />}
         {canPickSkin && (
           <>
             <SectionHead style={{ marginTop: 28 }}>Your look</SectionHead>
@@ -439,6 +446,78 @@ export default function AccountModal({ onClose, onSignOut, mobile }: { onClose: 
         </div>
       )}
     </Modal>
+  );
+}
+
+/** Notifications on this device (push CP1, 2026-11-05). One switch per
+ *  device; an iPhone outside the installed app gets the way to install
+ *  instead; a "no" given to the browser can only be undone in its settings. */
+function NotificationsSection({ admin }: { admin?: boolean }) {
+  const [state, setState] = useState<PushState | null>(null);
+  const [working, setWorking] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const [test, setTest] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    pushState().then((s) => { if (alive) setState(s); }).catch(() => { if (alive) setState("unsupported"); });
+    return () => { alive = false; };
+  }, []);
+  async function choose(on: boolean) {
+    if (working || state == null || (on ? state === "on" : state === "off")) return;
+    setWorking(true);
+    setProblem(null);
+    setTest(null);
+    try {
+      setState(on ? await turnPushOn() : await turnPushOff());
+    } catch (e) {
+      console.error("[account] notifications switch failed:", e);
+      setProblem(on ? "Couldn\u2019t turn notifications on. Please try again." : "Couldn\u2019t turn notifications off. Please try again.");
+      setState(await pushState().catch(() => "off" as PushState));
+    } finally {
+      setWorking(false);
+    }
+  }
+  async function runTest() {
+    setTest("Sending\u2026");
+    try {
+      const r = await sendTestPush();
+      setTest(r.devices === 0 ? "No devices are on yet." : `Sent to ${r.sent} of ${r.devices} device${r.devices === 1 ? "" : "s"}.`);
+    } catch (e) {
+      console.error("[account] test push failed:", e);
+      setTest("The test didn\u2019t go out.");
+    }
+  }
+  const note: React.CSSProperties = { ...E.type.note13, color: E.color.inkSub, marginTop: 10 };
+  const link: React.CSSProperties = { ...E.type.note13, color: E.color.ink, fontWeight: 600, background: "none", border: 0, padding: 0, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 };
+  return (
+    <>
+      <SectionHead style={{ marginTop: 28 }}>Notifications</SectionHead>
+      {state === null ? null
+        : state === "needs-install" ? (
+          <div style={note}>
+            Notifications work once Sidebar is on your Home Screen.{" "}
+            <button type="button" onClick={() => setDrawer(true)} style={link}>Show me how &rarr;</button>
+          </div>
+        ) : state === "unsupported" ? (
+          <div style={note}>This browser can&rsquo;t show notifications from Sidebar.</div>
+        ) : state === "blocked" ? (
+          <div style={note}>Notifications are turned off for Sidebar in this device&rsquo;s settings. Turn them on there, then come back.</div>
+        ) : (
+          <>
+            <div style={note}>A note every few hours when friends leave you something. Never overnight, and never a letter&rsquo;s words. Each phone or computer has its own switch.{working ? " Saving\u2026" : ""}</div>
+            <AnswerRow label="Notifications on this device" options={[{ value: "on", label: "On" }, { value: "off", label: "Off" }]} value={state} onChange={(v) => { void choose(v === "on"); }} />
+            {admin && state === "on" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 12 }}>
+                <button type="button" onClick={() => { void runTest(); }} style={link}>Send a test</button>
+                {test && <span style={{ ...E.type.note13, color: E.color.inkSub }}>{test}</span>}
+              </div>
+            )}
+          </>
+        )}
+      {problem && <div style={{ ...E.type.note13, color: E.color.alert, fontWeight: 600, marginTop: 10 }}>{problem}</div>}
+      {drawer && <HomeScreenDrawer onClose={() => setDrawer(false)} />}
+    </>
   );
 }
 

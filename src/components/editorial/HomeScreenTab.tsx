@@ -132,8 +132,10 @@ export default function HomeScreenTab() {
 }
 
 /** The drawer. The head row (icon + heading) rides in the sheet's own head
- *  slot; the body is the one path's content. */
-function HomeScreenDrawer({ onClose }: { onClose: () => void }) {
+ *  slot; the body is the one path's content. Also opened from the account
+ *  card's Notifications section on an iPhone outside the installed app
+ *  (push CP1); the sheet's own layer sits above the account sheet's. */
+export function HomeScreenDrawer({ onClose }: { onClose: () => void }) {
   const path = installPath();
   const [busy, setBusy] = useState(false);
   async function install() {
