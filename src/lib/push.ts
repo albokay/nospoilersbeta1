@@ -129,12 +129,19 @@ export async function pushOffForSignOut(): Promise<void> {
   } catch { /* tolerate */ }
 }
 
-/** On sign-in: a device that's on is saved again under whoever is signed in
- *  now (a device that changed hands moves to the new account; the time zone
- *  stays current). Quiet; never asks anything. */
+/** On sign-in (every app open with a session): the background worker is
+ *  checked for a newer version, and a device that's on is saved again under
+ *  whoever is signed in now (a device that changed hands moves to the new
+ *  account; the time zone stays current). Quiet; never asks anything. */
 export async function syncPushDevice(): Promise<void> {
   try {
-    if (!supported() || Notification.permission !== "granted") return;
+    if (!supported()) return;
+    // A device that's on also fetches a newer worker now, instead of when the
+    // browser gets round to it (his iPhone kept the old one after a deploy,
+    // 11-05: the "Sidebar / from Sidebar" fix never reached it).
+    const reg = await navigator.serviceWorker.getRegistration("/");
+    if (reg) { try { await reg.update(); } catch { /* offline or mid-install */ } }
+    if (Notification.permission !== "granted") return;
     const sub = await existingSubscription();
     if (sub) await saveDevice(sub);
   } catch { /* tolerate */ }

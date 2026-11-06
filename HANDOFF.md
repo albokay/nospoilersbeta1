@@ -4,6 +4,7 @@
 > - **One "Sidebar" on the iPhone:** a Home Screen app prints "from Sidebar" under the title itself, so the title "Sidebar" read "Sidebar / from Sidebar". `public/sw.js` now leaves the title empty on iPhone/iPad. Computers keep "Sidebar". If an empty title looks odd on the phone, the fallback is the message as the title.
 > - **Two things from one friend** now read "Sam left you a couple things on Sidebar." instead of being spelled out. One thing is still spelled out; three or more is "a few things"; two or more friends is unchanged.
 > - **Guide letters:** confirmed they push, when open to the reader. No friend guide letter was in his test window; the only recent one (Mad Men) he had already read.
+> - **The phone kept the old worker** (a probe push still showed its title after the deploy): `syncPushDevice`, run on every app open with a session, now calls `registration.update()` first, so a device picks up a new `sw.js` the moment the app opens instead of whenever the browser checks.
 > - **Every hour** (his call after the batches-vs-immediate question): a person is due every hour from 8am to 9pm local (was 8, 11, 2, 5, 8), a first batch looks back 1h (was 3h), and a retried call within 40 minutes is skipped (was 90). Still nothing 10pm–8am, and the 8am push covers the night. The cron was already hourly (:05), so no SQL change. The account card reads "A note within the hour when friends leave you something."
 
 > **⭐ 2026-11-05 — Push notifications, CP2: the batches + the switch for everyone.**
