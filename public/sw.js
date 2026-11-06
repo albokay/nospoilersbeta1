@@ -12,14 +12,17 @@ self.addEventListener("activate", (event) => { event.waitUntil(self.clients.clai
 self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data ? event.data.text() : "" }; }
-  // An iPhone/iPad Home Screen app already prints "from Sidebar" under the
-  // title, so a "Sidebar" title read "Sidebar / from Sidebar" (his catch,
-  // 11-05): there the title is left empty and the message follows the one
-  // "from Sidebar". Computers have no such line and keep the title.
+  // An iPhone/iPad Home Screen app prints "from Sidebar" under the title
+  // itself, so a "Sidebar" title read "Sidebar / from Sidebar" (his catch,
+  // 11-05), and an EMPTY title is filled with the app's name, same result
+  // (his probe, 11-05). There the message itself is the title — "Salborz
+  // left you a few things on Sidebar." over "from Sidebar" — with no body.
+  // Computers have no such line and keep "Sidebar" over the message.
   const apple = /iPhone|iPad|iPod/.test(self.navigator.userAgent || "");
-  const title = apple ? "" : (data.title || "Sidebar");
+  const message = data.body || "";
+  const title = apple ? (message || "Sidebar") : (data.title || "Sidebar");
   const options = {
-    body: data.body || "",
+    body: apple ? "" : message,
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     data: { url: data.url || "/" },

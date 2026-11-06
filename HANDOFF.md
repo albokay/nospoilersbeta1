@@ -1,7 +1,7 @@
 # Sidebar — Technical State (2026-11-05)
 
 > **⭐ 2026-11-05 — Push notifications, his live look (CP3 part 1).** Both catches came from his first real pushes on the iPhone.
-> - **One "Sidebar" on the iPhone:** a Home Screen app prints "from Sidebar" under the title itself, so the title "Sidebar" read "Sidebar / from Sidebar". `public/sw.js` now leaves the title empty on iPhone/iPad. Computers keep "Sidebar". If an empty title looks odd on the phone, the fallback is the message as the title.
+> - **One "Sidebar" on the iPhone:** a Home Screen app prints "from Sidebar" under the title itself, so the title "Sidebar" read "Sidebar / from Sidebar". An EMPTY title didn't help: his probe showed the iPhone fills it with the app's name. So `public/sw.js` now makes the MESSAGE the title on iPhone/iPad, with no body ("Salborz left you a few things on Sidebar." over "from Sidebar"). Computers keep "Sidebar" over the message. The open risk is a long message cut short on the bold line; the fallback is the friend's name as the title.
 > - **Two things from one friend** now read "Sam left you a couple things on Sidebar." instead of being spelled out. One thing is still spelled out; three or more is "a few things"; two or more friends is unchanged.
 > - **Guide letters:** confirmed they push, when open to the reader. No friend guide letter was in his test window; the only recent one (Mad Men) he had already read.
 > - **The phone kept the old worker** (a probe push still showed its title after the deploy): `syncPushDevice`, run on every app open with a session, now calls `registration.update()` first, so a device picks up a new `sw.js` the moment the app opens instead of whenever the browser checks.
