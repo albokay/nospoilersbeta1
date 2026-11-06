@@ -623,9 +623,21 @@ export function EditorialSheet({ onClose, top = 96, children }: { onClose: () =>
 }
 
 /** The desktop's centred card on the veil, the deck's card with a × at its corner. */
+/** A desktop veil that closes on a click only when the press STARTED on the
+ *  veil (his catch, 11-05): a drag that selects text in a field and is
+ *  released outside the card reads to the browser as a click on the veil. */
+export function useVeilClose(onClose: () => void) {
+  const pressedOnVeil = useRef(false);
+  return {
+    onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => { pressedOnVeil.current = e.target === e.currentTarget; },
+    onClick: (e: React.MouseEvent<HTMLDivElement>) => { const ok = pressedOnVeil.current && e.target === e.currentTarget; pressedOnVeil.current = false; if (ok) onClose(); },
+  };
+}
+
 export function EditorialDialog({ onClose, width = 480, label, align = "center", zIndex = 1100, children }: { onClose: () => void; width?: number; label?: string; align?: "center" | "left"; /** A dialog over another dialog (the journal picker over the answer sheet, 2026-10-26) passes a higher one. */ zIndex?: number; children: React.ReactNode }) {
+  const veil = useVeilClose(onClose);
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex, background: E.color.veil, overflowY: "auto" }}>
+    <div {...veil} style={{ position: "fixed", inset: 0, zIndex, background: E.color.veil, overflowY: "auto" }}>
       <div role="dialog" aria-label={label} style={{ position: "relative", width, maxWidth: "92vw", margin: "72px auto 48px", boxSizing: "border-box", background: E.color.cream, boxShadow: E.shadow.cardStack, padding: "30px 32px 32px", textAlign: align, color: E.color.ink }}>
         <button type="button" aria-label="Close" title="Close" onClick={onClose} style={{ position: "absolute", right: 12, top: 10, width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 20, lineHeight: 1, background: "transparent", border: 0, padding: 0, cursor: "pointer", color: E.color.ink }}>×</button>
         {children}

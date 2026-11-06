@@ -13,7 +13,7 @@ import { fetchShows, fetchPublicProfileByUsername, fetchPublicProgressForUser, f
 import type { ProgressEntry } from "../../types";
 import { getTrailerKeyCached } from "../../lib/trailers";
 import { joinNames } from "../../lib/groupNames";
-import { RowPoster } from "./GroupRoom";
+import { RowPoster, useVeilClose } from "./GroupRoom";
 import { SectionHead } from "./Chrome";
 import { Wordmark, Block, Frame, COLUMN, LinkRows } from "./Onboarding";
 import InviteShowSuggest from "../InviteShowSuggest";
@@ -307,8 +307,9 @@ export function InvitesSentBody({ links, onDone, inset }: { links: SentRow[]; on
 
 /** The desktop dialog for the invite form and the sent state: a 480 card with no padding of its own. */
 export function InviteDialog({ onClose, label, children }: { onClose: () => void; label: string; children: React.ReactNode }) {
+  const veil = useVeilClose(onClose);
   return (
-    <div onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 1000, background: E.color.veil, overflowY: "auto", animation: "dDimIn 180ms ease-out" }}>
+    <div {...veil} style={{ position: "fixed", inset: 0, zIndex: 1000, background: E.color.veil, overflowY: "auto", animation: "dDimIn 180ms ease-out" }}>
       <div role="dialog" aria-label={label} style={{ position: "relative", width: 480, maxWidth: "92vw", margin: "120px auto 48px", boxSizing: "border-box", background: E.color.cream, boxShadow: E.shadow.cardStack, color: E.color.ink, overflow: "hidden", padding: "0 0 28px" }}>
         {children}
       </div>

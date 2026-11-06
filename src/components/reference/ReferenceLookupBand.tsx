@@ -42,6 +42,8 @@ import type { GuideAsk, GuideAskOutcome } from "../editorial/GuideNote";
 const LORA = '"Lora", Georgia, "Palatino Linotype", Palatino, serif';
 const CREAM = CANON.cream;
 const EMPTY_EXCLUDE = new Set<number>();
+/** The canon take's length limit; the editorial card counts toward it. */
+const CANON_TAKE_MAX = 280;
 
 // The group opt-in modal's two-layer scrollable overlay (mirrors DashboardPage's
 // file-local trailerScrollOverlay/trailerCenterColumn): a fixed scrollable
@@ -760,7 +762,9 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
           <div style={{ ...E.type.question30, fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.01em", paddingRight: 28 }}>{canonCard.name}</div>
           <div style={{ ...E.type.label11, marginTop: 18 }}>Why is this in your canon?</div>
           {canonCard.adding && <div style={edNote}>Adding a show to your canon sets your progress to its latest episode.</div>}
-          <textarea value={canonDraft} onChange={(ev) => setCanonDraft(ev.target.value)} maxLength={280} rows={5} autoFocus placeholder="Your take — as short or long as you like." style={{ ...NOTE_FIELD, marginTop: 14, fontFamily: E.font.display, fontSize: 15 }} />
+          <textarea value={canonDraft} onChange={(ev) => setCanonDraft(ev.target.value)} maxLength={CANON_TAKE_MAX} rows={5} autoFocus placeholder="Your take — as short or long as you like." style={{ ...NOTE_FIELD, marginTop: 14, fontFamily: E.font.display, fontSize: 15 }} />
+          {/* Characters used (his ask, 11-05): small and grey under the field's right edge, red only at the limit. */}
+          <div aria-live="polite" style={{ ...E.type.label10, textAlign: "right", marginTop: 6, color: canonDraft.length >= CANON_TAKE_MAX ? E.color.alert : E.color.inkMuted }}>{canonDraft.length}/{CANON_TAKE_MAX}</div>
           {canonCard.show
             ? <Block onClick={confirmCanon} disabled={canonBusy} style={{ marginTop: 16 }}>{canonBusy ? <>one moment<LoadingDots /></> : canonCard.adding ? "Add to your canon" : "Save"}</Block>
             : <div style={{ ...E.type.label10, color: E.color.inkMuted, marginTop: 16 }}>one moment<LoadingDots /></div>}
@@ -936,7 +940,8 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
     pushShelf("You want to watch", wantTiles);
     pushShelf("You've finished", finishedTiles);
 
-    const shownCanon = mobile && !canonExpanded && canonList.length > 4 ? canonList.slice(0, 4) : canonList;
+    // Every canon show, on both platforms (his call, 11-05: the phone's fold after 4 is gone; a canon holds at most 12).
+    const shownCanon = canonList;
     const canon = (
       <div ref={canonAnchorRef} style={{ marginTop: shelves.length ? 56 : firstGap, scrollMarginTop: 24 }}>
         <SectionHead right={canonList.length < 12 ? <UnderlineWord onClick={openCanonSearch} title="Add a show to your canon">Add a show →</UnderlineWord> : null}>Your canon</SectionHead>
@@ -971,9 +976,6 @@ export default function ReferenceLookupBand({ mobile = false, editorial = false,
               );
             })}
           </div>
-        )}
-        {mobile && !canonExpanded && canonList.length > 4 && (
-          <UnderlineWord onClick={() => setCanonExpanded(true)} style={{ marginTop: 14 }}>Show all {canonList.length} →</UnderlineWord>
         )}
       </div>
     );

@@ -570,7 +570,8 @@ export default function FriendProfile({
                       {take && !open && (
                         <div style={{ marginTop: 8, padding: "12px 12px", border: `1px dashed ${E.color.friend}`, display: "flex", gap: 10, alignItems: "flex-start" }}>
                           {/* A ? in the red disc, not the lock (his note, 11-04): the lock read as a seal you can't open; this is a question you can answer with a click. */}
-                          <span aria-hidden="true" style={{ display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, color: E.color.cream, alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: E.font.interface, fontWeight: 700, fontSize: 16, lineHeight: 1 }}>?</span>
+                          {/* The disc opens the take too (his note, 11-05), the same act as the line beside it. */}
+                          <button type="button" aria-label={`Read ${ownerName}'s take`} onClick={() => setUnsealed((prev) => new Set(prev).add(show.id))} style={{ ...reset, display: "inline-flex", width: 28, height: 28, borderRadius: "50%", background: E.color.alert, color: E.color.cream, alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: E.font.interface, fontWeight: 700, fontSize: 16, lineHeight: 1, cursor: "pointer" }}>?</button>
                           <div style={{ minWidth: 0 }}>
                             <button type="button" onClick={() => setUnsealed((prev) => new Set(prev).add(show.id))} style={{ ...reset, ...E.type.note13, fontWeight: 600, display: "block" }}>{mobile ? "Tap" : "Click"} to read {ownerName}&rsquo;s take.</button>
                             <div style={{ ...E.type.note13, color: E.color.inkSub, marginTop: 3 }}>There could be a spoiler!</div>
