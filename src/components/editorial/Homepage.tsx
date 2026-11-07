@@ -76,13 +76,13 @@ function Letter({ paragraphs, style }: { paragraphs: string[]; style?: React.CSS
   );
 }
 
-/** A waving hand in cream lines: lucide's hand, tilted and a little smaller,
+/** A waving hand in cream lines: lucide's hand, upright (his follow-up) and a little smaller,
  *  with two motion arcs off its fingertips and two off its heel (his picture, 11-06). */
 function WavingHand({ size }: { size: number }) {
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 32 32" style={{ display: "block" }}>
       <g fill="none" stroke={E.color.cream} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-        <g transform="translate(15.5 15.5) scale(0.8) rotate(-18) translate(-12 -12)">
+        <g transform="translate(15.5 15.5) scale(0.8) translate(-12 -12)">
           <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
           <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
           <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
@@ -101,7 +101,7 @@ function WavingHand({ size }: { size: number }) {
  *  and its button): the folded-corner language at the page's bottom right, in
  *  identity blue with the waving hand. It sits at the end of the page and
  *  scrolls with it (the top-left corner is the fixed one). "Hi beta tester!"
- *  in How it works' body font, identity blue, to its left: on hover on
+ *  in the site's mono label (his follow-up), identity blue, to its left: on hover on
  *  desktop, always on the phone. The size is the top-left corner's. */
 function BetaCorner({ desktop, onOpen }: { desktop: boolean; onOpen: () => void }) {
   const [hover, setHover] = useState(false);
@@ -113,7 +113,7 @@ function BetaCorner({ desktop, onOpen }: { desktop: boolean; onOpen: () => void 
     <div style={{ position: "relative", height: size }}>
       {showLabel && (
         <button type="button" onClick={onOpen} tabIndex={-1} aria-hidden="true"
-          style={{ position: "absolute", right: size / 2 + 20, bottom: size / 2, transform: "translateY(50%)", padding: 0, border: 0, background: "transparent", cursor: "pointer", ...E.type.body15, color: E.color.identity, whiteSpace: "nowrap", pointerEvents: desktop ? "none" : "auto", WebkitTapHighlightColor: "transparent" }}>
+          style={{ position: "absolute", right: size / 2 + 20, bottom: size / 2, transform: "translateY(50%)", padding: 0, border: 0, background: "transparent", cursor: "pointer", ...E.type.label11, color: E.color.identity, whiteSpace: "nowrap", pointerEvents: desktop ? "none" : "auto", WebkitTapHighlightColor: "transparent" }}>
           {BETA_CORNER_LABEL}
         </button>
       )}
