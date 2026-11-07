@@ -1338,7 +1338,9 @@ function AppShell() {
           {isHomepage && user && !isAdmin && (
             <StuckSessionLoader onSignOut={async () => { try { await signOut?.(); } catch { /* ignore */ } }} />
           )}
-          {isHomepage && editorial && (
+          {/* Not over the admin panel (2026-11-06): the Admin word opens /?admin, and
+              the editorial homepage — a full-width layer on top — was covering it. */}
+          {isHomepage && editorial && !(showAdmin && isAdmin) && (
             <div style={{ position: "absolute", left: 0, top: 0, width: "100%", zIndex: 95 }}>
               <EditorialHomepage
                 desktop
