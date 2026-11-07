@@ -61,6 +61,9 @@ export const BETA_PILL_CLOSED = "*click here beta tester!";
 // desktop line so a future rewording changes both together.
 export const BETA_PILL_CLOSED_MOBILE = "*tap here beta tester!";
 export const BETA_PILL_OPEN = "Hello!";
+// The editorial homepage's blue corner at the page's foot (his note, 11-06):
+// shown beside the waving hand on hover (desktop) and always on the phone.
+export const BETA_CORNER_LABEL = "Hi beta tester!";
 
 // Rendered as paragraphs separated by blank lines on both surfaces.
 // The feedback paragraph (index 4) differs by surface: desktop points at

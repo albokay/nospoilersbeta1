@@ -5,13 +5,14 @@
  * before; the scroll on green is `HomepageNarrative editorial`.
  */
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { E } from "../../styles/editorial";
-import { HERO_LINES, HERO_EMPHASIS, HOW_IT_WORKS_STEPS, CTA_JOIN_LABEL, CTA_DETAILS_LABEL, BETA_PILL_CLOSED, BETA_PILL_OPEN, BETA_LETTER_PARAGRAPHS, BETA_LETTER_PARAGRAPHS_MOBILE } from "../../lib/homepageCopy";
+import { HERO_LINES, HERO_EMPHASIS, HOW_IT_WORKS_STEPS, CTA_JOIN_LABEL, CTA_DETAILS_LABEL, BETA_CORNER_LABEL, BETA_LETTER_PARAGRAPHS, BETA_LETTER_PARAGRAPHS_MOBILE } from "../../lib/homepageCopy";
 import { SectionHead } from "./Chrome";
 import { Block, Frame, COLUMN } from "./Onboarding";
 import { CornerTab } from "./Chrome";
 import { PAPER_RULES, PAPER_LH } from "./Compose";
-import { EditorialSheet } from "./GroupRoom";
+import { EditorialSheet, EditorialDialog } from "./GroupRoom";
 import HomepageNarrative from "../HomepageNarrative";
 
 /** The five discs take the palette in order; the number is cream on identity and alert, ink on the rest. */
@@ -75,30 +76,52 @@ function Letter({ paragraphs, style }: { paragraphs: string[]; style?: React.CSS
   );
 }
 
-/** The desktop's beta band at the page's foot: the live two-part switch, the letter opening inside the band. */
-export function BetaBand({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+/** A waving hand in cream lines: lucide's hand, tilted and a little smaller,
+ *  with two motion arcs off its fingertips and two off its heel (his picture, 11-06). */
+function WavingHand({ size }: { size: number }) {
   return (
-    <div style={{ background: E.color.accent, padding: "40px 24px 48px" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <button type="button" role="switch" aria-checked={open} aria-label="Beta tester letter" onClick={onToggle} style={{ display: "inline-flex", border: `1px solid ${E.color.ink}`, background: "transparent", padding: 0, cursor: "pointer", fontFamily: E.font.label, fontSize: 12, letterSpacing: "0.04em", color: E.color.ink }}>
-          <span style={{ padding: "9px 14px", background: open ? "transparent" : E.color.ink, color: open ? E.color.ink : E.color.cream, fontWeight: open ? 400 : 500 }}>{BETA_PILL_CLOSED}</span>
-          <span style={{ padding: "9px 14px", background: open ? E.color.ink : "transparent", color: open ? E.color.cream : E.color.ink, fontWeight: open ? 500 : 400 }}>{BETA_PILL_OPEN}</span>
-        </button>
-        {open && <Letter paragraphs={BETA_LETTER_PARAGRAPHS} style={{ width: E.measure.desktop.letters, maxWidth: "100%", marginTop: 32 }} />}
-      </div>
-    </div>
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 32 32" style={{ display: "block" }}>
+      <g fill="none" stroke={E.color.cream} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <g transform="translate(15.5 15.5) scale(0.8) rotate(-18) translate(-12 -12)">
+          <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+          <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
+          <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+          <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+        </g>
+        <path d="M6.4 9 A6.5 6.5 0 0 1 9.8 4.6" />
+        <path d="M2.8 8.4 A10 10 0 0 1 8.2 2" />
+        <path d="M26.2 23.4 A6.5 6.5 0 0 1 22.8 27.8" />
+        <path d="M29.6 24 A10 10 0 0 1 24.2 30.4" />
+      </g>
+    </svg>
   );
 }
 
-/** The phone's beta band at the very foot of the page (his note, 11-06, the
- *  desktop's grammar): the accent band, full width to the bottom edge, with one
- *  ink-outline button that opens the letter as a sheet; thin, the button centred
- *  top to bottom (his follow-up, same day: equal padding, no extra for the
- *  home bar, which sits clear below the button). */
-export function BetaBandPhone({ onOpen }: { onOpen: () => void }) {
+/** The beta corner (his note, 11-06, both platforms; replaces the accent band
+ *  and its button): the folded-corner language at the page's bottom right, in
+ *  identity blue with the waving hand. It sits at the end of the page and
+ *  scrolls with it (the top-left corner is the fixed one). "Hi beta tester!"
+ *  in How it works' body font, identity blue, to its left: on hover on
+ *  desktop, always on the phone. The size is the top-left corner's. */
+function BetaCorner({ desktop, onOpen }: { desktop: boolean; onOpen: () => void }) {
+  const [hover, setHover] = useState(false);
+  const size = desktop ? E.measure.desktop.corner : E.measure.phone.corner;
+  const glyph = desktop ? 40 : 32;
+  const inset = desktop ? 14 : 10;
+  const showLabel = !desktop || hover;
   return (
-    <div style={{ background: E.color.accent, padding: "22px 24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <button type="button" onClick={onOpen} aria-label="Beta tester letter" style={{ border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, padding: "9px 14px", cursor: "pointer", fontFamily: E.font.label, fontSize: 12, fontWeight: 500, letterSpacing: "0.04em" }}>{BETA_PILL_CLOSED}</button>
+    <div style={{ position: "relative", height: size }}>
+      {showLabel && (
+        <button type="button" onClick={onOpen} tabIndex={-1} aria-hidden="true"
+          style={{ position: "absolute", right: size / 2 + 20, bottom: size / 2, transform: "translateY(50%)", padding: 0, border: 0, background: "transparent", cursor: "pointer", ...E.type.body15, color: E.color.identity, whiteSpace: "nowrap", pointerEvents: desktop ? "none" : "auto", WebkitTapHighlightColor: "transparent" }}>
+          {BETA_CORNER_LABEL}
+        </button>
+      )}
+      <button type="button" aria-label="Beta tester letter" title={desktop ? undefined : BETA_CORNER_LABEL} onClick={onOpen}
+        onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+        style={{ position: "absolute", right: 0, bottom: 0, width: size, height: size, padding: 0, border: 0, background: E.color.identity, cursor: "pointer", display: "block", clipPath: "polygon(100% 0, 100% 100%, 0 100%)", WebkitTapHighlightColor: "transparent" }}>
+        <span style={{ position: "absolute", right: inset, bottom: inset }}><WavingHand size={glyph} /></span>
+      </button>
     </div>
   );
 }
@@ -150,20 +173,27 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
               <Block onClick={onJoin} style={{ width: CTA_W }}>{CTA_JOIN_LABEL}</Block>
               <Frame onClick={onDetails} style={{ width: CTA_W }}>{CTA_DETAILS_LABEL}</Frame>
             </div>
-            <div style={{ marginTop: 64 }}><BetaBand open={betaOpen} onToggle={onToggleBeta} /></div>
+            <div style={{ marginTop: 64 }}><BetaCorner desktop onOpen={onToggleBeta} /></div>
           </>
         ) : (
           <>
             {/* The desktop's foot on the phone (his note, 11-06): the two buttons on
-                the cream, then the accent band at the very bottom with the beta button. */}
+                the cream, then the blue beta corner at the page's bottom right. */}
             <div style={{ marginTop: 56, display: "flex", flexDirection: "column", gap: 10 }}>
               <Block onClick={onJoin}>{CTA_JOIN_LABEL}</Block>
               <Frame onClick={onDetails}>{CTA_DETAILS_LABEL}</Frame>
             </div>
-            <div style={{ margin: `56px -${E.space.gutter}px 0` }}><BetaBandPhone onOpen={() => setLetterOpen(true)} /></div>
+            <div style={{ margin: `56px -${E.space.gutter}px 0` }}><BetaCorner desktop={false} onOpen={() => setLetterOpen(true)} /></div>
           </>
         )}
       </div>
+      {/* Desktop: the letter as a centred pop-up over the site's veil (his answer, 11-06). */}
+      {desktop && betaOpen && createPortal(
+        <EditorialDialog onClose={onToggleBeta} width={E.measure.desktop.letters} label="A letter for beta testers">
+          <Letter paragraphs={BETA_LETTER_PARAGRAPHS} style={{ padding: 0 }} />
+        </EditorialDialog>,
+        document.body,
+      )}
       {letterOpen && (
         <EditorialSheet onClose={() => setLetterOpen(false)}>
           {/* Clear of the sheet's handle (his note, 10-27). */}
