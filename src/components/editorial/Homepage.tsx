@@ -90,13 +90,14 @@ export function BetaBand({ open, onToggle }: { open: boolean; onToggle: () => vo
   );
 }
 
-/** The phone's paper note at the right, tilted, running off the edge; tapping opens the letter as a sheet. */
-export function BetaNote({ onOpen }: { onOpen: () => void }) {
+/** The phone's beta band at the very foot of the page (his note, 11-06, the
+ *  desktop's grammar): the accent band, full width to the bottom edge, with one
+ *  ink button that opens the letter as a sheet. */
+export function BetaBandPhone({ onOpen }: { onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} style={{ position: "relative", display: "block", boxSizing: "border-box", width: 206, marginLeft: "auto", marginRight: -30, padding: "12px 26px 13px 16px", background: E.color.cream, border: `1px solid ${E.color.ink}`, borderLeft: `5px solid ${E.color.accent}`, textAlign: "left", cursor: "pointer", transform: "rotate(-3deg)", color: E.color.ink, fontFamily: E.font.interface, fontSize: 13, lineHeight: 1.4 }}>
-      <span style={{ display: "block", ...E.type.label9, color: E.color.inkMuted, marginBottom: 4 }}>Beta tester?</span>
-      Tap here. There&rsquo;s a letter for you.
-    </button>
+    <div style={{ background: E.color.accent, padding: "32px 24px calc(env(safe-area-inset-bottom, 0px) + 40px)", display: "flex", justifyContent: "center" }}>
+      <button type="button" onClick={onOpen} aria-label="Beta tester letter" style={{ border: `1px solid ${E.color.ink}`, background: E.color.ink, color: E.color.cream, padding: "9px 14px", cursor: "pointer", fontFamily: E.font.label, fontSize: 12, fontWeight: 500, letterSpacing: "0.04em" }}>{BETA_PILL_CLOSED}</button>
+    </div>
   );
 }
 
@@ -133,7 +134,7 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
         <div aria-hidden="true" style={{ height: desktop ? 240 : 150, background: `linear-gradient(to bottom, ${E.color.personal}, ${E.color.cream})` }} />
       </div>
       {/* The cream page (his order, 10-14): the hero, How it works, the acts, then the beta letter at the foot */}
-      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px 40px`, marginTop: desktop ? -30 : -40 }}>
+      <div style={{ position: "relative", padding: desktop ? 0 : `0 ${E.space.gutter}px`, marginTop: desktop ? -30 : -40 }}>
         <div style={col}>
           <Hero desktop={desktop} />
         </div>
@@ -151,11 +152,13 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
           </>
         ) : (
           <>
-            <div style={{ margin: `56px -${E.space.gutter}px 0`, padding: `28px ${E.space.gutter}px 30px`, background: E.color.accent, display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* The desktop's foot on the phone (his note, 11-06): the two buttons on
+                the cream, then the accent band at the very bottom with the beta button. */}
+            <div style={{ marginTop: 56, display: "flex", flexDirection: "column", gap: 10 }}>
               <Block onClick={onJoin}>{CTA_JOIN_LABEL}</Block>
               <Frame onClick={onDetails}>{CTA_DETAILS_LABEL}</Frame>
             </div>
-            <div style={{ marginTop: 26 }}><BetaNote onOpen={() => setLetterOpen(true)} /></div>
+            <div style={{ margin: `56px -${E.space.gutter}px 0` }}><BetaBandPhone onOpen={() => setLetterOpen(true)} /></div>
           </>
         )}
       </div>
