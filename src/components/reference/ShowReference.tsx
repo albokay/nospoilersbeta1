@@ -1092,7 +1092,7 @@ export default function ShowReference({
           return (
             <GuideWriter
               mobile={mobile}
-              title={join ? <>Join the conversation</> : <>Write for <em>everyone</em></>}
+              title={join ? <>Join the conversation</> : <>Write <em>for everyone</em></>}
               label={join ? "Join the conversation" : "Write for everyone"}
               epLine={epLine}
               context={join ? joinContext(joinNames(writers), ref.showName) : writeContext(ref.showName)}

@@ -36,7 +36,7 @@ const PAPER_TILT = 2.5;
 /** The writing box's explanation (his copy, 11-06: the show guide is the one
  *  public corner of Sidebar — anyone signed in who has watched this far reads
  *  it; only friends are notified). Two paragraphs: the box keeps the break. */
-const HOW_IT_WORKS = "The show guide is the one public corner of Sidebar: anyone on Sidebar who has watched this far can read what you write here.\n\nYour friends across all your watch groups get a notification that you’ve written. This is a way to write about shows you’ve already watched without opening a new room. You will get a notification if your friends write in here.";
+const HOW_IT_WORKS = "The show guide is the one public corner of Sidebar: anyone on Sidebar who has watched this far can read what you write here.\n\nYour friends across all your watch groups get a notification that you’ve written. This is a way to correspond about shows you’ve already watched without opening a new room. You will get a notification if your friends write back in here.";
 export function writeContext(_showName: string): string {
   return HOW_IT_WORKS;
 }
