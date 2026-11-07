@@ -23,11 +23,16 @@ const DISC = [
   { bg: E.color.personal, fg: E.color.ink },
 ];
 
+/** The desktop acts: two 320 buttons 16 apart; How it works spans the same width, centred. */
+const CTA_W = 320;
+const CTA_GAP = 16;
+const CTA_ROW_W = CTA_W * 2 + CTA_GAP;
+
 /** HOW IT WORKS: five hairline rows, a numbered disc, an outline glyph, one sentence; the last closes on an ink rule. */
 export function StepRows({ style }: { style?: React.CSSProperties }) {
   return (
     <div style={style}>
-      <SectionHead right={<span style={{ color: E.color.inkMuted }}>{HOW_IT_WORKS_STEPS.length} steps</span>}>How it works</SectionHead>
+      <SectionHead>How it works</SectionHead>
       {HOW_IT_WORKS_STEPS.map(({ Icon, text, italic }, i) => {
         const last = i === HOW_IT_WORKS_STEPS.length - 1;
         const d = DISC[i % DISC.length];
@@ -133,19 +138,20 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
           <Hero desktop={desktop} />
         </div>
         <div style={col}>
-          <StepRows style={{ marginTop: desktop ? 64 : 56, ...(desktop ? { width: E.measure.desktop.letters, maxWidth: "100%" } : {}) }} />
+          {/* Centred on the page, its edges in line with the two buttons below (his note, 11-06); the text stays left-aligned. */}
+          <StepRows style={{ marginTop: desktop ? 64 : 56, ...(desktop ? { width: CTA_ROW_W, maxWidth: "100%", marginLeft: "auto", marginRight: "auto" } : {}) }} />
         </div>
         {desktop ? (
           <>
-            <div style={{ ...col, marginTop: 64, display: "flex", gap: 16, justifyContent: "center" }}>
-              <Block onClick={onJoin} style={{ width: 320 }}>{CTA_JOIN_LABEL}</Block>
-              <Frame onClick={onDetails} style={{ width: 320 }}>{CTA_DETAILS_LABEL}</Frame>
+            <div style={{ ...col, marginTop: 88, display: "flex", gap: CTA_GAP, justifyContent: "center" }}>
+              <Block onClick={onJoin} style={{ width: CTA_W }}>{CTA_JOIN_LABEL}</Block>
+              <Frame onClick={onDetails} style={{ width: CTA_W }}>{CTA_DETAILS_LABEL}</Frame>
             </div>
             <div style={{ marginTop: 64 }}><BetaBand open={betaOpen} onToggle={onToggleBeta} /></div>
           </>
         ) : (
           <>
-            <div style={{ margin: `44px -${E.space.gutter}px 0`, padding: `28px ${E.space.gutter}px 30px`, background: E.color.accent, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ margin: `56px -${E.space.gutter}px 0`, padding: `28px ${E.space.gutter}px 30px`, background: E.color.accent, display: "flex", flexDirection: "column", gap: 10 }}>
               <Block onClick={onJoin}>{CTA_JOIN_LABEL}</Block>
               <Frame onClick={onDetails}>{CTA_DETAILS_LABEL}</Frame>
             </div>
