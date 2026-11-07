@@ -92,11 +92,13 @@ export function BetaBand({ open, onToggle }: { open: boolean; onToggle: () => vo
 
 /** The phone's beta band at the very foot of the page (his note, 11-06, the
  *  desktop's grammar): the accent band, full width to the bottom edge, with one
- *  ink button that opens the letter as a sheet. */
+ *  ink-outline button that opens the letter as a sheet; thin, the button centred
+ *  top to bottom (his follow-up, same day: equal padding, no extra for the
+ *  home bar, which sits clear below the button). */
 export function BetaBandPhone({ onOpen }: { onOpen: () => void }) {
   return (
-    <div style={{ background: E.color.accent, padding: "32px 24px calc(env(safe-area-inset-bottom, 0px) + 40px)", display: "flex", justifyContent: "center" }}>
-      <button type="button" onClick={onOpen} aria-label="Beta tester letter" style={{ border: `1px solid ${E.color.ink}`, background: E.color.ink, color: E.color.cream, padding: "9px 14px", cursor: "pointer", fontFamily: E.font.label, fontSize: 12, fontWeight: 500, letterSpacing: "0.04em" }}>{BETA_PILL_CLOSED}</button>
+    <div style={{ background: E.color.accent, padding: "22px 24px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <button type="button" onClick={onOpen} aria-label="Beta tester letter" style={{ border: `1px solid ${E.color.ink}`, background: "transparent", color: E.color.ink, padding: "9px 14px", cursor: "pointer", fontFamily: E.font.label, fontSize: 12, fontWeight: 500, letterSpacing: "0.04em" }}>{BETA_PILL_CLOSED}</button>
     </div>
   );
 }
