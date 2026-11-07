@@ -189,7 +189,7 @@ export default function EditorialHomepage({ desktop = false, onSignIn, onJoin, o
       </div>
       {/* Desktop: the letter as a centred pop-up over the site's veil (his answer, 11-06). */}
       {desktop && betaOpen && createPortal(
-        <EditorialDialog onClose={onToggleBeta} width={E.measure.desktop.letters} label="A letter for beta testers">
+        <EditorialDialog onClose={onToggleBeta} width={E.measure.desktop.letters} label="A letter for beta testers" align="left">
           <Letter paragraphs={BETA_LETTER_PARAGRAPHS} style={{ padding: 0 }} />
         </EditorialDialog>,
         document.body,
