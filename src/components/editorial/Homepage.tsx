@@ -28,14 +28,14 @@ export function StepRows({ style }: { style?: React.CSSProperties }) {
   return (
     <div style={style}>
       <SectionHead right={<span style={{ color: E.color.inkMuted }}>{HOW_IT_WORKS_STEPS.length} steps</span>}>How it works</SectionHead>
-      {HOW_IT_WORKS_STEPS.map(({ Icon, text }, i) => {
+      {HOW_IT_WORKS_STEPS.map(({ Icon, text, italic }, i) => {
         const last = i === HOW_IT_WORKS_STEPS.length - 1;
         const d = DISC[i % DISC.length];
         return (
           <div key={i} style={{ display: "flex", gap: 14, padding: "16px 0", borderBottom: `1px solid ${last ? E.color.ink : E.color.hairline}` }}>
             <span style={{ ...E.type.label10, flexShrink: 0, width: 26, height: 26, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: d.bg, color: d.fg, marginTop: -2 }}>{String(i + 1).padStart(2, "0")}</span>
             <Icon size={20} color={E.color.ink} strokeWidth={1.3} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
-            <span style={{ ...E.type.body15, color: E.color.ink }}>{text}</span>
+            <span style={{ ...E.type.body15, color: E.color.ink }}>{italic && text.endsWith(italic) ? <>{text.slice(0, -italic.length)}<em>{italic}</em></> : text}</span>
           </div>
         );
       })}

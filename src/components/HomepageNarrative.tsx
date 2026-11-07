@@ -385,7 +385,10 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
 
       {/* 2 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy editorial={ed}>You're an episode<br />behind your friend.</Copy>
+        {/* Balanced wrap in the editorial skin (his rule, 11-06): even lines, no hand-placed breaks. */}
+        {ed
+          ? <Copy editorial balance>You're an episode behind your friend.</Copy>
+          : <Copy>You're an episode<br />behind your friend.</Copy>}
       </section>
 
       {/* 3 — Friend white bubble, pushed well below copy */}
@@ -395,13 +398,17 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
 
       {/* 4 — Copy (38svh) */}
       <section style={{ minHeight: "38svh", display: "flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", padding: "48px 32px", boxSizing: "border-box" }}>
-        <Copy editorial={ed}>
-          {(headerHeight === 0 || ed) ? (
-            <>Another friend<br />is two episodes<br />behind you.</>
-          ) : (
-            <>Another friend is two<br />episodes behind you.</>
-          )}
-        </Copy>
+        {ed ? (
+          <Copy editorial balance>Another friend is two episodes behind you.</Copy>
+        ) : (
+          <Copy>
+            {headerHeight === 0 ? (
+              <>Another friend<br />is two episodes<br />behind you.</>
+            ) : (
+              <>Another friend is two<br />episodes behind you.</>
+            )}
+          </Copy>
+        )}
       </section>
 
       {/* 5 — Cloud: 14 bubbles, high parallax rates for z-depth, wide space around copy */}
@@ -414,7 +421,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
           width: "min(520px, 80vw)", zIndex: 10,
           padding: "0 0 40px",
         }}>
-          <Copy editorial={ed} balance>You're all dying to talk about your favorite show right now.</Copy>
+          <Copy editorial={ed} balance>{ed ? "The three of you are dying to talk about your favorite show right now." : "You're all dying to talk about your favorite show right now."}</Copy>
         </div>
 
         {/* Above copy — spread evenly across full width, no right-side clustering.
@@ -457,7 +464,7 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
         // half ends where the fade begins.
         <section style={{ minHeight: invitee ? "100svh" : "80svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 0, padding: invitee ? "48px 32px calc(env(safe-area-inset-bottom, 0px) + 64px)" : "48px 32px 0", boxSizing: "border-box" }}>
           {!invitee && <div style={{ flex: 1 }} />}
-          <Copy size={38} editorial balance>Sidebar is where the three of you can talk freely.</Copy>
+          <Copy size={38} editorial balance>Sidebar is where you can talk freely.</Copy>
           {invitee ? (
             <>
               <div style={{ marginTop: phone ? 64 : 88 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
@@ -466,7 +473,8 @@ export default function HomepageNarrative({ headerHeight = 56, invitee, editoria
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: "flex", alignItems: "center" }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
+            // 56px lower (his note, 11-06), the section's height unchanged.
+            <div style={{ flex: 1, display: "flex", alignItems: "center", position: "relative", top: 56 }}><StaticLogo scale={phone ? 0.7 : 1} /></div>
           )}
         </section>
       ) : invitee ? (

@@ -41,12 +41,15 @@ export const HOW_IT_WORKS_TITLE = "Here’s how it works:";
 // 2026-10-30 (Alborz, verbatim): step 1 names the cap — a group holds 8
 // MEMBERS including you (the server cap in people_group_members), so "up to 7
 // friends"; steps 3–5 reworded; step 4 drops "On Sidebar".
-export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string }[] = [
+// 2026-11-06 (Alborz): step 4 ends on the letter phrase in italics (`italic` =
+// the trailing words of `text` the editorial homepage sets in italics); step 5
+// reworded.
+export const HOW_IT_WORKS_STEPS: { Icon: ElementType; text: string; italic?: string }[] = [
   { Icon: UsersRound,        text: "Start a group with up to 7 friends you love talking to." },
   { Icon: DoorOpen,          text: "Each of you lists what you’d like to watch together, then you agree on a show and start a room." },
   { Icon: Flag,              text: "After watching each episode, mark your progress. That’s what keeps the room spoiler-free." },
-  { Icon: Mail,              text: "Everything you write is stamped with the episode you’re on and stays sealed until your friends get there — like a letter to them from the future." },
-  { Icon: Road,              text: "So watch at your own pace. Binge ahead and your writing sets the tone for the group. Take your time and there’s always a letter waiting for you." },
+  { Icon: Mail,              text: "Everything you write is stamped with the episode you’re on and stays sealed until your friends get there — like a letter to them from the future.", italic: "like a letter to them from the future." },
+  { Icon: Road,              text: "So watch at your own pace. Binge ahead and your writing becomes the watch guide for your friends. Take your time and there’s always a letter waiting for you when you get to the credits." },
 ];
 
 export const CTA_JOIN_LABEL = "Join / sign in";
